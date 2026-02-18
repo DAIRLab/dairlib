@@ -42,6 +42,10 @@ void EndEffectorOrientationTrajectoryGenerator::CalcTraj(
     context, radio_port_);
   auto* casted_traj = (PiecewiseQuaternionSlerp<double>*)dynamic_cast<
       PiecewiseQuaternionSlerp<double>*>(traj);
+
+
+
+
   //if (radio_out->channel[14] and track_orientation_) {  TODO: Figure out why teleop tracks end effector orientation
   if (track_orientation_) {
     const auto& trajectory_input =
@@ -50,6 +54,11 @@ void EndEffectorOrientationTrajectoryGenerator::CalcTraj(
     *casted_traj = *(PiecewiseQuaternionSlerp<double>*)dynamic_cast<
         const PiecewiseQuaternionSlerp<double>*>(&trajectory_input);
 
+    std::cout << "orientation time range: ["
+            << trajectory_input.start_time() << ", "
+            << trajectory_input.end_time() << "]\n";
+
+    
   } else {
     std::cout << "0 orientation traj" << std::endl;
 

@@ -106,11 +106,13 @@ void LQRInput::ComputeLQRInput(const drake::systems::Context<double>& context,
 
     int k = (int)((t - time_to_wait_) / dt_);
 
-    double alpha = 0.3;
+    double alpha = 0;
 
     VectorXd delta_x = x_curr->get_value() - x_data.col(k);
     VectorXd u = u_data.col(k) + K[k] * delta_x + alpha * k_ff[k];
-    if (std::abs((t / dt_) - (int)(t / dt_)) < 1e-4) {
+
+    std::cout << (t / dt_) << ", " << std::round(t / dt_) << std::endl;
+    if ((t / dt_) - std::round(t / dt_) < 1e-3) {
       //std::cout << "delta x: " << delta_x.transpose() << std::endl;
       std::cout << "lqr " << k << ": " << u.transpose() << std::endl;
     }    

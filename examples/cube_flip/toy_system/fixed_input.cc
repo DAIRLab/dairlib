@@ -50,7 +50,9 @@ void FixedInput::ComputeFixedInput(const drake::systems::Context<double>& contex
   Eigen::VectorXd u_gravity = Eigen::VectorXd::Zero(5);
 
   u_gravity[2] = -(tau_g[2] + tau_g[10]); // Hard-coded cube + plate
-  u_gravity[4] = -(0.13 * tau_g[10]); // Hard-coded cube + plate
+  if (t < time_to_wait_) {
+    u_gravity[4] = -(0.13 * tau_g[10]); // Hard-coded cube + plate
+  }
 
   if (t > dt_ * N_ + time_to_wait_ || t < time_to_wait_) { 
     // Just compensate gravity if time is past horizon
@@ -63,9 +65,9 @@ void FixedInput::ComputeFixedInput(const drake::systems::Context<double>& contex
   } else {
 
     int k = (int)((t - time_to_wait_) / dt_);
-    // std::cout << "k " << k << std::endl;
+    //std::cout << "k " << k << std::endl;
     // std::cout << "u: " << u_data.col(k).transpose() << std::endl;
-    if (std::abs((t / dt_) - (int)(t / dt_)) < 1e-4) {
+    if (std::abs((t / dt_) - static_cast<int>(t / dt_)) < 1e-3) {
       std::cout << "open " << k << ": " << u_data.col(k).transpose() << std::endl;
     }
     

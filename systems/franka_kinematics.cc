@@ -37,6 +37,7 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
               "x_object", StateVector<double>(object_plant.num_positions(),
                                                object_plant.num_velocities()))
           .get_index();
+  // HARDCODED FOR PLATE EXAMPLE
   num_end_effector_positions_ = 3 + include_end_effector_orientation_ * 2;
   num_object_positions_ = 7;
   num_end_effector_velocities_ = 3 + include_end_effector_orientation_ * 2;
@@ -132,6 +133,8 @@ void FrankaKinematics::ComputeLCSState(
   q_object.segment(0, nq) = object_output->GetPositions();
   v_object.segment(0, nv) = object_output->GetVelocities();
 
+	q_object.segment(0, 4) = q_object.segment(0, 4).normalized(); // Normalize quaternions
+
   multibody::SetPositionsIfNew<double>(franka_plant_, q_franka,
                                        franka_context_);
   multibody::SetVelocitiesIfNew<double>(franka_plant_, v_franka,
@@ -154,7 +157,7 @@ void FrankaKinematics::ComputeLCSState(
       franka_plant_.EvalBodySpatialVelocityInWorld(
           *franka_context_, franka_plant_.GetBodyByName(end_effector_name_));
   auto end_effector_rotation_rpy =
-      end_effector_pose.rotation().ToRollPitchYaw().vector().segment(0, 2); // ignore yaw
+      end_effector_pose.rotation().ToRollPitchYaw().vector(); // ignore yaw
 
   VectorXd end_effector_positions = VectorXd::Zero(num_end_effector_positions_);
   VectorXd end_effector_velocities =
@@ -162,18 +165,17 @@ void FrankaKinematics::ComputeLCSState(
 
   if (num_end_effector_positions_ > 3) {
     end_effector_positions << end_effector_pose.translation(),
-        end_effector_rotation_rpy;
+        end_effector_rotation_rpy.segment(0, 2);
   } else {
     end_effector_positions << end_effector_pose.translation();
   }
   if (num_end_effector_velocities_ > 3) {
-    end_effector_velocities << end_effector_spatial_velocity.rotational().segment(0, 2), // ignore yaw
-        end_effector_spatial_velocity.translational();
+    end_effector_velocities << end_effector_spatial_velocity.translational(), 
+        end_effector_spatial_velocity.rotational().segment(0, 2); // ignore yaw
   } else {
     end_effector_velocities << end_effector_spatial_velocity.translational();
   }
  
-
   lcs_state->SetEndEffectorPositions(end_effector_positions);
   lcs_state->SetObjectPositions(q_object);
   lcs_state->SetEndEffectorVelocities(end_effector_velocities);

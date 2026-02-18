@@ -604,6 +604,11 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
   VectorXd fsm_state = fsm_output->get_value();
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  
+  std::cout << "fsm " << fsm_state.transpose() << std::endl;
+  std::cout << "robot " << robot_output->value().transpose() << std::endl;
+
+
   double timestamp = robot_output->get_timestamp();
 
   auto prev_fsm_state = discrete_state->get_mutable_vector(prev_fsm_state_idx_)
@@ -818,6 +823,8 @@ VectorXd OperationalSpaceControl::SolveQp(
         DRAKE_DEMAND(input_traj != nullptr);
         const auto& traj =
             input_traj->get_value<drake::trajectories::Trajectory<double>>();
+        std::cout << "traj " << "[" << traj.start_time() << ", " << traj.end_time() << "]" << std::endl;
+
         // Update
         tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
                               *context_wo_spr_, traj, t,
@@ -835,6 +842,7 @@ VectorXd OperationalSpaceControl::SolveQp(
           2 * J_t.transpose() * W * (JdotV_t - ddy_t),
           constant_term.transpose() * W * constant_term, true);
     } else {
+      std::cout << "WARNING: ZERO TRACKING COST" << std::endl;
       tracking_costs_.at(i)->UpdateCoefficients(MatrixXd::Zero(n_v_, n_v_),
                                                 VectorXd::Zero(n_v_));
     }
@@ -848,6 +856,8 @@ VectorXd OperationalSpaceControl::SolveQp(
     DRAKE_DEMAND(input_traj != nullptr);
     const auto& traj =
         input_traj->get_value<drake::trajectories::Trajectory<double>>();
+    std::cout << "force traj " << "[" << traj.start_time() << ", " << traj.end_time() << "]" << std::endl;
+
     force_tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
                                 *context_wo_spr_, traj, t);
     const MatrixXd W = force_tracking_data->GetWeight();
@@ -864,6 +874,8 @@ VectorXd OperationalSpaceControl::SolveQp(
     DRAKE_DEMAND(input_traj != nullptr);
     const auto& traj =
         input_traj->get_value<drake::trajectories::Trajectory<double>>();
+    std::cout << "torque traj " << "[" << traj.start_time() << ", " << traj.end_time() << "]" << std::endl;
+
     torque_tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
                                 *context_wo_spr_, traj, t);
     const MatrixXd W = torque_tracking_data->GetWeight();
@@ -969,9 +981,9 @@ VectorXd OperationalSpaceControl::SolveQp(
 
     std::cout << "dv: " << dv_sol_->transpose() << std::endl;
     std::cout << "u: " << u_sol_->transpose() << std::endl;
-    std::cout << "lambda c: " << lambda_c_sol_->transpose() << std::endl;
-    std::cout << "lambda h: " << lambda_h_sol_->transpose() << std::endl;
-    std::cout << "epsilon: " << epsilon_sol_->transpose() << std::endl;
+    // std::cout << "lambda c: " << lambda_c_sol_->transpose() << std::endl;
+    // std::cout << "lambda h: " << lambda_h_sol_->transpose() << std::endl;
+    // std::cout << "epsilon: " << epsilon_sol_->transpose() << std::endl;
     std::cout << "lambda ext: " << lambda_ext_sol_->transpose() << std::endl;
     std::cout << "tau ext: " << lambda_ext_tau_sol_->transpose() << std::endl;
 
@@ -1054,6 +1066,9 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
             EvalAbstractInput(context, port_index);
         const auto& traj =
             input_traj->get_value<drake::trajectories::Trajectory<double>>();
+
+        std::cout << "traj fsm " << "[" << traj.start_time() << ", " << traj.end_time() << "]" << std::endl;
+
         tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
                               *context_wo_spr_, traj, t,
                               t_since_last_state_switch, fsm_state, v_proj);
@@ -1104,6 +1119,9 @@ void OperationalSpaceControl::AssignOscLcmOutput(
     const Context<double>& context, dairlib::lcmt_osc_output* output) const {
   auto state =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+
+  std::cout << "state " << state->value().transpose() << std::endl;
+
   double total_cost = 0;
   int fsm_state = -1;
   if (used_with_finite_state_machine_) {

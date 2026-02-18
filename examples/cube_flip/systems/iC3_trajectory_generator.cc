@@ -133,14 +133,14 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
       }
     }
 
-		MatrixXd positions = nominal_position_offset.replicate(1, 10);
+		MatrixXd positions = nominal_position_offset.replicate(1, 2);
 	
-		MatrixXd orientations = MatrixXd::Zero(4, 10);
-		MatrixXd forces = MatrixXd::Zero(3, 10);
-		MatrixXd torques = MatrixXd::Zero(3, 10);
+		MatrixXd orientations = MatrixXd::Zero(4, 2);
+		MatrixXd forces = MatrixXd::Zero(3, 2);
+		MatrixXd torques = MatrixXd::Zero(3, 2);
 
-		VectorXd timestamps(10);
-    for (int t = 0; t < 10; t++) {
+		VectorXd timestamps(2);
+    for (int t = 0; t < 2; t++) {
 		  orientations(0, t) = 1;
 			// orientations(0, t) = 0.968718;
 			// orientations(2, t) = -0.248163;
@@ -199,7 +199,7 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
     int ee_force_idx = 0; 
     int ee_torque_idx = 3; 
 
-    MatrixXd raw_orientations = data.middleRows(ee_rot_idx, 3);
+    MatrixXd raw_orientations = data.middleRows(ee_rot_idx, 2);
     MatrixXd full_positions = data.middleRows(ee_pos_idx, 3);
 
     // Set yaw = 0 manually
@@ -209,12 +209,12 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
     // std::cout << "raw orientation size: " << raw_orientations.rows() << " x " << raw_orientations.cols() << std::endl;
     // std::cout << "full position size: " << full_positions.rows() << " x " << full_positions.cols() << std::endl;
 
-    MatrixXd orientations = MatrixXd::Zero(4, 10);
-    MatrixXd positions = MatrixXd::Zero(3, 10);
-    MatrixXd forces = MatrixXd::Zero(3, 10);
-    MatrixXd torques = MatrixXd::Zero(3, 10);
+    MatrixXd orientations = MatrixXd::Zero(4, 2);
+    MatrixXd positions = MatrixXd::Zero(3, 2);
+    MatrixXd forces = MatrixXd::Zero(3, 2);
+    MatrixXd torques = MatrixXd::Zero(3, 2);
 
-    for (int i = segment_idx; i < segment_idx + 10; ++i) {
+    for (int i = segment_idx; i < segment_idx + 2; ++i) {
 				int idx;	
 				if (i >= N_) {
 					idx = N_-1;
@@ -242,8 +242,8 @@ void iC3TrajectoryGenerator::OutputActorTrajectory(
       
     }
 
-    VectorXd timestamps(10);
-    for (int t = 0; t < 10; t++) {
+    VectorXd timestamps(2);
+    for (int t = 0; t < 2; t++) {
       timestamps(t) = t * dt_ * 1;
     }
 
@@ -310,8 +310,8 @@ void iC3TrajectoryGenerator::OutputObjectTrajectory(
 			LcmTrajectory::Trajectory trajectory = x_trajectory.GetTrajectory(final_trajectory_name);
       MatrixXd data = trajectory.datapoints;
 
-			int pos_idx = 10;
-			int rot_idx = 6; 
+			int pos_idx = 9;
+			int rot_idx = 5; 
 
       MatrixXd orientations = data.middleRows(rot_idx, 4);
       MatrixXd positions = data.middleRows(pos_idx, 3);
@@ -366,18 +366,18 @@ void iC3TrajectoryGenerator::OutputCurrXTrajectory(
 			LcmTrajectory::Trajectory trajectory = x_trajectory.GetTrajectory(final_trajectory_name);
 
 			MatrixXd data;
-			if (segment_idx < N_ - 10) {
-				data = trajectory.datapoints.middleCols(segment_idx, 10);
+			if (segment_idx < N_ - 2) {
+				data = trajectory.datapoints.middleCols(segment_idx, 2);
 			} else {
 				MatrixXd raw_data = trajectory.datapoints;
-				data = MatrixXd::Zero(raw_data.rows(), 10);
+				data = MatrixXd::Zero(raw_data.rows(), 2);
 
-				for (int i = 0; i < 10; i++) {
+				for (int i = 0; i < 2; i++) {
 					data.col(i) = raw_data.col(N_);
 				}
 			}
-      VectorXd timestamps(10);
-      for (int t = 0; t < 10; t++) {
+      VectorXd timestamps(2);
+      for (int t = 0; t < 2; t++) {
         timestamps(t) = t * dt_;
       }
 
@@ -420,19 +420,19 @@ void iC3TrajectoryGenerator::OutputCurrUTrajectory(
 			LcmTrajectory::Trajectory trajectory = u_trajectory.GetTrajectory(final_trajectory_name);
 
 			MatrixXd data;
-			if (segment_idx < N_ - 10) {
-				data = trajectory.datapoints.middleCols(segment_idx, 10);
+			if (segment_idx < N_ - 2) {
+				data = trajectory.datapoints.middleCols(segment_idx, 2);
 			} else {
 				MatrixXd raw_data = trajectory.datapoints;
-				data = MatrixXd::Zero(raw_data.rows(), 10);
+				data = MatrixXd::Zero(raw_data.rows(), 2);
 
-				for (int i = segment_idx; i < segment_idx + 10; i++) {
+				for (int i = segment_idx; i < segment_idx + 2; i++) {
 					data.col(i - segment_idx) = raw_data.col(std::min(i, N_-1));
 				}
 			}
 
-      VectorXd timestamps(10);
-      for (int t = 0; t < 10; t++) {
+      VectorXd timestamps(2);
+      for (int t = 0; t < 2; t++) {
         timestamps(t) = t * dt_;
       }
 

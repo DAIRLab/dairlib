@@ -4,6 +4,7 @@
 #include <vector>
 #include <Eigen/Geometry>
 #include <drake/multibody/plant/multibody_plant.h>
+#include "systems/framework/timestamped_vector.h"
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_saved_traj.hpp"
@@ -32,6 +33,7 @@ using drake::systems::Context;
 using drake::AutoDiffXd;
 using drake::systems::BasicVector;
 using dairlib::solvers::LCS;
+using dairlib::systems::TimestampedVector;
 
 namespace dairlib {
 
@@ -57,12 +59,16 @@ class C3GoalGenerator : public drake::systems::LeafSystem<double> {
     const drake::systems::OutputPort<double>& get_output_port_lcs() const {
       return this->get_output_port(lcs_port_);
     }
+    const drake::systems::OutputPort<double>& get_output_port_x_curr() const {
+      return this->get_output_port(x_lcs_port_);
+    }
 
 
   private:
     void OutputTarget(const Context<double>& context,
                       BasicVector<double>* target) const;
-
+    void OutputState(const Context<double>& context,
+                      TimestampedVector<double>* state_output) const;
     void OutputLCS(const Context<double>& context,
                   LCS* lcs) const;
 
@@ -71,6 +77,7 @@ class C3GoalGenerator : public drake::systems::LeafSystem<double> {
 
     drake::systems::OutputPortIndex target_port_;
     drake::systems::OutputPortIndex lcs_port_;
+    drake::systems::OutputPortIndex x_lcs_port_;
 
     drake::multibody::MultibodyPlant<double>& plant_;
     Context<double>* context_;

@@ -72,10 +72,9 @@ class C3Solution2Input : public drake::systems::LeafSystem<double> {
             "examples/cube_flip/toy_system/toy_ic3_options.yaml");
 
     double t = context.get_time();
-    if (t < toy_params.time_to_wait || t > toy_params.time_to_wait + ic3_options.N * ic3_options.dt) {
-    //if (t < 20000) {
-      if (t - (int)t == 0) {
-        std::cout << sol.u_sol_.col(0).cast<double>().transpose() << std::endl;
+    if (t < toy_params.time_to_wait) {
+      if (t - std::round(t) == 0) {
+        std::cout << "time: " << t << std::endl;
       }
       std::unique_ptr<drake::systems::Context<double>> plant_context = plant_.CreateDefaultContext();		
       auto& context_ref = *plant_context;  
@@ -84,7 +83,7 @@ class C3Solution2Input : public drake::systems::LeafSystem<double> {
       Eigen::VectorXd u_gravity = Eigen::VectorXd::Zero(5);
       u_gravity[2] = -(tau_g[2] + tau_g[10]); // Hard-coded cube + plate
       if (t < toy_params.time_to_wait) {
-        u_gravity[4] = -(0.13 * tau_g[10]); // Hard-coded cube + plate
+        u_gravity[4] = (0.13 * tau_g[10]); // Hard-coded cube + plate
       }
       output->SetFromVector(u_gravity);
 

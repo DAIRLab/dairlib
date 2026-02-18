@@ -212,11 +212,24 @@ void C3Base::UpdateCostMatrices(const C3Base::CostMatrices& costs) {
   G_ = costs.G;
 }
 
-void C3Base::UpdateFinalCost(const Eigen::MatrixXd Qf, const Eigen::VectorXd bias) {
-  Q_[N_] = Qf;
+void C3Base::UpdateFinalCost(const Eigen::MatrixXd Qf, const Eigen::VectorXd bias) {  
 
+  // std::cout << Qf.rows() << ", " << Qf.cols() << std::endl;
+  // std::cout << bias.size() << std::endl;
+
+  // std::cout << "Qf norm: " << Qf.norm() << std::endl;
+
+  // std::cout << "min eigenvalue = "
+  //           << Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd>(Qf)
+  //             .eigenvalues().minCoeff()
+  //           << std::endl;
+
+  MatrixXd Q_sym = Qf + Qf.transpose();
+  Q_[N_] = Q_sym; // Convert to symmetric, want 2 * Qf
+  Eigen::VectorXd linear_term = -2 * Qf * x_desired_[N_] + bias;
   auto* qf_evaluator = target_cost_[N_];
-  qf_evaluator->UpdateCoefficients(2 * Qf, bias);
+
+  qf_evaluator->UpdateCoefficients(Q_sym, linear_term);
 }
 
 void C3Base::UpdateLCS(const LCS& lcs) {
@@ -282,7 +295,6 @@ void C3Base::UpdateTarget(const std::vector<Eigen::VectorXd>& x_des) {
 void C3Base::UpdateInputTarget(const std::vector<Eigen::VectorXd>& u_des) {
   u_desired_ = u_des;
   for (int i = 0; i < N_; ++i) {
-    std::cout << "ud: " << u_desired_.at(i).transpose() << std::endl;
     input_costs_[i]->UpdateCoefficients(
                     2 * R_.at(i),
                     -2 * R_.at(i) * u_desired_.at(i));
@@ -979,7 +991,12 @@ vector<VectorXd> C3Base::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
   double solve_time = 
     std::chrono::duration_cast<std::chrono::microseconds>(finish-start).count() /
       1e6;
-  // std::cout << "QP solve time: " << solve_time << std::endl;
+  //std::cout << "QP solve time: " << solve_time << std::endl;
+  const auto& details = result.get_solver_details<drake::solvers::OsqpSolver>();
+  // drake::log()->warn("OSQP Status: {}", details.status_val); 
+  // std::cout << "Iterations: " << details.iter << std::endl;;
+  // drake::log()->warn("Primal Res: {}", details.primal_res);
+  // drake::log()->warn("Dual Res: {}", details.dual_res);
 
   if (!result.is_success()) {
     drake::log()->warn("C3::SolveQP failed to solve the QP with status: {}",
@@ -1029,7 +1046,7 @@ vector<VectorXd> C3Base::SolveProjection(const vector<MatrixXd>& U,
 void C3Base::AddLinearConstraint(Eigen::RowVectorXd& A, double lower_bound,
                                  double upper_bound, int constraint) {
   if (constraint == 1) {
-    for (int i = 1; i < N_; i++) {
+    for (int i = 1; i < N_+1; i++) {
       user_constraints_.push_back(
           prog_.AddLinearConstraint(A, lower_bound, upper_bound, x_.at(i)));
     }
@@ -1054,7 +1071,7 @@ void C3Base::AddLinearConstraint(Eigen::RowVectorXd& A, double lower_bound,
 void C3Base::AddVectorLinearConstraint(MatrixXd& A, VectorXd& lower_bound,
                                  VectorXd& upper_bound, int constraint) {
   if (constraint == 1) {
-    for (int i = 1; i < N_; ++i) {
+    for (int i = 1; i < N_+1; ++i) {
       user_constraints_.push_back(
           prog_.AddLinearConstraint(A, lower_bound, upper_bound, x_.at(i)));
     }

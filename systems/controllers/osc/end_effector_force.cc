@@ -25,6 +25,8 @@ namespace dairlib {
 EndEffectorForceTrajectoryGenerator::EndEffectorForceTrajectoryGenerator() {
   PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
 
+  std::cout << "ee force initialized" << std::endl;
+
   trajectory_port_ =
       this->DeclareAbstractInputPort(
               "trajectory",
@@ -70,31 +72,34 @@ void EndEffectorForceTrajectoryGenerator::CalcTraj(
   const auto& radio_out = this->EvalInputValue<dairlib::lcmt_radio_out>(
     context, radio_port_);
 
-  // std::cout << "Trajectory time range: ["
-  //         << trajectory_input.start_time() << ", "
-  //         << trajectory_input.end_time() << "]\n";
-
-	// for (double i = 0; i < 0.09; i+= 0.01) {
-	// 	std::cout << trajectory_input.value(i).transpose() << std::endl;
-	// }
+  std::cout << "force time range: ["
+          << trajectory_input.start_time() << ", "
+          << trajectory_input.end_time() << "]\n";
 
   auto* casted_traj =
-      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
-          traj);
+    dynamic_cast<PiecewisePolynomial<double>*>(traj);
+  DRAKE_DEMAND(casted_traj != nullptr);
+
   if (radio_out->channel[11] || radio_out->channel[14] ||
       trajectory_input.value(0).isZero()) {
-    // std::cout << "11 "  << radio_out->channel[11]  << std::endl;
-    // std::cout << "14 "  << radio_out->channel[14]  << std::endl;
-    // std::cout << "is 0 "  << trajectory_input.value(0).isZero()  << std::endl;
-
-    *casted_traj =
-        drake::trajectories::PiecewisePolynomial<double>(Vector3d::Zero());
+    std::vector<double> times{0.0, 1.0};   
+    std::vector<Eigen::MatrixXd> knots{
+      Eigen::Vector3d::Zero(),
+      Eigen::Vector3d::Zero()
+    };
+    auto zero_traj =
+        PiecewisePolynomial<double>::FirstOrderHold(times, knots);
+    *casted_traj = zero_traj; 
   } else {
     if (context.get_discrete_state(controller_switch_index_)[0]) {
-      *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
-          const PiecewisePolynomial<double>*>(&trajectory_input);
+      const auto* traj =
+        dynamic_cast<const PiecewisePolynomial<double>*>(&trajectory_input);
+      *casted_traj = *traj; 
     }
   }
+  std::cout << "force time range casted: ["
+      << casted_traj->start_time() << ", "
+      << casted_traj->end_time() << "]\n";
 }
 
 }  // namespace dairlib

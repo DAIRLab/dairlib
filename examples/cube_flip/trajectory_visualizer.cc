@@ -92,6 +92,9 @@ int do_main(int argc, char* argv[]) {
   auto plate_trajectory_splitter = 
       builder.AddSystem<TrajectoryLcmParser>(vis_params, 1, "plate_trajectory_splitter");
 
+  auto c3_plate_trajectory_splitter = 
+      builder.AddSystem<TrajectoryLcmParser>(vis_params, 1, "c3_plate_trajectory_splitter");
+
   auto c3_trajectory_splitter =
       builder.AddSystem<TrajectoryLcmParser>(vis_params, 0, "c3_trajectory_splitter");
 
@@ -108,6 +111,7 @@ int do_main(int argc, char* argv[]) {
   int skip_factor = vis_params.iter_downsampling_factor;
   std::vector<systems::LcmPoseDrawer*> trajectory_drawers;
   std::vector<systems::LcmPoseDrawer*> plate_trajectory_drawers;
+  std::vector<systems::LcmPoseDrawer*> c3_plate_trajectory_drawers;
   std::vector<systems::LcmPoseDrawer*> c3_trajectory_drawers;
   std::vector<systems::LcmPoseDrawer*> real_trajectory_drawers;
 
@@ -142,6 +146,15 @@ int do_main(int argc, char* argv[]) {
             vis_params.trajectory_length / vis_params.downsampling_factor, true,
             vis_params.plate_trace_color);
 
+    auto* c3_plate_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
+        meshcat,
+        FindResourceOrThrow(vis_params.plate_file),
+        "positions_" + std::to_string(i), 
+        "orientations_" + std::to_string(i),
+        "c3_plate_iteration_" + std::to_string(i), 
+        vis_params.trajectory_length / vis_params.downsampling_factor, true,
+        vis_params.plate_trace_color);
+
     auto* real_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat,
         FindResourceOrThrow(vis_params.cube_file),
@@ -154,6 +167,7 @@ int do_main(int argc, char* argv[]) {
 
     trajectory_drawers.push_back(drawer);
     plate_trajectory_drawers.push_back(plate_drawer);
+    c3_plate_trajectory_drawers.push_back(c3_plate_drawer);
     c3_trajectory_drawers.push_back(c3_drawer);
     real_trajectory_drawers.push_back(real_drawer);
 
@@ -161,6 +175,7 @@ int do_main(int argc, char* argv[]) {
 
   builder.Connect(trajectory_sub_x->get_output_port(), trajectory_splitter->get_input_port_trajectory());
   builder.Connect(trajectory_sub_x_real->get_output_port(), plate_trajectory_splitter->get_input_port_trajectory());
+  builder.Connect(trajectory_sub_c3->get_output_port(), c3_plate_trajectory_splitter->get_input_port_trajectory());
   builder.Connect(trajectory_sub_c3->get_output_port(), c3_trajectory_splitter->get_input_port_trajectory());
   builder.Connect(trajectory_sub_x_real->get_output_port(), real_trajectory_splitter->get_input_port_trajectory());
 
@@ -169,6 +184,8 @@ int do_main(int argc, char* argv[]) {
         trajectory_drawers.at(i)->get_input_port_trajectory());
     builder.Connect(plate_trajectory_splitter->get_output_port(i), 
         plate_trajectory_drawers.at(i)->get_input_port_trajectory());
+    builder.Connect(c3_plate_trajectory_splitter->get_output_port(i), 
+        c3_plate_trajectory_drawers.at(i)->get_input_port_trajectory());
     builder.Connect(c3_trajectory_splitter->get_output_port(i), 
         c3_trajectory_drawers.at(i)->get_input_port_trajectory());
     builder.Connect(real_trajectory_splitter->get_output_port(i), 

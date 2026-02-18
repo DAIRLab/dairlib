@@ -97,10 +97,12 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
       plant_for_lcs.GetCollisionGeometriesForBody(
           plant_for_lcs.GetBodyByName("plate"))[0];
 	std::vector<drake::geometry::GeometryId> cube_collision_geoms;
-  for (int i = 1; i <= 8; i++) {
-		cube_collision_geoms.push_back(
-			plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("cube"))[i]);
+
+  auto cube_collisions = plant_for_lcs.GetCollisionGeometriesForBody(
+          plant_for_lcs.GetBodyByName("cube"));
+  std::cout << "cube num collisions: " << cube_collisions.size() << std::endl;
+  for (int i = 1; i < cube_collisions.size(); i++) { // add contact spheres
+		cube_collision_geoms.push_back(cube_collisions[i]);
 	}
 
   // Define contact pairs for the LCS system.
@@ -236,6 +238,8 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
                     controller->get_input_port_lcs());
     builder.Connect(xdes->get_output_port(),
                     controller->get_input_port_target());
+    builder.Connect(ic3_x_sub->get_output_port(),
+                    controller->get_input_port_ic3_x());
     builder.Connect(ic3_u_sub->get_output_port(),
                     controller->get_input_port_ic3_u());
 
@@ -285,7 +289,7 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
   VectorXd u_default(VectorXd::Zero(plant.num_actuators()));
   // HARDCODED
   u_default[2] = -(tau_g[2] + tau_g[10]);
-  u_default[4] = -(0.13 * tau_g[10]);
+  u_default[4] = (0.13 * tau_g[10]);
   auto& pass_context = u_passthrough->GetMyMutableContextFromRoot(diagram_context.get());
   u_passthrough->get_input_port().FixValue(&pass_context, u_default);
 

@@ -42,7 +42,11 @@ class iC3TrackingController : public drake::systems::LeafSystem<double> {
     return this->get_input_port(lqr_input_port_);
   }
 
-    const drake::systems::InputPort<double>& get_input_port_ic3_u() const {
+  const drake::systems::InputPort<double>& get_input_port_ic3_x() const {
+    return this->get_input_port(ic3_x_port_);
+  }
+  
+  const drake::systems::InputPort<double>& get_input_port_ic3_u() const {
     return this->get_input_port(ic3_u_port_);
   }
 
@@ -80,10 +84,15 @@ class iC3TrackingController : public drake::systems::LeafSystem<double> {
   void UpdateQuaternionCosts(
       const VectorXd& x_curr, const Eigen::VectorXd& x_des) const;
 
+  drake::systems::EventStatus SetFirstCallTime(
+    const drake::systems::Context<double>& context,
+    drake::systems::DiscreteValues<double>* discrete_state) const;
+    
   drake::systems::InputPortIndex target_input_port_;
   drake::systems::InputPortIndex lcs_state_input_port_;
   drake::systems::InputPortIndex lcs_input_port_;
   drake::systems::InputPortIndex lqr_input_port_;
+  drake::systems::InputPortIndex ic3_x_port_;
   drake::systems::InputPortIndex ic3_u_port_;
   drake::systems::OutputPortIndex c3_solution_port_;
   drake::systems::OutputPortIndex c3_intermediates_port_;
@@ -119,6 +128,9 @@ class iC3TrackingController : public drake::systems::LeafSystem<double> {
   mutable std::vector<Eigen::MatrixXd> G_;
   mutable std::vector<Eigen::MatrixXd> U_;
   int N_;
+
+  double t0_idx_;
+  mutable bool called_;
 };
 
 }  // namespace systems

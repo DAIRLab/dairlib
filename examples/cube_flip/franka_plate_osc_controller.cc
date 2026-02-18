@@ -200,6 +200,7 @@ int DoMain(int argc, char* argv[]) {
           plant, plant);
   end_effector_position_tracking_data->AddPointToTrack(
       controller_params.end_effector_name);
+
   const VectorXd& end_effector_acceleration_limits =
       controller_params.end_effector_acceleration * Vector3d::Ones();
   end_effector_position_tracking_data->SetCmdAccelerationBounds(
@@ -230,8 +231,6 @@ int DoMain(int argc, char* argv[]) {
           controller_params.W_end_effector_rot, plant, plant);
   end_effector_orientation_tracking_data->AddFrameToTrack(
       controller_params.end_effector_name);
-  Eigen::VectorXd orientation_target = Eigen::VectorXd::Zero(4);
-  orientation_target(0) = 1;
 
   osc->AddTrackingData(std::move(end_effector_position_tracking_data));
   osc->AddConstTrackingData(std::move(mid_link_position_tracking_data_for_rel),

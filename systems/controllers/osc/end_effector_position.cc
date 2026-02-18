@@ -80,6 +80,12 @@ void EndEffectorPositionTrajectoryGenerator::CalcNeutralPoseBasedTraj(
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
+
+  
+  std::cout << "position time range: ["
+          << trajectory_input.start_time() << ", "
+          << trajectory_input.end_time() << "]\n";
+
   if (radio_out->channel[14]) {
     PiecewisePolynomial<double> result;
 

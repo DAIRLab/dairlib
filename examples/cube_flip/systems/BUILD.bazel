@@ -42,6 +42,7 @@ cc_library(
         "//solvers:solver_options_io",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
+        "//examples/cube_flip/parameter_headers:iC3_options",
     ],
 )
 

@@ -176,6 +176,7 @@ cc_binary(
         "//examples/cube_flip/systems:c3_goal_generator",
         "//examples/cube_flip/systems:c3_trajectory_generator",
         "//examples/cube_flip/systems:timed_gate",
+        "//systems/controllers:ic3_tracking_controller",
         "@gflags",
     ],
 )

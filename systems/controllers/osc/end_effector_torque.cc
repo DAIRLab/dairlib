@@ -50,6 +50,8 @@ EventStatus EndEffectorTorqueTrajectoryGenerator::DiscreteVariableUpdate(
   const auto& trajectory_input =
       this->EvalAbstractInput(context, trajectory_port_)
           ->get_value<drake::trajectories::Trajectory<double>>();
+
+
   bool using_c3 = context.get_discrete_state(controller_switch_index_)[0];
   if (!using_c3 && radio_out->channel[14] == 0) {
     if (!trajectory_input.value(0).isZero() &&
@@ -67,21 +69,39 @@ void EndEffectorTorqueTrajectoryGenerator::CalcTraj(
   const auto& trajectory_input =
       this->EvalAbstractInput(context, trajectory_port_)
           ->get_value<drake::trajectories::Trajectory<double>>();
+
+  std::cout << "torque time range: ["
+          << trajectory_input.start_time() << ", "
+          << trajectory_input.end_time() << "]\n";
+
   const auto& radio_out = this->EvalInputValue<dairlib::lcmt_radio_out>(
     context, radio_port_);
+    
   auto* casted_traj =
-      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
-          traj);
+    dynamic_cast<PiecewisePolynomial<double>*>(traj);
+  DRAKE_DEMAND(casted_traj != nullptr);
+
   if (radio_out->channel[11] || radio_out->channel[14] ||
       trajectory_input.value(0).isZero()) {
-    *casted_traj =
-        drake::trajectories::PiecewisePolynomial<double>(Vector3d::Zero());
+    std::vector<double> times{0.0, 1.0};   
+    std::vector<Eigen::MatrixXd> knots{
+      Eigen::Vector3d::Zero(),
+      Eigen::Vector3d::Zero()
+    };
+    auto zero_traj =
+        PiecewisePolynomial<double>::FirstOrderHold(times, knots);
+    *casted_traj = zero_traj; 
   } else {
     if (context.get_discrete_state(controller_switch_index_)[0]) {
-      *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
-          const PiecewisePolynomial<double>*>(&trajectory_input);
+      const auto* traj =
+        dynamic_cast<const PiecewisePolynomial<double>*>(&trajectory_input);
+      *casted_traj = *traj; 
     }
   }
+
+  std::cout << "torque time range casted: ["
+        << casted_traj->start_time() << ", "
+        << casted_traj->end_time() << "]\n";
 }
 
 }  // namespace dairlib

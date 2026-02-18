@@ -18,6 +18,9 @@ struct FrankaPlateC3ControllerParams {
 
   bool include_end_effector_orientation;
   bool run_open_loop;
+  bool track_dynamically_feasible;
+
+  double time_to_wait;
 
   Eigen::Vector3d tool_attachment_frame;
   Eigen::Vector3d ee_init_position;
@@ -34,9 +37,11 @@ struct FrankaPlateC3ControllerParams {
     a->Visit(DRAKE_NVP(osqp_settings_file));
     a->Visit(DRAKE_NVP(ic3_options_file));
     a->Visit(DRAKE_NVP(c3_options_file));
+    a->Visit(DRAKE_NVP(time_to_wait));
 
     a->Visit(DRAKE_NVP(include_end_effector_orientation));
     a->Visit(DRAKE_NVP(run_open_loop));
+    a->Visit(DRAKE_NVP(track_dynamically_feasible));
 
     a->Visit(DRAKE_NVP(tool_attachment_frame));
     a->Visit(DRAKE_NVP(ee_init_position));

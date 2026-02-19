@@ -544,7 +544,6 @@ int DoMain(int argc, char* argv[]) {
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.tracking_trajectory_actor_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
- 
 
   // Sample-related senders/publishers.
   auto sample_buffer_sender = builder.AddSystem<systems::SampleBufferSender>(
@@ -598,7 +597,6 @@ int DoMain(int argc, char* argv[]) {
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.dynamically_feasible_best_plan_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
-
 
   std::vector<std::string> state_names = {"end_effector_x", "end_effector_y",
                                           "end_effector_z"};

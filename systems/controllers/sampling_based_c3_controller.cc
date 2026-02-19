@@ -545,7 +545,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     DiscreteValues<double>* discrete_state) const {
   auto start = std::chrono::high_resolution_clock::now();
 
-
   // Evaluate input ports.
   const auto& radio_out =
       this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
@@ -2250,7 +2249,6 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanObject(
 
   output->saved_traj = lcm_traj.GenerateLcmObject();
   output->utime = context.get_time() * 1e6;
-
 }
 
 void SamplingC3Controller::OutputC3SolutionCurrPlan(

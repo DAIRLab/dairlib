@@ -35,11 +35,13 @@ namespace systems {
 /// Outputs a lcmt_timestamped_saved_traj
 class FrankaKinematics : public drake::systems::LeafSystem<double> {
  public:
+  /// Robot-only constructor.
   explicit FrankaKinematics(const MultibodyPlant<double>& franka_plant,
                             Context<double>* franka_context,
                             const std::string& end_effector_name,
                             const bool& include_end_effector_orientation);
 
+  /// Robot + single object constructor.
   explicit FrankaKinematics(const MultibodyPlant<double>& franka_plant,
                             Context<double>* franka_context,
                             MultibodyPlant<double>* object_plant,
@@ -48,12 +50,35 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
                             const std::string& object_name,
                             const bool& include_end_effector_orientation);
 
+  /// Robot + multiple objects constructor.
   explicit FrankaKinematics(const MultibodyPlant<double>& franka_plant,
                             Context<double>* franka_context,
                             MultibodyPlant<double>* object_plant,
                             Context<double>* object_context,
                             const std::string& end_effector_name,
                             const std::vector<std::string>& object_names,
+                            const bool& include_end_effector_orientation);
+
+  /// Robot + deformable object represented as an elastoplastic network
+  /// constructor.
+  explicit FrankaKinematics(const MultibodyPlant<double>& franka_plant,
+                            Context<double>* franka_context,
+                            MultibodyPlant<double>* elastoplastic_plant,
+                            Context<double>* elastoplastic_context,
+                            const std::string& end_effector_name,
+                            const int& num_elastoplastic_nodes,
+                            const bool& include_end_effector_orientation);
+
+  /// Catch-all constructor.
+  explicit FrankaKinematics(const MultibodyPlant<double>& franka_plant,
+                            Context<double>* franka_context,
+                            MultibodyPlant<double>* object_plant,
+                            Context<double>* object_context,
+                            MultibodyPlant<double>* elastoplastic_plant,
+                            Context<double>* elastoplastic_context,
+                            const std::string& end_effector_name,
+                            const std::vector<std::string>& object_names,
+                            const int& num_elastoplastic_nodes,
                             const bool& include_end_effector_orientation);
 
   std::vector<const drake::systems::InputPort<double>*>
@@ -67,6 +92,9 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
   const InputPort<double>& get_input_port_franka_state() const {
     return this->get_input_port(franka_state_port_);
   }
+  const InputPort<double>& get_input_port_elastoplastic_network() const {
+    return this->get_input_port(elastoplastic_network_port_);
+  }
 
   const OutputPort<double>& get_output_port_lcs_state() const {
     return this->get_output_port(lcs_state_port_);
@@ -78,6 +106,7 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
 
   InputPortIndex franka_state_port_;
   InputPortIndex object_state_port_;
+  InputPortIndex elastoplastic_network_port_;
   std::vector<InputPortIndex> object_state_ports_;
   OutputPortIndex lcs_state_port_;
 
@@ -85,13 +114,18 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
   int num_end_effector_velocities_;
   int num_object_positions_;
   int num_object_velocities_;
+  int num_node_positions_;
+  int num_node_velocities_;
   const std::vector<std::string> object_names_;
   const int num_objects_;
+  const int num_elastoplastic_nodes_;
 
   const MultibodyPlant<double>& franka_plant_;
   Context<double>* franka_context_;
   MultibodyPlant<double>* object_plant_;
   Context<double>* object_context_;
+  MultibodyPlant<double>* elastoplastic_plant_;
+  Context<double>* elastoplastic_context_;
   const drake::multibody::Frame<double>& world_;
   std::string end_effector_name_;
   const bool include_end_effector_orientation_;

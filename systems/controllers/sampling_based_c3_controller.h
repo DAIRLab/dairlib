@@ -195,16 +195,14 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
  private:
   /// Function for computing one control loop
   drake::systems::EventStatus ComputePlan(
-    const drake::systems::Context<double>& context,
-    drake::systems::DiscreteValues<double>* discrete_state) const;
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
 
   /// Helper functions
   solvers::LCS CreatePlaceholderLCS() const;
 
   void ResolvePredictedEEState(const bool& is_teleop,
                                drake::VectorX<double>& x_lcs_curr) const;
-
-  solvers::LCS CreatePlaceholderLCS() const;
 
   void ClampEndEffectorAcceleration(drake::VectorX<double>& x_lcs_curr) const;
 
@@ -217,9 +215,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   std::pair<std::vector<solvers::LCS>, std::vector<solvers::LCS>>
   CreateLCSObjectsForSamples(
-    const std::vector<Eigen::VectorXd>& candidate_states,
-    const drake::VectorX<double>& x_lcs_curr, const C3Options& c3_options,
-    const C3Options& c3_options_curr_location) const;
+      const std::vector<Eigen::VectorXd>& candidate_states,
+      const drake::VectorX<double>& x_lcs_curr, const C3Options& c3_options,
+      const C3Options& c3_options_curr_location) const;
 
   void UpdateC3ExecutionTrajectory(const Eigen::VectorXd& x_lcs,
                                    const double& t_context) const;
@@ -228,12 +226,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
                                               const double& t_context) const;
 
   void PruneOutdatedSamplesFromBuffer(
-    const Eigen::VectorXd& x_lcs,
-    int* num_in_buffer,
-    Eigen::MatrixXd* sample_buffer,
-    Eigen::VectorXd* sample_costs_buffer,
-    const double& pos_error_sample_retention,
-    const double& ang_error_sample_retention) const;
+      const Eigen::VectorXd& x_lcs, int* num_in_buffer,
+      Eigen::MatrixXd* sample_buffer, Eigen::VectorXd* sample_costs_buffer,
+      const double& pos_error_sample_retention,
+      const double& ang_error_sample_retention) const;
 
   void MaintainSampleBuffers(const Eigen::VectorXd& x_lcs) const;
 

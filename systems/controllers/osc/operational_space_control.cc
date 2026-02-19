@@ -74,6 +74,10 @@ OperationalSpaceControl::OperationalSpaceControl(
   int n_v_w_spr = plant_w_spr.num_velocities();
   int n_u_w_spr = plant_w_spr.num_actuators();
 
+  std::cout << "n_q_w_spr: " << n_q_w_spr << std::endl;
+  std::cout << "n_v_w_spr: " <<  n_v_w_spr << std::endl;
+  std::cout << "n_u_w_spr: " <<  n_u_w_spr << std::endl;
+
   // Input/Output Setup
   state_port_ =
       this->DeclareVectorInputPort(
@@ -421,6 +425,9 @@ void OperationalSpaceControl::Build() {
               {dv_, lambda_c_, lambda_h_, u_, lambda_ext_, lambda_ext_tau_})
           .evaluator()
           .get();
+  dynamics_constraint_->set_description("dynamics_constraint");
+
+  
   // 2. Holonomic constraint
   holonomic_constraint_ =
       prog_
@@ -428,6 +435,9 @@ void OperationalSpaceControl::Build() {
                                         VectorXd::Zero(n_h_), dv_)
           .evaluator()
           .get();
+  holonomic_constraint_->set_description("holonomic_constraint");
+
+      
   // 3. Contact constraint
   if (!all_contacts_.empty()) {
     if (w_soft_constraint_ <= 0) {
@@ -447,6 +457,7 @@ void OperationalSpaceControl::Build() {
               .evaluator()
               .get();
     }
+    contact_constraints_->set_description("contact_constraints");
   }
   if (!all_contacts_.empty()) {
     MatrixXd A = MatrixXd(5, kSpaceDim);
@@ -462,18 +473,22 @@ void OperationalSpaceControl::Build() {
                   lambda_c_.segment(kSpaceDim * j, 3))
               .evaluator()
               .get());
+      friction_constraints_[j]->set_description("friction_constraints " + std::to_string(j));
     }
+    
   }
 
   // 5. Input constraint
   if (with_input_constraints_) {
-    prog_->AddLinearConstraint(MatrixXd::Identity(n_u_, n_u_), u_min_, u_max_,
+    auto binding = prog_->AddLinearConstraint(MatrixXd::Identity(n_u_, n_u_), u_min_, u_max_,
                                u_);
+    binding.evaluator()->set_description("input_constraints");
   }
 
   if (with_acceleration_constraints_) {
-    prog_->AddLinearConstraint(MatrixXd::Identity(n_q_, n_q_), ddq_min_,
+    auto binding = prog_->AddLinearConstraint(MatrixXd::Identity(n_q_, n_q_), ddq_min_,
                                ddq_max_, dv_);
+    binding.evaluator()->set_description("acceleration_constraints");
   }
   // No joint position constraint in this implementation
 
@@ -582,6 +597,9 @@ void OperationalSpaceControl::Build() {
                  lambda_c_.segment(kSpaceDim * 3 + 2, 1), epsilon_blend_})
             .evaluator()
             .get();
+
+    blend_constraint_->set_description("blend_constraint");
+
     /// Soft constraint version
     //  DRAKE_DEMAND(w_blend_constraint_ > 0);
     //  prog_->AddQuadraticCost(
@@ -589,7 +607,8 @@ void OperationalSpaceControl::Build() {
     //          MatrixXd::Identity(n_c_ / kSpaceDim, n_c_ / kSpaceDim),
     //      VectorXd::Zero(n_c_ / kSpaceDim), epsilon_blend_);
     /// hard constraint version
-    prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
+    auto binding = prog_->AddBoundingBoxConstraint(0, 0, epsilon_blend_);
+    binding.evaluator()->set_description("epsilon_blend_constraint");
   }
 
   solver_ = std::make_unique<dairlib::solvers::FastOsqpSolver>();
@@ -698,6 +717,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Get J for external forces in equations of motion
   MatrixXd J_c = MatrixXd::Zero(n_c_, n_v_);
   for (unsigned int i = 0; i < all_contacts_.size(); i++) {
+    std::cout << "Get J for external forces in equations of motion" << std::endl;
     if (active_contact_set.find(i) != active_contact_set.end()) {
       J_c.block(kSpaceDim * i, 0, kSpaceDim, n_v_) =
           all_contacts_[i]->EvalFullJacobian(*context_wo_spr_);
@@ -709,6 +729,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   VectorXd JdotV_c_active = VectorXd::Zero(n_c_active_);
   int row_idx = 0;
   for (unsigned int i = 0; i < all_contacts_.size(); i++) {
+    std::cout << "J and JdotV for contact constraint" << std::endl;
     auto contact_i = all_contacts_[i];
     if (active_contact_set.find(i) != active_contact_set.end()) {
       // We don't call EvalActiveJacobian() because it'll repeat the computation
@@ -744,20 +765,29 @@ VectorXd OperationalSpaceControl::SolveQp(
   for (auto& torque_tracking_data : *torque_tracking_data_vec_) {
     if (!torque_tracking_data->GetWeight().isZero()){
       MatrixXd J_ee = torque_tracking_data->GetJ();
-
       A_dyn.block(0, n_v_ + n_c_ + n_h_ + n_u_ + n_lambda_ext_, n_v_, n_lambda_ext_tau_) =
           J_ee.transpose();
     }
   }
+
+  if (!A_dyn.allFinite()) {
+    std::cout << "A_dyn contains NaN or Inf!" << std::endl;
+  }
+  if (!bias.allFinite()) {
+    std::cout << "bias contains NaN or Inf!" << std::endl;
+  }
+
   dynamics_constraint_->UpdateCoefficients(A_dyn, -bias);
   // 2. Holonomic constraint
   ///    JdotV_h + J_h*dv == 0
   /// -> J_h*dv == -JdotV_h
   if (n_h_ > 0) {
+    std::cout << "holonomic constraint" << std::endl;
     holonomic_constraint_->UpdateCoefficients(J_h, -JdotV_h);
   }
   // 3. Contact constraint
   if (!all_contacts_.empty()) {
+    std::cout << "contact constraint" << std::endl;
     if (w_soft_constraint_ <= 0) {
       ///    JdotV_c_active + J_c_active*dv == 0
       /// -> J_c_active*dv == -JdotV_c_active
@@ -788,6 +818,7 @@ VectorXd OperationalSpaceControl::SolveQp(
   ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+1) >= 0
   ///                           lambda_c(3*i+2) >= 0
   if (!all_contacts_.empty()) {
+    std::cout << "friction constraint" << std::endl;
     for (unsigned int i = 0; i < all_contacts_.size(); i++) {
       if (active_contact_set.find(i) != active_contact_set.end()) {
         friction_constraints_.at(i)->UpdateLowerBound(VectorXd::Zero(5));
@@ -823,8 +854,6 @@ VectorXd OperationalSpaceControl::SolveQp(
         DRAKE_DEMAND(input_traj != nullptr);
         const auto& traj =
             input_traj->get_value<drake::trajectories::Trajectory<double>>();
-        std::cout << "traj " << "[" << traj.start_time() << ", " << traj.end_time() << "]" << std::endl;
-
         // Update
         tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
                               *context_wo_spr_, traj, t,
@@ -836,6 +865,23 @@ VectorXd OperationalSpaceControl::SolveQp(
       const MatrixXd& J_t = tracking_data->GetJ();
       const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
       const VectorXd constant_term = (JdotV_t - ddy_t);
+
+      if (!ddy_t.allFinite()) {
+          std::cout << "ddy_t contains NaN or Inf!" << std::endl;
+      }
+      if (!W.allFinite()) {
+          std::cout << "W contains NaN or Inf!" << std::endl;
+      }
+      if (!J_t.allFinite()) {
+          std::cout << "J_t contains NaN or Inf!" << std::endl;
+      }
+      if (!JdotV_t.allFinite()) {
+          std::cout << "JdotV_t contains NaN or Inf!" << std::endl;
+      }
+      if (!constant_term.allFinite()) {
+          std::cout << "constant_term contains NaN or Inf!" << std::endl;
+      }
+
 
       tracking_costs_.at(i)->UpdateCoefficients(
           2 * J_t.transpose() * W * J_t,
@@ -856,12 +902,18 @@ VectorXd OperationalSpaceControl::SolveQp(
     DRAKE_DEMAND(input_traj != nullptr);
     const auto& traj =
         input_traj->get_value<drake::trajectories::Trajectory<double>>();
-    std::cout << "force traj " << "[" << traj.start_time() << ", " << traj.end_time() << "]" << std::endl;
-
     force_tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
                                 *context_wo_spr_, traj, t);
     const MatrixXd W = force_tracking_data->GetWeight();
     const VectorXd lambda_des = force_tracking_data->GetLambdaDes();
+
+    if (!W.allFinite()) {
+        std::cout << "force W contains NaN or Inf!" << std::endl;
+    }
+    if (!lambda_des.allFinite()) {
+        std::cout << "force lambda_des contains NaN or Inf!" << std::endl;
+    }
+
     lambda_ext_cost_->UpdateCoefficients(
         2 * W, -2 * W * lambda_des, lambda_des.transpose() * W * lambda_des);
   }
@@ -874,12 +926,18 @@ VectorXd OperationalSpaceControl::SolveQp(
     DRAKE_DEMAND(input_traj != nullptr);
     const auto& traj =
         input_traj->get_value<drake::trajectories::Trajectory<double>>();
-    std::cout << "torque traj " << "[" << traj.start_time() << ", " << traj.end_time() << "]" << std::endl;
 
     torque_tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
                                 *context_wo_spr_, traj, t);
     const MatrixXd W = torque_tracking_data->GetWeight();
     const VectorXd lambda_des = torque_tracking_data->GetLambdaDes();
+
+    if (!W.allFinite()) {
+        std::cout << "torque W contains NaN or Inf!" << std::endl;
+    }
+    if (!lambda_des.allFinite()) {
+        std::cout << "torque lambda_des contains NaN or Inf!" << std::endl;
+    }
     lambda_ext_tau_cost_->UpdateCoefficients(
         2 * W, -2 * W * lambda_des, lambda_des.transpose() * W * lambda_des);
   }
@@ -905,6 +963,8 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // (Testing) 6. blend contact forces during double support phase
   if (ds_duration_ > 0) {
+    std::cout << "6. blend contact forces" << std::endl;
+
     MatrixXd A = MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim);
     if (std::find(ds_states_.begin(), ds_states_.end(), fsm_state) !=
         ds_states_.end()) {
@@ -946,17 +1006,21 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // (Testing) 7. Cost for staying close to the previous input
   if (W_input_smoothing_.size() > 0 && u_prev_) {
+    std::cout << "7. smoothing" << std::endl;
     input_smoothing_cost_->UpdateCoefficients(
         W_input_smoothing_, -W_input_smoothing_ * *u_prev_,
         0.5 * u_prev_->transpose() * W_input_smoothing_ * *u_prev_);
   }
 
   if (W_lambda_c_reg_.size() > 0) {
+    std::cout << "W_lambda_c_reg_ " << std::endl;
     lambda_c_cost_->UpdateCoefficients((1 + alpha) * W_lambda_c_reg_,
                                        VectorXd::Zero(n_c_));
   }
 
   if (W_lambda_h_reg_.size() > 0) {
+    std::cout << "W_lambda_h_reg_ " << std::endl;
+
     lambda_h_cost_->UpdateCoefficients((1 + alpha) * W_lambda_h_reg_,
                                        VectorXd::Zero(n_h_));
   }
@@ -964,10 +1028,23 @@ VectorXd OperationalSpaceControl::SolveQp(
     solver_->InitializeSolver(*prog_, solver_options_);
   }
 
+  for (const auto& binding : prog_->GetAllConstraints()) {
+
+      Eigen::VectorXd y = prog_->EvalBindingAtInitialGuess(binding);
+      y = Eigen::VectorXd::Zero(y.size());
+
+      if (!y.allFinite()) {
+          std::cout << "NaN in constraint "
+                    << binding.evaluator()->get_description()
+                    << std::endl;
+      }
+  }
+
   // Solve the QP
   MathematicalProgramResult result;
   result = solver_->Solve(*prog_);
   solve_time_ = result.get_solver_details<OsqpSolver>().run_time;
+  
 
   if (result.is_success()) {
     // Extract solutions
@@ -998,13 +1075,11 @@ VectorXd OperationalSpaceControl::SolveQp(
       std::cout << "dual_res: " << details.dual_res << std::endl;
     }
   } else {
-    *u_prev_ = 0.99 * *u_sol_ + VectorXd::Random(n_u_);
-
-      std::cout << "SOLVER FAILED" << std::endl;
-      const auto& details = result.get_solver_details<drake::solvers::OsqpSolver>();
-      
-      drake::log()->warn("OSQP Status: {}", details.status_val); 
-      drake::log()->warn("Iterations: {}", details.iter);
+    std::cout << "SOLVER FAILED" << std::endl;
+    const auto& details = result.get_solver_details<drake::solvers::OsqpSolver>();
+    
+    drake::log()->warn("OSQP Status: {}", details.status_val); 
+    drake::log()->warn("Iterations: {}", details.iter);
   }
 
   for (auto& tracking_data : *tracking_data_vec_) {
@@ -1068,6 +1143,8 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
             input_traj->get_value<drake::trajectories::Trajectory<double>>();
 
         std::cout << "traj fsm " << "[" << traj.start_time() << ", " << traj.end_time() << "]" << std::endl;
+        std::cout << traj.value(traj.start_time()).transpose() << std::endl;
+        std::cout << traj.value(traj.end_time()).transpose() << std::endl;
 
         tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
                               *context_wo_spr_, traj, t,
@@ -1120,7 +1197,6 @@ void OperationalSpaceControl::AssignOscLcmOutput(
   auto state =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
 
-  std::cout << "state " << state->value().transpose() << std::endl;
 
   double total_cost = 0;
   int fsm_state = -1;
@@ -1349,6 +1425,7 @@ void OperationalSpaceControl::CheckTracking(
     TimestampedVector<double>* output) const {
   auto robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+  std::cout << "check tracking robot output " << robot_output->value().transpose() << std::endl;
   output->set_timestamp(robot_output->get_timestamp());
   output->get_mutable_value()(0) = 0.0;
   VectorXd y_soft_constraint_cost = VectorXd::Zero(1);

@@ -1,4 +1,5 @@
 #include "external_torque_tracking_data.h"
+#include <iostream>
 
 using Eigen::MatrixXd;
 using Eigen::Quaterniond;

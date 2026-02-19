@@ -17,7 +17,7 @@ tool_attachment_frame: [0, 0, 0.107]
 #tool_attachment_frame: [0, 0, 0.307]
 
 time_to_wait: 1.0
-ee_init_position: [0.4, -0.35, 0.5]
+ee_init_position: [0.4, -0.35, 0.45]
 
 x_target: [0, 0, 0,
             0, 0,

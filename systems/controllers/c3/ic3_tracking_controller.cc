@@ -44,11 +44,11 @@ iC3TrackingController::iC3TrackingController(
 
   double discount_factor = 1;
   for (int i = 0; i < N_; ++i) {
-    Q_.push_back(discount_factor * c3_options_.Q);
-    R_.push_back(discount_factor * c3_options_.R);
+    Q_.push_back(discount_factor * c3_options_.Q * ic3_options.c3_dt_scaling);
+    R_.push_back(discount_factor * c3_options_.R * ic3_options.c3_dt_scaling);
     discount_factor *= c3_options_.gamma;
   }
-  Q_.push_back(discount_factor * c3_options_.Q);
+  Q_.push_back(discount_factor * c3_options_.Q * ic3_options.c3_dt_scaling);
   DRAKE_DEMAND(Q_.size() == N_ + 1);
   DRAKE_DEMAND(R_.size() == N_);
 
@@ -344,11 +344,10 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
     VectorXd lower_bound_u(VectorXd::Zero(n_u_));
     VectorXd upper_bound_u(VectorXd::Zero(n_u_));
 
-    lower_bound_u << -0.2, -0.2, 0, -1, -1;
-    upper_bound_u << -0.2, 0.2, 15, 1, 1;
+    lower_bound_u << -0.1, -0.1, 3, -0.6, -0.6;
+    upper_bound_u << -0.1, 0.1, 7, 0.6, 0.6;
 
-    c3_->AddVectorLinearConstraint(A_u, lower_bound_u, upper_bound_u, 2);
-    
+    c3_->AddVectorLinearConstraint(A_u, lower_bound_u, upper_bound_u, 2);    
    
   }
   c3_->UpdateLCS(lcs);

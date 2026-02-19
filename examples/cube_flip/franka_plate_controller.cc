@@ -323,7 +323,7 @@ int DoMain(int argc, char* argv[]) {
   DrawAndSaveDiagramGraph(*loop.get_diagram());
 
   LcmHandleSubscriptionsUntil(
-      &lcm, [&]() { return ic3_x_trajectory_sub->GetInternalMessageCount() > 1; });
+      &lcm, [&]() { return ic3_x_trajectory_sub->GetInternalMessageCount() > 0; });
   loop.Simulate();
   return 0;
 }

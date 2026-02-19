@@ -70,9 +70,9 @@ void EndEffectorTorqueTrajectoryGenerator::CalcTraj(
       this->EvalAbstractInput(context, trajectory_port_)
           ->get_value<drake::trajectories::Trajectory<double>>();
 
-  std::cout << "torque time range: ["
-          << trajectory_input.start_time() << ", "
-          << trajectory_input.end_time() << "]\n";
+  // std::cout << "torque time range: ["
+  //         << trajectory_input.start_time() << ", "
+  //         << trajectory_input.end_time() << "]\n";
 
   const auto& radio_out = this->EvalInputValue<dairlib::lcmt_radio_out>(
     context, radio_port_);
@@ -83,13 +83,9 @@ void EndEffectorTorqueTrajectoryGenerator::CalcTraj(
 
   if (radio_out->channel[11] || radio_out->channel[14] ||
       trajectory_input.value(0).isZero()) {
-    std::vector<double> times{0.0, 1.0};   
-    std::vector<Eigen::MatrixXd> knots{
-      Eigen::Vector3d::Zero(),
-      Eigen::Vector3d::Zero()
-    };
     auto zero_traj =
-        PiecewisePolynomial<double>::FirstOrderHold(times, knots);
+        PiecewisePolynomial<double>::FirstOrderHold({0.0, 1.0}, 
+          {Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero()});
     *casted_traj = zero_traj; 
   } else {
     if (context.get_discrete_state(controller_switch_index_)[0]) {
@@ -99,9 +95,9 @@ void EndEffectorTorqueTrajectoryGenerator::CalcTraj(
     }
   }
 
-  std::cout << "torque time range casted: ["
-        << casted_traj->start_time() << ", "
-        << casted_traj->end_time() << "]\n";
+  // std::cout << "torque time range casted: ["
+  //       << casted_traj->start_time() << ", "
+  //       << casted_traj->end_time() << "]\n";
 }
 
 }  // namespace dairlib

@@ -86,12 +86,23 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
   auto& lcs =
     this->EvalAbstractInput(context, lcs_port_)->get_value<LCS>();
 
+  auto plant_context = plant_.CreateDefaultContext();		
+  VectorXd tau_g = plant_.CalcGravityGeneralizedForces(*plant_context);
+  double gravity = tau_g[2]; 
+
   MatrixXd x_hat = c3_solution->x_sol_.cast<double>();
   MatrixXd u_hat = c3_solution->u_sol_.cast<double>();
+
+  // Gravity not accounted for in external force
+  for (int i = 0; i < u_hat.cols(); i++) {
+    u_hat.col(i)(2) += gravity;
+  }
 
   if (track_dynamically_feasible_) {
     x_hat = SimulateLCS(x_hat.col(0), u_hat, lcs);
   }
+
+
 
 	int ee_pos_idx = 0;
   int ee_rot_idx = 3; 
@@ -133,9 +144,10 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
 		// Reapply offset
 		positions = x_hat.middleRows(ee_pos_idx, 3);
 		for (int i = 0; i < positions.cols(); i++) {
-				positions.col(i) = positions.col(i) + nominal_position->get_value();
+			positions.col(i) + nominal_position->get_value();
 		}
 		raw_orientations = x_hat.middleRows(ee_rot_idx, 2);
+
 		forces = u_hat.topRows(3);
     torques = MatrixXd::Zero(3, u_hat.cols());
     torques.topRows(2) = u_hat.bottomRows(2);

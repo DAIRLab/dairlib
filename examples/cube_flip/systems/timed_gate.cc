@@ -85,8 +85,24 @@ void TimedGate::OutputActorTrajectory(
     MatrixXd c3_force_data = c3_traj.GetTrajectory("end_effector_force_target").datapoints;
     MatrixXd c3_torque_data = c3_traj.GetTrajectory("end_effector_torque_target").datapoints;
 
+    if (!c3_position_data.allFinite()) {
+      std::cout << "position NaN" << std::endl;
+    }
+    if (!c3_orientation_data.allFinite()) {
+      std::cout << "orientation NaN" << std::endl;
+    }
+    if (!c3_force_data.allFinite()) {
+      std::cout << "force NaN" << std::endl;
+    }
+    if (!c3_torque_data.allFinite()) {
+      std::cout << "torque NaN" << std::endl;
+    }
+
     std::cout << c3_orientation_data.col(0).transpose() << "; " << c3_position_data.col(0).transpose() << std::endl;
+    std::cout << c3_orientation_data.col(1).transpose() << "; " << c3_position_data.col(1).transpose() << std::endl;
+
     std::cout << c3_force_data.col(0).transpose() << "; " << c3_torque_data.col(0).transpose() << std::endl;
+    std::cout << c3_force_data.col(1).transpose() << "; " << c3_torque_data.col(1).transpose() << std::endl;
 
   } else {
     std::cout << "time: " << time << std::endl;
@@ -111,7 +127,7 @@ void TimedGate::OutputActorTrajectory(
 		VectorXd timestamps(2);
     for (int t = 0; t < 2; t++) {
 		  orientations(0, t) = 1;
-      timestamps(t) = t * dt_;
+      timestamps(t) = t * 1.0;
     }
 		
 		LcmTrajectory::Trajectory position_traj;

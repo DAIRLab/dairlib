@@ -77,14 +77,14 @@ void EndEffectorPositionTrajectoryGenerator::CalcNeutralPoseBasedTraj(
           ->get_value<drake::trajectories::Trajectory<double>>();
   const auto& radio_out = this->EvalInputValue<dairlib::lcmt_radio_out>(
     context, radio_port_);
-  auto* casted_traj =
-      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
-          traj);
 
+  auto* casted_traj =
+    dynamic_cast<PiecewisePolynomial<double>*>(traj);
+  DRAKE_DEMAND(casted_traj != nullptr);
   
-  std::cout << "position time range: ["
-          << trajectory_input.start_time() << ", "
-          << trajectory_input.end_time() << "]\n";
+  // std::cout << "position time range: ["
+  //         << trajectory_input.start_time() << ", "
+  //         << trajectory_input.end_time() << "]\n";
 
   if (radio_out->channel[14]) {
     PiecewisePolynomial<double> result;
@@ -95,15 +95,19 @@ void EndEffectorPositionTrajectoryGenerator::CalcNeutralPoseBasedTraj(
     y_0(1) += radio_out->channel[1] * y_scale_;
     y_0(2) += radio_out->channel[2] * z_scale_;
 
-    result = drake::trajectories::PiecewisePolynomial<double>(y_0);
+    
+    result = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold({0.0, 1.0}, {y_0, y_0});
     *casted_traj = result;
   } else {
     if (trajectory_input.value(0).isZero()) {
-      
+      VectorXd y_0 = neutral_pose_;
+      PiecewisePolynomial<double> result = 
+        drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold({0.0, 1.0}, {y_0, y_0});
+      *casted_traj = result;
     } else {
-      std::cout << trajectory_input.value(0).transpose() << std::endl;
-      *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
-          const PiecewisePolynomial<double>*>(&trajectory_input);
+      const auto* traj =
+        dynamic_cast<const PiecewisePolynomial<double>*>(&trajectory_input);
+      *casted_traj = *traj; 
     }
   }
 }
@@ -117,8 +121,9 @@ void EndEffectorPositionTrajectoryGenerator::CalcPoseShiftingTraj(
   const auto& radio_out = this->EvalInputValue<dairlib::lcmt_radio_out>(
     context, radio_port_);
   auto* casted_traj =
-      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
-          traj);
+    dynamic_cast<PiecewisePolynomial<double>*>(traj);
+  DRAKE_DEMAND(casted_traj != nullptr);
+  
   if (radio_out->channel[14]) {
     if (!was_in_teleop_mode_) {
       // Update the shifting position to the current position -- this means
@@ -156,8 +161,10 @@ void EndEffectorPositionTrajectoryGenerator::CalcPoseShiftingTraj(
     was_in_teleop_mode_ = false;
     if (trajectory_input.value(0).isZero()) {
     } else {
-      *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
-          const PiecewisePolynomial<double>*>(&trajectory_input);
+      const auto* traj =
+        dynamic_cast<const PiecewisePolynomial<double>*>(&trajectory_input);
+      *casted_traj = *traj; 
+
     }
   }
 }

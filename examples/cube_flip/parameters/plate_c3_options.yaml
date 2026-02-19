@@ -20,10 +20,10 @@ workspace_margins: 0 # UNUSED
 
 #mu: [0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6]
 mu: [0.6, 0.6, 0.6, 0.6]
-dt: 0.02
-solve_dt: 0.02
+dt: 0.03
+solve_dt: 0.03
 lcs_dt_resolution: 1
-dt_cost: 0.02
+dt_cost: 0.03
 num_friction_directions: 2
 num_contacts: 4
 
@@ -35,19 +35,19 @@ N: 1
 gamma: 1.0
 
 w_Q: 5
-w_R: 50 #Penalty on all decision variables, assuming scalar
-w_G: 10 #Penalty on all decision variables, assuming scalar
+w_R: 20 #Penalty on all decision variables, assuming scalar
+w_G: 27 #Penalty on all decision variables, assuming scalar
 w_U: 10 #State Tracking Error, assuming diagonal
 
 
 q_vector: [400, 400, 400,                # plate pos
             200, 200,                    # plate rot
             1, 1, 1, 1,              # cube rot
-            500, 500, 50,           # cube pos              
+            800, 800, 50,           # cube pos              
             1, 1, 1,                # plate velo
-            8, 8,                    # plate ang velo
+            10, 10,                    # plate ang velo
             1, 1, 1,             # cube ang velo
-            1, 1, 1]                # cube veloo
+            1, 1, 1]                # cube velo
 
 r_vector: [40, 40, 20, 30, 30]  
 

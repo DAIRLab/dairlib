@@ -40,10 +40,10 @@ void EndEffectorOrientationTrajectoryGenerator::CalcTraj(
     drake::trajectories::Trajectory<double>* traj) const {
   const auto& radio_out = this->EvalInputValue<dairlib::lcmt_radio_out>(
     context, radio_port_);
-  auto* casted_traj = (PiecewiseQuaternionSlerp<double>*)dynamic_cast<
-      PiecewiseQuaternionSlerp<double>*>(traj);
 
-
+  auto* casted_traj =
+    dynamic_cast<PiecewiseQuaternionSlerp<double>*>(traj);
+  DRAKE_DEMAND(casted_traj != nullptr);
 
 
   //if (radio_out->channel[14] and track_orientation_) {  TODO: Figure out why teleop tracks end effector orientation
@@ -51,12 +51,13 @@ void EndEffectorOrientationTrajectoryGenerator::CalcTraj(
     const auto& trajectory_input =
         this->EvalAbstractInput(context, trajectory_port_)
             ->get_value<drake::trajectories::Trajectory<double>>();
-    *casted_traj = *(PiecewiseQuaternionSlerp<double>*)dynamic_cast<
-        const PiecewiseQuaternionSlerp<double>*>(&trajectory_input);
+    const auto* traj =
+      dynamic_cast<const PiecewiseQuaternionSlerp<double>*>(&trajectory_input);
+    *casted_traj = *traj; 
 
-    std::cout << "orientation time range: ["
-            << trajectory_input.start_time() << ", "
-            << trajectory_input.end_time() << "]\n";
+    // std::cout << "orientation time range: ["
+    //         << trajectory_input.start_time() << ", "
+    //         << trajectory_input.end_time() << "]\n";
 
     
   } else {
@@ -66,7 +67,7 @@ void EndEffectorOrientationTrajectoryGenerator::CalcTraj(
     Eigen::VectorXd neutral_quaternion = VectorXd::Zero(4);
     neutral_quaternion(0) = 1;
     result = drake::trajectories::PiecewiseQuaternionSlerp<double>(
-        {0, 1},
+        {0, 1.0},
         {Eigen::Quaterniond(1, 0, 0, 0), Eigen::Quaterniond(1, 0, 0, 0)});
     *casted_traj = result;
   }

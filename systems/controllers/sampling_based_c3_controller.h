@@ -5,17 +5,19 @@
 #include <vector>
 
 #include <drake/common/yaml/yaml_io.h>
+#include <drake/geometry/proximity/obj_to_surface_mesh.h>
+#include <drake/geometry/proximity/triangle_surface_mesh.h>
 
 #include "common/find_resource.h"
 #include "common/update_context.h"
 #include "dairlib/lcmt_sampling_c3_debug.hpp"
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
+#include "examples/sampling_c3/parameter_headers/progress_params.h"
+#include "examples/sampling_c3/parameter_headers/reposition_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "examples/sampling_c3/parameter_headers/sampling_params.h"
-#include "examples/sampling_c3/parameter_headers/reposition_params.h"
-#include "examples/sampling_c3/parameter_headers/progress_params.h"
 #include "lcm/lcm_trajectory.h"
 #include "solvers/base_c3.h"
 #include "solvers/c3_options.h"
@@ -23,10 +25,8 @@
 #include "solvers/lcs.h"
 #include "solvers/lcs_factory.h"
 #include "solvers/solver_options_io.h"
-#include "systems/framework/timestamped_vector.h"
 #include "systems/controllers/face.h"
-#include <drake/geometry/proximity/triangle_surface_mesh.h>
-#include <drake/geometry/proximity/obj_to_surface_mesh.h>
+#include "systems/framework/timestamped_vector.h"
 
 #include "drake/systems/framework/leaf_system.h"
 
@@ -42,16 +42,15 @@ using drake::math::ExtractValue;
 using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::Context;
-using systems::TimestampedVector;
 using systems::Face;
+using systems::TimestampedVector;
 
 namespace systems {
 
-
 enum SampleIndex {
   kCurrentLocation,
-  kCurrentReposTarget // Only represents current reposition target when in
-                      // reposition mode.
+  kCurrentReposTarget  // Only represents current reposition target when in
+                       // reposition mode.
   // Could expand this enum if want to reference more samples.
 };
 
@@ -64,12 +63,7 @@ enum ModeSwitchReason {
   kToC3Xbox
 };
 
-enum PursuedTargetSource {
-  kNoTarget,
-  kPrevious,
-  kNewSample,
-  kFromBuffer
-};
+enum PursuedTargetSource { kNoTarget, kPrevious, kNewSample, kFromBuffer };
 
 class SamplingC3Controller : public drake::systems::LeafSystem<double> {
  public:
@@ -84,20 +78,16 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       SamplingC3ControllerParams controller_params, bool verbose = false);
 
   // Input ports
-  const drake::systems::InputPort<double>&
-  get_input_port_target() const {
+  const drake::systems::InputPort<double>& get_input_port_target() const {
     return this->get_input_port(target_input_port_);
   }
-  const drake::systems::InputPort<double>&
-  get_input_port_final_target() const {
+  const drake::systems::InputPort<double>& get_input_port_final_target() const {
     return this->get_input_port(final_target_input_port_);
   }
-  const drake::systems::InputPort<double>&
-  get_input_port_radio() const {
+  const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_port_);
   }
-  const drake::systems::InputPort<double>&
-  get_input_port_lcs_state() const {
+  const drake::systems::InputPort<double>& get_input_port_lcs_state() const {
     return this->get_input_port(lcs_state_input_port_);
   }
 
@@ -166,24 +156,22 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   get_output_port_repos_traj_execute_actor() const {
     return this->get_output_port(repos_traj_execute_actor_port_);
   }
-  const drake::systems::OutputPort<double>&
-  get_output_port_traj_execute_actor() const {
+  const drake::systems::OutputPort<double>& get_output_port_traj_execute_actor()
+      const {
     return this->get_output_port(traj_execute_actor_port_);
   }
-  const drake::systems::OutputPort<double>&
-  get_output_port_is_c3_mode() const {
+  const drake::systems::OutputPort<double>& get_output_port_is_c3_mode() const {
     return this->get_output_port(is_c3_mode_port_);
   }
   const drake::systems::OutputPort<double>&
   get_output_port_all_sample_locations() const {
     return this->get_output_port(all_sample_locations_port_);
   }
-  const drake::systems::OutputPort<double>&
-  get_output_port_all_sample_costs() const {
+  const drake::systems::OutputPort<double>& get_output_port_all_sample_costs()
+      const {
     return this->get_output_port(all_sample_costs_port_);
   }
-  const drake::systems::OutputPort<double>&
-  get_output_port_debug() const {
+  const drake::systems::OutputPort<double>& get_output_port_debug() const {
     return this->get_output_port(debug_lcmt_port_);
   }
   const drake::systems::OutputPort<double>&
@@ -197,7 +185,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>&
   get_output_port_unsuccessful_sample_buffer_configurations() const {
     return this->get_output_port(
-      unsuccessful_sample_buffer_configurations_port_);
+        unsuccessful_sample_buffer_configurations_port_);
   }
   const drake::systems::OutputPort<double>&
   get_output_port_unsuccessful_sample_buffer_costs() const {
@@ -213,18 +201,19 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   /// Helper functions
   solvers::LCS CreatePlaceholderLCS() const;
 
+  void ResolvePredictedEEState(const bool& is_teleop,
+                               drake::VectorX<double>& x_lcs_curr) const;
 
-  void ResolvePredictedEEState(
-    const bool& is_teleop, drake::VectorX<double>& x_lcs_curr) const;
+  solvers::LCS CreatePlaceholderLCS() const;
 
   void ClampEndEffectorAcceleration(drake::VectorX<double>& x_lcs_curr) const;
 
   void CheckForWorkspaceLimitViolations(
-    const TimestampedVector<double>* lcs_x_curr) const;
+      const TimestampedVector<double>* lcs_x_curr) const;
 
-  void UpdateCostMatrices(
-    const drake::VectorX<double>& x_lcs_curr,
-    const BasicVector<double>& x_lcs_des, const C3Options& c3_options) const;
+  void UpdateCostMatrices(const drake::VectorX<double>& x_lcs_curr,
+                          const BasicVector<double>& x_lcs_des,
+                          const C3Options& c3_options) const;
 
   std::pair<std::vector<solvers::LCS>, std::vector<solvers::LCS>>
   CreateLCSObjectsForSamples(
@@ -233,10 +222,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
     const C3Options& c3_options_curr_location) const;
 
   void UpdateC3ExecutionTrajectory(const Eigen::VectorXd& x_lcs,
-    const double& t_context) const;
+                                   const double& t_context) const;
 
   void UpdateRepositioningExecutionTrajectory(const Eigen::VectorXd& x_lcs,
-    const double& t_context) const;
+                                              const double& t_context) const;
 
   void PruneOutdatedSamplesFromBuffer(
     const Eigen::VectorXd& x_lcs,
@@ -249,22 +238,21 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void MaintainSampleBuffers(const Eigen::VectorXd& x_lcs) const;
 
   void AugmentSamplesWithBuffer(
-    std::vector<std::shared_ptr<solvers::C3Base>>& c3_objects) const;
+      std::vector<std::shared_ptr<solvers::C3Base>>& c3_objects) const;
 
   void AddToUnsuccessfulBuffer(const Eigen::VectorXd& x_lcs) const;
 
   void KeepTrackOfC3ModeProgress(
-    const drake::VectorX<double>& x_lcs_curr,
-    const BasicVector<double>& x_lcs_final_des,
-    bool& reset_progress_cost_buffer,
-    const bool& print_current_pos_and_rot_cost) const;
+      const drake::VectorX<double>& x_lcs_curr,
+      const BasicVector<double>& x_lcs_final_des,
+      bool& reset_progress_cost_buffer,
+      const bool& print_current_pos_and_rot_cost) const;
 
   void ResetProgressMetrics() const;
 
   /// Output port functions
-  void OutputC3SolutionCurrPlan(
-      const drake::systems::Context<double>& context,
-      C3Output::C3Solution* c3_solution) const;
+  void OutputC3SolutionCurrPlan(const drake::systems::Context<double>& context,
+                                C3Output::C3Solution* c3_solution) const;
   void OutputC3SolutionCurrPlanActor(
       const drake::systems::Context<double>& context,
       dairlib::lcmt_timestamped_saved_traj* output) const;
@@ -278,9 +266,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*
           lcs_contact_jacobian) const;
-  void OutputC3SolutionBestPlan(
-      const drake::systems::Context<double>& context,
-      C3Output::C3Solution* c3_solution) const;
+  void OutputC3SolutionBestPlan(const drake::systems::Context<double>& context,
+                                C3Output::C3Solution* c3_solution) const;
   void OutputC3SolutionBestPlanActor(
       const drake::systems::Context<double>& context,
       dairlib::lcmt_timestamped_saved_traj* output) const;
@@ -323,18 +310,15 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void OutputTrajExecuteActor(
       const drake::systems::Context<double>& context,
       lcmt_timestamped_saved_traj* execution_lcm_traj) const;
-  void OutputIsC3Mode(
-      const drake::systems::Context<double>& context,
-      dairlib::lcmt_timestamped_saved_traj* is_c3_mode) const;
-  void OutputDebug(
-      const drake::systems::Context<double>& context,
-      dairlib::lcmt_sampling_c3_debug* debug_msg) const;
+  void OutputIsC3Mode(const drake::systems::Context<double>& context,
+                      dairlib::lcmt_timestamped_saved_traj* is_c3_mode) const;
+  void OutputDebug(const drake::systems::Context<double>& context,
+                   dairlib::lcmt_sampling_c3_debug* debug_msg) const;
   void OutputSampleBufferConfigurations(
       const drake::systems::Context<double>& context,
       Eigen::MatrixXd* sample_buffer_configurations) const;
-  void OutputSampleBufferCosts(
-      const drake::systems::Context<double>& context,
-      Eigen::VectorXd* sample_buffer_costs) const;
+  void OutputSampleBufferCosts(const drake::systems::Context<double>& context,
+                               Eigen::VectorXd* sample_buffer_costs) const;
   void OutputUnsuccessfulSampleBufferConfigurations(
       const drake::systems::Context<double>& context,
       Eigen::MatrixXd* unsuccessful_sample_buffer_configurations) const;
@@ -380,7 +364,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex debug_lcmt_port_;
   drake::systems::OutputPortIndex sample_buffer_configurations_port_;
   drake::systems::OutputPortIndex sample_buffer_costs_port_;
-  drake::systems::OutputPortIndex unsuccessful_sample_buffer_configurations_port_;
+  drake::systems::OutputPortIndex
+      unsuccessful_sample_buffer_configurations_port_;
   drake::systems::OutputPortIndex unsuccessful_sample_buffer_costs_port_;
 
   // This plant_ has been made 'not const' so that the context can be updated.
@@ -444,7 +429,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable Eigen::VectorXd x_pred_curr_plan_;
   mutable Eigen::VectorXd x_from_last_control_loop_;
   mutable Eigen::VectorXd x_pred_from_last_control_loop_;
-  mutable Eigen::Vector3d ee_position_curr_; 
+  mutable Eigen::Vector3d ee_position_curr_;
 
   // C3 solution for current location.
   mutable std::shared_ptr<solvers::C3Base> c3_curr_plan_;
@@ -473,7 +458,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // Samples and associated costs computed in current control loop.
   mutable std::vector<Eigen::Vector3d> all_sample_locations_;
   mutable std::vector<std::vector<Eigen::VectorXd>>
-    all_sample_dynamically_feasible_plans_;
+      all_sample_dynamically_feasible_plans_;
   mutable Eigen::Vector3d prev_repositioning_target_ = Eigen::Vector3d::Zero();
   mutable std::vector<double> all_sample_costs_;
 
@@ -489,7 +474,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   // Unsuccessful sample buffer-related variables.
   mutable int num_in_unsuccessful_buffer_ = 0;
-  mutable Eigen::MatrixXd unsuccessful_sample_buffer_;  // (num_in_unsuccessful_buffer_ x n_q)
+  mutable Eigen::MatrixXd
+      unsuccessful_sample_buffer_;  // (num_in_unsuccessful_buffer_ x n_q)
   mutable Eigen::VectorXd unsuccessful_sample_costs_buffer_;
 
   // Miscellaneous sample related variables.

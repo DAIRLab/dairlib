@@ -29,8 +29,9 @@ using c3::C3MIQP;
 using c3::C3Plus;
 using c3::C3QP;
 using c3::LCS;
+using c3::multibody::LCSContactDescription;
 using c3::multibody::LCSFactory;
-using dairlib::C3Output;
+using c3::systems::C3Output;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::multibody::ModelInstanceIndex;
@@ -253,8 +254,7 @@ SamplingC3Controller::SamplingC3Controller(
   c3_intermediates.w_ = MatrixXf::Zero(n_z_, N_);
   c3_intermediates.delta_ = MatrixXf::Zero(n_z_, N_);
   c3_intermediates.time_vector_ = VectorXf::Zero(N_);
-  auto lcs_contact_jacobian = std::pair(Eigen::MatrixXd(n_x_, n_lambda_),
-                                        std::vector<Eigen::VectorXd>());
+  auto lcs_contact_descriptions = std::vector<LCSContactDescription>();
 
   // Since the num_additional_samples_repos means the additional samples
   // to generate in addition to the prev_repositioning_target_, add 1.
@@ -298,7 +298,7 @@ SamplingC3Controller::SamplingC3Controller(
           .get_index();
   lcs_contact_jacobian_curr_plan_port_ =
       this->DeclareAbstractOutputPort(
-              "J_lcs_curr_plan, p_lcs_curr_plan", lcs_contact_jacobian,
+              "J_lcs_curr_plan, p_lcs_curr_plan", lcs_contact_descriptions,
               &SamplingC3Controller::OutputLCSContactJacobianCurrPlan)
           .get_index();
 
@@ -329,7 +329,7 @@ SamplingC3Controller::SamplingC3Controller(
           .get_index();
   lcs_contact_jacobian_best_plan_port_ =
       this->DeclareAbstractOutputPort(
-              "J_lcs_best_plan, p_lcs_best_plan", lcs_contact_jacobian,
+              "J_lcs_best_plan, p_lcs_best_plan", lcs_contact_descriptions,
               &SamplingC3Controller::OutputLCSContactJacobianBestPlan)
           .get_index();
 
@@ -2756,8 +2756,7 @@ void SamplingC3Controller::OutputC3IntermediatesCurrPlan(
 
 void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
     const drake::systems::Context<double>& context,
-    std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*
-        lcs_contact_jacobian) const {
+    std::vector<LCSContactDescription>* lcs_contact_descriptions) const {
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
@@ -2777,10 +2776,10 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
       sampling_c3_options_.num_friction_directions_per_contact, verbose_);
 
   // print size of resolved_contact_pairs
-  *lcs_contact_jacobian =
+  *lcs_contact_descriptions =
       LCSFactory(plant_, *context_, plant_ad_, *context_ad_,
                  resolved_contact_pairs, lcs_factory_options)
-          .GetContactJacobianAndPoints();
+          .GetContactDescriptions();
 }
 
 // Output port handlers for best sample location
@@ -2993,8 +2992,7 @@ void SamplingC3Controller::OutputC3IntermediatesBestPlan(
 
 void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
     const drake::systems::Context<double>& context,
-    std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*
-        lcs_contact_jacobian) const {
+    std::vector<LCSContactDescription>* lcs_contact_descriptions) const {
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
@@ -3015,10 +3013,10 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
       plant_, *context_, contact_pairs_,
       sampling_c3_options_.resolve_contacts_to,
       sampling_c3_options_.num_friction_directions_per_contact, verbose_);
-  *lcs_contact_jacobian =
+  *lcs_contact_descriptions =
       LCSFactory(plant_, *context_, plant_ad_, *context_ad_,
                  resolved_contact_pairs, lcs_factory_options)
-          .GetContactJacobianAndPoints();
+          .GetContactDescriptions();
 
   // Revert the context.
   UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,

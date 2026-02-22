@@ -265,13 +265,13 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
                                         resolve_contacts_to_for_cost,
                                         num_friction_directions.value());
 
-    for (size_t i = 0; i < num_contacts; ++i) {
+    for (size_t i = 0; i < static_cast<size_t>(num_contacts); ++i) {
       starting_index_per_contact_in_lambda_t_vector.push_back(
           2 * std::accumulate(num_friction_directions_per_contact.begin(),
                               num_friction_directions_per_contact.begin() + i,
                               0));
     }
-    for (size_t i = 0; i < num_contacts_for_cost; ++i) {
+    for (size_t i = 0; i < static_cast<size_t>(num_contacts_for_cost); ++i) {
       starting_index_per_contact_in_lambda_t_vector_cost.push_back(
           2 * std::accumulate(
                   num_friction_directions_per_contact_for_cost.begin(),

@@ -93,7 +93,7 @@ bazel_dep(name = "c3")
 git_override(
     module_name = "c3",
     remote = "https://github.com/DAIRLab/c3.git",
-    commit = "7e99d566b57deff9cfc02b016ae06930c6634da5"
+    commit = "ee740029598ea0f990cae2beca709d1eeed651f2"
 )
 
 

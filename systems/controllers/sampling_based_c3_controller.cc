@@ -1824,37 +1824,27 @@ vector<SortedPair<GeometryId>> SamplingC3Controller::GetResolvedContactPairs(
   int n_contacts = std::accumulate(resolve_contacts_to_list.begin(),
                                    resolve_contacts_to_list.end(), 0);
   std::vector<SortedPair<GeometryId>> resolved_contacts;
-  resolved_contacts.reserve(n_contacts);
+  resolved_contacts.clear();
 
+  // contact_geoms represents contact pair groups, where each group may contain
+  // contact pairs between two objects, or between one object and multiple
+  // objects eg. the end-effector and multiple objects in the environment.
+  // resolve_contacts_to_list represents how many contact pairs to resolve to
+  // for each contact pair group. For each contact pair group, select the
+  // closest contact pairs up to the number specified by
+  // resolve_contacts_to_list for that group, and add those to the
+  // resolved_contacts list.
   for (int i = 0; i < contact_geoms.size(); i++) {
     DRAKE_DEMAND(contact_geoms[i].size() >= resolve_contacts_to_list[i]);
 
     const auto& candidates = contact_geoms[i];
     const int num_to_select = resolve_contacts_to_list[i];
 
-    if (verbose && candidates.size() > 1) {
-      std::cout << "Contact pair " << i << " : choosing between:" << std::endl;
-    }
-
-    std::vector<double> distances;
-    distances.reserve(candidates.size());
-
-    for (const auto& pair : candidates) {
-      multibody::GeomGeomCollider collider(plant, pair);
-      auto [phi_i, J_i] =
-          collider.EvalPolytope(context, num_friction_directions[i]);
-      distances.push_back(phi_i);
-    }
-
-    for (int j = 0; j < num_to_select; ++j) {
-      auto min_it = std::min_element(distances.begin(), distances.end());
-      int min_index = std::distance(distances.begin(), min_it);
-      resolved_contacts.push_back(candidates[min_index]);
-      distances[min_index] = std::numeric_limits<double>::infinity();
-
-      if (verbose && candidates.size() > 1) {
-        std::cout << "   --> Chose option " << min_index << std::endl;
-      }
+    auto active_contacts = LCSFactory::GetNClosestContactPairs(
+        plant, context, contact_geoms[i], num_to_select);
+    if (!active_contacts.empty()) {
+      resolved_contacts.insert(resolved_contacts.end(), active_contacts.begin(),
+                               active_contacts.end());
     }
   }
   DRAKE_DEMAND(resolved_contacts.size() == n_contacts);

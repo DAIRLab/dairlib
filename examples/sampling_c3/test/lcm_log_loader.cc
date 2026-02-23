@@ -464,7 +464,7 @@ int DoMain(int argc, char* argv[]) {
                     << "seconds utime: " << (message.utime) / 1e6
                     << " and event " << "timestamp "
                     << adjusted_utimestamp / 1e6 << std::endl;
-          for (int i = 0;
+          for (size_t i = 0;
                i < message.saved_traj.trajectories[0].datapoints[0].size();
                i++) {
             Eigen::VectorXd sample_location = Eigen::VectorXd::Zero(3);
@@ -486,7 +486,7 @@ int DoMain(int argc, char* argv[]) {
                     << "seconds utime: " << (message.utime) / 1e6
                     << " and event " << "timestamp "
                     << adjusted_utimestamp / 1e6 << std::endl;
-          for (int i = 0;
+          for (size_t i = 0;
                i < message.saved_traj.trajectories[0].datapoints[0].size();
                i++) {
             sample_costs_in_log.push_back(Eigen::VectorXd::Constant(

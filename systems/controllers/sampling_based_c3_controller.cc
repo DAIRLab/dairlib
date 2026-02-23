@@ -1826,6 +1826,14 @@ vector<SortedPair<GeometryId>> SamplingC3Controller::GetResolvedContactPairs(
   std::vector<SortedPair<GeometryId>> resolved_contacts;
   resolved_contacts.clear();
 
+  // contact_geoms represents contact pair groups, where each group may contain
+  // contact pairs between two objects, or between one object and multiple
+  // objects eg. the end-effector and multiple objects in the environment.
+  // resolve_contacts_to_list represents how many contact pairs to resolve to
+  // for each contact pair group. For each contact pair group, select the
+  // closest contact pairs up to the number specified by
+  // resolve_contacts_to_list for that group, and add those to the
+  // resolved_contacts list.
   for (int i = 0; i < contact_geoms.size(); i++) {
     DRAKE_DEMAND(contact_geoms[i].size() >= resolve_contacts_to_list[i]);
 
@@ -1835,8 +1843,7 @@ vector<SortedPair<GeometryId>> SamplingC3Controller::GetResolvedContactPairs(
     auto active_contacts = LCSFactory::GetNClosestContactPairs(
         plant, context, contact_geoms[i], num_to_select);
     if (!active_contacts.empty()) {
-      resolved_contacts.insert(resolved_contacts.end(),
-                               active_contacts.begin(),
+      resolved_contacts.insert(resolved_contacts.end(), active_contacts.begin(),
                                active_contacts.end());
     }
   }

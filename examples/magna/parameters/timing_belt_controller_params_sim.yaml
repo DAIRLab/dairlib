@@ -3,8 +3,8 @@ ee_model: "examples/magna/urdf/common/end_effector_simple_model.urdf"
 timing_belt_model: "examples/magna/urdf/timing_belt_task/timing_belt.urdf"
 task_board_model: "examples/magna/urdf/timing_belt_task/timing_belt_task_board.sdf"
 scene_model: "examples/magna/urdf/common/scene.urdf"
-bending_stiffness: 0.01
-twisting_stiffness: 0.01
+bending_stiffness: 0.3
+twisting_stiffness: 0.3
 task_board_position: [0.67826, -0.192, 0.00543]
 task_board_orientation: [0.0, 0.0, 1.57079]
 timing_belt_start_body_name: "rod_0"
@@ -12,67 +12,133 @@ timing_belt_end_body_name: "rod_67"
 num_timing_belt_elements: 67
 
 # Define target LCS states for CI-MPC
-target_lcs_positions: []
+target_lcs_positions:
+  - [0.620467, 0.18, 0.0577444, -0.00587043, 0.34826, 0.00561326, 0.999636, 0.0281857, -0.000252802,
+     0.00303849, 0.620135, -0.107186, 0.0317074, 0.0113523, -0.00752396, 0.0262241, -0.0127557,
+     0.0434783, -0.0124094, 0.0530346, -0.000258529, 0.0486016, 0.0159305, 0.0319475, 0.0281645,
+     0.0154051, 0.0211863, 0.0027531, 0.0152488, -0.0067058, 0.010831, -0.0138195, 0.00744921,
+     -0.0191766, 0.00488225, -0.0232281, 0.00294767, -0.0263042, 0.00149676, -0.0286577,
+     0.00040995, -0.0304687, -0.000409719, -0.0318687, -0.00104081, -0.0329458, -0.00154805,
+     -0.0337568, -0.00198472, -0.0343208, -0.00239616, -0.0346285, -0.00281963, -0.0346258,
+     -0.00328639, -0.0342203, -0.00381789, -0.0332611, -0.00442232, -0.0315176, -0.00508661,
+     -0.0286657, -0.00575928, -0.0242463, -0.00632559, -0.0176216, -0.00656627, -0.00792303,
+     -0.00609367, 0.00598307, -0.00426235, 0.0254844, -7.39154e-05, 0.0520325, 0.00783871,
+     0.0865543, 0.0209314, 0.128212, 0.0399397, 0.0809493, -0.0139417, 0.105674, -0.0507328,
+     0.0665507, -0.0299846, 0.0356191, -0.0155348, 0.0124288, -0.00598517, -0.0043816,
+     0.000104448, -0.0162675, 0.00388878, -0.0244856, 0.00619225, -0.0300292, 0.0075697,
+     -0.033647, 0.00838221, -0.0359033, 0.00885713, -0.0371973, 0.00913626, -0.0378181,
+     0.00930412, -0.0379583, 0.00940952, -0.0377469, 0.00947724, -0.0372537, 0.00951692,
+     -0.0364924, 0.0095278, -0.035448, 0.00949999, -0.0340428, 0.00941714, -0.0321595,
+     0.00925516, -0.0296154, 0.00898231, -0.026152, 0.00855819, -0.0214011, 0.0079331,
+     -0.0148758, 0.00704894, -0.00589593, 0.00584212, 0.00644097, 0.00425261, 0.0233253,
+     0.00224252, 0.0462758, -0.000169722, 0.0562909, -0.0345545, 0.0532711, -0.0224676,
+     0.0406872, -0.00567835, 0.0229678, 0.00377959, 0.00935047, 0.00440202, 0.0107355,
+     0.00144417]
+lcs_num_velocities: 146
 
 # Define target poses for OSC (before MPC)
 osc_target_poses_pre_mpc:
-  - position: [0.48226, 0.15, 0.1]
+  - position: [0.48226, 0.154, 0.1]
     orientation: [1, 0, 0, 0]
-    gripper_pos_command: 0.03
+    gripper_pos_command: 0.0
     dwell_seconds: 0.5
     center: [0, 0, 0]
     radius: -1
-  - position: [0.62, 0.15, 0.1]
+  - position: [0.62, 0.154, 0.1]
     orientation: [1, 0, 0, 0]
-    gripper_pos_command: 0.03
+    gripper_pos_command: 0.0
     dwell_seconds: 0.5
     center: [0, 0, 0]
     radius: -1
-  - position: [0.62, 0.15, 0.06]
+  - position: [0.62, 0.154, 0.06]
     orientation: [1, 0, 0, 0]
-    gripper_pos_command: -0.05
-    dwell_seconds: 0.5
-    center: [0, 0, 0]
-    radius: -1
-  - position: [0.62, 0.15, 0.08]
-    orientation: [1, 0, 0, 0]
-    gripper_pos_command: -0.05
-    dwell_seconds: 0.5
-    center: [0, 0, 0]
-    radius: -1
-  - position: [0.62, 0.17, 0.08]
-    orientation: [1, 0, 0, 0]
-    gripper_pos_command: -0.05
-    dwell_seconds: 0.5
-    center: [0, 0, 0]
-    radius: -1
-  - position: [0.62, 0.17, 0.08]
-    orientation: [0.9659258, 0, -0.258819, 0, ]
-    gripper_pos_command: -0.05
-    dwell_seconds: 0.5
-    center: [0, 0, 0]
-    radius: -1
-  - position: [0.62, 0.17, 0.08]
-    orientation: [1, 0, 0, 0]
-    gripper_pos_command: -0.05
-    dwell_seconds: 0.5
-    center: [0, 0, 0]
-    radius: -1
-  - position: [0.62, 0.17, 0.08]
-    orientation: [0.9659258, 0, 0.258819, 0, ]
-    gripper_pos_command: -0.05
+    gripper_pos_command: 0.0
     dwell_seconds: 0.5
     center: [0, 0, 0]
     radius: -1
 
+  # # for inserting timing belt without MPC
+  # - position: [0.48226, 0.154, 0.1]
+  #   orientation: [1, 0, 0, 0]
+  #   gripper_pos_command: 0.02
+  #   dwell_seconds: 0.5
+  #   center: [0, 0, 0]
+  #   radius: -1
+  # - position: [0.62, 0.154, 0.1]
+  #   orientation: [0.9990482, 0.0436194, 0, 0]
+  #   gripper_pos_command: 0.02
+  #   dwell_seconds: 0.5
+  #   center: [0, 0, 0]
+  #   radius: -1
+  # - position: [0.62, 0.154, 0.06]
+  #   orientation: [0.9990482, 0.0436194, 0, 0]
+  #   gripper_pos_command: 0.005
+  #   dwell_seconds: 0.5
+  #   center: [0, 0, 0]
+  #   radius: -1
+  # - position: [0.62, 0.154, 0.06]
+  #   orientation: [0.9990482, 0.0436194, 0, 0]
+  #   gripper_pos_command: -0.05
+  #   dwell_seconds: 0.5
+  #   center: [0, 0, 0]
+  #   radius: -1
+  # - position: [0.62, 0.154, 0.065]
+  #   orientation: [0.9990482, 0.0436194, 0, 0]
+  #   gripper_pos_command: -0.05
+  #   dwell_seconds: 0.5
+  #   center: [0, 0, 0]
+  #   radius: -1
+  # - position: [0.62, 0.195, 0.065]
+  #   orientation: [0.9990482, 0.0436194, 0, 0]
+  #   gripper_pos_command: -0.05
+  #   dwell_seconds: 0.5
+  #   center: [0, 0, 0]
+  #   radius: -1
+  # - position: [0.62, 0.195, 0.065]
+  #   orientation: [0.9838704, 0.0429567, 0.1734829, 0.0075744]
+  #   gripper_pos_command: -0.05
+  #   dwell_seconds: 0.5
+  #   center: [0, 0, 0]
+  #   radius: -1
+  # - position: [0.62, 0.195, 0.058]
+  #   orientation: [0.9838704, 0.0429567, 0.1734829, 0.0075744]
+  #   gripper_pos_command: -0.05
+  #   dwell_seconds: 0.5
+  #   center: [0, 0, 0]
+  #   radius: -1
+  # - position: [0.62, 0.195, 0.055]
+  #   orientation: [0.9838704, 0.0429567, 0.1734829, 0.0075744]
+  #   gripper_pos_command: 0.02
+  #   dwell_seconds: 0.5
+  #   center: [0, 0, 0]
+  #   radius: -1
+
 # Define target poses for OSC (after MPC)
-osc_target_poses_post_mpc: []
+osc_target_poses_post_mpc:
+  - position: [0.62, 0.18, 0.1]
+    orientation: [1, 0, 0, 0]
+    gripper_pos_command: 0.0
+    dwell_seconds: 0.5
+    center: [0, 0, 0]
+    radius: -1
+  - position: [0.62, 0.182, 0.05]
+    orientation: [1, 0, 0, 0]
+    gripper_pos_command: 0.0
+    dwell_seconds: 0.5
+    center: [0, 0, 0]
+    radius: -1
+  - position: [0.62, 0.182, 0.1]
+    orientation: [1, 0, 0, 0]
+    gripper_pos_command: 0.0
+    dwell_seconds: 0.5
+    center: [0, 0, 0]
+    radius: -1
 # Tolerances for reaching targets in predefined motion and MPC.
 predefined_motion_position_tolerance: 0.005 # m
 predefined_motion_orientation_tolerance: 0.1 # rad
-mpc_position_tolerance: 0.012
+mpc_position_tolerance: 0.005
 mpc_orientation_tolerance: 0.3 # rad (0.2 radians = 11.5 degrees)
-mpc_warmup_iterations: 500 # Number of C3+ solve iterations before outputting trajectory (0 = no warm-up)
+mpc_warmup_iterations: 5 # Number of C3+ solve iterations before outputting trajectory (0 = no warm-up)
 verbose: true # Enable verbose debug printing
 
 assembly_c3_options_file: "examples/magna/parameters/timing_belt_c3_options_generated.yaml"

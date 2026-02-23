@@ -258,7 +258,7 @@ class TimingBeltController : public drake::systems::LeafSystem<double> {
 
   // Execution trajectory
   mutable LcmTrajectory execution_lcm_traj_;
-  mutable double gripper_pos_command_ = 0.025;
+  mutable double gripper_pos_command_ = 0.0;
 
   // Planned keypoints trajectory
   mutable LcmTrajectory planned_keypoints_lcm_traj_;

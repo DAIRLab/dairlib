@@ -48,6 +48,7 @@ struct TimingBeltControllerParams {
       osc_target_poses_post_mpc;
   std::vector<Eigen::VectorXd> target_lcs_states;
   MagnaVisualizerParams visualizer_params;
+  int lcs_num_velocities;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -75,7 +76,7 @@ struct TimingBeltControllerParams {
     a->Visit(DRAKE_NVP(assembly_c3_options_file));
     a->Visit(DRAKE_NVP(lcm_channels_file));
     a->Visit(DRAKE_NVP(visualizer_params_file));
-
+    a->Visit(DRAKE_NVP(lcs_num_velocities));
     // Initialize target_lcs_states after loading from YAML
     InitTargetLcsStates();
 
@@ -99,7 +100,7 @@ struct TimingBeltControllerParams {
     }
     // All target positions should have the same size
     int position_size = static_cast<int>(target_lcs_positions[0].size());
-    int lcs_state_dim = position_size * 2;  // positions + velocities
+    int lcs_state_dim = position_size + lcs_num_velocities;  // positions + velocities
 
     for (size_t i = 0; i < target_lcs_positions.size(); ++i) {
       const auto& target_pos = target_lcs_positions[i];

@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 OUTPUT_FILE = "examples/magna/urdf/timing_belt_task/timing_belt.urdf"
 
 # Ellipse Parameters
-SEMI_AXIS_A = 0.130  # X-axis radius (meters)
-SEMI_AXIS_B = 0.080  # Y-axis radius (meters)
+SEMI_AXIS_A = 0.136  # X-axis radius (meters)
+SEMI_AXIS_B = 0.08  # Y-axis radius (meters)
 NUM_RODS = 67  # Number of segments in the belt
 
 # Rod Geometry (Box)

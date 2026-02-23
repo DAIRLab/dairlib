@@ -13,6 +13,7 @@ num_timing_belt_elements: 67
 
 # Define target LCS states for CI-MPC
 target_lcs_positions: []
+lcs_num_velocities: 146
 
 # Define target poses for OSC (before MPC)
 osc_target_poses_pre_mpc:

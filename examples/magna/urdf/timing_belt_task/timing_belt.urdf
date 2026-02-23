@@ -59,7 +59,7 @@
   <joint name="joint_0_yaw" type="revolute">
     <parent link="rod_0"/>
     <child link="dummy_0_1"/>
-    <origin xyz="0.009920 0.001003 0.000000" rpy="0.000000 0.000000 0.200333"/>
+    <origin xyz="0.010219 0.001114 0.000000" rpy="0.000000 0.000000 0.215536"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -108,7 +108,7 @@
   <joint name="joint_1_yaw" type="revolute">
     <parent link="rod_1"/>
     <child link="dummy_1_2"/>
-    <origin xyz="0.009927 0.000945 0.000000" rpy="0.000000 0.000000 0.186647"/>
+    <origin xyz="0.010230 0.001036 0.000000" rpy="0.000000 0.000000 0.197885"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -157,7 +157,7 @@
   <joint name="joint_2_yaw" type="revolute">
     <parent link="rod_2"/>
     <child link="dummy_2_3"/>
-    <origin xyz="0.009940 0.000841 0.000000" rpy="0.000000 0.000000 0.164954"/>
+    <origin xyz="0.010247 0.000903 0.000000" rpy="0.000000 0.000000 0.171003"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -206,7 +206,7 @@
   <joint name="joint_3_yaw" type="revolute">
     <parent link="rod_3"/>
     <child link="dummy_3_4"/>
-    <origin xyz="0.009952 0.000725 0.000000" rpy="0.000000 0.000000 0.141725"/>
+    <origin xyz="0.010262 0.000760 0.000000" rpy="0.000000 0.000000 0.143610"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -255,7 +255,7 @@
   <joint name="joint_4_yaw" type="revolute">
     <parent link="rod_4"/>
     <child link="dummy_4_5"/>
-    <origin xyz="0.009962 0.000619 0.000000" rpy="0.000000 0.000000 0.120830"/>
+    <origin xyz="0.010273 0.000636 0.000000" rpy="0.000000 0.000000 0.120105"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -304,7 +304,7 @@
   <joint name="joint_5_yaw" type="revolute">
     <parent link="rod_5"/>
     <child link="dummy_5_6"/>
-    <origin xyz="0.009968 0.000529 0.000000" rpy="0.000000 0.000000 0.103561"/>
+    <origin xyz="0.010281 0.000536 0.000000" rpy="0.000000 0.000000 0.101422"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -353,7 +353,7 @@
   <joint name="joint_6_yaw" type="revolute">
     <parent link="rod_6"/>
     <child link="dummy_6_7"/>
-    <origin xyz="0.009973 0.000458 0.000000" rpy="0.000000 0.000000 0.089834"/>
+    <origin xyz="0.010286 0.000459 0.000000" rpy="0.000000 0.000000 0.087018"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -402,7 +402,7 @@
   <joint name="joint_7_yaw" type="revolute">
     <parent link="rod_7"/>
     <child link="dummy_7_8"/>
-    <origin xyz="0.009976 0.000403 0.000000" rpy="0.000000 0.000000 0.079095"/>
+    <origin xyz="0.010289 0.000399 0.000000" rpy="0.000000 0.000000 0.076004"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -451,7 +451,7 @@
   <joint name="joint_8_yaw" type="revolute">
     <parent link="rod_8"/>
     <child link="dummy_8_9"/>
-    <origin xyz="0.009978 0.000359 0.000000" rpy="0.000000 0.000000 0.070735"/>
+    <origin xyz="0.010291 0.000354 0.000000" rpy="0.000000 0.000000 0.067576"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -500,7 +500,7 @@
   <joint name="joint_9_yaw" type="revolute">
     <parent link="rod_9"/>
     <child link="dummy_9_10"/>
-    <origin xyz="0.009980 0.000325 0.000000" rpy="0.000000 0.000000 0.064236"/>
+    <origin xyz="0.010292 0.000319 0.000000" rpy="0.000000 0.000000 0.061108"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -549,7 +549,7 @@
   <joint name="joint_10_yaw" type="revolute">
     <parent link="rod_10"/>
     <child link="dummy_10_11"/>
-    <origin xyz="0.009981 0.000299 0.000000" rpy="0.000000 0.000000 0.059193"/>
+    <origin xyz="0.010294 0.000293 0.000000" rpy="0.000000 0.000000 0.056137"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -598,7 +598,7 @@
   <joint name="joint_11_yaw" type="revolute">
     <parent link="rod_11"/>
     <child link="dummy_11_12"/>
-    <origin xyz="0.009982 0.000279 0.000000" rpy="0.000000 0.000000 0.055304"/>
+    <origin xyz="0.010294 0.000272 0.000000" rpy="0.000000 0.000000 0.052331"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -647,7 +647,7 @@
   <joint name="joint_12_yaw" type="revolute">
     <parent link="rod_12"/>
     <child link="dummy_12_13"/>
-    <origin xyz="0.009982 0.000263 0.000000" rpy="0.000000 0.000000 0.052347"/>
+    <origin xyz="0.010295 0.000257 0.000000" rpy="0.000000 0.000000 0.049453"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -696,7 +696,7 @@
   <joint name="joint_13_yaw" type="revolute">
     <parent link="rod_13"/>
     <child link="dummy_13_14"/>
-    <origin xyz="0.009983 0.000252 0.000000" rpy="0.000000 0.000000 0.050164"/>
+    <origin xyz="0.010295 0.000245 0.000000" rpy="0.000000 0.000000 0.047336"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -745,7 +745,7 @@
   <joint name="joint_14_yaw" type="revolute">
     <parent link="rod_14"/>
     <child link="dummy_14_15"/>
-    <origin xyz="0.009983 0.000244 0.000000" rpy="0.000000 0.000000 0.048642"/>
+    <origin xyz="0.010295 0.000237 0.000000" rpy="0.000000 0.000000 0.045865"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -794,7 +794,7 @@
   <joint name="joint_15_yaw" type="revolute">
     <parent link="rod_15"/>
     <child link="dummy_15_16"/>
-    <origin xyz="0.009983 0.000239 0.000000" rpy="0.000000 0.000000 0.047706"/>
+    <origin xyz="0.010296 0.000232 0.000000" rpy="0.000000 0.000000 0.044962"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -843,7 +843,7 @@
   <joint name="joint_16_yaw" type="revolute">
     <parent link="rod_16"/>
     <child link="dummy_16_17"/>
-    <origin xyz="0.009983 0.000236 0.000000" rpy="0.000000 0.000000 0.047313"/>
+    <origin xyz="0.010296 0.000230 0.000000" rpy="0.000000 0.000000 0.044583"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -892,7 +892,7 @@
   <joint name="joint_17_yaw" type="revolute">
     <parent link="rod_17"/>
     <child link="dummy_17_18"/>
-    <origin xyz="0.009983 0.000237 0.000000" rpy="0.000000 0.000000 0.047444"/>
+    <origin xyz="0.010296 0.000230 0.000000" rpy="0.000000 0.000000 0.044708"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -941,7 +941,7 @@
   <joint name="joint_18_yaw" type="revolute">
     <parent link="rod_18"/>
     <child link="dummy_18_19"/>
-    <origin xyz="0.009983 0.000239 0.000000" rpy="0.000000 0.000000 0.048104"/>
+    <origin xyz="0.010296 0.000233 0.000000" rpy="0.000000 0.000000 0.045346"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -990,7 +990,7 @@
   <joint name="joint_19_yaw" type="revolute">
     <parent link="rod_19"/>
     <child link="dummy_19_20"/>
-    <origin xyz="0.009983 0.000245 0.000000" rpy="0.000000 0.000000 0.049325"/>
+    <origin xyz="0.010295 0.000238 0.000000" rpy="0.000000 0.000000 0.046525"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -1039,7 +1039,7 @@
   <joint name="joint_20_yaw" type="revolute">
     <parent link="rod_20"/>
     <child link="dummy_20_21"/>
-    <origin xyz="0.009983 0.000254 0.000000" rpy="0.000000 0.000000 0.051167"/>
+    <origin xyz="0.010295 0.000247 0.000000" rpy="0.000000 0.000000 0.048308"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -1088,7 +1088,7 @@
   <joint name="joint_21_yaw" type="revolute">
     <parent link="rod_21"/>
     <child link="dummy_21_22"/>
-    <origin xyz="0.009982 0.000266 0.000000" rpy="0.000000 0.000000 0.053720"/>
+    <origin xyz="0.010295 0.000259 0.000000" rpy="0.000000 0.000000 0.050788"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -1137,7 +1137,7 @@
   <joint name="joint_22_yaw" type="revolute">
     <parent link="rod_22"/>
     <child link="dummy_22_23"/>
-    <origin xyz="0.009981 0.000282 0.000000" rpy="0.000000 0.000000 0.057120"/>
+    <origin xyz="0.010294 0.000275 0.000000" rpy="0.000000 0.000000 0.054105"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -1186,7 +1186,7 @@
   <joint name="joint_23_yaw" type="revolute">
     <parent link="rod_23"/>
     <child link="dummy_23_24"/>
-    <origin xyz="0.009981 0.000303 0.000000" rpy="0.000000 0.000000 0.061553"/>
+    <origin xyz="0.010293 0.000297 0.000000" rpy="0.000000 0.000000 0.058459"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -1235,7 +1235,7 @@
   <joint name="joint_24_yaw" type="revolute">
     <parent link="rod_24"/>
     <child link="dummy_24_25"/>
-    <origin xyz="0.009979 0.000330 0.000000" rpy="0.000000 0.000000 0.067281"/>
+    <origin xyz="0.010292 0.000325 0.000000" rpy="0.000000 0.000000 0.064130"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -1284,7 +1284,7 @@
   <joint name="joint_25_yaw" type="revolute">
     <parent link="rod_25"/>
     <child link="dummy_25_26"/>
-    <origin xyz="0.009978 0.000366 0.000000" rpy="0.000000 0.000000 0.074652"/>
+    <origin xyz="0.010291 0.000361 0.000000" rpy="0.000000 0.000000 0.071510"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -1333,7 +1333,7 @@
   <joint name="joint_26_yaw" type="revolute">
     <parent link="rod_26"/>
     <child link="dummy_26_27"/>
-    <origin xyz="0.009975 0.000411 0.000000" rpy="0.000000 0.000000 0.084130"/>
+    <origin xyz="0.010288 0.000408 0.000000" rpy="0.000000 0.000000 0.081141"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -1382,7 +1382,7 @@
   <joint name="joint_27_yaw" type="revolute">
     <parent link="rod_27"/>
     <child link="dummy_27_28"/>
-    <origin xyz="0.009972 0.000469 0.000000" rpy="0.000000 0.000000 0.096285"/>
+    <origin xyz="0.010285 0.000470 0.000000" rpy="0.000000 0.000000 0.093740"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -1431,7 +1431,7 @@
   <joint name="joint_28_yaw" type="revolute">
     <parent link="rod_28"/>
     <child link="dummy_28_29"/>
-    <origin xyz="0.009967 0.000543 0.000000" rpy="0.000000 0.000000 0.111728"/>
+    <origin xyz="0.010279 0.000551 0.000000" rpy="0.000000 0.000000 0.110178"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -1480,7 +1480,7 @@
   <joint name="joint_29_yaw" type="revolute">
     <parent link="rod_29"/>
     <child link="dummy_29_30"/>
-    <origin xyz="0.009959 0.000635 0.000000" rpy="0.000000 0.000000 0.130858"/>
+    <origin xyz="0.010271 0.000655 0.000000" rpy="0.000000 0.000000 0.131258"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -1529,7 +1529,7 @@
   <joint name="joint_30_yaw" type="revolute">
     <parent link="rod_30"/>
     <child link="dummy_30_31"/>
-    <origin xyz="0.009949 0.000744 0.000000" rpy="0.000000 0.000000 0.153217"/>
+    <origin xyz="0.010259 0.000783 0.000000" rpy="0.000000 0.000000 0.156989"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -1578,7 +1578,7 @@
   <joint name="joint_31_yaw" type="revolute">
     <parent link="rod_31"/>
     <child link="dummy_31_32"/>
-    <origin xyz="0.009937 0.000860 0.000000" rpy="0.000000 0.000000 0.176356"/>
+    <origin xyz="0.010243 0.000926 0.000000" rpy="0.000000 0.000000 0.184969"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -1627,7 +1627,7 @@
   <joint name="joint_32_yaw" type="revolute">
     <parent link="rod_32"/>
     <child link="dummy_32_33"/>
-    <origin xyz="0.009925 0.000959 0.000000" rpy="0.000000 0.000000 0.194930"/>
+    <origin xyz="0.010226 0.001054 0.000000" rpy="0.000000 0.000000 0.208501"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -1676,7 +1676,7 @@
   <joint name="joint_33_yaw" type="revolute">
     <parent link="rod_33"/>
     <child link="dummy_33_34"/>
-    <origin xyz="0.009919 0.001006 0.000000" rpy="0.000000 0.000000 0.202214"/>
+    <origin xyz="0.010218 0.001118 0.000000" rpy="0.000000 0.000000 0.218005"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -1725,7 +1725,7 @@
   <joint name="joint_34_yaw" type="revolute">
     <parent link="rod_34"/>
     <child link="dummy_34_35"/>
-    <origin xyz="0.009923 0.000982 0.000000" rpy="0.000000 0.000000 0.194930"/>
+    <origin xyz="0.010223 0.001085 0.000000" rpy="0.000000 0.000000 0.208501"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -1774,7 +1774,7 @@
   <joint name="joint_35_yaw" type="revolute">
     <parent link="rod_35"/>
     <child link="dummy_35_36"/>
-    <origin xyz="0.009934 0.000897 0.000000" rpy="0.000000 0.000000 0.176356"/>
+    <origin xyz="0.010238 0.000973 0.000000" rpy="0.000000 0.000000 0.184969"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -1823,7 +1823,7 @@
   <joint name="joint_36_yaw" type="revolute">
     <parent link="rod_36"/>
     <child link="dummy_36_37"/>
-    <origin xyz="0.009946 0.000783 0.000000" rpy="0.000000 0.000000 0.153217"/>
+    <origin xyz="0.010255 0.000830 0.000000" rpy="0.000000 0.000000 0.156989"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -1872,7 +1872,7 @@
   <joint name="joint_37_yaw" type="revolute">
     <parent link="rod_37"/>
     <child link="dummy_37_38"/>
-    <origin xyz="0.009957 0.000670 0.000000" rpy="0.000000 0.000000 0.130858"/>
+    <origin xyz="0.010268 0.000695 0.000000" rpy="0.000000 0.000000 0.131258"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -1921,7 +1921,7 @@
   <joint name="joint_38_yaw" type="revolute">
     <parent link="rod_38"/>
     <child link="dummy_38_39"/>
-    <origin xyz="0.009965 0.000572 0.000000" rpy="0.000000 0.000000 0.111728"/>
+    <origin xyz="0.010277 0.000583 0.000000" rpy="0.000000 0.000000 0.110178"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -1970,7 +1970,7 @@
   <joint name="joint_39_yaw" type="revolute">
     <parent link="rod_39"/>
     <child link="dummy_39_40"/>
-    <origin xyz="0.009971 0.000492 0.000000" rpy="0.000000 0.000000 0.096285"/>
+    <origin xyz="0.010283 0.000495 0.000000" rpy="0.000000 0.000000 0.093740"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -2019,7 +2019,7 @@
   <joint name="joint_40_yaw" type="revolute">
     <parent link="rod_40"/>
     <child link="dummy_40_41"/>
-    <origin xyz="0.009975 0.000429 0.000000" rpy="0.000000 0.000000 0.084130"/>
+    <origin xyz="0.010287 0.000427 0.000000" rpy="0.000000 0.000000 0.081141"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -2068,7 +2068,7 @@
   <joint name="joint_41_yaw" type="revolute">
     <parent link="rod_41"/>
     <child link="dummy_41_42"/>
-    <origin xyz="0.009977 0.000380 0.000000" rpy="0.000000 0.000000 0.074652"/>
+    <origin xyz="0.010290 0.000375 0.000000" rpy="0.000000 0.000000 0.071510"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -2117,7 +2117,7 @@
   <joint name="joint_42_yaw" type="revolute">
     <parent link="rod_42"/>
     <child link="dummy_42_43"/>
-    <origin xyz="0.009979 0.000341 0.000000" rpy="0.000000 0.000000 0.067281"/>
+    <origin xyz="0.010292 0.000336 0.000000" rpy="0.000000 0.000000 0.064130"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -2166,7 +2166,7 @@
   <joint name="joint_43_yaw" type="revolute">
     <parent link="rod_43"/>
     <child link="dummy_43_44"/>
-    <origin xyz="0.009980 0.000311 0.000000" rpy="0.000000 0.000000 0.061553"/>
+    <origin xyz="0.010293 0.000305 0.000000" rpy="0.000000 0.000000 0.058459"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -2215,7 +2215,7 @@
   <joint name="joint_44_yaw" type="revolute">
     <parent link="rod_44"/>
     <child link="dummy_44_45"/>
-    <origin xyz="0.009981 0.000288 0.000000" rpy="0.000000 0.000000 0.057120"/>
+    <origin xyz="0.010294 0.000282 0.000000" rpy="0.000000 0.000000 0.054105"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -2264,7 +2264,7 @@
   <joint name="joint_45_yaw" type="revolute">
     <parent link="rod_45"/>
     <child link="dummy_45_46"/>
-    <origin xyz="0.009982 0.000271 0.000000" rpy="0.000000 0.000000 0.053720"/>
+    <origin xyz="0.010295 0.000264 0.000000" rpy="0.000000 0.000000 0.050788"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -2313,7 +2313,7 @@
   <joint name="joint_46_yaw" type="revolute">
     <parent link="rod_46"/>
     <child link="dummy_46_47"/>
-    <origin xyz="0.009982 0.000257 0.000000" rpy="0.000000 0.000000 0.051167"/>
+    <origin xyz="0.010295 0.000251 0.000000" rpy="0.000000 0.000000 0.048308"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -2362,7 +2362,7 @@
   <joint name="joint_47_yaw" type="revolute">
     <parent link="rod_47"/>
     <child link="dummy_47_48"/>
-    <origin xyz="0.009983 0.000248 0.000000" rpy="0.000000 0.000000 0.049325"/>
+    <origin xyz="0.010295 0.000241 0.000000" rpy="0.000000 0.000000 0.046525"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -2411,7 +2411,7 @@
   <joint name="joint_48_yaw" type="revolute">
     <parent link="rod_48"/>
     <child link="dummy_48_49"/>
-    <origin xyz="0.009983 0.000241 0.000000" rpy="0.000000 0.000000 0.048104"/>
+    <origin xyz="0.010295 0.000234 0.000000" rpy="0.000000 0.000000 0.045346"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -2460,7 +2460,7 @@
   <joint name="joint_49_yaw" type="revolute">
     <parent link="rod_49"/>
     <child link="dummy_49_50"/>
-    <origin xyz="0.009983 0.000237 0.000000" rpy="0.000000 0.000000 0.047444"/>
+    <origin xyz="0.010296 0.000231 0.000000" rpy="0.000000 0.000000 0.044708"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -2509,7 +2509,7 @@
   <joint name="joint_50_yaw" type="revolute">
     <parent link="rod_50"/>
     <child link="dummy_50_51"/>
-    <origin xyz="0.009983 0.000236 0.000000" rpy="0.000000 0.000000 0.047313"/>
+    <origin xyz="0.010296 0.000229 0.000000" rpy="0.000000 0.000000 0.044583"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -2558,7 +2558,7 @@
   <joint name="joint_51_yaw" type="revolute">
     <parent link="rod_51"/>
     <child link="dummy_51_52"/>
-    <origin xyz="0.009983 0.000238 0.000000" rpy="0.000000 0.000000 0.047706"/>
+    <origin xyz="0.010296 0.000231 0.000000" rpy="0.000000 0.000000 0.044962"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -2607,7 +2607,7 @@
   <joint name="joint_52_yaw" type="revolute">
     <parent link="rod_52"/>
     <child link="dummy_52_53"/>
-    <origin xyz="0.009983 0.000242 0.000000" rpy="0.000000 0.000000 0.048642"/>
+    <origin xyz="0.010295 0.000235 0.000000" rpy="0.000000 0.000000 0.045865"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -2656,7 +2656,7 @@
   <joint name="joint_53_yaw" type="revolute">
     <parent link="rod_53"/>
     <child link="dummy_53_54"/>
-    <origin xyz="0.009983 0.000249 0.000000" rpy="0.000000 0.000000 0.050164"/>
+    <origin xyz="0.010295 0.000242 0.000000" rpy="0.000000 0.000000 0.047336"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -2705,7 +2705,7 @@
   <joint name="joint_54_yaw" type="revolute">
     <parent link="rod_54"/>
     <child link="dummy_54_55"/>
-    <origin xyz="0.009982 0.000259 0.000000" rpy="0.000000 0.000000 0.052347"/>
+    <origin xyz="0.010295 0.000252 0.000000" rpy="0.000000 0.000000 0.049453"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -2754,7 +2754,7 @@
   <joint name="joint_55_yaw" type="revolute">
     <parent link="rod_55"/>
     <child link="dummy_55_56"/>
-    <origin xyz="0.009982 0.000273 0.000000" rpy="0.000000 0.000000 0.055304"/>
+    <origin xyz="0.010294 0.000267 0.000000" rpy="0.000000 0.000000 0.052331"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -2803,7 +2803,7 @@
   <joint name="joint_56_yaw" type="revolute">
     <parent link="rod_56"/>
     <child link="dummy_56_57"/>
-    <origin xyz="0.009981 0.000292 0.000000" rpy="0.000000 0.000000 0.059193"/>
+    <origin xyz="0.010294 0.000285 0.000000" rpy="0.000000 0.000000 0.056137"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -2852,7 +2852,7 @@
   <joint name="joint_57_yaw" type="revolute">
     <parent link="rod_57"/>
     <child link="dummy_57_58"/>
-    <origin xyz="0.009980 0.000316 0.000000" rpy="0.000000 0.000000 0.064236"/>
+    <origin xyz="0.010293 0.000310 0.000000" rpy="0.000000 0.000000 0.061108"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -2901,7 +2901,7 @@
   <joint name="joint_58_yaw" type="revolute">
     <parent link="rod_58"/>
     <child link="dummy_58_59"/>
-    <origin xyz="0.009979 0.000347 0.000000" rpy="0.000000 0.000000 0.070735"/>
+    <origin xyz="0.010291 0.000342 0.000000" rpy="0.000000 0.000000 0.067576"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -2950,7 +2950,7 @@
   <joint name="joint_59_yaw" type="revolute">
     <parent link="rod_59"/>
     <child link="dummy_59_60"/>
-    <origin xyz="0.009977 0.000387 0.000000" rpy="0.000000 0.000000 0.079095"/>
+    <origin xyz="0.010289 0.000383 0.000000" rpy="0.000000 0.000000 0.076004"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -2999,7 +2999,7 @@
   <joint name="joint_60_yaw" type="revolute">
     <parent link="rod_60"/>
     <child link="dummy_60_61"/>
-    <origin xyz="0.009974 0.000438 0.000000" rpy="0.000000 0.000000 0.089834"/>
+    <origin xyz="0.010287 0.000437 0.000000" rpy="0.000000 0.000000 0.087018"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -3048,7 +3048,7 @@
   <joint name="joint_61_yaw" type="revolute">
     <parent link="rod_61"/>
     <child link="dummy_61_62"/>
-    <origin xyz="0.009970 0.000504 0.000000" rpy="0.000000 0.000000 0.103561"/>
+    <origin xyz="0.010282 0.000508 0.000000" rpy="0.000000 0.000000 0.101422"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -3097,7 +3097,7 @@
   <joint name="joint_62_yaw" type="revolute">
     <parent link="rod_62"/>
     <child link="dummy_62_63"/>
-    <origin xyz="0.009964 0.000587 0.000000" rpy="0.000000 0.000000 0.120830"/>
+    <origin xyz="0.010275 0.000600 0.000000" rpy="0.000000 0.000000 0.120105"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -3146,7 +3146,7 @@
   <joint name="joint_63_yaw" type="revolute">
     <parent link="rod_63"/>
     <child link="dummy_63_64"/>
-    <origin xyz="0.009955 0.000688 0.000000" rpy="0.000000 0.000000 0.141725"/>
+    <origin xyz="0.010265 0.000716 0.000000" rpy="0.000000 0.000000 0.143610"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -3195,7 +3195,7 @@
   <joint name="joint_64_yaw" type="revolute">
     <parent link="rod_64"/>
     <child link="dummy_64_65"/>
-    <origin xyz="0.009943 0.000802 0.000000" rpy="0.000000 0.000000 0.164954"/>
+    <origin xyz="0.010251 0.000854 0.000000" rpy="0.000000 0.000000 0.171003"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -3244,7 +3244,7 @@
   <joint name="joint_65_yaw" type="revolute">
     <parent link="rod_65"/>
     <child link="dummy_65_66"/>
-    <origin xyz="0.009930 0.000914 0.000000" rpy="0.000000 0.000000 0.186647"/>
+    <origin xyz="0.010234 0.000995 0.000000" rpy="0.000000 0.000000 0.197885"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />
@@ -3293,7 +3293,7 @@
   <joint name="joint_66_yaw" type="revolute">
     <parent link="rod_66"/>
     <child link="dummy_66_67"/>
-    <origin xyz="0.009921 0.000991 0.000000" rpy="0.000000 0.000000 0.200333"/>
+    <origin xyz="0.010220 0.001097 0.000000" rpy="0.000000 0.000000 0.215536"/>
     <axis xyz="0 0 1"/>
     <limit effort="1000" velocity="100" lower="-1.57" upper="1.57"/>
     <dynamics damping="0.2" />

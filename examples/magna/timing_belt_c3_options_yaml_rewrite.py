@@ -21,15 +21,15 @@ def save_yaml(path, data):
 
 
 N_BELT_SEGMENTS = 67
-Q_EE_POSITION = [550, 550, 550]
-Q_EE_ORIENTATION = [20, 20, 20]
+Q_EE_POSITION = [0, 0, 0]
+Q_EE_ORIENTATION = [0, 0, 0]
 Q_EE_LINEAR_VELOCITY = [1, 1, 1]
-Q_EE_ANGULAR_VELOCITY = [20, 20, 20]
-Q_FIRST_BELT_SEGMENT_ORIENTATION = [0, 0, 0, 0]
-Q_FIRST_BELT_SEGMENT_POSITION = [0, 0, 0]
+Q_EE_ANGULAR_VELOCITY = [1, 1, 1]
+Q_FIRST_BELT_SEGMENT_ORIENTATION = [1, 1, 1, 1]
+Q_FIRST_BELT_SEGMENT_POSITION = [1, 1, 1]
 Q_FIRST_BELT_SEGMENT_ANGULAR_VELOCITY = [1, 1, 1]
 Q_FIRST_BELT_SEGMENT_LINEAR_VELOCITY = [1, 1, 1]
-Q_REVOLUTE_JOINTS_POSITIONS = [0] * 2 * N_BELT_SEGMENTS
+Q_REVOLUTE_JOINTS_POSITIONS = [1] * 2 * N_BELT_SEGMENTS
 Q_REVOLUTE_JOINTS_VELOCITIES = [0] * 2 * N_BELT_SEGMENTS
 PLANNING_HORIZON = 7
 w_Q = 80
@@ -37,12 +37,12 @@ w_R = 80
 w_G = 0.2
 w_U = 0.5
 
-N_BELT_TOP_PLATE_LARGE_PULLEY_CONTACT_PAIRS = 5
-N_BELT_BODY_LARGE_PULLEY_CONTACT_PAIRS = 0
-N_BELT_TOP_PLATE_SMALL_PULLEY_CONTACT_PAIRS = 0
-N_BELT_BODY_SMALL_PULLEY_CONTACT_PAIRS = 4
+N_BELT_TOP_PLATE_LARGE_PULLEY_CONTACT_PAIRS = 0
+N_BELT_BODY_LARGE_PULLEY_CONTACT_PAIRS = 3
+N_BELT_TOP_PLATE_SMALL_PULLEY_CONTACT_PAIRS = 3
+N_BELT_BODY_SMALL_PULLEY_CONTACT_PAIRS = 0
 N_EE_TOP_PLATE_SMALL_PULLEY_CONTACT_PAIRS = 1
-N_EE_BELT_CONTACT_PAIRS = 0
+N_EE_BELT_CONTACT_PAIRS = 3
 
 STATE_DIM = (
     len(Q_EE_POSITION)
@@ -63,7 +63,7 @@ N_CONTACT_PAIRS = (
     + N_BELT_TOP_PLATE_SMALL_PULLEY_CONTACT_PAIRS
     + N_BELT_BODY_SMALL_PULLEY_CONTACT_PAIRS
     + N_EE_TOP_PLATE_SMALL_PULLEY_CONTACT_PAIRS
-    # + N_EE_BELT_CONTACT_PAIRS
+    + N_EE_BELT_CONTACT_PAIRS
 )
 
 
@@ -114,10 +114,10 @@ def update_c3_options(yaml_path):
         ]
     ]
     timing_belt_c3_options_yaml["resolve_as_planar_contacts_list"] = [0] * len(
-        timing_belt_c3_options_yaml["resolve_contacts_to_lists"]
+        timing_belt_c3_options_yaml["resolve_contacts_to_lists"][0]
     )
     timing_belt_c3_options_yaml["mu_per_pair_type"] = [0.823] * len(
-        timing_belt_c3_options_yaml["resolve_contacts_to_lists"]
+        timing_belt_c3_options_yaml["resolve_contacts_to_lists"][0]
     )
 
     timing_belt_c3_options_yaml["q_vector"] = build_q_vector()

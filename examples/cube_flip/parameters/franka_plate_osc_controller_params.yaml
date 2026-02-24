@@ -7,7 +7,7 @@ end_effector_name: plate
 tool_attachment_frame: [0, 0, 0.107]
 #tool_attachment_frame: [0, 0, 0.307]
 
-neutral_position: [0.35, -0.35, 0.5]
+neutral_position: [0.4, -0.35, 0.5]
 
 x_scale: 0.1
 y_scale: 0.1
@@ -23,7 +23,7 @@ impact_tau: 0.0001
 mu: 1.0 # unused
 end_effector_acceleration: 50
 track_end_effector_orientation: true
-cancel_gravity_compensation: false
+cancel_gravity_compensation: false # CHECK FOR HARDWARE
 enforce_acceleration_constraints: true
 publish_debug_info: true
 
@@ -51,28 +51,28 @@ EndEffectorW:
 EndEffectorKp:
   [ 200, 0, 0,
     0, 200, 0,
-    0, 0, 400 ]
+    0, 0, 600 ]
 EndEffectorKd:
-  [ 60, 0, 0,
-    0, 60, 0,
-    0, 0, 130 ]
+  [ 80, 0, 0,
+    0, 80, 0,
+    0, 0, 150 ]
 EndEffectorRotW:
   [ 300, 0, 0,
     0, 300, 0,
     0, 0, 300 ]
 EndEffectorRotKp:
-  [ 300, 0, 0,
-    0, 300, 0,
-    0, 0, 300]
+  [ 150, 0, 0,
+    0, 150, 0,
+    0, 0, 150]
 EndEffectorRotKd:
-  [ 12, 0, 0,
-    0, 12, 0,
-    0, 0, 12 ]
+  [ 18, 0, 0,
+    0, 18, 0,
+    0, 0, 18 ]
 LambdaEndEffectorW:
-  [ 600, 0, 0,
-    0, 600, 0,
-    0, 0, 600 ]
+  [ 400, 0, 0,
+    0, 400, 0,
+    0, 0, 400 ]
 LambdaEndEffectorTauW:
-  [ 1000, 0, 0,
-    0, 1000, 0,
-    0, 0, 1000 ]
+  [ 800, 0, 0,
+    0, 800, 0,
+    0, 0, 800 ]

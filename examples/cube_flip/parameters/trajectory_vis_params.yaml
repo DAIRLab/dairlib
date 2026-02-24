@@ -5,10 +5,10 @@ visualizer_publish_rate: 30
 
 # match with iC3 params
 ic3_num_iters: 10
-trajectory_length: 24
+trajectory_length: 48
 
 iter_downsampling_factor: 2
-downsampling_factor: 2
+downsampling_factor: 4
 
 trajectory_lcm_channel_x: "iC3_TRAJECTORY_X"
 trajectory_lcm_channel_u: "iC3_TRAJECTORY_U"

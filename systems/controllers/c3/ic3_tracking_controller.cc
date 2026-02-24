@@ -315,15 +315,15 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
     VectorXd upper_bound(VectorXd::Zero(n_x_));
 
     // Plate position constraints
-    lower_bound[0] = -0.15;
-    lower_bound[1] = -0.15;
+    lower_bound[0] = -0.1;
+    lower_bound[1] = -0.1;
     lower_bound[2] = -0.3; 
     lower_bound[3] = -0.4;
     lower_bound[4] = -0.4;
   
     // Plate rotation constraints
-    upper_bound[0] = 0.15;
-    upper_bound[1] = 0.15;
+    upper_bound[0] = 0.1;
+    upper_bound[1] = 0.1;
     upper_bound[2] = 0.3;
     upper_bound[3] = 0.4;
     upper_bound[4] = 0.4;
@@ -344,8 +344,8 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
     VectorXd lower_bound_u(VectorXd::Zero(n_u_));
     VectorXd upper_bound_u(VectorXd::Zero(n_u_));
 
-    lower_bound_u << -0.1, -0.1, 3, -0.6, -0.6;
-    upper_bound_u << -0.1, 0.1, 7, 0.6, 0.6;
+    lower_bound_u << -1, -1, 3, -0.6, -0.6;
+    upper_bound_u << 1, 1, 7, 0.6, 0.6;
 
     c3_->AddVectorLinearConstraint(A_u, lower_bound_u, upper_bound_u, 2);    
    
@@ -381,7 +381,7 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
     mutable_x_pred = z_sol[N_ - 1].segment(0, n_x_);
   }
 
-  //std::cout << "c3 solve time: " << c3_solve_time << std::endl;
+  std::cout << "c3 solve time: " << c3_solve_time << std::endl;
 
   if (ic3_timestep >= 0 && ic3_timestep <= ic3_options_.N) {
     //std::cout << "ic3_timestep: " << ic3_timestep << ": ";

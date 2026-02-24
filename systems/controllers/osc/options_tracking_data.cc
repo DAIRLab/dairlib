@@ -3,6 +3,8 @@
 
 #include "drake/common/trajectories/piecewise_quaternion.h"
 
+#include <iostream>
+
 using Eigen::MatrixXd;
 using Eigen::Quaterniond;
 using Eigen::Vector3d;
@@ -85,7 +87,9 @@ void OptionsTrackingData::UpdateFilters(double t) {
   }
 }
 
-void OptionsTrackingData::UpdateYError() { error_y_ = y_des_ - y_; }
+void OptionsTrackingData::UpdateYError() { 
+  error_y_ = y_des_ - y_; 
+}
 
 void OptionsTrackingData::UpdateYdotError(const Eigen::VectorXd& v_proj) {
   error_ydot_ = ydot_des_ - ydot_;

@@ -55,9 +55,10 @@ void EndEffectorOrientationTrajectoryGenerator::CalcTraj(
       dynamic_cast<const PiecewiseQuaternionSlerp<double>*>(&trajectory_input);
     *casted_traj = *traj; 
 
-    // std::cout << "orientation time range: ["
-    //         << trajectory_input.start_time() << ", "
-    //         << trajectory_input.end_time() << "]\n";
+    std::cout << casted_traj->value(casted_traj->start_time()).transpose() << std::endl;
+    std::cout << casted_traj->value((casted_traj->start_time() 
+                      + casted_traj->end_time()) / 2).transpose() << std::endl;
+    std::cout << casted_traj->value(casted_traj->end_time()).transpose() << std::endl;
 
     
   } else {

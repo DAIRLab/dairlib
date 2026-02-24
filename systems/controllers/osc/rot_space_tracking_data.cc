@@ -53,7 +53,7 @@ void RotTaskSpaceTrackingData::UpdateY(const VectorXd& x_w_spr,
                      frame_poses_[fsm_state_].linear());
   Eigen::Vector4d y_4d;
   y_4d << y_quat.w(), y_quat.vec();
-  y_ = y_4d;
+  y_ = y_4d.normalized();
 }
 
 void RotTaskSpaceTrackingData::UpdateYError() {
@@ -71,12 +71,15 @@ void RotTaskSpaceTrackingData::UpdateYError() {
 void RotTaskSpaceTrackingData::UpdateYdot(
     const VectorXd& x_w_spr, const Context<double>& context_w_spr) {
   MatrixXd J_spatial(6, plant_w_spr_.num_velocities());
+
   plant_w_spr_.CalcJacobianSpatialVelocity(
       context_w_spr, JacobianWrtVariable::kV, *body_frames_w_spr_[fsm_state_],
       frame_poses_[fsm_state_].translation(), world_w_spr_, world_w_spr_,
       &J_spatial);
+
   ydot_ = J_spatial.block(0, 0, kSpaceDim, J_spatial.cols()) *
           x_w_spr.tail(plant_w_spr_.num_velocities());
+
 }
 
 void RotTaskSpaceTrackingData::UpdateYdotError(const Eigen::VectorXd& v_proj) {
@@ -96,6 +99,7 @@ void RotTaskSpaceTrackingData::UpdateJ(const VectorXd& x_wo_spr,
       frame_poses_[fsm_state_].translation(), world_wo_spr_, world_wo_spr_,
       &J_spatial);
   J_ = J_spatial.block(0, 0, kSpaceDim, J_spatial.cols());
+
 }
 
 void RotTaskSpaceTrackingData::UpdateJdotV(

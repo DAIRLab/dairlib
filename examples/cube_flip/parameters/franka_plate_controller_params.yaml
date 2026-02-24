@@ -11,7 +11,7 @@ c3_options_file: examples/cube_flip/parameters/plate_c3_options.yaml
 include_end_effector_orientation: true
 
 run_open_loop: false
-track_dynamically_feasible: true
+track_dynamically_feasible: true # false is currently broken
 
 tool_attachment_frame: [0, 0, 0.107]
 #tool_attachment_frame: [0, 0, 0.307]

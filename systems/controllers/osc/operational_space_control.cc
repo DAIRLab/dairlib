@@ -866,27 +866,23 @@ VectorXd OperationalSpaceControl::SolveQp(
       const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
       const VectorXd constant_term = (JdotV_t - ddy_t);
 
-      if (!ddy_t.allFinite()) {
-          std::cout << "ddy_t contains NaN or Inf!" << std::endl;
-      }
-      if (!W.allFinite()) {
-          std::cout << "W contains NaN or Inf!" << std::endl;
-      }
-      if (!J_t.allFinite()) {
-          std::cout << "J_t contains NaN or Inf!" << std::endl;
-      }
-      if (!JdotV_t.allFinite()) {
-          std::cout << "JdotV_t contains NaN or Inf!" << std::endl;
-      }
-      if (!constant_term.allFinite()) {
-          std::cout << "constant_term contains NaN or Inf!" << std::endl;
-      }
+      MatrixXd cost_regularized = J_t.transpose() * W * J_t 
+        + 1e-8 * MatrixXd::Identity(J_t.cols(), J_t.cols());
+
+
+      Eigen::FullPivLU<MatrixXd> lu(cost_regularized);
+      Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(cost_regularized);
+
+      std::cout << "cost matrix rank: " << lu.rank() << std::endl;
+      std::cout << "min eigenvalue: " << es.eigenvalues().minCoeff() << std::endl;
+
 
 
       tracking_costs_.at(i)->UpdateCoefficients(
-          2 * J_t.transpose() * W * J_t,
+          2 * cost_regularized,
           2 * J_t.transpose() * W * (JdotV_t - ddy_t),
           constant_term.transpose() * W * constant_term, true);
+
     } else {
       std::cout << "WARNING: ZERO TRACKING COST" << std::endl;
       tracking_costs_.at(i)->UpdateCoefficients(MatrixXd::Zero(n_v_, n_v_),
@@ -1073,6 +1069,8 @@ VectorXd OperationalSpaceControl::SolveQp(
       std::cout << "Iterations: " << details.iter << std::endl;;
       std::cout << "primal_res: " << details.primal_res << std::endl;
       std::cout << "dual_res: " << details.dual_res << std::endl;
+
+      while(true) {}
     }
   } else {
     std::cout << "SOLVER FAILED" << std::endl;
@@ -1142,9 +1140,6 @@ void OperationalSpaceControl::UpdateImpactInvariantProjection(
         const auto& traj =
             input_traj->get_value<drake::trajectories::Trajectory<double>>();
 
-        std::cout << "traj fsm " << "[" << traj.start_time() << ", " << traj.end_time() << "]" << std::endl;
-        std::cout << traj.value(traj.start_time()).transpose() << std::endl;
-        std::cout << traj.value(traj.end_time()).transpose() << std::endl;
 
         tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
                               *context_wo_spr_, traj, t,

@@ -102,8 +102,6 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
     x_hat = SimulateLCS(x_hat.col(0), u_hat, lcs);
   }
 
-
-
 	int ee_pos_idx = 0;
   int ee_rot_idx = 3; 
   int force_idx = 0;
@@ -135,8 +133,9 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
 		torques.col(1).segment(0, 2) = u_hat.col(0).segment(torque_idx, 2);
 
     time_vector = VectorXd::Zero(2);
-    time_vector[1] = c3_options_.dt;
-    //time_vector[1] = 0.1;
+    time_vector[0] = c3_solution->time_vector_.cast<double>()(0);
+    time_vector[1] = time_vector[0] + c3_options_.dt;
+    // time_vector[1] = c3_options_.dt;
 
 	} else {
     x_hat = x_hat.rightCols(x_hat.cols() - 1); // Remove x0 for size consistency

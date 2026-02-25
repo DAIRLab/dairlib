@@ -7,7 +7,7 @@
 #include "common/find_resource.h"
 
 #include "examples/cube_flip/parameter_headers/trajectory_visualizer_params.h"
-#include "examples/cube_flip/trajectory_lcm_parser.h"
+#include "examples/cube_flip/trajectory_lcm_parser_plate.h"
 
 
 #include "multibody/multibody_utils.h"
@@ -53,7 +53,7 @@ int do_main(int argc, char* argv[]) {
 
   // Load parameters.
   CubeFlipVisualizerParams vis_params =
-      drake::yaml::LoadYamlFile<CubeFlipVisualizerParams>("examples/cube_flip/parameters/trajectory_vis_params.yaml");
+      drake::yaml::LoadYamlFile<CubeFlipVisualizerParams>("examples/cube_flip/parameters/trajectory_vis_params_plate.yaml");
 
   drake::systems::DiagramBuilder<double> builder;
 
@@ -64,7 +64,7 @@ int do_main(int argc, char* argv[]) {
   Parser parser(&plant, &scene_graph);
   parser.SetAutoRenaming(true);
 
-  parser.AddModels(vis_params.plate_file);
+  parser.AddModels(vis_params.ee_file);
   parser.AddModels(vis_params.cube_file);
 
   plant.Finalize();
@@ -87,19 +87,19 @@ int do_main(int argc, char* argv[]) {
 
 
   auto trajectory_splitter =
-      builder.AddSystem<TrajectoryLcmParser>(vis_params, 0, "cube_trajectory_splitter");
+      builder.AddSystem<TrajectoryLcmParserPlate>(vis_params, 0, "cube_trajectory_splitter");
 
   auto plate_trajectory_splitter = 
-      builder.AddSystem<TrajectoryLcmParser>(vis_params, 1, "plate_trajectory_splitter");
+      builder.AddSystem<TrajectoryLcmParserPlate>(vis_params, 1, "plate_trajectory_splitter");
 
   auto c3_plate_trajectory_splitter = 
-      builder.AddSystem<TrajectoryLcmParser>(vis_params, 1, "c3_plate_trajectory_splitter");
+      builder.AddSystem<TrajectoryLcmParserPlate>(vis_params, 1, "c3_plate_trajectory_splitter");
 
   auto c3_trajectory_splitter =
-      builder.AddSystem<TrajectoryLcmParser>(vis_params, 0, "c3_trajectory_splitter");
+      builder.AddSystem<TrajectoryLcmParserPlate>(vis_params, 0, "c3_trajectory_splitter");
 
   auto real_trajectory_splitter =
-      builder.AddSystem<TrajectoryLcmParser>(vis_params, 0, "real_trajectory_splitter");
+      builder.AddSystem<TrajectoryLcmParserPlate>(vis_params, 0, "real_trajectory_splitter");
 
   drake::geometry::MeshcatVisualizerParams params;
   params.publish_period = 1.0 / vis_params.visualizer_publish_rate;
@@ -139,21 +139,21 @@ int do_main(int argc, char* argv[]) {
 
     auto* plate_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
             meshcat,
-            FindResourceOrThrow(vis_params.plate_file),
+            FindResourceOrThrow(vis_params.ee_file),
             "positions_" + std::to_string(i), 
             "orientations_" + std::to_string(i),
             "plate_iteration_" + std::to_string(i), 
             vis_params.trajectory_length / vis_params.downsampling_factor, true,
-            vis_params.plate_trace_color);
+            vis_params.ee_trace_color);
 
     auto* c3_plate_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat,
-        FindResourceOrThrow(vis_params.plate_file),
+        FindResourceOrThrow(vis_params.ee_file),
         "positions_" + std::to_string(i), 
         "orientations_" + std::to_string(i),
         "c3_plate_iteration_" + std::to_string(i), 
         vis_params.trajectory_length / vis_params.downsampling_factor, true,
-        vis_params.plate_trace_color);
+        vis_params.ee_trace_color);
 
     auto* real_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat,

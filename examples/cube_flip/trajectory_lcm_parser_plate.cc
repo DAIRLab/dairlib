@@ -1,11 +1,11 @@
 #include <iostream>
-#include "examples/cube_flip/trajectory_lcm_parser.h"
+#include "examples/cube_flip/trajectory_lcm_parser_plate.h"
 
 #include "common/find_resource.h"
 
 namespace dairlib {
 
-TrajectoryLcmParser::TrajectoryLcmParser(CubeFlipVisualizerParams& vis_params, int object, std::string name)
+TrajectoryLcmParserPlate::TrajectoryLcmParserPlate(CubeFlipVisualizerParams& vis_params, int object, std::string name)
 : num_trajectories_(vis_params.ic3_num_iters),
   N_(vis_params.trajectory_length) {
 
@@ -43,7 +43,7 @@ TrajectoryLcmParser::TrajectoryLcmParser(CubeFlipVisualizerParams& vis_params, i
 
   }
 
-  void TrajectoryLcmParser::GetTrajectory(
+  void TrajectoryLcmParserPlate::GetTrajectory(
     const drake::systems::Context<double>& context, 
     lcmt_timestamped_saved_traj* traj, int i, int step, int object) const {
 
@@ -122,10 +122,6 @@ TrajectoryLcmParser::TrajectoryLcmParser(CubeFlipVisualizerParams& vis_params, i
       orientation_traj.datatypes = std::vector<std::string>(orientations_downsampled.rows(), "double"); 
       orientation_traj.datapoints = orientations_downsampled;
       orientation_traj.time_vector = timestamps;
-
-      std::cout << i << std::endl;
-      std::cout << "o cols " <<  orientations_downsampled.cols() << std::endl;
-      std::cout << "p cols " << positions_downsampled.cols() << std::endl << std::endl;
 
       LcmTrajectory::Trajectory position_traj;
       position_traj.traj_name = position_trajectory_name;

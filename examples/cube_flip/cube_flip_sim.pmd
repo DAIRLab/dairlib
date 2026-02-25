@@ -17,13 +17,13 @@ group "debug" {
 }
 
 group "operator" {
-    cmd "trajectory_visualizer" {
-        exec = "bazel-bin/examples/cube_flip/trajectory_visualizer";
+    cmd "plate_trajectory_visualizer" {
+        exec = "bazel-bin/examples/cube_flip/trajectory_visualizer_plate";
         host = "localhost";
     }
 
-    cmd "franka_trajectory_visualizer" {
-        exec = "bazel-bin/examples/cube_flip/trajectory_visualizer_franka";
+    cmd "hand_trajectory_visualizer" {
+        exec = "bazel-bin/examples/cube_flip/trajectory_visualizer_hand";
         host = "localhost";
     }
 

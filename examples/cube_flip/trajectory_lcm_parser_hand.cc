@@ -1,12 +1,12 @@
 #include <iostream>
-#include "examples/cube_flip/trajectory_lcm_parser_franka.h"
+#include "examples/cube_flip/trajectory_lcm_parser_hand.h"
 
 #include "common/find_resource.h"
 
 namespace dairlib {
 
-TrajectoryLcmParserFranka::TrajectoryLcmParserFranka(CubeFlipVisualizerParams& vis_params, 
-    int is_franka, std::string name)
+TrajectoryLcmParserHand::TrajectoryLcmParserHand(CubeFlipVisualizerParams& vis_params, 
+    int is_finger, std::string name)
 : num_trajectories_(vis_params.ic3_num_iters),
   N_(vis_params.trajectory_length) {
 
@@ -30,11 +30,11 @@ TrajectoryLcmParserFranka::TrajectoryLcmParserFranka(CubeFlipVisualizerParams& v
             return std::make_unique<drake::Value<lcmt_timestamped_saved_traj>>(lcmt_timestamped_saved_traj());
           },
           // Calculator: lambda capturing ‘this’ and ‘i’
-          [this, i, vis_params, is_franka](const drake::systems::Context<double>& context,
+          [this, i, vis_params, is_finger](const drake::systems::Context<double>& context,
                     drake::AbstractValue* output_abstract) {
             lcmt_timestamped_saved_traj& traj = output_abstract->get_mutable_value<lcmt_timestamped_saved_traj>();
             int step = vis_params.downsampling_factor;
-            this->GetTrajectory(context, &traj, i, step, is_franka);
+            this->GetTrajectory(context, &traj, i, step, is_finger);
           });
 
       trajectory_output_ports_.push_back(port);
@@ -44,9 +44,9 @@ TrajectoryLcmParserFranka::TrajectoryLcmParserFranka(CubeFlipVisualizerParams& v
 
   }
 
-  void TrajectoryLcmParserFranka::GetTrajectory(
+  void TrajectoryLcmParserHand::GetTrajectory(
     const drake::systems::Context<double>& context, 
-    lcmt_timestamped_saved_traj* traj, int i, int step, int is_franka) const {
+    lcmt_timestamped_saved_traj* traj, int i, int step, int is_finger) const {
 
     const auto* abstract_input = this->EvalAbstractInput(context, trajectory_input_port_);
     if (abstract_input == nullptr) return;
@@ -67,22 +67,23 @@ TrajectoryLcmParserFranka::TrajectoryLcmParserFranka(CubeFlipVisualizerParams& v
       MatrixXd data = trajectory_i.datapoints;
 
       MatrixXd orientations = MatrixXd::Zero(4, N_);
-      MatrixXd positions = MatrixXd::Zero(3, N_);
-      if (is_franka == 0) {
-        int cube_orientation_index = 7;
-        int cube_position_index = 11;
+      for (int i = 0; i < N_; i++) {
+        orientations.col(i)(0) = 1;
+      }
+      MatrixXd positions;
+      if (is_finger == 0) {
+        int cube_orientation_index = 12;
+        int cube_position_index = 16;
 
+        positions = MatrixXd::Zero(3, N_);
         orientations = data.block(cube_orientation_index, 0, 4, N_);
         positions = data.block(cube_position_index, 0, 3, N_);
-        
 
-      } else if (is_franka == 1) {
-        int plate_orientation_index = 0;
-        int plate_position_index = 4;    
+      } else if (is_finger == 1) {
+        int finger_position_index = 0;    
+        positions = MatrixXd::Zero(12, N_);
+        positions = data.block(finger_position_index, 0, 12, N_);
 
-        orientations = data.block(plate_orientation_index, 0, 4, N_);
-        positions = data.block(plate_position_index, 0, 3, N_);
-        
       } else {
         std::cout << "BAD OBJECT INDEX SIDOGHPOISJDGPWE" << std::endl;
       }
@@ -106,10 +107,6 @@ TrajectoryLcmParserFranka::TrajectoryLcmParserFranka(CubeFlipVisualizerParams& v
       orientation_traj.datatypes = std::vector<std::string>(orientations_downsampled.rows(), "double"); 
       orientation_traj.datapoints = orientations_downsampled;
       orientation_traj.time_vector = timestamps;
-
-      std::cout << i << std::endl;
-      std::cout << "o cols " <<  orientations_downsampled.cols() << std::endl;
-      std::cout << "p cols " << positions_downsampled.cols() << std::endl << std::endl;
 
       LcmTrajectory::Trajectory position_traj;
       position_traj.traj_name = position_trajectory_name;

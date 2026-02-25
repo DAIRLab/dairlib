@@ -28,10 +28,11 @@ using dairlib::lcmt_timestamped_saved_traj;
 
 namespace dairlib {
 
-class TrajectoryLcmParser : public drake::systems::LeafSystem<double> {
+class TrajectoryLcmParserHand : public drake::systems::LeafSystem<double> {
   public:
-    // object: 0 = cube, 1 = plate
-    explicit TrajectoryLcmParser(CubeFlipVisualizerParams& vis_params, int object, std::string name);
+    // object: 0 = cube, 1 = is finger
+    explicit TrajectoryLcmParserHand(CubeFlipVisualizerParams& vis_params, 
+        int is_finger, std::string name);
 
     const InputPort<double>& get_input_port_trajectory() const {
       return this->get_input_port(trajectory_input_port_);

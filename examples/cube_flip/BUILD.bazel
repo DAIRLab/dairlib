@@ -15,15 +15,15 @@ cc_library(
 )
 
 cc_binary(
-    name = "trajectory_visualizer",
-    srcs = ["trajectory_visualizer.cc"],
+    name = "trajectory_visualizer_plate",
+    srcs = ["trajectory_visualizer_plate.cc"],
     data = [
         ":urdfs",
         "//examples/cube_flip:parameters",
     ],
     deps = [
         "//examples/cube_flip/parameter_headers:trajectory_visualizer_params",
-        "//examples/cube_flip:trajectory_lcm_parser",
+        "//examples/cube_flip:trajectory_lcm_parser_plate",
         "//common",
         "//multibody:utils",
         "//multibody:visualization_utils",
@@ -43,16 +43,15 @@ cc_binary(
 )
 
 cc_binary(
-    name = "trajectory_visualizer_franka",
-    srcs = ["trajectory_visualizer_franka.cc"],
+    name = "trajectory_visualizer_hand",
+    srcs = ["trajectory_visualizer_hand.cc"],
     data = [
         ":urdfs",
         "//examples/cube_flip:parameters",
-        "@drake_models//:franka_description",
     ],
     deps = [
         "//examples/cube_flip/parameter_headers:trajectory_visualizer_params",
-        "//examples/cube_flip:trajectory_lcm_parser_franka",
+        "//examples/cube_flip:trajectory_lcm_parser_hand",
         "//common",
         "//multibody:utils",
         "//multibody:visualization_utils",
@@ -72,9 +71,9 @@ cc_binary(
 )
 
 cc_library(
-    name = "trajectory_lcm_parser",
-    srcs = ["trajectory_lcm_parser.cc"],
-    hdrs = ["trajectory_lcm_parser.h"],
+    name = "trajectory_lcm_parser_plate",
+    srcs = ["trajectory_lcm_parser_plate.cc"],
+    hdrs = ["trajectory_lcm_parser_plate.h"],
     deps = [
         "//lcmtypes:lcmt_robot",
         "//lcm:lcm_trajectory_saver",
@@ -84,9 +83,9 @@ cc_library(
 )
 
 cc_library(
-    name = "trajectory_lcm_parser_franka",
-    srcs = ["trajectory_lcm_parser_franka.cc"],
-    hdrs = ["trajectory_lcm_parser_franka.h"],
+    name = "trajectory_lcm_parser_hand",
+    srcs = ["trajectory_lcm_parser_hand.cc"],
+    hdrs = ["trajectory_lcm_parser_hand.h"],
     deps = [
         "//lcmtypes:lcmt_robot",
         "//lcm:lcm_trajectory_saver",

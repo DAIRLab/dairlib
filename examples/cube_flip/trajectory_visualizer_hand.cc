@@ -7,7 +7,7 @@
 #include "common/find_resource.h"
 
 #include "examples/cube_flip/parameter_headers/trajectory_visualizer_params.h"
-#include "examples/cube_flip/trajectory_lcm_parser_franka.h"
+#include "examples/cube_flip/trajectory_lcm_parser_hand.h"
 
 
 #include "multibody/multibody_utils.h"
@@ -54,7 +54,7 @@ int do_main(int argc, char* argv[]) {
 
   // Load parameters.
   CubeFlipVisualizerParams vis_params =
-      drake::yaml::LoadYamlFile<CubeFlipVisualizerParams>("examples/cube_flip/parameters/trajectory_vis_params_franka.yaml");
+      drake::yaml::LoadYamlFile<CubeFlipVisualizerParams>("examples/cube_flip/parameters/trajectory_vis_params_hand.yaml");
 
   drake::systems::DiagramBuilder<double> builder;
 
@@ -98,21 +98,17 @@ int do_main(int argc, char* argv[]) {
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           vis_params.trajectory_lcm_channel_x_real, lcm));
 
-  auto trajectory_sub_plate = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          vis_params.trajectory_lcm_channel_plate, lcm));
-
-  auto trajectory_splitter =
-      builder.AddSystem<TrajectoryLcmParserFranka>(vis_params, 0, "cube_trajectory_splitter");
-
-  auto plate_trajectory_splitter = 
-      builder.AddSystem<TrajectoryLcmParserFranka>(vis_params, 1, "plate_trajectory_splitter");
-
-  auto c3_trajectory_splitter =
-      builder.AddSystem<TrajectoryLcmParserFranka>(vis_params, 0, "c3_trajectory_splitter");
+  auto cube_trajectory_splitter =
+      builder.AddSystem<TrajectoryLcmParserHand>(vis_params, 0, "cube_trajectory_splitter");
 
   auto real_trajectory_splitter =
-      builder.AddSystem<TrajectoryLcmParserFranka>(vis_params, 0, "real_trajectory_splitter");
+      builder.AddSystem<TrajectoryLcmParserHand>(vis_params, 0, "real_trajectory_splitter");
+
+  auto c3_trajectory_splitter =
+      builder.AddSystem<TrajectoryLcmParserHand>(vis_params, 0, "c3_trajectory_splitter");
+
+  auto hand_splitter = 
+      builder.AddSystem<TrajectoryLcmParserHand>(vis_params, 1, "hand_trajectory_splitter");
 
   drake::geometry::MeshcatVisualizerParams params;
   params.publish_period = 1.0 / vis_params.visualizer_publish_rate;
@@ -122,8 +118,8 @@ int do_main(int argc, char* argv[]) {
 
   // Draw trajectory
   int skip_factor = vis_params.iter_downsampling_factor;
-  std::vector<systems::LcmPoseDrawer*> trajectory_drawers;
-  std::vector<systems::LcmPoseDrawer*> plate_trajectory_drawers;
+  std::vector<systems::LcmPoseDrawer*> cube_trajectory_drawers;
+  std::vector<systems::LcmPoseDrawer*> hand_drawers;
   std::vector<systems::LcmPoseDrawer*> c3_trajectory_drawers;
   std::vector<systems::LcmPoseDrawer*> real_trajectory_drawers;
 
@@ -149,14 +145,14 @@ int do_main(int argc, char* argv[]) {
             vis_params.trace_color);
 
 
-    auto* plate_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
+    auto* finger_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
             meshcat,
-            FindResourceOrThrow(vis_params.plate_file),
+            FindResourceOrThrow(vis_params.ee_file),
             "positions_" + std::to_string(i), 
             "orientations_" + std::to_string(i),
-            "plate_iteration_" + std::to_string(i), 
+            "hand_iteration_" + std::to_string(i), 
             vis_params.trajectory_length / vis_params.downsampling_factor, true,
-            vis_params.plate_trace_color);
+            vis_params.ee_trace_color);
 
     auto* real_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat,
@@ -168,23 +164,23 @@ int do_main(int argc, char* argv[]) {
         vis_params.trace_color);
 
 
-    trajectory_drawers.push_back(drawer);
-    plate_trajectory_drawers.push_back(plate_drawer);
+    cube_trajectory_drawers.push_back(drawer);
+    hand_drawers.push_back(finger_drawer);
     c3_trajectory_drawers.push_back(c3_drawer);
     real_trajectory_drawers.push_back(real_drawer);
 
   }
 
-  builder.Connect(trajectory_sub_x->get_output_port(), trajectory_splitter->get_input_port_trajectory());
-  builder.Connect(trajectory_sub_plate->get_output_port(), plate_trajectory_splitter->get_input_port_trajectory());
+  builder.Connect(trajectory_sub_x->get_output_port(), cube_trajectory_splitter->get_input_port_trajectory());
+  builder.Connect(trajectory_sub_x->get_output_port(), hand_splitter->get_input_port_trajectory());
   builder.Connect(trajectory_sub_c3->get_output_port(), c3_trajectory_splitter->get_input_port_trajectory());
   builder.Connect(trajectory_sub_x_real->get_output_port(), real_trajectory_splitter->get_input_port_trajectory());
 
   for (int i = 0; i < vis_params.ic3_num_iters / skip_factor; i++) {
-    builder.Connect(trajectory_splitter->get_output_port(i), 
-        trajectory_drawers.at(i)->get_input_port_trajectory());
-    builder.Connect(plate_trajectory_splitter->get_output_port(i), 
-        plate_trajectory_drawers.at(i)->get_input_port_trajectory());
+    builder.Connect(cube_trajectory_splitter->get_output_port(i), 
+        cube_trajectory_drawers.at(i)->get_input_port_trajectory());
+    builder.Connect(hand_splitter->get_output_port(i), 
+        hand_drawers.at(i)->get_input_port_trajectory());
     builder.Connect(c3_trajectory_splitter->get_output_port(i), 
         c3_trajectory_drawers.at(i)->get_input_port_trajectory());
     builder.Connect(real_trajectory_splitter->get_output_port(i), 
@@ -200,7 +196,7 @@ int do_main(int argc, char* argv[]) {
   std::vector<double> x_des = vis_params.x_des;
   VectorXd xd = Eigen::Map<Eigen::VectorXd>(x_des.data(), x_des.size()); 
 
-  Eigen::Vector4d q_vec = xd.segment(5, 4);
+  Eigen::Vector4d q_vec = xd.segment(12, 4);
 	Eigen::Quaterniond q(q_vec(0), q_vec(1), q_vec(2), q_vec(3));
 	q.normalize();
   RotationMatrixd R_target(q);

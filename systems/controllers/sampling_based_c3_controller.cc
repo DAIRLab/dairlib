@@ -1888,7 +1888,7 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
         verbose_);
     LCSFactoryOptions lcs_factory_options_for_cost = {
         .contact_model = controller_params_.sampling_c3_options.contact_model,
-        .num_contacts = resolved_contact_pairs_for_cost_simulation.size(),
+        .num_contacts = static_cast<int>(resolved_contact_pairs_for_cost_simulation.size()),
         .spring_stiffness = 0.0,
         .num_friction_directions = std::nullopt,
         .num_friction_directions_per_contact =

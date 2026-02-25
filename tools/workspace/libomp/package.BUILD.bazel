@@ -1,8 +1,0 @@
-package(default_visibility = ["//visibility:public"])
-
-cc_library(
-    name = "libomp",
-    hdrs = glob(["include/**"], allow_empty = True),
-    includes = ["include"],
-    srcs = ["lib/libomp.dylib"],
-)

@@ -94,7 +94,7 @@ bazel_dep(name = "c3")
 git_override(
     module_name = "c3",
     remote = "https://github.com/DAIRLab/c3.git",
-    commit = "ee740029598ea0f990cae2beca709d1eeed651f2"
+    commit = "6c59cfe76b134259df7d2489f11f3c8811590827"
 )
 
 
@@ -123,7 +123,7 @@ python_repository = use_repo_rule(
 )
 
 # libomp for OpenMP on macOS
-libomp_extension = use_extension("@dairlib//tools/workspace/libomp:repository.bzl", "libomp_extension")
+libomp_extension = use_extension("@c3//tools/workspace/libomp:repository.bzl", "libomp_extension")
 use_repo(libomp_extension, "libomp")
 
 python_repository(

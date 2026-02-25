@@ -145,15 +145,9 @@ cc_library(
         "@c3//:libc3",
         "@drake//:drake_shared_library",
     ] + select({
-        "@platforms//os:macos": ["@c3//libomp"],
+        "@platforms//os:macos": ["@libomp"],
         "//conditions:default": [],
     }),
-    copts = [
-        "-fopenmp",
-    ],
-    linkopts = [
-        "-lgomp",
-    ],
 )
 
 cc_library(

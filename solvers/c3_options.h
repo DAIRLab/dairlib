@@ -3,7 +3,6 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-
 /* Ways of computing C3 costs after solving the MPC problem:
   0. kSimLCS:                       Simulate the LCS dynamics from the planned
                                     inputs.
@@ -90,7 +89,7 @@ struct C3Options {
   bool penalize_changes_in_u_across_solves;
   std::vector<double> mu;
   double dt;
-  double solve_dt;    // unused
+  double solve_dt;  // unused
   int lcs_dt_resolution;
   double dt_cost;
   int num_friction_directions;
@@ -215,8 +214,8 @@ struct C3Options {
     Eigen::VectorXd u = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(
         this->u_vector.data(), this->u_vector.size());
 
-    DRAKE_DEMAND(g_lambda.size() == num_contacts * num_friction_directions*2);
-    DRAKE_DEMAND(u_lambda.size() == num_contacts * num_friction_directions*2);
+    DRAKE_DEMAND(g_lambda.size() == num_contacts * num_friction_directions * 2);
+    DRAKE_DEMAND(u_lambda.size() == num_contacts * num_friction_directions * 2);
     DRAKE_DEMAND(mu.size() == num_contacts);
     DRAKE_DEMAND(g.size() == u.size());
 

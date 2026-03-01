@@ -339,13 +339,16 @@ ObjectStateReceiver::ObjectStateReceiver(
   velocity_index_map_ =
       multibody::MakeNameToVelocitiesMap(plant, model_instance);
 
+  positions_start_idx_ = std::numeric_limits<int>::max();
+  velocities_start_idx_ = std::numeric_limits<int>::max();
   for (const auto& entry : plant.GetJointIndices(model_instance)) {
     // If joint.num_positions() == 0, then it is a fixed joint.
     // Skip it and fix positions_start_idx_ to be the non fixed joint.
     if (plant.get_joint(entry).num_positions() != 0) {
-      positions_start_idx_ = plant.get_joint(entry).position_start();
-      velocities_start_idx_ = plant.get_joint(entry).velocity_start();
-      break;
+      positions_start_idx_ = std::min(positions_start_idx_,
+                                      plant.get_joint(entry).position_start());
+      velocities_start_idx_ = std::min(velocities_start_idx_,
+                                       plant.get_joint(entry).velocity_start());
     }
   }
   this->DeclareAbstractInputPort("lcmt_object_state",
@@ -468,13 +471,16 @@ ObjectStateSender::ObjectStateSender(
   velocity_index_map_ =
       multibody::MakeNameToVelocitiesMap(plant, model_instance);
 
+  positions_start_idx_ = std::numeric_limits<int>::max();
+  velocities_start_idx_ = std::numeric_limits<int>::max();
   for (const auto& entry : plant.GetJointIndices(model_instance)) {
     // If joint.num_positions() == 0, then it is a fixed joint.
     // Skip it and fix positions_start_idx_ to be the non fixed joint.
     if (plant.get_joint(entry).num_positions() != 0) {
-      positions_start_idx_ = plant.get_joint(entry).position_start();
-      velocities_start_idx_ = plant.get_joint(entry).velocity_start();
-      break;
+      positions_start_idx_ = std::min(positions_start_idx_,
+                                      plant.get_joint(entry).position_start());
+      velocities_start_idx_ = std::min(velocities_start_idx_,
+                                       plant.get_joint(entry).velocity_start());
     }
   }
 

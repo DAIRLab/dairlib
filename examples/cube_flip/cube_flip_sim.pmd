@@ -27,6 +27,11 @@ group "operator" {
         host = "localhost";
     }
 
+    cmd "point_hand_trajectory_visualizer" {
+        exec = "bazel-bin/examples/cube_flip/trajectory_visualizer_point_hand";
+        host = "localhost";
+    }
+
     cmd "visualizer" {
         exec = "bazel-bin/examples/cube_flip/franka_plate_visualizer";
         host = "localhost";

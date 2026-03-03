@@ -105,8 +105,15 @@ LcmPoseDrawer::LcmPoseDrawer(
     alpha_scale = 1.0 * VectorXd::Ones(N_);
   }
 
+  
+  std::string weld_frame_to_world = "";
+  if (model_file.find("allegro_hand_description_right.urdf") != std::string::npos) {
+    weld_frame_to_world = "hand_root";
+  } else if (model_file.find("simplified_hand.sdf") != std::string::npos) {
+    weld_frame_to_world = "point_hand";
+  }
   multipose_visualizers_.push_back(std::make_unique<multibody::MultiposeVisualizer>(
-      model_file, N_, alpha_scale, "", meshcat, system_name, rgb));
+      model_file, N_, alpha_scale, weld_frame_to_world, meshcat, system_name, rgb));
   trajectory_input_port_ =
       this->DeclareAbstractInputPort(
               "lcmt_timestamped_saved_traj",
@@ -116,8 +123,10 @@ LcmPoseDrawer::LcmPoseDrawer(
   // TODO make this not hardcoded
   if (model_file.find("plate.sdf") != std::string::npos) {
     DeclarePerStepDiscreteUpdateEvent(&LcmPoseDrawer::DrawTrajectoryPlate);
-  } else if (model_file.find("simplified_hand.sdf") != std::string::npos) {
+  } else if (model_file.find("allegro_hand_description_right.urdf") != std::string::npos) {
     DeclarePerStepDiscreteUpdateEvent(&LcmPoseDrawer::DrawTrajectoryHand);
+  } else if (model_file.find("simplified_hand.sdf") != std::string::npos) {
+    DeclarePerStepDiscreteUpdateEvent(&LcmPoseDrawer::DrawTrajectoryPointHand);
   } else {
     DeclarePerStepDiscreteUpdateEvent(&LcmPoseDrawer::DrawTrajectory);
   }
@@ -327,7 +336,7 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectoryHand(
       this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
           context, trajectory_input_port_);
   auto lcm_traj = LcmTrajectory(lcmt_traj->saved_traj);
-  MatrixXd object_poses = MatrixXd::Zero(12, N_);
+  MatrixXd object_poses = MatrixXd::Zero(16, N_);
 
   const auto& lcm_translation_traj =
       lcm_traj.GetTrajectory(translation_trajectory_name_);
@@ -336,6 +345,8 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectoryHand(
 
   std::cout << "traj size " << lcm_translation_traj.datapoints.rows() 
     << ", " << lcm_translation_traj.datapoints.cols() << std::endl;
+
+  
 
   // Ignore velocities to just see iC3 trajectory
   auto translation_trajectory =
@@ -361,6 +372,54 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectoryHand(
   return drake::systems::EventStatus::Succeeded();
 }
 
+drake::systems::EventStatus LcmPoseDrawer::DrawTrajectoryPointHand(
+    const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+  if (this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
+              context, trajectory_input_port_)
+          ->utime < 1e-3) {
+    return drake::systems::EventStatus::Succeeded();
+  }
+  const auto& lcmt_traj =
+      this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
+          context, trajectory_input_port_);
+  auto lcm_traj = LcmTrajectory(lcmt_traj->saved_traj);
+  MatrixXd object_poses = MatrixXd::Zero(12, N_);
+
+  const auto& lcm_translation_traj =
+      lcm_traj.GetTrajectory(translation_trajectory_name_);
+
+  Eigen::VectorXd translation_time_vector = PopulateTimeVectorOfLcmTrajectoryIfUnspecified(lcm_translation_traj.time_vector);
+
+  std::cout << "traj size point hand " << lcm_translation_traj.datapoints.rows() 
+    << ", " << lcm_translation_traj.datapoints.cols() << std::endl;
+
+  // Ignore velocities to just see iC3 trajectory
+  auto translation_trajectory =
+    drake::trajectories::PiecewisePolynomial<double>::CubicWithContinuousSecondDerivatives(
+        translation_time_vector,
+        lcm_translation_traj.datapoints);  
+
+  // ASSUMING orientation and translation trajectories have the same breaks.
+  // This recreates the trajectory using the knot points and then evaluates the
+  // trajectory at equal intervals based on the parameters. If the num_poses is
+  // equal to the number of knot points, then the poses will be the same as the
+  // knot points.
+  VectorXd translation_breaks =
+      VectorXd::LinSpaced(N_, translation_time_vector[0],
+                          translation_time_vector.tail(1)[0]);
+  for (int i = 0; i < object_poses.cols(); ++i) {
+    object_poses.col(i) << translation_trajectory.value(translation_breaks(i));  
+  }
+  if (!object_poses.allFinite()) {
+    std::cout << "object_poses not all finite" << std::endl;
+  }
+  //std::cout << "object poses cols: " << object_poses.cols() << std::endl;
+  std::cout << "Before multipose draw poses point " << std::endl;
+  multipose_visualizers_.at(0)->DrawPoses(object_poses);
+  std::cout << "After multipose draw poses point " << std::endl;
+  return drake::systems::EventStatus::Succeeded();
+}
 
 drake::systems::EventStatus LcmPoseDrawer::DrawTrajectoryObjects(
     const Context<double>& context,

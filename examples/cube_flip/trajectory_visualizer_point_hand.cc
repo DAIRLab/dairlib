@@ -7,7 +7,7 @@
 #include "common/find_resource.h"
 
 #include "examples/cube_flip/parameter_headers/trajectory_visualizer_params.h"
-#include "examples/cube_flip/trajectory_lcm_parser_hand.h"
+#include "examples/cube_flip/trajectory_lcm_parser_point_hand.h"
 
 
 #include "multibody/multibody_utils.h"
@@ -54,32 +54,13 @@ int do_main(int argc, char* argv[]) {
 
   // Load parameters.
   CubeFlipVisualizerParams vis_params =
-      drake::yaml::LoadYamlFile<CubeFlipVisualizerParams>("examples/cube_flip/parameters/trajectory_vis_params_hand.yaml");
+      drake::yaml::LoadYamlFile<CubeFlipVisualizerParams>("examples/cube_flip/parameters/trajectory_vis_params_point_hand.yaml");
 
   drake::systems::DiagramBuilder<double> builder;
 
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, 0.001);
   scene_graph.set_name("scene_graph");
 
-  // Build the visualizer plant.
-//   Parser parser(&plant, &scene_graph);
-//   parser.SetAutoRenaming(true);
-
-//   ModelInstanceIndex franka_index = parser.AddModelsFromUrl("package://drake_models/franka_description/urdf/panda_arm.urdf")[0];
-//   ModelInstanceIndex end_effector_index = parser.AddModels(vis_params.plate_file)[0];
-//   ModelInstanceIndex object_index = parser.AddModels(vis_params.cube_file)[0];
-
-//   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-//   plant.WeldFrames(plant.world_frame(),
-//                    plant.GetFrameByName("panda_link0"), X_WI);
-
-//   Eigen::Vector3d tool_attachment_frame(0.15, 0, 0.107);
-//   RigidTransform<double> T_EE_W =
-//       RigidTransform<double>(drake::math::RotationMatrix<double>(),
-//                              tool_attachment_frame);
-//   plant.WeldFrames(
-//       plant.GetFrameByName("panda_link7"),
-//       plant.GetFrameByName("plate", end_effector_index), T_EE_W);
 
   plant.Finalize();
 //   std::cout << "plant built" << std::endl;
@@ -94,21 +75,14 @@ int do_main(int argc, char* argv[]) {
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           vis_params.trajectory_lcm_channel_c3, lcm));
 
-  auto trajectory_sub_x_real = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          vis_params.trajectory_lcm_channel_x_real, lcm));
-
   auto cube_trajectory_splitter =
-      builder.AddSystem<TrajectoryLcmParserHand>(vis_params, 0, "cube_trajectory_splitter");
-
-  auto real_trajectory_splitter =
-      builder.AddSystem<TrajectoryLcmParserHand>(vis_params, 0, "real_trajectory_splitter");
+      builder.AddSystem<TrajectoryLcmParserPointHand>(vis_params, 0, "cube_trajectory_splitter");
 
   auto c3_trajectory_splitter =
-      builder.AddSystem<TrajectoryLcmParserHand>(vis_params, 0, "c3_trajectory_splitter");
+      builder.AddSystem<TrajectoryLcmParserPointHand>(vis_params, 0, "c3_trajectory_splitter");
 
   auto hand_splitter = 
-      builder.AddSystem<TrajectoryLcmParserHand>(vis_params, 1, "hand_trajectory_splitter");
+      builder.AddSystem<TrajectoryLcmParserPointHand>(vis_params, 1, "hand_trajectory_splitter");
 
   drake::geometry::MeshcatVisualizerParams params;
   params.publish_period = 1.0 / vis_params.visualizer_publish_rate;
@@ -121,7 +95,6 @@ int do_main(int argc, char* argv[]) {
   std::vector<systems::LcmPoseDrawer*> cube_trajectory_drawers;
   std::vector<systems::LcmPoseDrawer*> hand_drawers;
   std::vector<systems::LcmPoseDrawer*> c3_trajectory_drawers;
-  std::vector<systems::LcmPoseDrawer*> real_trajectory_drawers;
 
   for (int i = skip_factor - 1; i < vis_params.ic3_num_iters; i += skip_factor) {
     std::cout << "pose drawer " << i << std::endl;
@@ -150,31 +123,19 @@ int do_main(int argc, char* argv[]) {
             FindResourceOrThrow(vis_params.ee_file),
             "positions_" + std::to_string(i), 
             "orientations_" + std::to_string(i),
-            "hand_iteration_" + std::to_string(i), 
+            "point_hand_iteration_" + std::to_string(i), 
             vis_params.trajectory_length / vis_params.downsampling_factor, true,
             vis_params.ee_trace_color);
-
-    auto* real_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat,
-        FindResourceOrThrow(vis_params.cube_file),
-        "positions_" + std::to_string(i), 
-        "orientations_" + std::to_string(i),
-        "real_iteration_" + std::to_string(i), 
-        vis_params.trajectory_length / vis_params.downsampling_factor, true,
-        vis_params.trace_color);
 
 
     cube_trajectory_drawers.push_back(drawer);
     hand_drawers.push_back(finger_drawer);
     c3_trajectory_drawers.push_back(c3_drawer);
-    real_trajectory_drawers.push_back(real_drawer);
-
   }
 
   builder.Connect(trajectory_sub_x->get_output_port(), cube_trajectory_splitter->get_input_port_trajectory());
   builder.Connect(trajectory_sub_x->get_output_port(), hand_splitter->get_input_port_trajectory());
   builder.Connect(trajectory_sub_c3->get_output_port(), c3_trajectory_splitter->get_input_port_trajectory());
-  builder.Connect(trajectory_sub_x_real->get_output_port(), real_trajectory_splitter->get_input_port_trajectory());
 
   for (int i = 0; i < vis_params.ic3_num_iters / skip_factor; i++) {
     builder.Connect(cube_trajectory_splitter->get_output_port(i), 
@@ -183,8 +144,6 @@ int do_main(int argc, char* argv[]) {
         hand_drawers.at(i)->get_input_port_trajectory());
     builder.Connect(c3_trajectory_splitter->get_output_port(i), 
         c3_trajectory_drawers.at(i)->get_input_port_trajectory());
-    builder.Connect(real_trajectory_splitter->get_output_port(i), 
-        real_trajectory_drawers.at(i)->get_input_port_trajectory());
   }
 
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
@@ -196,11 +155,11 @@ int do_main(int argc, char* argv[]) {
   std::vector<double> x_des = vis_params.x_des;
   VectorXd xd = Eigen::Map<Eigen::VectorXd>(x_des.data(), x_des.size()); 
 
-  Eigen::Vector4d q_vec = xd.segment(16, 4);
+  Eigen::Vector4d q_vec = xd.segment(12, 4);
 	Eigen::Quaterniond q(q_vec(0), q_vec(1), q_vec(2), q_vec(3));
 	q.normalize();
   RotationMatrixd R_target(q);
-	RigidTransformd X_WF(R_target, xd.segment(20, 3));
+	RigidTransformd X_WF(R_target, xd.segment(16, 3));
 
 	const double axis_len = 0.2;
 	const double radius = 0.01;

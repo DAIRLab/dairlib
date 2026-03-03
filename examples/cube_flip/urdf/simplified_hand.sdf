@@ -9,11 +9,11 @@
       <!-- ========================= -->
       <link name="fingertip_1">
       <inertial>
-        <mass>0.02</mass>
+        <mass>0.2</mass>
         <inertia>
-          <ixx>8e-7</ixx>
-          <iyy>8e-7</iyy>
-          <izz>8e-7</izz>
+          <ixx>8e-6</ixx>
+          <iyy>8e-6</iyy>
+          <izz>8e-6</izz>
           <ixy>0</ixy>
           <ixz>0</ixz>
           <iyz>0</iyz>
@@ -39,8 +39,21 @@
         </collision>
       </link>
 
+      <link name="base_link_1">
+        <inertial>
+          <mass>1.0e-6</mass>
+          <inertia>
+            <ixx>1.0e-6</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1.0e-6</iyy>
+            <iyz>0</iyz>
+            <izz>1.0e-6</izz>
+          </inertia>
+        </inertial>
+      </link>
       <link name="link_x_1">
-            <inertial>
+        <inertial>
           <mass>1.0e-6</mass>
           <inertia>
             <ixx>1.0e-6</ixx>
@@ -53,10 +66,16 @@
         </inertial>
       </link>
       <joint name="joint_x_1" type="prismatic">
-        <parent>world</parent>
+        <parent>base_link_1</parent>
         <child>link_x_1</child>
         <axis>
           <xyz>1 0 0</xyz>
+          <limit>
+            <effort>5.0 </effort>
+            <velocity>0.5</velocity>
+            <lower> -0.05 </lower>
+            <upper> 0.05 </upper>
+          </limit>  
         </axis>
       </joint>
 
@@ -78,6 +97,12 @@
         <child>link_y_1</child>
         <axis>
           <xyz>0 1 0</xyz>
+           <limit>
+            <effort>5.0 </effort>
+            <velocity>0.5</velocity>
+            <lower> -0.05 </lower>
+            <upper> 0.05 </upper>
+          </limit>
         </axis>
       </joint>
 
@@ -86,6 +111,12 @@
         <child>fingertip_1</child>
         <axis>
           <xyz>0 0 1</xyz>
+          <limit>
+          <effort>5.0 </effort>
+          <velocity>0.5</velocity>
+          <lower> -0.03 </lower>
+          <upper> 0.08 </upper>
+        </limit>
         </axis>
       </joint>
 
@@ -94,11 +125,11 @@
       <!-- ========================= -->
       <link name="fingertip_2">
       <inertial>
-        <mass>0.02</mass>
+        <mass>0.2</mass>
         <inertia>
-          <ixx>8e-7</ixx>
-          <iyy>8e-7</iyy>
-          <izz>8e-7</izz>
+          <ixx>8e-6</ixx>
+          <iyy>8e-6</iyy>
+          <izz>8e-6</izz>
           <ixy>0</ixy>
           <ixz>0</ixz>
           <iyz>0</iyz>
@@ -124,6 +155,19 @@
         </collision>
       </link>
 
+      <link name="base_link_2">
+        <inertial>
+          <mass>1.0e-6</mass>
+          <inertia>
+            <ixx>1.0e-6</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1.0e-6</iyy>
+            <iyz>0</iyz>
+            <izz>1.0e-6</izz>
+          </inertia>
+        </inertial>
+      </link>
       <link name="link_x_2">
         <inertial>
           <mass>1.0e-6</mass>
@@ -138,10 +182,16 @@
         </inertial>
       </link>
       <joint name="joint_x_2" type="prismatic">
-        <parent>world</parent>
+        <parent>base_link_2</parent>
         <child>link_x_2</child>
         <axis>
-          <xyz>1 0 0</xyz>
+            <xyz>1 0 0</xyz>
+          <limit>
+            <effort>5.0 </effort>
+            <velocity>0.5</velocity>
+            <lower> -0.05 </lower>
+            <upper> 0.05 </upper>
+          </limit>
         </axis>
       </joint>
 
@@ -163,6 +213,12 @@
         <child>link_y_2</child>
         <axis>
           <xyz>0 1 0</xyz>
+          <limit>
+            <effort>5.0 </effort>
+            <velocity>0.5</velocity>
+            <lower> -0.05 </lower>
+            <upper> 0.05 </upper>
+          </limit>
         </axis>
       </joint>
 
@@ -171,6 +227,12 @@
         <child>fingertip_2</child>
         <axis>
           <xyz>0 0 1</xyz>
+          <limit>
+            <effort>5.0 </effort>
+            <velocity>0.5</velocity>
+            <lower> -0.03 </lower>
+            <upper> 0.08 </upper>
+          </limit>
         </axis>
       </joint>
 
@@ -179,11 +241,11 @@
       <!-- ========================= -->
       <link name="fingertip_3">
       <inertial>
-        <mass>0.02</mass>
+        <mass>0.2</mass>
         <inertia>
-          <ixx>8e-7</ixx>
-          <iyy>8e-7</iyy>
-          <izz>8e-7</izz>
+          <ixx>8e-6</ixx>
+          <iyy>8e-6</iyy>
+          <izz>8e-6</izz>
           <ixy>0</ixy>
           <ixz>0</ixz>
           <iyz>0</iyz>
@@ -209,6 +271,19 @@
         </collision>
       </link>
 
+      <link name="base_link_3">
+        <inertial>
+          <mass>1.0e-6</mass>
+          <inertia>
+            <ixx>1.0e-6</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1.0e-6</iyy>
+            <iyz>0</iyz>
+            <izz>1.0e-6</izz>
+          </inertia>
+        </inertial>
+      </link>
       <link name="link_x_3">
         <inertial>
           <mass>1.0e-6</mass>
@@ -223,10 +298,16 @@
         </inertial>
       </link>
       <joint name="joint_x_3" type="prismatic">
-        <parent>world</parent>
+        <parent>base_link_3</parent>
         <child>link_x_3</child>
         <axis>
           <xyz>1 0 0</xyz>
+          <limit>
+            <effort>5.0 </effort>
+            <velocity>0.5</velocity>
+            <lower> -0.05 </lower>
+            <upper> 0.05 </upper>
+          </limit>
         </axis>
       </joint>
 
@@ -248,6 +329,12 @@
         <child>link_y_3</child>
         <axis>
           <xyz>0 1 0</xyz>
+          <limit>
+            <effort>5.0 </effort>
+            <velocity>0.5</velocity>
+            <lower> -0.05 </lower>
+            <upper> 0.05 </upper>
+          </limit>
         </axis>
       </joint>
 
@@ -256,6 +343,12 @@
         <child>fingertip_3</child>
         <axis>
           <xyz>0 0 1</xyz>
+          <limit>
+            <effort>5.0 </effort>
+            <velocity>0.5</velocity>
+            <lower> -0.03 </lower>
+            <upper> 0.08 </upper>
+          </limit>
         </axis>
       </joint>
 
@@ -264,11 +357,11 @@
       <!-- ========================= -->
       <link name="fingertip_4">
       <inertial>
-        <mass>0.02</mass>
+        <mass>0.2</mass>
         <inertia>
-          <ixx>8e-7</ixx>
-          <iyy>8e-7</iyy>
-          <izz>8e-7</izz>
+          <ixx>8e-6</ixx>
+          <iyy>8e-6</iyy>
+          <izz>8e-6</izz>
           <ixy>0</ixy>
           <ixz>0</ixz>
           <iyz>0</iyz>
@@ -294,6 +387,19 @@
         </collision>
       </link>
 
+      <link name="base_link_4">
+        <inertial>
+          <mass>1.0e-6</mass>
+          <inertia>
+            <ixx>1.0e-6</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1.0e-6</iyy>
+            <iyz>0</iyz>
+            <izz>1.0e-6</izz>
+          </inertia>
+        </inertial>
+      </link>
       <link name="link_x_4">
         <inertial>
           <mass>1.0e-6</mass>
@@ -308,10 +414,16 @@
         </inertial>
       </link>
       <joint name="joint_x_4" type="prismatic">
-        <parent>world</parent>
+        <parent>base_link_4</parent>
         <child>link_x_4</child>
         <axis>
           <xyz>1 0 0</xyz>
+          <limit>
+            <effort>5.0 </effort>
+            <velocity>0.5</velocity>
+            <lower> -0.05 </lower>
+            <upper> 0.05 </upper>
+          </limit>
         </axis>
       </joint>
 
@@ -333,6 +445,12 @@
         <child>link_y_4</child>
         <axis>
           <xyz>0 1 0</xyz>
+          <limit>
+            <effort>5.0 </effort>
+            <velocity>0.5</velocity>
+            <lower> -0.05 </lower>
+            <upper> 0.05 </upper>
+          </limit>
         </axis>
       </joint>
 
@@ -341,6 +459,12 @@
         <child>fingertip_4</child>
         <axis>
           <xyz>0 0 1</xyz>
+          <limit>
+            <effort>5.0 </effort>
+            <velocity>0.5</velocity>
+            <lower> -0.03 </lower>
+            <upper> 0.08 </upper>
+          </limit>
         </axis>
       </joint>
 

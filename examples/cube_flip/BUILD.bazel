@@ -48,10 +48,40 @@ cc_binary(
     data = [
         ":urdfs",
         "//examples/cube_flip:parameters",
+        "@drake_models//:allegro_hand_description",
     ],
     deps = [
         "//examples/cube_flip/parameter_headers:trajectory_visualizer_params",
         "//examples/cube_flip:trajectory_lcm_parser_hand",
+        "//common",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems/senders:senders",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "//systems/visualization:lcm_visualization_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lopenblas",
+    ],
+)
+
+cc_binary(
+    name = "trajectory_visualizer_point_hand",
+    srcs = ["trajectory_visualizer_point_hand.cc"],
+    data = [
+        ":urdfs",
+        "//examples/cube_flip:parameters",
+        "@drake_models//:allegro_hand_description",
+    ],
+    deps = [
+        "//examples/cube_flip/parameter_headers:trajectory_visualizer_params",
+        "//examples/cube_flip:trajectory_lcm_parser_point_hand",
         "//common",
         "//multibody:utils",
         "//multibody:visualization_utils",
@@ -86,6 +116,18 @@ cc_library(
     name = "trajectory_lcm_parser_hand",
     srcs = ["trajectory_lcm_parser_hand.cc"],
     hdrs = ["trajectory_lcm_parser_hand.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//lcm:lcm_trajectory_saver",
+        "@drake//:drake_shared_library",
+        "//examples/cube_flip/parameter_headers:trajectory_visualizer_params",
+    ],
+)
+
+cc_library(
+    name = "trajectory_lcm_parser_point_hand",
+    srcs = ["trajectory_lcm_parser_point_hand.cc"],
+    hdrs = ["trajectory_lcm_parser_point_hand.h"],
     deps = [
         "//lcmtypes:lcmt_robot",
         "//lcm:lcm_trajectory_saver",

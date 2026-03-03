@@ -1,0 +1,21 @@
+allegro_model: examples/cube_flip/urdf/allegro_hand_description_right.urdf
+object_model: examples/cube_flip/urdf/actual_cube.sdf
+
+osqp_settings_file: examples/cube_flip/parameters/allegro_osqp_settings.yaml
+ic3_options_file: examples/cube_flip/parameters/allegro_iC3_options.yaml
+c3_options_file: examples/cube_flip/parameters/allegro_c3_options.yaml
+
+run_open_loop: false
+track_dynamically_feasible: true # false is currently broken
+
+time_to_wait: 1.0
+
+x_target: [0, 0, 0,
+            0, 0,
+            0, 0, -1, 0,
+            0.13, 0, 0,
+            0, 0, 0, 
+            0, 0,
+            0, 0, 0, 
+            0, 0, 0]
+

@@ -112,6 +112,10 @@ class LcmPoseDrawer : public drake::systems::LeafSystem<double> {
     const drake::systems::Context<double>& context,
     drake::systems::DiscreteValues<double>* discrete_state) const;
 
+  drake::systems::EventStatus DrawTrajectoryPointHand(
+    const drake::systems::Context<double>& context,
+    drake::systems::DiscreteValues<double>* discrete_state) const;
+
   drake::systems::EventStatus DrawTrajectoryObjects(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;

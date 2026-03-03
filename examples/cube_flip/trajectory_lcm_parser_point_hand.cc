@@ -1,11 +1,11 @@
 #include <iostream>
-#include "examples/cube_flip/trajectory_lcm_parser_hand.h"
+#include "examples/cube_flip/trajectory_lcm_parser_point_hand.h"
 
 #include "common/find_resource.h"
 
 namespace dairlib {
 
-TrajectoryLcmParserHand::TrajectoryLcmParserHand(CubeFlipVisualizerParams& vis_params, 
+TrajectoryLcmParserPointHand::TrajectoryLcmParserPointHand(CubeFlipVisualizerParams& vis_params, 
     int is_finger, std::string name)
 : num_trajectories_(vis_params.ic3_num_iters),
   N_(vis_params.trajectory_length) {
@@ -44,7 +44,7 @@ TrajectoryLcmParserHand::TrajectoryLcmParserHand(CubeFlipVisualizerParams& vis_p
 
   }
 
-  void TrajectoryLcmParserHand::GetTrajectory(
+  void TrajectoryLcmParserPointHand::GetTrajectory(
     const drake::systems::Context<double>& context, 
     lcmt_timestamped_saved_traj* traj, int i, int step, int is_finger) const {
 
@@ -72,8 +72,8 @@ TrajectoryLcmParserHand::TrajectoryLcmParserHand(CubeFlipVisualizerParams& vis_p
       }
       MatrixXd positions;
       if (is_finger == 0) {
-        int cube_orientation_index = 16;
-        int cube_position_index = 20;
+        int cube_orientation_index = 12;
+        int cube_position_index = 16;
 
         positions = MatrixXd::Zero(3, N_);
         orientations = data.block(cube_orientation_index, 0, 4, N_);
@@ -81,8 +81,8 @@ TrajectoryLcmParserHand::TrajectoryLcmParserHand(CubeFlipVisualizerParams& vis_p
 
       } else if (is_finger == 1) {
         int finger_position_index = 0;    
-        positions = MatrixXd::Zero(16, N_);
-        positions = data.block(finger_position_index, 0, 16, N_);
+        positions = MatrixXd::Zero(12, N_);
+        positions = data.block(finger_position_index, 0, 12, N_);
 
       } else {
         std::cout << "BAD OBJECT INDEX SIDOGHPOISJDGPWE" << std::endl;

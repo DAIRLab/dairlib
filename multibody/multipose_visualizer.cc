@@ -2,12 +2,14 @@
 
 #include "drake/geometry/scene_graph.h"
 #include "drake/systems/framework/diagram_builder.h"
+#include <iostream> 
 
 using drake::geometry::Meshcat;
 using drake::geometry::SceneGraph;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
+using drake::math::RigidTransform;
 using Eigen::MatrixXd;
 using std::string;
 
@@ -37,6 +39,8 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
   DRAKE_DEMAND(num_poses == alpha_scale.size());
   DiagramBuilder<double> builder;
 
+  std::cout << model_file << std::endl;
+
   SceneGraph<double>* scene_graph{};
   std::tie(plant_, scene_graph) =
       drake::multibody::AddMultibodyPlantSceneGraph(&builder, 0.0);
@@ -48,10 +52,51 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
     auto index = parser.AddModels(model_file)[0];
     model_indices_.push_back(index);
     if (!weld_frame_to_world.empty()) {
-      plant_->WeldFrames(
+      std::cout << "weld_frame to world: " << weld_frame_to_world << std::endl;
+      if (weld_frame_to_world == "hand_root") {
+        std::cout << "weld hand root" << std::endl;
+        drake::math::RotationMatrix<double> R =
+            drake::math::RollPitchYaw<double>(0.0, (5.0 / 8) * M_PI, 0.0).ToRotationMatrix();
+        drake::math::RigidTransform<double> X_H = drake::math::RigidTransform<double>(R, {-0.04, 0, 0.17});        
+        plant_->WeldFrames(plant_->world_frame(),
+                        plant_->GetFrameByName("hand_root", model_indices_.at(i)), X_H);
+      } else if (weld_frame_to_world == "point_hand") {
+
+        // RigidTransform<double> X_1 = RigidTransform<double>(
+        //   drake::math::RotationMatrix<double>(), {-0.05, -0.08, 0.05});
+        // RigidTransform<double> X_2 = RigidTransform<double>(
+        //   drake::math::RotationMatrix<double>(), {-0.08, 0, 0.05});
+        // RigidTransform<double> X_3 = RigidTransform<double>(
+        //   drake::math::RotationMatrix<double>(), {-0.05, 0.08, 0.05});
+        // RigidTransform<double> X_4 = RigidTransform<double>(
+        //   drake::math::RotationMatrix<double>(), {0.04, -0.08, 0.05});
+
+        RigidTransform<double> X_1 = RigidTransform<double>(
+          drake::math::RotationMatrix<double>(), {0.08, 0, 0.05});
+        RigidTransform<double> X_2 = RigidTransform<double>(
+          drake::math::RotationMatrix<double>(), {-0.08, 0, 0.05});
+        RigidTransform<double> X_3 = RigidTransform<double>(
+          drake::math::RotationMatrix<double>(), {0, 0.08, 0.05});
+        RigidTransform<double> X_4 = RigidTransform<double>(
+          drake::math::RotationMatrix<double>(), {0, -0.08, 0.05});
+
+        plant_->WeldFrames(plant_->world_frame(),
+                          plant_->GetFrameByName("base_link_1", model_indices_.at(i)), X_1);
+        plant_->WeldFrames(plant_->world_frame(),
+                          plant_->GetFrameByName("base_link_2", model_indices_.at(i)), X_2);
+        plant_->WeldFrames(plant_->world_frame(),
+                          plant_->GetFrameByName("base_link_3", model_indices_.at(i)), X_3);
+        plant_->WeldFrames(plant_->world_frame(),
+                          plant_->GetFrameByName("base_link_4", model_indices_.at(i)), X_4);                                                  
+
+      } else {
+        std::cout << "no welding" << std::endl;
+        plant_->WeldFrames(
           plant_->world_frame(),
           plant_->GetFrameByName(weld_frame_to_world, model_indices_.at(i)),
           drake::math::RigidTransform<double>(Eigen::Vector3d::Zero()));
+      }
+      
     }
   }
 

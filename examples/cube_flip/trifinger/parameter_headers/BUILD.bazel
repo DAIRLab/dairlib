@@ -1,0 +1,18 @@
+cc_library(
+    name = "trifinger_osc_controller_params",
+    hdrs = ["trifinger_osc_controller_params.h"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "trifinger_lcm_channels",
+    hdrs = ["trifinger_lcm_channels.h"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "trifinger_sim_params",
+    hdrs = ["trifinger_sim_params.h"],
+    visibility = ["//visibility:public"],
+)
+

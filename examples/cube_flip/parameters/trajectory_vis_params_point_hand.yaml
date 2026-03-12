@@ -1,14 +1,14 @@
-ee_file: "examples/cube_flip/urdf/simplified_hand.sdf" 
+ee_file: "examples/cube_flip/urdf/fingertips.sdf" 
 cube_file: "examples/cube_flip/urdf/actual_cube.sdf" 
 
 visualizer_publish_rate: 30
 
 # match with iC3 params
 ic3_num_iters: 6
-trajectory_length: 150
+trajectory_length: 100
 
-iter_downsampling_factor: 2
-downsampling_factor: 15
+iter_downsampling_factor: 1
+downsampling_factor: 10
 
 trajectory_lcm_channel_x: "iC3_TRAJECTORY_X"
 trajectory_lcm_channel_u: "iC3_TRAJECTORY_U"
@@ -35,8 +35,8 @@ x_des: [0, 0, 0,      # index
          0, 0, 0,     # middle
          0, 0, 0,     # ring   
          0, 0, 0,     # thumb
-         #0.707, -0.707, 0, 0,  # cube orientation
-         0, 0, 0, 1,
+         0.707, -0.707, 0, 0,  # cube orientation
+         #0, 0, 0, 1,
          0, 0, 0.05,  # cube position
          0, 0, 0,     # index velo
          0, 0, 0,     # middle velo

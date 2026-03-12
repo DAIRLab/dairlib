@@ -159,7 +159,7 @@ int do_main(int argc, char* argv[]) {
 	Eigen::Quaterniond q(q_vec(0), q_vec(1), q_vec(2), q_vec(3));
 	q.normalize();
   RotationMatrixd R_target(q);
-	RigidTransformd X_WF(R_target, xd.segment(16, 3));
+	RigidTransformd X_WF(R_target, xd.segment(13, 3));
 
 	const double axis_len = 0.2;
 	const double radius = 0.01;

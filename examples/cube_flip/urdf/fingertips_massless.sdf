@@ -1,0 +1,123 @@
+<?xml version="1.0" ?>
+<sdf version="1.7">
+  <world name="hand_world">
+
+    <model name="fingertips_massless">
+
+      <!-- ========================= -->
+      <!-- FINGER 1 -->
+      <!-- ========================= -->
+      <link name="fingertip_1">
+        <inertial>
+          <mass>1e-6</mass>
+          <inertia>
+            <ixx>1e-9</ixx>
+            <iyy>1e-9</iyy>
+            <izz>1e-9</izz>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyz>0</iyz>
+          </inertia>
+        </inertial>
+
+        <visual name="visual">
+          <geometry>
+            <sphere>
+              <radius>0.01</radius>
+            </sphere>
+          </geometry>
+        </visual>
+
+        <collision name="collision">
+          <geometry>
+            <sphere>
+              <radius>0.01</radius>
+            </sphere>
+          </geometry>
+
+          <drake:proximity_properties>
+            <drake:mu_static>0.8</drake:mu_static>
+            <drake:mu_dynamic>0.7</drake:mu_dynamic>
+          </drake:proximity_properties>
+        </collision>
+      </link>
+
+      <!-- ========================= -->
+      <!-- FINGER 2 -->
+      <!-- ========================= -->
+      <link name="fingertip_2">
+        <inertial>
+          <mass>1e-6</mass>
+          <inertia>
+            <ixx>1e-9</ixx>
+            <iyy>1e-9</iyy>
+            <izz>1e-9</izz>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyz>0</iyz>
+          </inertia>
+        </inertial>
+
+        <visual name="visual">
+          <geometry>
+            <sphere>
+              <radius>0.01</radius>
+            </sphere>
+          </geometry>
+        </visual>
+
+        <collision name="collision">
+          <geometry>
+            <sphere>
+              <radius>0.01</radius>
+            </sphere>
+          </geometry>
+
+          <drake:proximity_properties>
+            <drake:mu_static>0.8</drake:mu_static>
+            <drake:mu_dynamic>0.7</drake:mu_dynamic>
+          </drake:proximity_properties>
+        </collision>
+      </link>
+
+      <!-- ========================= -->
+      <!-- FINGER 3 -->
+      <!-- ========================= -->
+      <link name="fingertip_3">
+        <inertial>
+          <mass>1e-6</mass>
+          <inertia>
+            <ixx>1e-9</ixx>
+            <iyy>1e-9</iyy>
+            <izz>1e-9</izz>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyz>0</iyz>
+          </inertia>
+        </inertial>
+
+        <visual name="visual">
+          <geometry>
+            <sphere>
+              <radius>0.01</radius>
+            </sphere>
+          </geometry>
+        </visual>
+
+        <collision name="collision">
+          <geometry>
+            <sphere>
+              <radius>0.01</radius>
+            </sphere>
+          </geometry>
+
+          <drake:proximity_properties>
+            <drake:mu_static>0.8</drake:mu_static>
+            <drake:mu_dynamic>0.7</drake:mu_dynamic>
+          </drake:proximity_properties>
+        </collision>
+      </link>
+
+    </model>
+  </world>
+</sdf>

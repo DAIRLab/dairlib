@@ -72,8 +72,8 @@ TrajectoryLcmParserPointHand::TrajectoryLcmParserPointHand(CubeFlipVisualizerPar
       }
       MatrixXd positions;
       if (is_finger == 0) {
-        int cube_orientation_index = 12;
-        int cube_position_index = 16;
+        int cube_orientation_index = 9;
+        int cube_position_index = 13;
 
         positions = MatrixXd::Zero(3, N_);
         orientations = data.block(cube_orientation_index, 0, 4, N_);
@@ -81,8 +81,8 @@ TrajectoryLcmParserPointHand::TrajectoryLcmParserPointHand(CubeFlipVisualizerPar
 
       } else if (is_finger == 1) {
         int finger_position_index = 0;    
-        positions = MatrixXd::Zero(12, N_);
-        positions = data.block(finger_position_index, 0, 12, N_);
+        positions = MatrixXd::Zero(9, N_);
+        positions = data.block(finger_position_index, 0, 9, N_);
 
       } else {
         std::cout << "BAD OBJECT INDEX SIDOGHPOISJDGPWE" << std::endl;

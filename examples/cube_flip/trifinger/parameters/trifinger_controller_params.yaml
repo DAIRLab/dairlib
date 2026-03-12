@@ -1,0 +1,21 @@
+object_model: examples/cube_flip/urdf/cube_for_lcs.sdf
+
+osqp_settings_file: examples/cube_flip/trifinger/parameters/trifinger_osqp_settings.yaml
+ic3_options_file: examples/cube_flip/trifinger/parameters/iC3_options.yaml
+c3_options_file: examples/cube_flip/trifinger/parameters/trifinger_c3_options.yaml
+
+run_open_loop: false
+track_dynamically_feasible: true # false is currently broken
+
+time_to_wait: 1.0
+ee_init_position: [0.4, -0.35, 0.45]
+
+x_target: [0, 0, 0,
+            0, 0,
+            0, 0, -1, 0,
+            0.13, 0, 0,
+            0, 0, 0, 
+            0, 0,
+            0, 0, 0, 
+            0, 0, 0]
+

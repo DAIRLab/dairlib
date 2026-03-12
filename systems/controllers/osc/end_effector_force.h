@@ -14,6 +14,8 @@ class EndEffectorForceTrajectoryGenerator
  public:
   EndEffectorForceTrajectoryGenerator();
 
+  EndEffectorForceTrajectoryGenerator(int n_forces);
+
   const drake::systems::InputPort<double>& get_input_port_trajectory() const {
     return this->get_input_port(trajectory_port_);
   }
@@ -28,6 +30,8 @@ class EndEffectorForceTrajectoryGenerator
 
   void CalcTraj(const drake::systems::Context<double>& context,
                 drake::trajectories::Trajectory<double>* traj) const;
+
+  int n_forces_;
 
   drake::systems::DiscreteStateIndex controller_switch_index_;
 

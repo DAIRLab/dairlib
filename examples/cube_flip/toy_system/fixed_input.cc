@@ -18,7 +18,7 @@ FixedInput::FixedInput(const MultibodyPlant<double>& plant, int N, double dt, in
           .get_index();
 
   output_port_index_ =
-      this->DeclareVectorOutputPort("u", 5, &FixedInput::ComputeFixedInput)
+      this->DeclareVectorOutputPort("u", plant_.num_actuators(), &FixedInput::ComputeFixedInput)
           .get_index();
 
 }
@@ -47,12 +47,23 @@ void FixedInput::ComputeFixedInput(const drake::systems::Context<double>& contex
 	auto& context_ref = *plant_context;  
   VectorXd tau_g = plant_.CalcGravityGeneralizedForces(context_ref);
 
-  Eigen::VectorXd u_gravity = Eigen::VectorXd::Zero(5);
+  Eigen::VectorXd u_gravity = Eigen::VectorXd::Zero(plant_.num_actuators());
+  // HARDCODED FOR EXAMPLES
+  if (plant_.num_actuators() == 5) { 
+    u_gravity[2] = -(tau_g[2] + tau_g[10]); // Hard-coded cube + plate
+    if (t < time_to_wait_) {
+      u_gravity[4] = -(0.13 * tau_g[10]); // Hard-coded cube + plate
+    }
+  } else if (plant_.num_actuators() == 9) {
+    u_gravity[2] = -(tau_g[2]); // Hard-coded fingertip
+    u_gravity[5] = -(tau_g[5]); // Hard-coded fingertip
+    u_gravity[8] = -(tau_g[8]); // Hard-coded fingertip
+    // u_gravity[11] = -(tau_g[11]); // Hard-coded fingertip
 
-  u_gravity[2] = -(tau_g[2] + tau_g[10]); // Hard-coded cube + plate
-  if (t < time_to_wait_) {
-    u_gravity[4] = -(0.13 * tau_g[10]); // Hard-coded cube + plate
   }
+  
+
+  
 
   if (t > dt_ * N_ + time_to_wait_ || t < time_to_wait_) { 
     // Just compensate gravity if time is past horizon

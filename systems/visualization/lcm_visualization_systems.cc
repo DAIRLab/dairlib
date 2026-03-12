@@ -109,7 +109,7 @@ LcmPoseDrawer::LcmPoseDrawer(
   std::string weld_frame_to_world = "";
   if (model_file.find("allegro_hand_description_right.urdf") != std::string::npos) {
     weld_frame_to_world = "hand_root";
-  } else if (model_file.find("simplified_hand.sdf") != std::string::npos) {
+  } else if (model_file.find("fingertips.sdf") != std::string::npos) {
     weld_frame_to_world = "point_hand";
   }
   multipose_visualizers_.push_back(std::make_unique<multibody::MultiposeVisualizer>(
@@ -125,7 +125,7 @@ LcmPoseDrawer::LcmPoseDrawer(
     DeclarePerStepDiscreteUpdateEvent(&LcmPoseDrawer::DrawTrajectoryPlate);
   } else if (model_file.find("allegro_hand_description_right.urdf") != std::string::npos) {
     DeclarePerStepDiscreteUpdateEvent(&LcmPoseDrawer::DrawTrajectoryHand);
-  } else if (model_file.find("simplified_hand.sdf") != std::string::npos) {
+  } else if (model_file.find("fingertips.sdf") != std::string::npos) {
     DeclarePerStepDiscreteUpdateEvent(&LcmPoseDrawer::DrawTrajectoryPointHand);
   } else {
     DeclarePerStepDiscreteUpdateEvent(&LcmPoseDrawer::DrawTrajectory);
@@ -384,7 +384,7 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectoryPointHand(
       this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
           context, trajectory_input_port_);
   auto lcm_traj = LcmTrajectory(lcmt_traj->saved_traj);
-  MatrixXd object_poses = MatrixXd::Zero(12, N_);
+  MatrixXd object_poses = MatrixXd::Zero(9, N_);
 
   const auto& lcm_translation_traj =
       lcm_traj.GetTrajectory(translation_trajectory_name_);

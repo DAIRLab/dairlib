@@ -1,18 +1,18 @@
-num_iters: 10
+num_iters: 6
 add_position_constraints: true
-add_input_constraints: true
+add_input_constraints: false
 
 num_segments: 8
 
 print_costs: true
 
-N: 48 # REMOVE after importing all options from c3 repo
+N: 80 # REMOVE after importing all options from c3 repo
 dt: 0.01 # REMOVE after importing all options from c3 repo
 
-c3_dt_scaling: 4 # c3_dt / ic3_dt
+c3_dt_scaling: 3 # c3_dt / ic3_dt
 
-iter_to_use: 9
-num_timesteps_to_use: 48
+iter_to_use: 5
+num_timesteps_to_use: 80
 
 hold_last_timestep_position: true
 vertical_offset: -0.0

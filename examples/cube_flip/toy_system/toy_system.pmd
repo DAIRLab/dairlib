@@ -3,7 +3,10 @@ group "controllers" {
         exec = "bazel-bin/examples/cube_flip/toy_system/toy_system_controller";
         host = "localhost";
     }
-
+    cmd "toy_controller_hand" {
+        exec = "bazel-bin/examples/cube_flip/toy_system/toy_system_hand_controller";
+        host = "localhost";
+    }
 }
 
 group "debug" {
@@ -16,6 +19,10 @@ group "debug" {
 group "simulations" {
     cmd "toy_sim" {
         exec = "bazel-bin/examples/cube_flip/toy_system/toy_system_sim";
+        host = "localhost";
+    }
+    cmd "toy_sim_hand" {
+        exec = "bazel-bin/examples/cube_flip/toy_system/toy_system_hand_sim";
         host = "localhost";
     }
 }

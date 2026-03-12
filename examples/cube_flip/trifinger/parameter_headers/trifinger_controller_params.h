@@ -4,9 +4,8 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-struct FrankaPlateC3ControllerParams {
+struct TrifingerControllerParams {
 
-  std::string allegro_model;
   std::string object_model;
 
   std::string osqp_settings_file;
@@ -18,22 +17,24 @@ struct FrankaPlateC3ControllerParams {
 
   double time_to_wait;
 
+  Eigen::Vector3d tool_attachment_frame;
+  Eigen::Vector3d ee_init_position;
   Eigen::VectorXd x_target;
 
   template <typename Archive>
   void Serialize(Archive* a) {
-    a->Visit(DRAKE_NVP(allegro_model));
+    a->Visit(DRAKE_NVP(trifinger_model));
     a->Visit(DRAKE_NVP(object_model));
 
     a->Visit(DRAKE_NVP(osqp_settings_file));
     a->Visit(DRAKE_NVP(ic3_options_file));
     a->Visit(DRAKE_NVP(c3_options_file));
+    a->Visit(DRAKE_NVP(time_to_wait));
 
     a->Visit(DRAKE_NVP(run_open_loop));
     a->Visit(DRAKE_NVP(track_dynamically_feasible));
 
-    a->Visit(DRAKE_NVP(time_to_wait));
-
+    a->Visit(DRAKE_NVP(ee_init_position));
     a->Visit(DRAKE_NVP(x_target));
 
   }

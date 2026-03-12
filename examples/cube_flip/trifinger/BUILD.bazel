@@ -1,6 +1,6 @@
 cc_binary(
-    name = "trifinger_plate_sim",
-    srcs = ["trifinger_plate_sim.cc"],
+    name = "trifinger_sim",
+    srcs = ["trifinger_sim.cc"],
     data = [
         "//examples/cube_flip:urdfs",
     ],
@@ -8,9 +8,8 @@ cc_binary(
         # ":parameters",
         "//common",
         "//examples/franka/systems:franka_systems",
-        "//examples/cube_flip/trifinger_plate/parameter_headers:trifinger_plate_lcm_channels",
-        "//examples/cube_flip/trifinger_plate/parameter_headers:trifinger_plate_sim_params",
-        "//examples/cube_flip/trifinger_plate/systems:trifinger_plate_lcm_systems",
+        "//examples/cube_flip/trifinger/parameter_headers:trifinger_lcm_channels",
+        "//examples/cube_flip/trifinger/parameter_headers:trifinger_sim_params",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
         "//systems/controllers",
@@ -25,15 +24,16 @@ cc_binary(
 
 
 cc_binary(
-    name = "trifinger_plate_osc_controller",
-    srcs = ["trifinger_plate_osc_controller.cc"],
+    name = "trifinger_osc_controller",
+    srcs = ["trifinger_osc_controller.cc"],
     data = [
         "//examples/cube_flip:urdfs",
     ],
     deps = [
         # ":parameters",
-        "//examples/cube_flip/trifinger_plate/parameter_headers:trifinger_plate_osc_controller_params",
-        "//examples/cube_flip/trifinger_plate/parameter_headers:trifinger_plate_lcm_channels",
+        "//examples/cube_flip/trifinger/parameter_headers:trifinger_osc_controller_params",
+        "//examples/cube_flip/trifinger/parameter_headers:trifinger_lcm_channels",
+        "//examples/cube_flip/trifinger:trifinger_position_splitter",
         "//common",
         "//examples/franka/systems:franka_systems",
         "//lcm:lcm_trajectory_saver",
@@ -46,5 +46,21 @@ cc_binary(
         "//systems/trajectory_optimization:lcm_trajectory_systems",
         "@drake//:drake_shared_library",
         "@gflags",
+    ],
+)
+
+cc_library(
+    name = "trifinger_position_splitter",
+    srcs = [
+        "trifinger_position_splitter.cc",
+    ],
+    hdrs = [
+        "trifinger_position_splitter.h",
+    ],
+    deps = [
+        "//common:eigen_utils",
+        "//common:find_resource",
+        "//lcm:lcm_trajectory_saver",
+        "@drake//:drake_shared_library",
     ],
 )

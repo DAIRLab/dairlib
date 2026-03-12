@@ -104,6 +104,8 @@ void EndEffectorPositionTrajectoryGenerator::CalcNeutralPoseBasedTraj(
       PiecewisePolynomial<double> result = 
         drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold({0.0, 1.0}, {y_0, y_0});
       *casted_traj = result;
+
+      std::cout << "casted traj " << end_effector_name_ << " " << casted_traj->value(0.0).transpose() << std::endl;
     } else {
       const auto* traj =
         dynamic_cast<const PiecewisePolynomial<double>*>(&trajectory_input);

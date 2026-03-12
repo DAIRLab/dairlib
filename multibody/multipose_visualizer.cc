@@ -63,22 +63,20 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
       } else if (weld_frame_to_world == "point_hand") {
 
         // RigidTransform<double> X_1 = RigidTransform<double>(
-        //   drake::math::RotationMatrix<double>(), {-0.05, -0.08, 0.05});
+        //   drake::math::RotationMatrix<double>(), {0.08, 0, 0.05});
         // RigidTransform<double> X_2 = RigidTransform<double>(
         //   drake::math::RotationMatrix<double>(), {-0.08, 0, 0.05});
         // RigidTransform<double> X_3 = RigidTransform<double>(
-        //   drake::math::RotationMatrix<double>(), {-0.05, 0.08, 0.05});
+        //   drake::math::RotationMatrix<double>(), {0, 0.08, 0.05});
         // RigidTransform<double> X_4 = RigidTransform<double>(
-        //   drake::math::RotationMatrix<double>(), {0.04, -0.08, 0.05});
-
+        //   drake::math::RotationMatrix<double>(), {0, -0.08, 0.05});
+              
         RigidTransform<double> X_1 = RigidTransform<double>(
           drake::math::RotationMatrix<double>(), {0.08, 0, 0.05});
         RigidTransform<double> X_2 = RigidTransform<double>(
-          drake::math::RotationMatrix<double>(), {-0.08, 0, 0.05});
+          drake::math::RotationMatrix<double>(), {-0.08, -0.04, 0.05});
         RigidTransform<double> X_3 = RigidTransform<double>(
-          drake::math::RotationMatrix<double>(), {0, 0.08, 0.05});
-        RigidTransform<double> X_4 = RigidTransform<double>(
-          drake::math::RotationMatrix<double>(), {0, -0.08, 0.05});
+          drake::math::RotationMatrix<double>(), {-0.08, 0.04, 0.05});
 
         plant_->WeldFrames(plant_->world_frame(),
                           plant_->GetFrameByName("base_link_1", model_indices_.at(i)), X_1);
@@ -86,8 +84,8 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
                           plant_->GetFrameByName("base_link_2", model_indices_.at(i)), X_2);
         plant_->WeldFrames(plant_->world_frame(),
                           plant_->GetFrameByName("base_link_3", model_indices_.at(i)), X_3);
-        plant_->WeldFrames(plant_->world_frame(),
-                          plant_->GetFrameByName("base_link_4", model_indices_.at(i)), X_4);                                                  
+        // plant_->WeldFrames(plant_->world_frame(),
+        //                   plant_->GetFrameByName("base_link_4", model_indices_.at(i)), X_4);                                                  
 
       } else {
         std::cout << "no welding" << std::endl;

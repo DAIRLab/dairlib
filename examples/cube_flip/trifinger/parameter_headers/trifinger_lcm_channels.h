@@ -3,7 +3,7 @@
 #include "drake/common/yaml/yaml_read_archive.h"
 
 
-struct TrifingerPlateLcmChannels {
+struct TrifingerLcmChannels {
   std::string trifinger_state_channel;
   std::string object_state_channel;
   std::string trifinger_input_channel;

@@ -2,7 +2,7 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-struct TrifingerPlateSimParams {
+struct TrifingerSimParams {
   std::string trifinger_model;
   std::string end_effector_model;
   std::string object_model;
@@ -18,11 +18,7 @@ struct TrifingerPlateSimParams {
   bool publish_efforts;
   bool publish_object_velocities;
 
-  std::vector<Eigen::VectorXd> finger_attachment_points;
-  double translation_stiffness;
-  double translation_damping;
-
-  Eigen::VectorXd q_init_plate;
+  Eigen::VectorXd q_init_trifinger;
   Eigen::VectorXd q_init_object;
 
   Eigen::VectorXd world_x_limits;
@@ -55,11 +51,7 @@ struct TrifingerPlateSimParams {
     a->Visit(DRAKE_NVP(publish_efforts));
     a->Visit(DRAKE_NVP(publish_object_velocities));
 
-    a->Visit(DRAKE_NVP(finger_attachment_points));
-    a->Visit(DRAKE_NVP(translation_stiffness));
-    a->Visit(DRAKE_NVP(translation_damping));
-
-    a->Visit(DRAKE_NVP(q_init_plate));
+    a->Visit(DRAKE_NVP(q_init_trifinger));
     a->Visit(DRAKE_NVP(q_init_object));
 
     a->Visit(DRAKE_NVP(world_x_limits));

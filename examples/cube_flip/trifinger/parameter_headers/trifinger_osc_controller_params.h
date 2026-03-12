@@ -4,14 +4,10 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-struct TrifingerPlateControllerParams : OSCGains {
+struct TrifingerOSCControllerParams : OSCGains {
   std::string trifinger_model;
   std::string end_effector_model;
-  std::string end_effector_name;
-
-  std::vector<Eigen::VectorXd> finger_attachment_points;
-  double translation_stiffness;
-  double translation_damping;
+  std::vector<std::string> end_effector_names;
 
   double end_effector_acceleration;
   bool track_end_effector_orientation;
@@ -19,7 +15,7 @@ struct TrifingerPlateControllerParams : OSCGains {
   bool enforce_acceleration_constraints;
   bool publish_debug_info;
 
-  Eigen::VectorXd neutral_position;
+  std::vector<Eigen::VectorXd> neutral_position;
   double x_scale;
   double y_scale;
   double z_scale;
@@ -31,7 +27,6 @@ struct TrifingerPlateControllerParams : OSCGains {
   std::vector<double> EndEffectorRotKp;
   std::vector<double> EndEffectorRotKd;
   std::vector<double> LambdaEndEffectorW;
-  std::vector<double> LambdaEndEffectorTauW;
 
   Eigen::MatrixXd W_end_effector;
   Eigen::MatrixXd K_p_end_effector;
@@ -40,7 +35,6 @@ struct TrifingerPlateControllerParams : OSCGains {
   Eigen::MatrixXd K_p_end_effector_rot;
   Eigen::MatrixXd K_d_end_effector_rot;
   Eigen::MatrixXd W_ee_lambda;
-  Eigen::MatrixXd W_ee_lambda_tau;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -48,10 +42,7 @@ struct TrifingerPlateControllerParams : OSCGains {
     
     a->Visit(DRAKE_NVP(trifinger_model));
     a->Visit(DRAKE_NVP(end_effector_model));
-    a->Visit(DRAKE_NVP(end_effector_name));
-    a->Visit(DRAKE_NVP(finger_attachment_points));
-    a->Visit(DRAKE_NVP(translation_stiffness));
-    a->Visit(DRAKE_NVP(translation_damping));
+    a->Visit(DRAKE_NVP(end_effector_names));
     a->Visit(DRAKE_NVP(end_effector_acceleration));
     a->Visit(DRAKE_NVP(track_end_effector_orientation));
     a->Visit(DRAKE_NVP(cancel_gravity_compensation));
@@ -64,7 +55,6 @@ struct TrifingerPlateControllerParams : OSCGains {
     a->Visit(DRAKE_NVP(EndEffectorRotKp));
     a->Visit(DRAKE_NVP(EndEffectorRotKd));
     a->Visit(DRAKE_NVP(LambdaEndEffectorW));
-    a->Visit(DRAKE_NVP(LambdaEndEffectorTauW));
     a->Visit(DRAKE_NVP(neutral_position));
     a->Visit(DRAKE_NVP(x_scale));
     a->Visit(DRAKE_NVP(y_scale));
@@ -90,9 +80,6 @@ struct TrifingerPlateControllerParams : OSCGains {
         this->EndEffectorRotKd.data(), 3, 3);
     W_ee_lambda = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->LambdaEndEffectorW.data(), 3, 3);
-    W_ee_lambda_tau = Eigen::Map<
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->LambdaEndEffectorTauW.data(), 3, 3);
+        this->LambdaEndEffectorW.data(), 9, 9);
   }
 };

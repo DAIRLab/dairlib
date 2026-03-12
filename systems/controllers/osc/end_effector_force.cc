@@ -22,7 +22,13 @@ using drake::trajectories::Trajectory;
 
 namespace dairlib {
 
-EndEffectorForceTrajectoryGenerator::EndEffectorForceTrajectoryGenerator() {
+EndEffectorForceTrajectoryGenerator::EndEffectorForceTrajectoryGenerator()
+  : n_forces_(3) {
+  EndEffectorForceTrajectoryGenerator(3);
+}
+
+EndEffectorForceTrajectoryGenerator::EndEffectorForceTrajectoryGenerator(int n_forces) 
+  : n_forces_(n_forces) {
   PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
 
   std::cout << "ee force initialized" << std::endl;
@@ -37,7 +43,7 @@ EndEffectorForceTrajectoryGenerator::EndEffectorForceTrajectoryGenerator() {
   controller_switch_index_ = this->DeclareDiscreteState(VectorXd::Ones(1));
   DeclareForcedDiscreteUpdateEvent(
       &EndEffectorForceTrajectoryGenerator::DiscreteVariableUpdate);
-  PiecewisePolynomial<double> empty_pp_traj(Vector3d::Zero());
+  PiecewisePolynomial<double> empty_pp_traj(VectorXd::Zero(n_forces_));
   Trajectory<double>& traj_inst = empty_pp_traj;
   this->DeclareAbstractOutputPort(
       "end_effector_force_trajectory", traj_inst,
@@ -84,7 +90,7 @@ void EndEffectorForceTrajectoryGenerator::CalcTraj(
       trajectory_input.value(0).isZero()) {
     auto zero_traj =
         PiecewisePolynomial<double>::FirstOrderHold({0.0, 1.0}, 
-          {Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero()});
+          {Eigen::VectorXd::Zero(n_forces_), Eigen::VectorXd::Zero(n_forces_)});
     *casted_traj = zero_traj; 
   } else {
     if (context.get_discrete_state(controller_switch_index_)[0]) {

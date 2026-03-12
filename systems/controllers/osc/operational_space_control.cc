@@ -758,6 +758,9 @@ VectorXd OperationalSpaceControl::SolveQp(
   for (auto& force_tracking_data : *force_tracking_data_vec_) {
     if (!force_tracking_data->GetWeight().isZero()){
       MatrixXd J_ee = force_tracking_data->GetJ();
+      std::cout << "J_ee " << J_ee.rows() << ", " << J_ee.cols() << std::endl;
+      std::cout << J_ee << std::endl;
+
       A_dyn.block(0, n_v_ + n_c_ + n_h_ + n_u_, n_v_, n_lambda_ext_) =
           J_ee.transpose();
     }
@@ -857,7 +860,7 @@ VectorXd OperationalSpaceControl::SolveQp(
         // Update
         tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
                               *context_wo_spr_, traj, t,
-                              t_since_last_state_switch, fsm_state, v_proj);
+                              t_since_last_state_switch, fsm_state, v_proj);                              
       }
 
       const VectorXd& ddy_t = tracking_data->GetYddotCommand();
@@ -872,11 +875,6 @@ VectorXd OperationalSpaceControl::SolveQp(
 
       Eigen::FullPivLU<MatrixXd> lu(cost_regularized);
       Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(cost_regularized);
-
-      std::cout << "cost matrix rank: " << lu.rank() << std::endl;
-      std::cout << "min eigenvalue: " << es.eigenvalues().minCoeff() << std::endl;
-
-
 
       tracking_costs_.at(i)->UpdateCoefficients(
           2 * cost_regularized,
@@ -902,6 +900,9 @@ VectorXd OperationalSpaceControl::SolveQp(
                                 *context_wo_spr_, traj, t);
     const MatrixXd W = force_tracking_data->GetWeight();
     const VectorXd lambda_des = force_tracking_data->GetLambdaDes();
+
+    std::cout << "force W " << W.rows() << ", " << W.cols() << std::endl;
+    std::cout << "lambda des " << lambda_des.transpose() << std::endl;
 
     if (!W.allFinite()) {
         std::cout << "force W contains NaN or Inf!" << std::endl;

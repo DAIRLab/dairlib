@@ -1,6 +1,6 @@
-trifinger_model: examples/cube_flip/trifinger_plate/robot_properties_fingers/urdf/trifinger_minimal_collision.urdf
-end_effector_model: examples/cube_flip/urdf/plate_end_effector.sdf
-object_model: examples/cube_flip/urdf/cube.sdf
+trifinger_model: examples/cube_flip/trifinger/robot_properties_fingers/urdf/trifinger_minimal_collision.urdf
+end_effector_model: examples/cube_flip/urdf/fingertips_massless.sdf
+object_model: examples/cube_flip/urdf/actual_cube.sdf
 trifinger_publish_rate: 1000
 object_publish_rate: 1000
 visualizer_publish_rate: 32
@@ -9,14 +9,6 @@ actuator_delay: 0.000
 visualize_drake_sim: true
 publish_efforts: true
 publish_object_velocities: true
-
-finger_attachment_points: [[0, -0.15, -0.01], 
-                           [0.129, 0.075, -0.01], 
-                           [-0.129, 0.075, -0.01]]
-
-# Fingertip-plate spring params
-translation_stiffness: 3e4
-translation_damping: 500
 
 # Workspace Limits
 world_x_limits: [-1, 1]
@@ -27,9 +19,9 @@ external_force_scaling: [10.0, 10.0, 10.0]
 
 dt: 0.00005
 realtime_rate: 1.0
-q_init_plate: [1, 0, 0, 0, 0, 0, 0.25]       
+q_init_trifinger: [0, -1, -1.5, 0, -1, -1.5, 0, -1, -1.5]       
         
-q_init_object: [1, 0, 0, 0, 0, 0, 0.5]
+q_init_object: [1, 0, 0, 0, 0, 0, 0.05]
                
 visualize_workspace: false
 visualize_pose_trace: false # BROKEN

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <drake/common/trajectories/trajectory.h>
 #include <drake/multibody/plant/multibody_plant.h>
 
@@ -16,7 +17,14 @@ class ExternalForceTrackingData {
       const std::string& name, const Eigen::MatrixXd& W,
       const drake::multibody::MultibodyPlant<double>& plant_w_spr,
       const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
-      const std::string& body_name, const Eigen::Vector3d& pt_on_body);
+      std::string body_name, Eigen::Vector3d pt_on_body);
+
+  ExternalForceTrackingData(
+      const std::string& name, const Eigen::MatrixXd& W,
+      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
+      const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
+      std::vector<std::string> body_names, 
+      std::vector<Eigen::Vector3d> pts_on_bodies);
 
   const Eigen::MatrixXd& GetWeight() const { return W_; }
 
@@ -48,11 +56,12 @@ class ExternalForceTrackingData {
   const drake::multibody::RigidBodyFrame<double>& world_w_spr_;
   const drake::multibody::RigidBodyFrame<double>& world_wo_spr_;
 
-  const drake::multibody::RigidBodyFrame<double>* body_frame_w_spr_;
-  const drake::multibody::RigidBodyFrame<double>* body_frame_wo_spr_;
-  const Eigen::Vector3d pt_on_body_;
+  std::vector<const drake::multibody::RigidBodyFrame<double>*> body_frames_w_spr_;
+  std::vector<const drake::multibody::RigidBodyFrame<double>*> body_frames_wo_spr_;
+  std::vector<Eigen::Vector3d> pts_on_bodies_;
+  std::vector<std::string> body_names_;
 
-  int n_lambda_ = 3;
+  int n_lambda_;
 
   Eigen::VectorXd lambda_des_;
   Eigen::MatrixXd J_;

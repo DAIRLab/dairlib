@@ -294,8 +294,14 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
         }
       } else {
         VectorXd gravity(VectorXd::Zero(n_u_));
-        gravity[2] = 5;
-        u_target.push_back(gravity);
+        // HARDCODED
+        if (n_u_ == 5) {
+          gravity[2] = 5;
+        } else if (n_u_ == 9) {
+          gravity[2] = 1.96;
+          gravity[5] = 1.96;
+          gravity[8] = 1.96;
+        }
         u_target.push_back(gravity);
       }
     }
@@ -305,50 +311,80 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
   if (ic3_options_.add_position_constraints) {
     // HARD CODED
     MatrixXd A(MatrixXd::Zero(n_x_, n_x_));
-    A(0, 0) = 1;
-    A(1, 1) = 1;
-    A(2, 2) = 1;
-    A(3, 3) = 1;
-    A(4, 4) = 1;
-
     VectorXd lower_bound(VectorXd::Zero(n_x_));
     VectorXd upper_bound(VectorXd::Zero(n_x_));
+    if (n_x_ == 23) {
+      A(0, 0) = 1;
+      A(1, 1) = 1;
+      A(2, 2) = 1;
+      A(3, 3) = 1;
+      A(4, 4) = 1;
 
-    // Plate position constraints
-    lower_bound[0] = -0.1;
-    lower_bound[1] = -0.1;
-    lower_bound[2] = -0.3; 
-    lower_bound[3] = -0.4;
-    lower_bound[4] = -0.4;
-  
-    // Plate rotation constraints
-    upper_bound[0] = 0.1;
-    upper_bound[1] = 0.1;
-    upper_bound[2] = 0.3;
-    upper_bound[3] = 0.4;
-    upper_bound[4] = 0.4;
+      // Plate position constraints
+      lower_bound[0] = -0.1;
+      lower_bound[1] = -0.1;
+      lower_bound[2] = -0.3; 
+      lower_bound[3] = -0.4;
+      lower_bound[4] = -0.4;
+    
+      // Plate rotation constraints
+      upper_bound[0] = 0.1;
+      upper_bound[1] = 0.1;
+      upper_bound[2] = 0.3;
+      upper_bound[3] = 0.4;
+      upper_bound[4] = 0.4;
 
+    } else if (n_x_ == 31) {
+      for (int i = 0; i < 3; i++) {
+        A(3*i, 3*i) = 1;
+        A(3*i+1, 3*i+1) = 1;
+        A(3*i+2, 3*i+2) = 1;
+
+        lower_bound(3*i) = -0.1;
+        lower_bound(3*i+1) = -0.1;
+        lower_bound(3*i+2) = -0.03;
+
+        upper_bound(3*i) = 0.1;
+        upper_bound(3*i+1) = 0.1;
+        upper_bound(3*i+2) = 0.05;
+      }
+    }
     c3_->AddVectorLinearConstraint(A, lower_bound, upper_bound, 1);
+ 
     
   }
   
   if (ic3_options_.add_input_constraints) {
     // HARD CODED
     MatrixXd A_u(MatrixXd::Zero(n_u_, n_u_));
-    A_u(0, 0) = 1;
-    A_u(1, 1) = 1;
-    A_u(2, 2) = 1;
-    A_u(3, 3) = 1;
-    A_u(4, 4) = 1;
-
     VectorXd lower_bound_u(VectorXd::Zero(n_u_));
     VectorXd upper_bound_u(VectorXd::Zero(n_u_));
 
-    lower_bound_u << -1, -1, 3, -0.6, -0.6;
-    upper_bound_u << 1, 1, 7, 0.6, 0.6;
+    if (n_u_ == 5) {
+      A_u(0, 0) = 1;
+      A_u(1, 1) = 1;
+      A_u(2, 2) = 1;
+      A_u(3, 3) = 1;
+      A_u(4, 4) = 1;
 
-    c3_->AddVectorLinearConstraint(A_u, lower_bound_u, upper_bound_u, 2);    
-   
+      lower_bound_u << -1, -1, 3, -0.6, -0.6;
+      upper_bound_u << 1, 1, 7, 0.6, 0.6;
+
+    } else if (n_u_ == 9) {
+      for (int i = 0; i < 3; i++) {
+        A_u(3*i, 3*i) = 1;
+        A_u(3*i+1, 3*i+1) = 1;
+        
+        lower_bound_u(3*i) = -20;
+        lower_bound_u(3*i+1) = -20;
+        
+        upper_bound_u(3*i) = 20;
+        upper_bound_u(3*i+1) = 20;
+      }
+    }
+      
+    c3_->AddVectorLinearConstraint(A_u, lower_bound_u, upper_bound_u, 2);  
+
   }
   c3_->UpdateLCS(lcs);
 
@@ -418,6 +454,9 @@ void iC3TrackingController::UpdateQuaternionCosts(
   Q_.push_back(discount_factor * c3_options_.Q); 
 
   int index = 5;
+  if (x_curr.size() == 31) {
+    index = 9;
+  }
       
   Eigen::VectorXd quat_curr_i = x_curr.segment(index, 4);
   Eigen::VectorXd quat_des_i = x_des.segment(index, 4);
@@ -430,6 +469,7 @@ void iC3TrackingController::UpdateQuaternionCosts(
   Eigen::MatrixXd quat_regularizer_2 = quat_des_i * quat_des_i.transpose();
   Eigen::MatrixXd quat_regularizer_3 = 1e-8 * Eigen::MatrixXd::Identity(4, 4);
 
+  /// TODO Move to param file
   double Q_quaternion_weight = 5000;
   double quaternion_regularizer_fraction = 0.0;
 

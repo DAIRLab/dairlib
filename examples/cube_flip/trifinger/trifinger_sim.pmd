@@ -18,7 +18,7 @@ group "debug" {
 
 group "operator" {
     cmd "visualizer" {
-        exec = "bazel-bin/examples/cube_flip/trifinger_visualizer";
+        exec = "bazel-bin/examples/cube_flip/trifinger/trifinger_visualizer";
         host = "localhost";
     }
 }

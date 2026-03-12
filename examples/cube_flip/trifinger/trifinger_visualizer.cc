@@ -12,8 +12,8 @@
 #include "common/find_resource.h"
 #include "dairlib/lcmt_robot_output.hpp"
 
-#include "examples/cube_flip/parameter_headers/trifinger_lcm_channels.h"
-#include "examples/cube_flip/parameter_headers/trifinger_sim_params.h"
+#include "examples/cube_flip/trifinger/parameter_headers/trifinger_lcm_channels.h"
+#include "examples/cube_flip/trifinger/parameter_headers/trifinger_sim_params.h"
 
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
@@ -63,13 +63,13 @@ using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 
 DEFINE_string(lcm_channels,
-              "examples/cube_flip/parameters/trifinger_lcm_channels_simulation.yaml",
+              "examples/cube_flip/trifinger/parameters/trifinger_lcm_channels_simulation.yaml",
               "Filepath containing lcm channels");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   TrifingerSimParams sim_params = drake::yaml::LoadYamlFile<TrifingerSimParams>(
-      "examples/cube_flip/parameters/trifinger_sim_params.yaml");
+      "examples/cube_flip/trifinger/parameters/trifinger_sim_params.yaml");
 
   TrifingerLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<TrifingerLcmChannels>(FLAGS_lcm_channels);
@@ -96,8 +96,8 @@ int do_main(int argc, char* argv[]) {
       parser.AddModels(FindResourceOrThrow(sim_params.object_model))[0];
   multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
   
-  Eigen::Vector3d base_translation(0.3 * Eigen::Vector3d::UnitZ());
-	RigidTransformd X_WI(RotationMatrixd::MakeXRotation(M_PI), base_translation);
+  Eigen::Vector3d base_translation(-0 * Vector3d::UnitZ());
+  RigidTransformd X_WI(drake::math::RotationMatrix<double>(), base_translation);
 	plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"), X_WI);
 	plant.Finalize();
 
@@ -126,7 +126,7 @@ int do_main(int argc, char* argv[]) {
       object_state_receiver->get_output_port(0).size(), 0,
       plant.num_positions(object_index));
 
-  std::vector<int> input_sizes = {plant.num_positions(trifinger_state_receiver),
+  std::vector<int> input_sizes = {plant.num_positions(trifinger_index),
                                   plant.num_positions(object_index)};
   auto mux =
       builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);

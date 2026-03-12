@@ -110,7 +110,7 @@ int DoMain(int argc, char* argv[]) {
       parser.AddModels(FindResourceOrThrow(controller_params.trifinger_model))[0];
   ModelInstanceIndex fingertips_index = 
     parser.AddModels(FindResourceOrThrow(controller_params.end_effector_model))[0];
-  Eigen::Vector3d base_translation(Vector3d::Zero());
+  Eigen::Vector3d base_translation(-0 * Vector3d::UnitZ());
   RigidTransformd X_WI(drake::math::RotationMatrix<double>(), base_translation);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"), X_WI);
 

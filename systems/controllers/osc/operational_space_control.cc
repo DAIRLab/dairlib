@@ -869,13 +869,8 @@ VectorXd OperationalSpaceControl::SolveQp(
       const VectorXd& JdotV_t = tracking_data->GetJdotTimesV();
       const VectorXd constant_term = (JdotV_t - ddy_t);
 
-      MatrixXd cost_regularized = J_t.transpose() * W * J_t 
-        + 1e-8 * MatrixXd::Identity(J_t.cols(), J_t.cols());
-
-
-      Eigen::FullPivLU<MatrixXd> lu(cost_regularized);
-      Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(cost_regularized);
-
+      MatrixXd cost_regularized = J_t.transpose() * W * J_t; 
+       // + 1e-8 * MatrixXd::Identity(J_t.cols(), J_t.cols());  
       tracking_costs_.at(i)->UpdateCoefficients(
           2 * cost_regularized,
           2 * J_t.transpose() * W * (JdotV_t - ddy_t),

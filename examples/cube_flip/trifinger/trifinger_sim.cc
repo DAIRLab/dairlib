@@ -29,7 +29,6 @@
 #include "examples/cube_flip/trifinger/parameter_headers/trifinger_lcm_channels.h"
 #include "examples/cube_flip/trifinger/parameter_headers/trifinger_sim_params.h"
 
-#include "examples/franka/systems/external_force_generator.h"
 #include "multibody/multibody_utils.h"
 #include "systems/primitives/radio_parser.h"
 #include "systems/robot_lcm_systems.h"
@@ -97,8 +96,7 @@ int DoMain(int argc, char* argv[]) {
       parser.AddModels(FindResourceOrThrow(sim_params.object_model))[0];
   multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
 
-  //Eigen::Vector3d base_translation(0.1 * Eigen::Vector3d::UnitZ());
-  Eigen::Vector3d base_translation(Eigen::Vector3d::Zero());
+  Eigen::Vector3d base_translation(-0 * Vector3d::UnitZ());
   RigidTransformd X_WI(drake::math::RotationMatrix<double>(), base_translation);
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"), X_WI);
 
@@ -148,7 +146,7 @@ int DoMain(int argc, char* argv[]) {
 	AddActuationRecieverAndStateSenderLcm(
       &builder, plant, lcm, lcm_channel_params.trifinger_input_channel,
       lcm_channel_params.trifinger_state_channel, sim_params.trifinger_publish_rate,
-      fingertips_index, sim_params.publish_efforts, sim_params.actuator_delay);
+      trifinger_index, sim_params.publish_efforts, sim_params.actuator_delay);
 	
 	std::cout << "AFTER AddActuationRecieverAndStateSenderLcm" << std::endl;
   

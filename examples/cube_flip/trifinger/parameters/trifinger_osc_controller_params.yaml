@@ -4,9 +4,9 @@ trifinger_model: examples/cube_flip/trifinger/robot_properties_fingers/urdf/trif
 end_effector_model: examples/cube_flip/urdf/fingertips.sdf
 end_effector_names: ["fingertip_1", "fingertip_2", "fingertip_3"]
 
-neutral_position: [[0.08, 0, -0.2],  # finger 0
-                   [-0.08, -0.04, -0.2],  # finger 120
-                   [-0.08, 0.04,  -0.2]]  # finger 240
+neutral_position: [[0, 0.08, 0.05],  # finger 0
+                   [0.04, -0.08, 0.05],  # finger 120
+                   [-0.04, -0.08, 0.05]]  # finger 240
 
 x_scale: 0.1
 y_scale: 0.1
@@ -21,9 +21,9 @@ impact_threshold: 0.000
 impact_tau: 0.000
 mu: 1.0 # unused
 end_effector_acceleration: 10
-track_end_effector_orientation: true
+track_end_effector_orientation: false
 cancel_gravity_compensation: false
-enforce_acceleration_constraints: true
+enforce_acceleration_constraints: false
 publish_debug_info: true
 
 W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01 ]

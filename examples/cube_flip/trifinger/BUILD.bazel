@@ -7,7 +7,6 @@ cc_binary(
     deps = [
         # ":parameters",
         "//common",
-        "//examples/franka/systems:franka_systems",
         "//examples/cube_flip/trifinger/parameter_headers:trifinger_lcm_channels",
         "//examples/cube_flip/trifinger/parameter_headers:trifinger_sim_params",
         "//systems:robot_lcm_systems",
@@ -62,5 +61,27 @@ cc_library(
         "//common:find_resource",
         "//lcm:lcm_trajectory_saver",
         "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "trifinger_visualizer",
+    srcs = ["trifinger_visualizer.cc"],
+    data = [
+        "//examples/cube_flip:urdfs",
+    ],
+    deps = [
+        "//examples/cube_flip/trifinger/parameter_headers:trifinger_lcm_channels",
+        "//examples/cube_flip/trifinger/parameter_headers:trifinger_sim_params",
+        "//common",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "//systems/visualization:lcm_visualization_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )

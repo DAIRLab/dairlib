@@ -1,6 +1,6 @@
 group "controllers" {
     cmd "trifinger_controller" {
-        exec = "bazel-bin/examples/cube_flip/trifinger_controller";
+        exec = "bazel-bin/examples/cube_flip/trifinger/trifinger_controller";
         host = "localhost";
     }
     cmd "trifinger_osc" {

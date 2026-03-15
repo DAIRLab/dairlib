@@ -1,0 +1,42 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "trifinger_systems",
+    srcs = [],
+    deps = [
+        "trifinger_position_splitter", 
+        "trifinger_kinematics",
+    ],
+)
+
+
+cc_library(
+    name = "trifinger_position_splitter",
+    srcs = [
+        "trifinger_position_splitter.cc",
+    ],
+    hdrs = [
+        "trifinger_position_splitter.h",
+    ],
+    deps = [
+        "//common:eigen_utils",
+        "//common:find_resource",
+        "//lcm:lcm_trajectory_saver",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+
+cc_library(
+    name = "trifinger_kinematics",
+    srcs = ["trifinger_kinematics.cc"],
+    hdrs = ["trifinger_kinematics.h"],
+    deps = [
+        "//systems/framework:vector",
+        "//common",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)

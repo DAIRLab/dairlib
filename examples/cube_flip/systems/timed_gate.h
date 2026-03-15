@@ -28,7 +28,9 @@ namespace dairlib {
 
 class TimedGate : public drake::systems::LeafSystem<double> {
  public:
-  explicit TimedGate(double start_time, iC3Options ic3_options);
+  // example idx 0: plate
+  // example idx 2: trifinger
+  explicit TimedGate(double start_time, iC3Options ic3_options, int example_idx);
 
   const drake::systems::InputPort<double>& get_input_port_c3_actor() const {
     return this->get_input_port(c3_actor_port_);
@@ -61,6 +63,8 @@ class TimedGate : public drake::systems::LeafSystem<double> {
 
   double t0_idx_;
   mutable bool called_;
+
+  int example_idx_;
 
   double start_time_;
   double stop_time_;

@@ -256,6 +256,7 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
 
   UpdateQuaternionCosts(x_lcs, x_des.value());
   C3Base::CostMatrices new_costs(Q_, R_, G_, U_);
+
   c3_->UpdateCostMatrices(new_costs);
   c3_->UpdateTarget(x_desired);
 
@@ -309,7 +310,7 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
   }
 
   if (ic3_options_.add_position_constraints) {
-    // HARD CODED
+    // HARDcCODED
     MatrixXd A(MatrixXd::Zero(n_x_, n_x_));
     VectorXd lower_bound(VectorXd::Zero(n_x_));
     VectorXd upper_bound(VectorXd::Zero(n_x_));

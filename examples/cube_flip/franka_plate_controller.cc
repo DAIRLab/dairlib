@@ -235,8 +235,8 @@ int DoMain(int argc, char* argv[]) {
         builder.AddSystem<systems::ObjectStateReceiver>(plant_object);
 
     auto c3_goal_generator = 
-        builder.AddSystem<C3GoalGenerator>(plant_for_lcs, &plant_lcs_context, 
-            *plant_for_lcs_autodiff, plant_lcs_context_ad.get(), contact_pairs, c3_options, controller_params.x_target); 
+        builder.AddSystem<C3GoalGenerator>(plant_for_lcs, &plant_lcs_context, *plant_for_lcs_autodiff, 
+          plant_lcs_context_ad.get(), contact_pairs, c3_options, controller_params.x_target, 0); 
 
     auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
@@ -258,12 +258,12 @@ int DoMain(int argc, char* argv[]) {
 
     auto c3_trajectory_generator =
         builder.AddSystem<C3TrajectoryGenerator>(plant_for_lcs, c3_options, 
-            controller_params.track_dynamically_feasible); 
+            controller_params.track_dynamically_feasible, 0); 
     c3_trajectory_generator->SetPublishEndEffectorOrientation(true);
     
 
     auto timed_gate =
-      	builder.AddSystem<TimedGate>(controller_params.time_to_wait, ic3_options);    
+      	builder.AddSystem<TimedGate>(controller_params.time_to_wait, ic3_options, 0);    
 
     builder.Connect(object_state_sub->get_output_port(),
                     object_state_receiver->get_input_port());

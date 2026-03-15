@@ -22,9 +22,11 @@ using Eigen::VectorXd;
 /// Outputs a lcmt_timestamped_saved_traj
 class C3TrajectoryGenerator : public drake::systems::LeafSystem<double> {
  public:
+  // example idx 0: plate
+  // example idx 2: trifinger
   explicit C3TrajectoryGenerator(
       const drake::multibody::MultibodyPlant<double>& plant,
-      C3Options c3_options, bool track_dynamically_feasible);
+      C3Options c3_options, bool track_dynamically_feasible, int example_idx);
 
   const drake::systems::InputPort<double>& get_input_port_c3_solution() const {
     return this->get_input_port(c3_solution_port_);
@@ -83,6 +85,7 @@ class C3TrajectoryGenerator : public drake::systems::LeafSystem<double> {
   int n_lambda_;
   int n_u_;
 
+  int example_idx_;
   int N_;
 };
 

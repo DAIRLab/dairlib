@@ -1,6 +1,8 @@
 trifinger_model: examples/cube_flip/trifinger/robot_properties_fingers/urdf/trifinger_minimal_collision.urdf
 end_effector_model: examples/cube_flip/urdf/fingertips_massless.sdf
 object_model: examples/cube_flip/urdf/actual_cube.sdf
+ground_model: examples/cube_flip/urdf/ground.urdf
+
 trifinger_publish_rate: 1000
 object_publish_rate: 1000
 visualizer_publish_rate: 32
@@ -21,7 +23,7 @@ dt: 0.00005
 realtime_rate: 1.0
 q_init_trifinger: [0, -1, -1.5, 0, -1, -1.5, 0, -1, -1.5]       
         
-q_init_object: [1, 0, 0, 0, 0, 0.5, 0.05]
+q_init_object: [1, 0, 0, 0, 0, 0, 0.05]
                
 # All probably broken               
 visualize_workspace: false  

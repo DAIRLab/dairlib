@@ -6,6 +6,7 @@ struct TrifingerSimParams {
   std::string trifinger_model;
   std::string end_effector_model;
   std::string object_model;
+  std::string ground_model;
 
   double dt;
   double realtime_rate;
@@ -39,6 +40,7 @@ struct TrifingerSimParams {
     a->Visit(DRAKE_NVP(trifinger_model));
     a->Visit(DRAKE_NVP(end_effector_model));
     a->Visit(DRAKE_NVP(object_model));
+    a->Visit(DRAKE_NVP(ground_model));
 
     a->Visit(DRAKE_NVP(dt));
     a->Visit(DRAKE_NVP(realtime_rate));

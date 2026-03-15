@@ -5,6 +5,12 @@ cc_library(
 )
 
 cc_library(
+    name = "trifinger_controller_params",
+    hdrs = ["trifinger_controller_params.h"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
     name = "trifinger_lcm_channels",
     hdrs = ["trifinger_lcm_channels.h"],
     visibility = ["//visibility:public"],

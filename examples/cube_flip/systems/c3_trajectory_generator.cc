@@ -23,11 +23,13 @@ using systems::TimestampedVector;
 
 
 C3TrajectoryGenerator::C3TrajectoryGenerator(
-    const drake::multibody::MultibodyPlant<double>& plant, C3Options c3_options, bool track_dynamically_feasible)
+    const drake::multibody::MultibodyPlant<double>& plant, 
+      C3Options c3_options, bool track_dynamically_feasible, int example_idx)
     : plant_(plant), 
     c3_options_(std::move(c3_options)), 
     N_(c3_options_.N), 
-    track_dynamically_feasible_(track_dynamically_feasible) {
+    track_dynamically_feasible_(track_dynamically_feasible),
+    example_idx_(example_idx) {
   this->set_name("c3_trajectory_generator");
 
   std::cout << "HELLO INIT" << std::endl;
@@ -50,9 +52,17 @@ C3TrajectoryGenerator::C3TrajectoryGenerator(
                                      drake::Value<C3Output::C3Solution>())
           .get_index();
 
+  // HARDCODED
+  int nominal_position_size;
+  if (example_idx_ == 0) {
+    nominal_position_size = 3;
+  } else if (example_idx_ == 2) {
+    nominal_position_size = 9;
+  }
+
   nominal_position_port_ =
       this->DeclareVectorInputPort(
-              "nominal_position", BasicVector<double>(3))
+              "nominal_position", BasicVector<double>(nominal_position_size))
           .get_index();    
 
   actor_trajectory_port_ =
@@ -86,26 +96,32 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
   auto& lcs =
     this->EvalAbstractInput(context, lcs_port_)->get_value<LCS>();
 
-  auto plant_context = plant_.CreateDefaultContext();		
-  VectorXd tau_g = plant_.CalcGravityGeneralizedForces(*plant_context);
-  double gravity = tau_g[2]; 
 
   MatrixXd x_hat = c3_solution->x_sol_.cast<double>();
   MatrixXd u_hat = c3_solution->u_sol_.cast<double>();
 
-  // Gravity not accounted for in external force
-  for (int i = 0; i < u_hat.cols(); i++) {
-    u_hat.col(i)(2) += gravity;
+  
+  auto plant_context = plant_.CreateDefaultContext();		
+  VectorXd tau_g = plant_.CalcGravityGeneralizedForces(*plant_context);
+  if (example_idx_ == 0) {
+    double gravity = tau_g(2); 
+
+    // Gravity not accounted for in external force
+    for (int i = 0; i < u_hat.cols(); i++) {
+      u_hat.col(i)(2) += gravity;
+    }
+
+  } else if (example_idx_ == 2) {
+      for (int i = 0; i < u_hat.cols(); i++) {
+      u_hat.col(i)(2) += tau_g(2);
+      u_hat.col(i)(5) += tau_g(5);
+      u_hat.col(i)(8) += tau_g(8);
+    }
   }
 
   if (track_dynamically_feasible_) {
     x_hat = SimulateLCS(x_hat.col(0), u_hat, lcs);
   }
-
-	int ee_pos_idx = 0;
-  int ee_rot_idx = 3; 
-  int force_idx = 0;
-  int torque_idx = 3;
 
 	// Make non-degenerate trajectory for N = 1
   MatrixXd positions;
@@ -115,43 +131,76 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
 
   VectorXd time_vector;
 
-	if (N_ == 1) {
-		positions = MatrixXd::Zero(3, 2);
-		positions.col(0) = x_hat.middleRows(ee_pos_idx, 3).col(0) + nominal_position->get_value();
-		positions.col(1) = x_hat.middleRows(ee_pos_idx, 3).col(1) + nominal_position->get_value();
+  // HARDCODED
+  if (example_idx_ == 0) {
+    int ee_pos_idx = 0;
+    int ee_rot_idx = 3; 
+    int force_idx = 0;
+    int torque_idx = 3;
 
-		raw_orientations = MatrixXd::Zero(2, 2);
-		raw_orientations.col(0) = x_hat.middleRows(ee_rot_idx, 2).col(0);
-		raw_orientations.col(1) = x_hat.middleRows(ee_rot_idx, 2).col(1);
+    if (N_ == 1) {
+      positions = MatrixXd::Zero(3, 2);
+      positions.col(0) = x_hat.middleRows(ee_pos_idx, 3).col(0) + nominal_position->get_value();
+      positions.col(1) = x_hat.middleRows(ee_pos_idx, 3).col(1) + nominal_position->get_value();
 
-		forces = MatrixXd::Zero(3, 2);
-		forces.col(0) = u_hat.col(0).segment(force_idx, 3);
-		forces.col(1) = u_hat.col(0).segment(force_idx, 3);
+      raw_orientations = MatrixXd::Zero(2, 2);
+      raw_orientations.col(0) = x_hat.middleRows(ee_rot_idx, 2).col(0);
+      raw_orientations.col(1) = x_hat.middleRows(ee_rot_idx, 2).col(1);
 
-    torques = MatrixXd::Zero(3, 2);
-		torques.col(0).segment(0, 2) = u_hat.col(0).segment(torque_idx, 2);
-		torques.col(1).segment(0, 2) = u_hat.col(0).segment(torque_idx, 2);
+      forces = MatrixXd::Zero(3, 2);
+      forces.col(0) = u_hat.col(0).segment(force_idx, 3);
+      forces.col(1) = u_hat.col(0).segment(force_idx, 3);
 
-    time_vector = VectorXd::Zero(2);
-    time_vector[0] = c3_solution->time_vector_.cast<double>()(0);
-    time_vector[1] = time_vector[0] + c3_options_.dt;
-    // time_vector[1] = c3_options_.dt;
+      torques = MatrixXd::Zero(3, 2);
+      torques.col(0).segment(0, 2) = u_hat.col(0).segment(torque_idx, 2);
+      torques.col(1).segment(0, 2) = u_hat.col(0).segment(torque_idx, 2);
 
-	} else {
-    x_hat = x_hat.rightCols(x_hat.cols() - 1); // Remove x0 for size consistency
+      time_vector = VectorXd::Zero(2);
+      time_vector[0] = c3_solution->time_vector_.cast<double>()(0);
+      time_vector[1] = time_vector[0] + c3_options_.dt;
+      // time_vector[1] = c3_options_.dt;
 
-		// Reapply offset
-		positions = x_hat.middleRows(ee_pos_idx, 3);
-		for (int i = 0; i < positions.cols(); i++) {
-			positions.col(i) + nominal_position->get_value();
-		}
-		raw_orientations = x_hat.middleRows(ee_rot_idx, 2);
+    } else {
+      x_hat = x_hat.rightCols(x_hat.cols() - 1); // Remove x0 for size consistency
 
-		forces = u_hat.topRows(3);
-    torques = MatrixXd::Zero(3, u_hat.cols());
-    torques.topRows(2) = u_hat.bottomRows(2);
-    time_vector = c3_solution->time_vector_.cast<double>();
-	}
+      // Reapply offset
+      positions = x_hat.middleRows(ee_pos_idx, 3);
+      for (int i = 0; i < positions.cols(); i++) {
+        positions.col(i) + nominal_position->get_value();
+      }
+      raw_orientations = x_hat.middleRows(ee_rot_idx, 2);
+
+      forces = u_hat.topRows(3);
+      torques = MatrixXd::Zero(3, u_hat.cols());
+      torques.topRows(2) = u_hat.bottomRows(2);
+      time_vector = c3_solution->time_vector_.cast<double>();
+    }
+  } else if (example_idx_ == 2) {
+    int ee_pos_idx = 0;
+    int force_idx = 0;
+
+    if (N_ == 1) {
+      positions = MatrixXd::Zero(9, 2);
+      positions.col(0) = x_hat.middleRows(ee_pos_idx, 9).col(0);
+      positions.col(1) = x_hat.middleRows(ee_pos_idx, 9).col(1);
+
+      forces = MatrixXd::Zero(9, 2);
+      forces.col(0) = u_hat.col(0).segment(force_idx, 9);
+      forces.col(1) = u_hat.col(0).segment(force_idx, 9);
+
+      time_vector = VectorXd::Zero(2);
+      time_vector[0] = c3_solution->time_vector_.cast<double>()(0);
+      time_vector[1] = time_vector[0] + c3_options_.dt;
+
+    } else {
+      x_hat = x_hat.rightCols(x_hat.cols() - 1); // Remove x0 for size consistency
+
+      positions = x_hat.middleRows(ee_pos_idx, 9);
+      forces = u_hat;
+      time_vector = c3_solution->time_vector_.cast<double>();
+    }
+  }
+	
 
   LcmTrajectory::Trajectory end_effector_traj;
   end_effector_traj.traj_name = "end_effector_position_target";
@@ -171,8 +220,13 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
   force_traj.time_vector = time_vector;
   lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);
 
+  // Don't need orientation/torque for trifinger
+  if (example_idx_ == 0) {
+    int ee_pos_idx = 0;
+    int ee_rot_idx = 3; 
+    int force_idx = 0;
+    int torque_idx = 3;  
 
-  if (publish_end_effector_orientation_) {
     LcmTrajectory::Trajectory torque_traj;
     torque_traj.traj_name = "end_effector_torque_target";
     torque_traj.datatypes =

@@ -94,11 +94,15 @@ int DoMain(int argc, char* argv[]) {
     parser.AddModels(FindResourceOrThrow(sim_params.end_effector_model))[0];
   ModelInstanceIndex object_index =
       parser.AddModels(FindResourceOrThrow(sim_params.object_model))[0];
-  multibody::AddFlatTerrain(&plant, &scene_graph, 1.0, 1.0);
+  parser.AddModels(FindResourceOrThrow(sim_params.ground_model));
 
   Eigen::Vector3d base_translation(-0 * Vector3d::UnitZ());
   RigidTransformd X_WI(drake::math::RotationMatrix<double>(), base_translation);
+  RigidTransform<double> X_G = RigidTransform<double>(
+    drake::math::RotationMatrix<double>(), {0, 0, 0.0});
+
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"), X_WI);
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("ground"), X_G);
 
   // HARDCODED
   RigidTransformd X_identity(drake::math::RotationMatrix<double>(), Eigen::Vector3d::Zero());

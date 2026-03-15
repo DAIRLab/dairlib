@@ -32,9 +32,8 @@ cc_binary(
         # ":parameters",
         "//examples/cube_flip/trifinger/parameter_headers:trifinger_osc_controller_params",
         "//examples/cube_flip/trifinger/parameter_headers:trifinger_lcm_channels",
-        "//examples/cube_flip/trifinger:trifinger_position_splitter",
+        "//examples/cube_flip/trifinger/systems:trifinger_systems",
         "//common",
-        "//examples/franka/systems:franka_systems",
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
@@ -45,22 +44,6 @@ cc_binary(
         "//systems/trajectory_optimization:lcm_trajectory_systems",
         "@drake//:drake_shared_library",
         "@gflags",
-    ],
-)
-
-cc_library(
-    name = "trifinger_position_splitter",
-    srcs = [
-        "trifinger_position_splitter.cc",
-    ],
-    hdrs = [
-        "trifinger_position_splitter.h",
-    ],
-    deps = [
-        "//common:eigen_utils",
-        "//common:find_resource",
-        "//lcm:lcm_trajectory_saver",
-        "@drake//:drake_shared_library",
     ],
 )
 
@@ -82,6 +65,40 @@ cc_binary(
         "//systems/trajectory_optimization:lcm_trajectory_systems",
         "//systems/visualization:lcm_visualization_systems",
         "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "trifinger_controller",
+    srcs = ["trifinger_controller.cc"],
+    data = [
+        "//examples/cube_flip:urdfs",
+    ],
+    deps = [
+        "//common",
+        "//systems/senders:c3_state_sender",
+        "//lcm:lcm_trajectory_saver",
+        "//solvers:c3",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/controllers:c3_controller",
+        "//systems/controllers:lcs_factory_system",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:radio_parser",
+        "//systems/trajectory_optimization:c3_output_systems",
+        "@drake//:drake_shared_library",
+        "//examples/cube_flip/trifinger/parameter_headers:trifinger_controller_params",
+        "//examples/cube_flip/trifinger/parameter_headers:trifinger_lcm_channels",
+        "//examples/cube_flip/parameter_headers:iC3_options",
+        "//examples/cube_flip/systems:iC3_trajectory_generator",
+        "//examples/cube_flip/systems:c3_goal_generator",
+        "//examples/cube_flip/systems:c3_trajectory_generator",
+        "//examples/cube_flip/systems:timed_gate",
+        "//systems/controllers:ic3_tracking_controller",
+        "//examples/cube_flip/trifinger/systems:trifinger_systems",
         "@gflags",
     ],
 )

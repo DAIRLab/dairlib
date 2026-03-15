@@ -39,13 +39,16 @@ namespace dairlib {
 
 class C3GoalGenerator : public drake::systems::LeafSystem<double> {
   public:
+
+    // example idx 0 = plate
+    // example idx 2 = trifinger
     explicit C3GoalGenerator(
         MultibodyPlant<double>& plant,
         Context<double>* context,
         MultibodyPlant<AutoDiffXd>& plant_ad,
         Context<AutoDiffXd>* context_ad,
         vector<SortedPair<GeometryId>>& contact_geoms,
-        C3Options c3_options, VectorXd x_des);
+        C3Options c3_options, VectorXd x_des, int example_idx);
 
     const drake::systems::InputPort<double>& get_input_port_state() const {
       return this->get_input_port(state_port_);
@@ -94,6 +97,8 @@ class C3GoalGenerator : public drake::systems::LeafSystem<double> {
     int n_x_;
     int n_u_;
 
+    int example_idx_;
+    
     int n_lambda_;
     solvers::ContactModel contact_model_;
 

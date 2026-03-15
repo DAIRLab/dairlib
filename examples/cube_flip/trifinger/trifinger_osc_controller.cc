@@ -7,7 +7,7 @@
 
 #include "examples/cube_flip/trifinger/parameter_headers/trifinger_osc_controller_params.h"
 #include "examples/cube_flip/trifinger/parameter_headers/trifinger_lcm_channels.h"
-#include "examples/cube_flip/trifinger/trifinger_position_splitter.h"
+#include "examples/cube_flip/trifinger/systems/trifinger_position_splitter.h"
 #include "multibody/kinematic/distance_evaluator.h"
 
 #include "systems/controllers/osc/end_effector_force.h"
@@ -266,7 +266,7 @@ int DoMain(int argc, char* argv[]) {
                     trifinger_command_sender->get_input_port());
   } else {
     if (FLAGS_lcm_channels ==
-        "examples/franka/parameters/lcm_channels_hardware.yaml") {
+        "examples/cube_flip/trifinger/parameters/lcm_channels_hardware.yaml") {
       std::cerr << "Using hardware lcm channels but not cancelling gravity "
                    "compensation. Please check the OSC settings"
                 << std::endl;

@@ -23,14 +23,15 @@ C3GoalGenerator::C3GoalGenerator(
 		MultibodyPlant<AutoDiffXd>& plant_ad,
 		Context<AutoDiffXd>* context_ad,
 		vector<SortedPair<GeometryId>>& contact_geoms,
-		C3Options c3_options, VectorXd x_des)
+		C3Options c3_options, VectorXd x_des, int example_idx)
     : plant_(plant), 
 			context_(context),
 			plant_ad_(plant_ad),
 			context_ad_(context_ad),
 			contact_geoms_(contact_geoms),
 			c3_options_(std::move(c3_options)),
-			x_des_(x_des)
+			x_des_(x_des),
+      example_idx_(example_idx)
   {
 		
   this->set_name("c3_goal_generator");
@@ -60,9 +61,17 @@ C3GoalGenerator::C3GoalGenerator(
       this->DeclareVectorInputPort("x_input", TimestampedVector<double>(n_x_))
           .get_index();
 
+  // HARDCODED
+  int nominal_position_size;
+  if (example_idx_ == 0) {
+    nominal_position_size = 3;
+  } else if (example_idx_ == 2) {
+    nominal_position_size = 9;
+  }
+  
   nominal_position_port_ =
       this->DeclareVectorInputPort(
-              "nominal_position", BasicVector<double>(3))
+              "nominal_position", BasicVector<double>(nominal_position_size))
           .get_index();
 
   target_port_ =
@@ -110,12 +119,7 @@ void C3GoalGenerator::OutputTarget(
                                                         state_port_);
   drake::VectorX<double> x_lcs = lcs_x->get_data();
 
-	// hard coded, set z goal to nominal z
 	VectorXd xd = x_des_;
-	// xd.segment(0, 2) = x_lcs.segment(9, 2);
-	// xd(2) = nominal_position->get_value()(2);
-
-	// xd.segment(9, 3) = nominal_position->get_value();
 
 	target->get_mutable_value() = xd;
 }
@@ -132,8 +136,12 @@ void C3GoalGenerator::OutputState(
     (BasicVector<double>*)this->EvalVectorInput(context, nominal_position_port_);
 
 	VectorXd x_out = lcs_x->get_value();
-  x_out.segment(0, 3) = x_out.segment(0, 3) - nominal_position->get_value();
-  x_out.segment(9, 3) = x_out.segment(9, 3) - nominal_position->get_value();
+  if (example_idx_ == 0) {
+    DRAKE_DEMAND(nominal_position->get_value().size() == 3);
+    x_out.segment(0, 3) = x_out.segment(0, 3) - nominal_position->get_value();
+    x_out.segment(9, 3) = x_out.segment(9, 3) - nominal_position->get_value();
+  }
+
 
   state_output->SetDataVector(x_out);
   state_output->set_timestamp(context.get_time());  // Set timestamp.
@@ -150,12 +158,24 @@ void C3GoalGenerator::OutputLCS(
                                                         state_port_);
   drake::VectorX<double> x_lcs = lcs_x->get_data();
 
-  // Translate xyz position to match ic3's origin
-  x_lcs.segment(0, 3) = x_lcs.segment(0, 3) - nominal_position->get_value(); 
-  x_lcs.segment(9, 3) = x_lcs.segment(9, 3) - nominal_position->get_value(); 
 
+  if (example_idx_ == 0) {
+    // Translate xyz position to match ic3's origin
+    x_lcs.segment(0, 3) = x_lcs.segment(0, 3) - nominal_position->get_value(); 
+    x_lcs.segment(9, 3) = x_lcs.segment(9, 3) - nominal_position->get_value();
+  }
+
+   // HARDCODED
 	VectorXd u_nominal = VectorXd::Zero(n_u_);
-	u_nominal(2) = 5; // Hard coded plate + object weight
+  if (example_idx_ == 0) {
+    DRAKE_DEMAND(n_u_ == 5);
+    u_nominal(2) = 5; // Hard coded plate + object weight
+  } else if (example_idx_ == 2) {
+    DRAKE_DEMAND(n_u_ == 9);
+    u_nominal(2) = 0.2 * 9.8;
+    u_nominal(5) = 0.2 * 9.8;
+    u_nominal(8) = 0.2 * 9.8;
+  }
 
 	multibody::SetContext<double>(plant_, x_lcs, u_nominal,  context_);
 	drake::VectorX<double> q_v_u(n_x_ + n_u_);

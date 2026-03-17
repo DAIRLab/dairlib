@@ -8,14 +8,14 @@
       <link name="plate">
         <pose>0 0 0 0 0 0</pose>
         <inertial>
-          <mass>0.5</mass>
-           <inertia>
-            <ixx>0.005</ixx>
+          <mass>0.85</mass>
+          <inertia>
+            <ixx>0.01029</ixx>
             <ixy>0</ixy>
             <ixz>0</ixz>
-            <iyy>0.005</iyy>
+            <iyy>0.01029</iyy>
             <iyz>0</iyz>
-            <izz>0.01</izz>
+            <izz>0.02057</izz>
           </inertia>
         </inertial>
         <visual name="plate_visual">

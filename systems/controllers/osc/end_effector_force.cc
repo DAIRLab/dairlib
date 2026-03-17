@@ -22,10 +22,8 @@ using drake::trajectories::Trajectory;
 
 namespace dairlib {
 
-EndEffectorForceTrajectoryGenerator::EndEffectorForceTrajectoryGenerator()
-  : n_forces_(3) {
-  EndEffectorForceTrajectoryGenerator(3);
-}
+EndEffectorForceTrajectoryGenerator::EndEffectorForceTrajectoryGenerator() 
+  : EndEffectorForceTrajectoryGenerator(3) {}
 
 EndEffectorForceTrajectoryGenerator::EndEffectorForceTrajectoryGenerator(int n_forces) 
   : n_forces_(n_forces) {
@@ -86,6 +84,7 @@ void EndEffectorForceTrajectoryGenerator::CalcTraj(
     dynamic_cast<PiecewisePolynomial<double>*>(traj);
   DRAKE_DEMAND(casted_traj != nullptr);
 
+  std::cout << "N FORCES " << n_forces_ << std::endl;
   if (radio_out->channel[11] || radio_out->channel[14] ||
       trajectory_input.value(0).isZero()) {
     auto zero_traj =

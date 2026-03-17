@@ -368,8 +368,8 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
       A_u(3, 3) = 1;
       A_u(4, 4) = 1;
 
-      lower_bound_u << -1, -1, 3, -0.6, -0.6;
-      upper_bound_u << 1, 1, 7, 0.6, 0.6;
+      lower_bound_u << -1, -1, 5, -1, -1;
+      upper_bound_u << 1, 1, 12, 1, 1;
 
     } else if (n_u_ == 9) {
       for (int i = 0; i < 3; i++) {

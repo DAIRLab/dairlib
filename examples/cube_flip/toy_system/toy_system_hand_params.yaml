@@ -1,31 +1,32 @@
 input_type: "c3"
 
-time_to_wait: 1.5
+time_to_wait: 2
 
-sim_rate: 0.2
+sim_rate: 0.5
 
-x_init:  [0.0, 0, -0.0,  # finger 1  
-         0.0, -0.0, 0.0,   # finger 2
-         0.0, 0.0, 0.0,   # finger 3
-         #0, 0, 0.0,  # finger 4
+x_init:  [0, 0.08, 0.05,  # finger 1  
+         0.04, -0.08, 0.05,   # finger 2
+         -0.04, -0.08, 0.05,   # finger 3
          1, 0, 0, 0,  # cube orientation
          0, 0, 0.05,  # cube position
          0, 0, 0,     # finger 1 velo
          0, 0, 0,     # finger 2 velo
          0, 0, 0,     # finger 3 velo
-         #0, 0, 0,     # finger 4 velo
          0, 0, 0,     # cube ang velo
          0, 0, 0]   	# cube velo
 
-x_des: [0.0, 0, -0.0,  # finger 1  
-         0.04, -0.04, 0.0,   # finger 2
-         0.04, 0.04, 0.0,   # finger 3
-         #0, 0, 0.0,     # thumb
-         0, 0, 1, 0,  # cube orientation
-         0, 0, 0,  # cube position
-         0, 0, 0,     # index velo
-         0, 0, 0,     # middle velo
-         0, 0, 0,     # ring velo
-         #0, 0, 0,     # thumb velo
+
+x_des: [0, 0.08, 0.05,  # finger 1  
+         0.04, -0.08, 0.05,   # finger 2
+         -0.04, -0.08, 0.05,   # finger 3
+         # 0, 0, 0.0,   # finger 4
+         # 0, 0, 1, 0,  # cube orientation (180 about y)
+         0.707, -0.707, 0, 0,  # cube orientation (90 about y)
+         #0, 0, 0, 1,  # cube orientation (180 about z)
+         0, 0, 0.05,  # cube position
+         0, 0, 0,     # finger 1 velo
+         0, 0, 0,     # finger 2 velo
+         0, 0, 0,     # finger 3 velo
+         # 0, 0, 0,     # finger 4 velo
          0, 0, 0,     # cube ang velo
          0, 0, 0]     # cube velo

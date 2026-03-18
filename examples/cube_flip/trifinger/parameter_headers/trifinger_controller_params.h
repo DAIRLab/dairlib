@@ -24,7 +24,6 @@ struct TrifingerControllerParams {
   double time_to_wait;
 
   Eigen::Vector3d tool_attachment_frame;
-  Eigen::Vector3d ee_init_position;
   Eigen::VectorXd x_target;
   Eigen::VectorXd nominal_position;
 
@@ -46,7 +45,6 @@ struct TrifingerControllerParams {
     a->Visit(DRAKE_NVP(track_dynamically_feasible));
     a->Visit(DRAKE_NVP(nominal_position));
 
-    a->Visit(DRAKE_NVP(ee_init_position));
     a->Visit(DRAKE_NVP(x_target));
 
   }

@@ -101,6 +101,10 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
   MatrixXd u_hat = c3_solution->u_sol_.cast<double>();
 
   
+  if (track_dynamically_feasible_) {
+    x_hat = SimulateLCS(x_hat.col(0), u_hat, lcs);
+  }
+
   auto plant_context = plant_.CreateDefaultContext();		
   VectorXd tau_g = plant_.CalcGravityGeneralizedForces(*plant_context);
   if (example_idx_ == 0) {
@@ -112,15 +116,16 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
     }
 
   } else if (example_idx_ == 2) {
-      for (int i = 0; i < u_hat.cols(); i++) {
-      u_hat.col(i)(2) += tau_g(2);
-      u_hat.col(i)(5) += tau_g(5);
-      u_hat.col(i)(8) += tau_g(8);
+    double mass_ratio = 0.2 / 1e-6; // HARDCODED mass ratio between lcs and massless models
+    
+    std::cout << tau_g.transpose() << std::endl;
+    for (int i = 0; i < u_hat.cols(); i++) {
+      u_hat.col(i)(2) += (tau_g(2));
+      u_hat.col(i)(5) += (tau_g(5));
+      u_hat.col(i)(8) += (tau_g(8));
     }
-  }
+    u_hat = u_hat / mass_ratio;
 
-  if (track_dynamically_feasible_) {
-    x_hat = SimulateLCS(x_hat.col(0), u_hat, lcs);
   }
 
 	// Make non-degenerate trajectory for N = 1
@@ -215,7 +220,7 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
   LcmTrajectory::Trajectory force_traj;
   force_traj.traj_name = "end_effector_force_target";
   force_traj.datatypes =
-      std::vector<std::string>(3, "double");
+      std::vector<std::string>(forces.rows(), "double");
   force_traj.datapoints = forces;
   force_traj.time_vector = time_vector;
   lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);

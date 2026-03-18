@@ -9,7 +9,7 @@ print_costs: true
 N: 48 # REMOVE after importing all options from c3 repo
 dt: 0.01 # REMOVE after importing all options from c3 repo
 
-c3_dt_scaling: 4 # c3_dt / ic3_dt
+c3_dt_scaling: 5 # c3_dt / ic3_dt
 
 iter_to_use: 9
 num_timesteps_to_use: 48

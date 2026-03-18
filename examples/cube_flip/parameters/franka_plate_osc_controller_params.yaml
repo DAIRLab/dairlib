@@ -55,19 +55,19 @@ EndEffectorKp:
 EndEffectorKd:
   [ 100, 0, 0,
     0, 100, 0,
-    0, 0, 160 ]
+    0, 0, 80 ]
 EndEffectorRotW:
   [ 300, 0, 0,
     0, 300, 0,
     0, 0, 300 ]
 EndEffectorRotKp:
-  [ 150, 0, 0,
-    0, 150, 0,
-    0, 0, 150]
+  [ 180, 0, 0,
+    0, 180, 0,
+    0, 0, 180]
 EndEffectorRotKd:
-  [ 22, 0, 0,
-    0, 22, 0,
-    0, 0, 22 ]
+  [ 24, 0, 0,
+    0, 24, 0,
+    0, 0, 24 ]
 LambdaEndEffectorW:
   [ 400, 0, 0,
     0, 400, 0,

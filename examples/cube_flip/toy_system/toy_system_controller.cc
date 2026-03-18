@@ -76,6 +76,11 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
       drake::yaml::LoadYamlFile<ToySystemParams>(
           "examples/cube_flip/toy_system/toy_system_params.yaml");
 
+  drake::solvers::SolverOptions solver_options =
+      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
+          "examples/cube_flip/toy_system/toy_osqp_options.yaml")
+          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+
   DiagramBuilder<double> plant_builder;
   auto [plant_for_lcs, scene_graph_for_lcs] =
       AddMultibodyPlantSceneGraph(&plant_builder, 0);
@@ -220,6 +225,8 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
               "iC3_LQR", &lcm));
     auto controller =
         builder.AddSystem<systems::iC3TrackingController>(plant_for_lcs, c3_options, ic3_options, toy_params.time_to_wait);
+    controller->SetOsqpSolverOptions(solver_options);
+
     auto vector_to_timestamped_vector =
       builder.AddSystem<Vector2TimestampedVector>(plant.num_positions() + plant.num_velocities());
     auto lcs_factory_system = builder.AddSystem<systems::LCSFactorySystem>(

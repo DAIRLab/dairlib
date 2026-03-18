@@ -92,6 +92,10 @@ void TimedGate::OutputActorTrajectory(
 
     MatrixXd c3_position_data = c3_traj.GetTrajectory("end_effector_position_target").datapoints;
     MatrixXd c3_force_data = c3_traj.GetTrajectory("end_effector_force_target").datapoints;
+
+    std::cout << "c3_position_data " << c3_position_data.rows() << ", " << c3_position_data.cols() << std::endl;
+    std::cout << "c3_force_data " << c3_force_data.rows() << ", " << c3_force_data.cols() << std::endl;
+
     MatrixXd c3_orientation_data;
     MatrixXd c3_torque_data;
 

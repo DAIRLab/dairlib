@@ -1,4 +1,4 @@
-trifinger_model: examples/cube_flip/trifinger/robot_properties_fingers/urdf/trifinger_minimal_collision.urdf
+trifinger_model: examples/cube_flip/trifinger/robot_properties_fingers/urdf/trifinger.urdf
 object_model: examples/cube_flip/urdf/cube_for_lcs.sdf
 end_effector_model: examples/cube_flip/urdf/fingertips.sdf
 end_effector_lcs_model: examples/cube_flip/urdf/fingertips_lcs.sdf
@@ -13,20 +13,23 @@ c3_options_file: examples/cube_flip/trifinger/parameters/trifinger_c3_options.ya
 track_dynamically_feasible: true # false is currently broken
 
 time_to_wait: 1.0
-ee_init_position: [0.4, -0.35, 0.45]
 
 nominal_position: [0, 0.08, 0.05,  # finger 0
                    0.04, -0.08, 0.05,  # finger 120
                    -0.04, -0.08, 0.05]  # finger 240
 
-x_target: [0.0, 0, -0.0,  # finger 1  
-         0.0, -0.0, 0.0,   # finger 2
-         0.0, 0.0, 0.0,   # finger 3
-         0.707, 0, 0.707, 0,  # cube orientation (90 about y)
+x_target: [0, 0.08, 0.05,  # finger 1  
+         0.04, -0.08, 0.05,   # finger 2
+         -0.04, -0.08, 0.05,   # finger 3
+         # 0, 0, 0.0,   # finger 4
+         # 0, 0, 1, 0,  # cube orientation (180 about y)
+         0.707, -0.707, 0, 0,  # cube orientation (90 about y)
+         #0, 0, 0, 1,  # cube orientation (180 about z)
          0, 0, 0.05,  # cube position
          0, 0, 0,     # finger 1 velo
          0, 0, 0,     # finger 2 velo
          0, 0, 0,     # finger 3 velo
+         # 0, 0, 0,     # finger 4 velo
          0, 0, 0,     # cube ang velo
          0, 0, 0]     # cube velo
 

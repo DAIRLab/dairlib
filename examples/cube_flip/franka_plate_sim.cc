@@ -33,6 +33,7 @@
 
 namespace dairlib {
 
+using drake::systems::Diagram;
 using dairlib::systems::SubvectorPassThrough;
 using drake::geometry::GeometrySet;
 using drake::geometry::SceneGraph;
@@ -165,13 +166,15 @@ int DoMain(int argc, char* argv[]) {
 
   auto diagram = builder.Build();
 
-  drake::systems::Simulator<double> simulator(*diagram);
+  std::shared_ptr<Diagram<double>> shared_diagram = std::move(diagram);
+  DrawAndSaveDiagramGraph(*shared_diagram, "/home/ericcui/diagrams/franka_plate_sim");
 
+  drake::systems::Simulator<double> simulator(*shared_diagram);
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);
   simulator.set_target_realtime_rate(sim_params.realtime_rate);
 
-  auto& plant_context = diagram->GetMutableSubsystemContext(
+  auto& plant_context = shared_diagram->GetMutableSubsystemContext(
       plant, &simulator.get_mutable_context());
 
   VectorXd q = VectorXd::Zero(nq);

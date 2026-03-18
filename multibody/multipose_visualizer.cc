@@ -72,11 +72,11 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
         //   drake::math::RotationMatrix<double>(), {0, -0.08, 0.05});
               
         RigidTransform<double> X_1 = RigidTransform<double>(
-          drake::math::RotationMatrix<double>(), {0.08, 0, 0.05});
+          drake::math::RotationMatrix<double>(), {0.0, 0, 0.0});
         RigidTransform<double> X_2 = RigidTransform<double>(
-          drake::math::RotationMatrix<double>(), {-0.08, -0.04, 0.05});
+          drake::math::RotationMatrix<double>(), {-0.0, -0.0, 0.0});
         RigidTransform<double> X_3 = RigidTransform<double>(
-          drake::math::RotationMatrix<double>(), {-0.08, 0.04, 0.05});
+          drake::math::RotationMatrix<double>(), {-0.0, 0.0, 0.0});
 
         plant_->WeldFrames(plant_->world_frame(),
                           plant_->GetFrameByName("base_link_1", model_indices_.at(i)), X_1);

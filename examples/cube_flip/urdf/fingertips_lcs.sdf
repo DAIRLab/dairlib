@@ -3,6 +3,8 @@
   <world name="hand_world">
 
     <model name="fingertips_lcs">
+      <!-- HARDCODED JOINT LIMITS -->
+
 
       <!-- ========================= -->
       <!-- FINGER 1 -->
@@ -73,8 +75,8 @@
           <limit>
             <effort>100.0</effort>
             <velocity>10</velocity>
-            <lower> -0.07 </lower>
-            <upper> 0.07 </upper>
+            <lower> -0.1 </lower>
+            <upper> 0.1 </upper>
           </limit>  
         </axis>
       </joint>
@@ -100,8 +102,8 @@
            <limit>
             <effort>100.0</effort>
             <velocity>10</velocity>
-            <lower> -0.07 </lower>
-            <upper> 0.07 </upper>
+            <lower> -0.02 </lower>
+            <upper> 0.18 </upper>
           </limit>
         </axis>
       </joint>
@@ -114,8 +116,8 @@
           <limit>
           <effort>100.0</effort>
           <velocity>10</velocity>
-          <lower> -0.03 </lower>
-          <upper> 0.1 </upper>
+          <lower> 0.02 </lower>
+          <upper> 0.13 </upper>
         </limit>
         </axis>
       </joint>
@@ -189,8 +191,8 @@
           <limit>
             <effort>100.0</effort>
             <velocity>10</velocity>
-            <lower> -0.07 </lower>
-            <upper> 0.07 </upper>
+            <lower> -0.06 </lower>
+            <upper> 0.14 </upper>
           </limit>
         </axis>
       </joint>
@@ -216,8 +218,8 @@
           <limit>
             <effort>100.0</effort>
             <velocity>10</velocity>
-            <lower> -0.07 </lower>
-            <upper> 0.07 </upper>
+            <lower> -0.18 </lower>
+            <upper> 0.02 </upper>
           </limit>
         </axis>
       </joint>
@@ -230,8 +232,8 @@
           <limit>
             <effort>100.0</effort>
             <velocity>10</velocity>
-            <lower> -0.03 </lower>
-            <upper> 0.1 </upper>
+            <lower> 0.02 </lower>
+            <upper> 0.13 </upper>
           </limit>
         </axis>
       </joint>
@@ -305,8 +307,8 @@
           <limit>
             <effort>100.0</effort>
             <velocity>10</velocity>
-            <lower> -0.07 </lower>
-            <upper> 0.07 </upper>
+            <lower> -0.14 </lower>
+            <upper> 0.06 </upper>
           </limit>
         </axis>
       </joint>
@@ -332,8 +334,8 @@
           <limit>
             <effort>100.0</effort>
             <velocity>10</velocity>
-            <lower> -0.07 </lower>
-            <upper> 0.07 </upper>
+            <lower> -0.18 </lower>
+            <upper> 0.02 </upper>
           </limit>
         </axis>
       </joint>
@@ -346,8 +348,8 @@
           <limit>
             <effort>100.0</effort>
             <velocity>10</velocity>
-            <lower> -0.03 </lower>
-            <upper> 0.1 </upper>
+            <lower> 0.02 </lower>
+            <upper> 0.13 </upper>
           </limit>
         </axis>
       </joint>
@@ -421,8 +423,8 @@
           <limit>
             <effort>100.0</effort>
             <velocity>10</velocity>
-            <lower> -0.07 </lower>
-            <upper> 0.07 </upper>
+            <lower> -0.1 </lower>
+            <upper> 0.1 </upper>
           </limit>
         </axis>
       </joint>
@@ -448,8 +450,8 @@
           <limit>
             <effort>100.0</effort>
             <velocity>10</velocity>
-            <lower> -0.07 </lower>
-            <upper> 0.07 </upper>
+            <lower> -0.1 </lower>
+            <upper> 0.1 </upper>
           </limit>
         </axis>
       </joint>

@@ -341,13 +341,26 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
         A(3*i+1, 3*i+1) = 1;
         A(3*i+2, 3*i+2) = 1;
 
-        lower_bound(3*i) = -0.1;
-        lower_bound(3*i+1) = -0.1;
-        lower_bound(3*i+2) = -0.03;
+        // Velocity constraints
+        A(16 + 3*i) = 1;
+        A(16 + 3*i + 1) = 1;
+        A(16 + 3*i + 2) = 1;
 
-        upper_bound(3*i) = 0.1;
-        upper_bound(3*i+1) = 0.1;
-        upper_bound(3*i+2) = 0.05;
+        lower_bound(3*i) = x_des.value()(3*i) - 0.1;
+        lower_bound(3*i+1) = x_des.value()(3*i+1) - 0.1;
+        lower_bound(3*i+2) = x_des.value()(3*i+2) - 0.03;
+
+        lower_bound(16 + 3*i) = -0.2;
+        lower_bound(16 + 3*i+1) = -0.2;
+        lower_bound(16 + 3*i+2) = -0.2;
+
+        upper_bound(3*i) = x_des.value()(3*i) + 0.1;
+        upper_bound(3*i+1) = x_des.value()(3*i+1) + 0.1;
+        upper_bound(3*i+2) = x_des.value()(3*i+2) + 0.08;
+
+        upper_bound(16 + 3*i) = 0.2;
+        upper_bound(16 + 3*i+1) = 0.2;
+        upper_bound(16 + 3*i+2) = 0.2;
       }
     }
     c3_->AddVectorLinearConstraint(A, lower_bound, upper_bound, 1);
@@ -376,11 +389,11 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
         A_u(3*i, 3*i) = 1;
         A_u(3*i+1, 3*i+1) = 1;
         
-        lower_bound_u(3*i) = -20;
-        lower_bound_u(3*i+1) = -20;
+        lower_bound_u(3*i) = -5;
+        lower_bound_u(3*i+1) = -5;
         
-        upper_bound_u(3*i) = 20;
-        upper_bound_u(3*i+1) = 20;
+        upper_bound_u(3*i) = 5;
+        upper_bound_u(3*i+1) = 5;
       }
     }
       

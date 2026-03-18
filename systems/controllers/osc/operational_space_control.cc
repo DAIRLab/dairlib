@@ -758,8 +758,6 @@ VectorXd OperationalSpaceControl::SolveQp(
   for (auto& force_tracking_data : *force_tracking_data_vec_) {
     if (!force_tracking_data->GetWeight().isZero()){
       MatrixXd J_ee = force_tracking_data->GetJ();
-      std::cout << "J_ee " << J_ee.rows() << ", " << J_ee.cols() << std::endl;
-      std::cout << J_ee << std::endl;
 
       A_dyn.block(0, n_v_ + n_c_ + n_h_ + n_u_, n_v_, n_lambda_ext_) =
           J_ee.transpose();
@@ -898,13 +896,12 @@ VectorXd OperationalSpaceControl::SolveQp(
     DRAKE_DEMAND(input_traj != nullptr);
     const auto& traj =
         input_traj->get_value<drake::trajectories::Trajectory<double>>();
+    std::cout << "force tracking traj value " << traj.value(0.0).transpose() << std::endl;
+
     force_tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
                                 *context_wo_spr_, traj, t);
     const MatrixXd W = force_tracking_data->GetWeight();
     const VectorXd lambda_des = force_tracking_data->GetLambdaDes();
-
-    std::cout << "force W " << W.rows() << ", " << W.cols() << std::endl;
-    std::cout << "lambda des " << lambda_des.transpose() << std::endl;
 
     if (!W.allFinite()) {
         std::cout << "force W contains NaN or Inf!" << std::endl;
@@ -1005,21 +1002,17 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // (Testing) 7. Cost for staying close to the previous input
   if (W_input_smoothing_.size() > 0 && u_prev_) {
-    std::cout << "7. smoothing" << std::endl;
     input_smoothing_cost_->UpdateCoefficients(
         W_input_smoothing_, -W_input_smoothing_ * *u_prev_,
         0.5 * u_prev_->transpose() * W_input_smoothing_ * *u_prev_);
   }
 
   if (W_lambda_c_reg_.size() > 0) {
-    std::cout << "W_lambda_c_reg_ " << std::endl;
     lambda_c_cost_->UpdateCoefficients((1 + alpha) * W_lambda_c_reg_,
                                        VectorXd::Zero(n_c_));
   }
 
   if (W_lambda_h_reg_.size() > 0) {
-    std::cout << "W_lambda_h_reg_ " << std::endl;
-
     lambda_h_cost_->UpdateCoefficients((1 + alpha) * W_lambda_h_reg_,
                                        VectorXd::Zero(n_h_));
   }

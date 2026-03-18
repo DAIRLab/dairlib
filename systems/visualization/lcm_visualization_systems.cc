@@ -109,7 +109,7 @@ LcmPoseDrawer::LcmPoseDrawer(
   std::string weld_frame_to_world = "";
   if (model_file.find("allegro_hand_description_right.urdf") != std::string::npos) {
     weld_frame_to_world = "hand_root";
-  } else if (model_file.find("fingertips.sdf") != std::string::npos) {
+  } else if (model_file.find("fingertips_lcs.sdf") != std::string::npos) {
     weld_frame_to_world = "point_hand";
   }
   multipose_visualizers_.push_back(std::make_unique<multibody::MultiposeVisualizer>(
@@ -125,7 +125,7 @@ LcmPoseDrawer::LcmPoseDrawer(
     DeclarePerStepDiscreteUpdateEvent(&LcmPoseDrawer::DrawTrajectoryPlate);
   } else if (model_file.find("allegro_hand_description_right.urdf") != std::string::npos) {
     DeclarePerStepDiscreteUpdateEvent(&LcmPoseDrawer::DrawTrajectoryHand);
-  } else if (model_file.find("fingertips.sdf") != std::string::npos) {
+  } else if (model_file.find("fingertips_lcs.sdf") != std::string::npos) {
     DeclarePerStepDiscreteUpdateEvent(&LcmPoseDrawer::DrawTrajectoryPointHand);
   } else {
     DeclarePerStepDiscreteUpdateEvent(&LcmPoseDrawer::DrawTrajectory);

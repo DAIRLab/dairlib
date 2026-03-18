@@ -88,11 +88,11 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
   //   drake::math::RotationMatrix<double>(), {0, -0.08, 0.05});
 
   RigidTransform<double> X_1 = RigidTransform<double>(
-    drake::math::RotationMatrix<double>(), {0.08, 0, 0.05});
+    drake::math::RotationMatrix<double>(), {0.0, 0, 0.0});
   RigidTransform<double> X_2 = RigidTransform<double>(
-    drake::math::RotationMatrix<double>(), {-0.08, -0.04, 0.05});
+    drake::math::RotationMatrix<double>(), {-0.0, -0.0, 0.0});
   RigidTransform<double> X_3 = RigidTransform<double>(
-    drake::math::RotationMatrix<double>(), {-0.08, 0.04, 0.05});
+    drake::math::RotationMatrix<double>(), {-0.0, 0.0, 0.0});
 
   plant.WeldFrames(plant.world_frame(),
                    plant.GetFrameByName("base_link_1"), X_1);

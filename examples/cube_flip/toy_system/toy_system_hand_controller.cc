@@ -78,6 +78,11 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
       drake::yaml::LoadYamlFile<ToySystemParams>(
           "examples/cube_flip/toy_system/toy_system_hand_params.yaml");
 
+  drake::solvers::SolverOptions solver_options =
+      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
+          "examples/cube_flip/toy_system/toy_osqp_options.yaml")
+          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+
   DiagramBuilder<double> plant_builder;
   auto [plant_for_lcs, scene_graph_for_lcs] =
       AddMultibodyPlantSceneGraph(&plant_builder, 0);
@@ -103,11 +108,11 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
   //   drake::math::RotationMatrix<double>(), {0, -0.08, 0.05});
 
   RigidTransform<double> X_1_lcs = RigidTransform<double>(
-    drake::math::RotationMatrix<double>(), {0.08, 0, 0.05});
+    drake::math::RotationMatrix<double>(), {0.0, 0, 0.0});
   RigidTransform<double> X_2_lcs = RigidTransform<double>(
-    drake::math::RotationMatrix<double>(), {-0.08, -0.04, 0.05});
+    drake::math::RotationMatrix<double>(), {-0.0, -0.0, 0.0});
   RigidTransform<double> X_3_lcs = RigidTransform<double>(
-    drake::math::RotationMatrix<double>(), {-0.08, 0.04, 0.05});
+    drake::math::RotationMatrix<double>(), {-0.0, 0.0, 0.0});
 
   plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
                           plant_for_lcs.GetFrameByName("base_link_1"), X_1_lcs);
@@ -191,7 +196,7 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, 0.0001);
   Parser parser(&plant, &scene_graph);
 
-  const std::string ee_file = "examples/cube_flip/urdf/fingertips.sdf";
+  const std::string ee_file = "examples/cube_flip/urdf/fingertips_lcs.sdf";
 	const std::string cube_file = "examples/cube_flip/urdf/actual_cube.sdf";
 	const std::string ground_file = "examples/cube_flip/urdf/ground.urdf";
 
@@ -212,11 +217,11 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
   //   drake::math::RotationMatrix<double>(), {0, -0.08, 0.05});
 
   RigidTransform<double> X_1 = RigidTransform<double>(
-    drake::math::RotationMatrix<double>(), {0.08, 0, 0.05});
+    drake::math::RotationMatrix<double>(), {0.0, 0, 0.0});
   RigidTransform<double> X_2 = RigidTransform<double>(
-    drake::math::RotationMatrix<double>(), {-0.08, -0.04, 0.05});
+    drake::math::RotationMatrix<double>(), {-0.0, -0.0, 0.0});
   RigidTransform<double> X_3 = RigidTransform<double>(
-    drake::math::RotationMatrix<double>(), {-0.08, 0.04, 0.05});
+    drake::math::RotationMatrix<double>(), {-0.0, 0.0, 0.0});
 
   plant.WeldFrames(plant.world_frame(),
                    plant.GetFrameByName("base_link_1"), X_1);
@@ -312,6 +317,8 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
               "iC3_LQR", &lcm));
     auto controller =
         builder.AddSystem<systems::iC3TrackingController>(plant_for_lcs, c3_options, ic3_options, toy_params.time_to_wait);
+    controller->SetOsqpSolverOptions(solver_options);
+    
     auto vector_to_timestamped_vector =
       builder.AddSystem<Vector2TimestampedVector>(plant.num_positions() + plant.num_velocities());
     auto lcs_factory_system = builder.AddSystem<systems::LCSFactorySystem>(
@@ -379,6 +386,10 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
   std::unique_ptr<drake::systems::Context<double>> plant_context = plant.CreateDefaultContext();		
   VectorXd tau_g = plant.CalcGravityGeneralizedForces(*plant_context);
   VectorXd u_default(VectorXd::Zero(plant.num_actuators()));
+  u_default(2) = tau_g(2);
+  u_default(5) = tau_g(5);
+  u_default(8) = tau_g(8);
+
   // HARDCODED
   auto& pass_context = u_passthrough->GetMyMutableContextFromRoot(diagram_context.get());
   u_passthrough->get_input_port().FixValue(&pass_context, u_default);

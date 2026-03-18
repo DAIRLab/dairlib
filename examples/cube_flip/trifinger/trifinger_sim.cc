@@ -56,6 +56,7 @@ using drake::multibody::ModelInstanceIndex;
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
 using dairlib::systems::AddActuationRecieverAndStateSenderLcm;
+using drake::systems::Diagram;
 
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
@@ -180,13 +181,16 @@ int DoMain(int argc, char* argv[]) {
     drake::visualization::AddDefaultVisualization(&builder);
   }
   auto diagram = builder.Build();
-  drake::systems::Simulator<double> simulator(*diagram);
+  std::shared_ptr<Diagram<double>> shared_diagram = std::move(diagram);
+  DrawAndSaveDiagramGraph(*shared_diagram, "/home/ericcui/diagrams/trifinger_sim");
+
+  drake::systems::Simulator<double> simulator(*shared_diagram);
 
   simulator.set_publish_every_time_step(false);
   simulator.set_publish_at_initialization(false);
   simulator.set_target_realtime_rate(sim_params.realtime_rate);
 
-  auto& plant_context = diagram->GetMutableSubsystemContext(
+  auto& plant_context = shared_diagram->GetMutableSubsystemContext(
       plant, &simulator.get_mutable_context()); 
 
     

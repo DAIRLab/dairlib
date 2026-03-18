@@ -1,7 +1,7 @@
 controller_frequency: 1000
 
-trifinger_model: examples/cube_flip/trifinger/robot_properties_fingers/urdf/trifinger_minimal_collision.urdf
-end_effector_model: examples/cube_flip/urdf/fingertips.sdf
+trifinger_model: examples/cube_flip/trifinger/robot_properties_fingers/urdf/trifinger.urdf
+end_effector_model: examples/cube_flip/urdf/fingertips_massless.sdf
 end_effector_names: ["fingertip_1", "fingertip_2", "fingertip_3"]
 
 neutral_position: [[0, 0.08, 0.05],  # finger 0
@@ -23,7 +23,7 @@ mu: 1.0 # unused
 end_effector_acceleration: 10
 track_end_effector_orientation: false
 cancel_gravity_compensation: false
-enforce_acceleration_constraints: false
+enforce_acceleration_constraints: true
 publish_debug_info: true
 
 W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01 ]

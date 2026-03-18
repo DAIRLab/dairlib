@@ -29,8 +29,6 @@ EndEffectorForceTrajectoryGenerator::EndEffectorForceTrajectoryGenerator(int n_f
   : n_forces_(n_forces) {
   PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
 
-  std::cout << "ee force initialized" << std::endl;
-
   trajectory_port_ =
       this->DeclareAbstractInputPort(
               "trajectory",
@@ -98,9 +96,8 @@ void EndEffectorForceTrajectoryGenerator::CalcTraj(
       *casted_traj = *traj; 
     }
   }
-  // std::cout << "force time range casted: ["
-  //     << casted_traj->start_time() << ", "
-  //     << casted_traj->end_time() << "]\n";
+
+  std::cout << "ee force generator traj " << casted_traj->value(0.0).transpose() << std::endl;
 }
 
 }  // namespace dairlib

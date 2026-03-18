@@ -68,7 +68,7 @@ void LcmTrajectoryReceiver::OutputTrajectory(
           trajectory_block.time_vector, trajectory_block.datapoints);
     } else {
       *casted_traj = PiecewisePolynomial<double>::FirstOrderHold(
-          trajectory_block.time_vector, trajectory_block.datapoints.topRows(trajectory_block.datapoints.rows() / 2));
+          trajectory_block.time_vector, trajectory_block.datapoints.topRows(trajectory_block.datapoints.rows()));
 //      *casted_traj = PiecewisePolynomial<double>::CubicHermite(
 //          trajectory_block.time_vector, trajectory_block.datapoints.topRows(3),
 //          trajectory_block.datapoints.bottomRows(3));

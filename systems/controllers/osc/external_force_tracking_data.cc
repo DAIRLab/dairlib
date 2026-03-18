@@ -74,7 +74,7 @@ void ExternalForceTrackingData::Update(
     double t) {
   DRAKE_DEMAND(traj.rows() == n_lambda_);
   lambda_des_ = traj.value(t);
-  J_ = MatrixXd::Zero(3 * body_names_.size(), plant_wo_spr_.num_velocities());
+  J_ = MatrixXd::Zero(n_lambda_, plant_wo_spr_.num_velocities());
 
   for (int i  = 0; i < body_names_.size(); i++) {
     Eigen::MatrixXd J_i = MatrixXd::Zero(3, plant_wo_spr_.num_velocities());

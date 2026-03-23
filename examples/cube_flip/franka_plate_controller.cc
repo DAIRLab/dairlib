@@ -223,9 +223,13 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(ic3_u_trajectory_sub->get_output_port(),
                     ic3_target_generator->get_input_port_iC3_u_trajectory());
   } else {
-		auto lqr_sub =
-				builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_lqr_output>(
-						"iC3_LQR", &lcm));
+    auto lqr_sub =
+        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_lqr_output>(
+                "iC3_LQR", &lcm));
+
+    auto radio_sub =
+        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
+          	lcm_channel_params.radio_channel, &lcm));
 
     auto object_state_sub =
         builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
@@ -290,8 +294,10 @@ int DoMain(int argc, char* argv[]) {
                     controller->get_input_port_ic3_x());
     builder.Connect(ic3_u_trajectory_sub->get_output_port(),
                     controller->get_input_port_ic3_u());
+    builder.Connect(radio_sub->get_output_port(),
+                    controller->get_input_port_radio());
 
-	builder.Connect(nominal_position->get_output_port(),
+		builder.Connect(nominal_position->get_output_port(),
                     c3_trajectory_generator->get_input_port_nominal_position());
     builder.Connect(c3_goal_generator->get_output_port_lcs(),
                     c3_trajectory_generator->get_input_port_lcs());
@@ -304,6 +310,8 @@ int DoMain(int argc, char* argv[]) {
                     timed_gate->get_input_port_nominal_position());
 		builder.Connect(ic3_x_trajectory_sub->get_output_port(),
                     timed_gate->get_input_port_ic3_x());
+		builder.Connect(radio_sub->get_output_port(),
+                    timed_gate->get_input_port_radio());
 		builder.Connect(timed_gate->get_output_port_actor(),
 										c3_actor_trajectory_sender->get_input_port());
 

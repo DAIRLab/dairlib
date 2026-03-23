@@ -242,6 +242,15 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     }
     with_acceleration_constraints_ = constraint_status;
   }
+
+  void SetJointAccelerationBounds(Eigen::VectorXd ddq_min, Eigen::VectorXd ddq_max) {
+    DRAKE_DEMAND(ddq_min.size() == n_q_);
+    DRAKE_DEMAND(ddq_max.size() == n_q_);
+
+    ddq_min_ = ddq_min;
+    ddq_max_ = ddq_max;
+  }
+
   void SetContactFriction(double mu) { mu_ = mu; }
 
   void AddContactPoint(const multibody::WorldPointEvaluator<double>* evaluator);

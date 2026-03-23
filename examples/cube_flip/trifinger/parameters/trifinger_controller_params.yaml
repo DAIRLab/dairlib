@@ -10,11 +10,11 @@ osqp_settings_file: examples/cube_flip/trifinger/parameters/trifinger_osqp_setti
 ic3_options_file: examples/cube_flip/trifinger/parameters/trifinger_iC3_options.yaml
 c3_options_file: examples/cube_flip/trifinger/parameters/trifinger_c3_options.yaml
 
-track_dynamically_feasible: true # false is currently broken
+track_dynamically_feasible: false 
 
 time_to_wait: 1.0
 
-nominal_position: [0, 0.08, 0.05,  # finger 0
+nominal_position: [0, 0.08, 0.08,  # finger 0
                    0.04, -0.08, 0.05,  # finger 120
                    -0.04, -0.08, 0.05]  # finger 240
 
@@ -23,7 +23,7 @@ x_target: [0, 0.08, 0.05,  # finger 1
          -0.04, -0.08, 0.05,   # finger 3
          # 0, 0, 0.0,   # finger 4
          # 0, 0, 1, 0,  # cube orientation (180 about y)
-         0.707, -0.707, 0, 0,  # cube orientation (90 about y)
+         0.707, 0.707, 0, 0,  # cube orientation (90 about y)
          #0, 0, 0, 1,  # cube orientation (180 about z)
          0, 0, 0.05,  # cube position
          0, 0, 0,     # finger 1 velo

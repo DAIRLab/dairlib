@@ -11,11 +11,11 @@
       <!-- ========================= -->
       <link name="fingertip_1">
       <inertial>
-        <mass>0.2</mass>
+        <mass>0.02</mass>
         <inertia>
-          <ixx>8e-6</ixx>
-          <iyy>8e-6</iyy>
-          <izz>8e-6</izz>
+          <ixx>8e-7</ixx>
+          <iyy>8e-7</iyy>
+          <izz>8e-7</izz>
           <ixy>0</ixy>
           <ixz>0</ixz>
           <iyz>0</iyz>
@@ -27,6 +27,10 @@
               <radius>0.01</radius>
             </sphere>
           </geometry>
+          <material>
+            <ambient>1 0 0 0.5</ambient>
+            <diffuse>1 0 0 0.5</diffuse>
+          </material>
         </visual>
         <collision name="collision">
           <geometry>
@@ -74,9 +78,11 @@
           <xyz>1 0 0</xyz>
           <limit>
             <effort>100.0</effort>
-            <velocity>10</velocity>
+            <velocity>0.5</velocity>
             <lower> -0.1 </lower>
             <upper> 0.1 </upper>
+            <!-- <lower> -0.08 </lower>
+            <upper> 0.08 </upper> -->
           </limit>  
         </axis>
       </joint>
@@ -101,9 +107,11 @@
           <xyz>0 1 0</xyz>
            <limit>
             <effort>100.0</effort>
-            <velocity>10</velocity>
-            <lower> -0.02 </lower>
-            <upper> 0.18 </upper>
+            <velocity>0.5</velocity>
+            <lower> -0.04 </lower>
+            <upper> 0.16 </upper>
+            <!-- <lower> -0 </lower>
+            <upper> 0.16 </upper> -->
           </limit>
         </axis>
       </joint>
@@ -115,9 +123,9 @@
           <xyz>0 0 1</xyz>
           <limit>
           <effort>100.0</effort>
-          <velocity>10</velocity>
-          <lower> 0.02 </lower>
-          <upper> 0.13 </upper>
+          <velocity>0.5</velocity>
+          <lower> 0.04 </lower>
+          <upper> 0.06 </upper>
         </limit>
         </axis>
       </joint>
@@ -127,11 +135,11 @@
       <!-- ========================= -->
       <link name="fingertip_2">
       <inertial>
-        <mass>0.2</mass>
+        <mass>0.02</mass>
         <inertia>
-          <ixx>8e-6</ixx>
-          <iyy>8e-6</iyy>
-          <izz>8e-6</izz>
+          <ixx>8e-7</ixx>
+          <iyy>8e-7</iyy>
+          <izz>8e-7</izz>
           <ixy>0</ixy>
           <ixz>0</ixz>
           <iyz>0</iyz>
@@ -143,6 +151,10 @@
               <radius>0.01</radius>
             </sphere>
           </geometry>
+          <material>
+            <ambient>0 1 0 0.5</ambient>
+            <diffuse>0 1 0 0.5</diffuse>
+          </material>
         </visual>
         <collision name="collision">
           <geometry>
@@ -190,9 +202,11 @@
             <xyz>1 0 0</xyz>
           <limit>
             <effort>100.0</effort>
-            <velocity>10</velocity>
-            <lower> -0.06 </lower>
-            <upper> 0.14 </upper>
+            <velocity>0.5</velocity>
+            <lower> -0.04 </lower>
+            <upper> 0.16 </upper>
+            <!-- <lower> -0.04 </lower>
+            <upper> 0.12 </upper> -->
           </limit>
         </axis>
       </joint>
@@ -217,9 +231,11 @@
           <xyz>0 1 0</xyz>
           <limit>
             <effort>100.0</effort>
-            <velocity>10</velocity>
-            <lower> -0.18 </lower>
-            <upper> 0.02 </upper>
+            <velocity>0.5</velocity>
+            <lower> -0.16 </lower>
+            <upper> 0.04 </upper>
+            <!-- <lower> -0.16 </lower>
+            <upper> 0.0 </upper> -->
           </limit>
         </axis>
       </joint>
@@ -231,9 +247,9 @@
           <xyz>0 0 1</xyz>
           <limit>
             <effort>100.0</effort>
-            <velocity>10</velocity>
-            <lower> 0.02 </lower>
-            <upper> 0.13 </upper>
+            <velocity>0.5</velocity>
+            <lower> 0.04 </lower>
+            <upper> 0.06 </upper>
           </limit>
         </axis>
       </joint>
@@ -243,11 +259,11 @@
       <!-- ========================= -->
       <link name="fingertip_3">
       <inertial>
-        <mass>0.2</mass>
+        <mass>0.02</mass>
         <inertia>
-          <ixx>8e-6</ixx>
-          <iyy>8e-6</iyy>
-          <izz>8e-6</izz>
+          <ixx>8e-7</ixx>
+          <iyy>8e-7</iyy>
+          <izz>8e-7</izz>
           <ixy>0</ixy>
           <ixz>0</ixz>
           <iyz>0</iyz>
@@ -259,6 +275,10 @@
               <radius>0.01</radius>
             </sphere>
           </geometry>
+          <material>
+            <ambient>0 0 1 0.5</ambient>
+            <diffuse>0 0 1 0.5</diffuse>
+          </material>
         </visual>
         <collision name="collision">
           <geometry>
@@ -306,9 +326,11 @@
           <xyz>1 0 0</xyz>
           <limit>
             <effort>100.0</effort>
-            <velocity>10</velocity>
-            <lower> -0.14 </lower>
-            <upper> 0.06 </upper>
+            <velocity>0.5</velocity>
+            <lower> -0.16 </lower>
+            <upper> 0.04 </upper>
+            <!-- <lower> -0.12 </lower>
+            <upper> 0.04 </upper> -->
           </limit>
         </axis>
       </joint>
@@ -333,9 +355,11 @@
           <xyz>0 1 0</xyz>
           <limit>
             <effort>100.0</effort>
-            <velocity>10</velocity>
-            <lower> -0.18 </lower>
-            <upper> 0.02 </upper>
+            <velocity>0.5</velocity>
+            <lower> -0.16 </lower>
+            <upper> 0.04 </upper>
+            <!-- <lower> -0.16 </lower>
+            <upper> 0.0 </upper> -->
           </limit>
         </axis>
       </joint>
@@ -347,9 +371,9 @@
           <xyz>0 0 1</xyz>
           <limit>
             <effort>100.0</effort>
-            <velocity>10</velocity>
-            <lower> 0.02 </lower>
-            <upper> 0.13 </upper>
+            <velocity>0.5</velocity>
+            <lower> 0.04 </lower>
+            <upper> 0.06 </upper>
           </limit>
         </axis>
       </joint>
@@ -359,11 +383,11 @@
       <!-- ========================= -->
       <!-- <link name="fingertip_4">
       <inertial>
-        <mass>0.2</mass>
+        <mass>0.02</mass>
         <inertia>
-          <ixx>8e-6</ixx>
-          <iyy>8e-6</iyy>
-          <izz>8e-6</izz>
+          <ixx>8e-7</ixx>
+          <iyy>8e-7</iyy>
+          <izz>8e-7</izz>
           <ixy>0</ixy>
           <ixz>0</ixz>
           <iyz>0</iyz>
@@ -422,7 +446,7 @@
           <xyz>1 0 0</xyz>
           <limit>
             <effort>100.0</effort>
-            <velocity>10</velocity>
+            <velocity>0.5</velocity>
             <lower> -0.1 </lower>
             <upper> 0.1 </upper>
           </limit>
@@ -449,7 +473,7 @@
           <xyz>0 1 0</xyz>
           <limit>
             <effort>100.0</effort>
-            <velocity>10</velocity>
+            <velocity>0.5</velocity>
             <lower> -0.1 </lower>
             <upper> 0.1 </upper>
           </limit>
@@ -463,7 +487,7 @@
           <xyz>0 0 1</xyz>
           <limit>
             <effort>100.0</effort>
-            <velocity>10</velocity>
+            <velocity>0.5</velocity>
             <lower> -0.03 </lower>
             <upper> 0.1 </upper>
           </limit>

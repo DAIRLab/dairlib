@@ -10,6 +10,7 @@
 #include "common/find_resource.h"
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
+#include "dairlib/lcmt_radio_out.hpp"
 #include "drake/systems/framework/leaf_system.h"
 
 using dairlib::LcmTrajectory;
@@ -18,6 +19,7 @@ using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using drake::systems::BasicVector;
+using dairlib::lcmt_radio_out;
 
 /*
   When not tracking iC3, commands osc to hold nominal position
@@ -38,11 +40,16 @@ class TimedGate : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_nominal_position() const {
     return this->get_input_port(nominal_position_port_);
   }
+
+  const drake::systems::InputPort<double>& get_input_port_radio() const {
+    return this->get_input_port(radio_port_);
+  }
+
   const drake::systems::InputPort<double>& get_input_port_ic3_x() const {
     return this->get_input_port(ic3_x_trajectory_port_);
   }
   const drake::systems::OutputPort<double>& get_output_port_actor() const {
-    return this->get_output_port(actor_output_port);
+    return this->get_output_port(actor_output_port_);
   }
 
 
@@ -58,8 +65,9 @@ class TimedGate : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex c3_actor_port_;
   drake::systems::InputPortIndex nominal_position_port_;
   drake::systems::InputPortIndex ic3_x_trajectory_port_;
+  drake::systems::InputPortIndex radio_port_;
 
-  drake::systems::OutputPortIndex actor_output_port;
+  drake::systems::OutputPortIndex actor_output_port_;
 
   double t0_idx_;
   mutable bool called_;

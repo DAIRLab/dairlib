@@ -97,7 +97,7 @@ int DoMain(int argc, char* argv[]) {
       parser.AddModels(FindResourceOrThrow(sim_params.object_model))[0];
   parser.AddModels(FindResourceOrThrow(sim_params.ground_model));
 
-  Eigen::Vector3d base_translation(-0 * Vector3d::UnitZ());
+  Eigen::Vector3d base_translation(-0.0 * Vector3d::UnitZ());
   RigidTransformd X_WI(drake::math::RotationMatrix<double>(), base_translation);
   RigidTransform<double> X_G = RigidTransform<double>(
     drake::math::RotationMatrix<double>(), {0, 0, 0.0});

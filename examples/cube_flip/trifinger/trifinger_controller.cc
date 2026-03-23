@@ -113,7 +113,7 @@ int DoMain(int argc, char* argv[]) {
     plant_trifinger.WeldFrames(trifinger_tip_frame, fingertip_frame, RigidTransform<double>::Identity());
   }
 
-  Eigen::Vector3d base_translation(-0 * Vector3d::UnitZ());
+  Eigen::Vector3d base_translation(-0.0 * Vector3d::UnitZ());
   RigidTransformd X_WI(drake::math::RotationMatrix<double>(), base_translation);
   plant_trifinger.WeldFrames(plant_trifinger.world_frame(), 
     plant_trifinger.GetFrameByName("base_link"), X_WI);

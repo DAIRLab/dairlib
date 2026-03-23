@@ -23,17 +23,14 @@ struct TrifingerOSCControllerParams : OSCGains {
   std::vector<double> EndEffectorW;
   std::vector<double> EndEffectorKp;
   std::vector<double> EndEffectorKd;
-  std::vector<double> EndEffectorRotW;
-  std::vector<double> EndEffectorRotKp;
-  std::vector<double> EndEffectorRotKd;
   std::vector<double> LambdaEndEffectorW;
+
+	double w_joint_limit;
+	double joint_limit_buffer;
 
   Eigen::MatrixXd W_end_effector;
   Eigen::MatrixXd K_p_end_effector;
   Eigen::MatrixXd K_d_end_effector;
-  Eigen::MatrixXd W_end_effector_rot;
-  Eigen::MatrixXd K_p_end_effector_rot;
-  Eigen::MatrixXd K_d_end_effector_rot;
   Eigen::MatrixXd W_ee_lambda;
 
   template <typename Archive>
@@ -48,12 +45,11 @@ struct TrifingerOSCControllerParams : OSCGains {
     a->Visit(DRAKE_NVP(cancel_gravity_compensation));
     a->Visit(DRAKE_NVP(enforce_acceleration_constraints));
     a->Visit(DRAKE_NVP(publish_debug_info));
+		a->Visit(DRAKE_NVP(w_joint_limit));
+    a->Visit(DRAKE_NVP(joint_limit_buffer));
     a->Visit(DRAKE_NVP(EndEffectorW));
     a->Visit(DRAKE_NVP(EndEffectorKp));
     a->Visit(DRAKE_NVP(EndEffectorKd));
-    a->Visit(DRAKE_NVP(EndEffectorRotW));
-    a->Visit(DRAKE_NVP(EndEffectorRotKp));
-    a->Visit(DRAKE_NVP(EndEffectorRotKd));
     a->Visit(DRAKE_NVP(LambdaEndEffectorW));
     a->Visit(DRAKE_NVP(neutral_position));
     a->Visit(DRAKE_NVP(x_scale));
@@ -69,15 +65,6 @@ struct TrifingerOSCControllerParams : OSCGains {
     K_d_end_effector = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->EndEffectorKd.data(), 3, 3);
-    W_end_effector_rot = Eigen::Map<
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->EndEffectorRotW.data(), 3, 3);
-    K_p_end_effector_rot = Eigen::Map<
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->EndEffectorRotKp.data(), 3, 3);
-    K_d_end_effector_rot = Eigen::Map<
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-        this->EndEffectorRotKd.data(), 3, 3);
     W_ee_lambda = Eigen::Map<
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
         this->LambdaEndEffectorW.data(), 9, 9);

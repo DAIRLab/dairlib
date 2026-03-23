@@ -91,11 +91,11 @@ void EndEffectorPositionTrajectoryGenerator::CalcNeutralPoseBasedTraj(
 
     // Compute the target position based on an offset from neutral pose.
     VectorXd y_0 = neutral_pose_;
+
     y_0(0) += radio_out->channel[0] * x_scale_;
     y_0(1) += radio_out->channel[1] * y_scale_;
     y_0(2) += radio_out->channel[2] * z_scale_;
 
-    
     result = drake::trajectories::PiecewisePolynomial<double>::FirstOrderHold({0.0, 1.0}, {y_0, y_0});
     *casted_traj = result;
   } else {

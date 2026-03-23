@@ -36,6 +36,11 @@ group "operator" {
         exec = "bazel-bin/examples/cube_flip/franka_plate_visualizer";
         host = "localhost";
     }
+
+    cmd "xbox" {
+        exec = "bazel-bin/examples/cube_flip/xbox_script";
+        host = "localhost";
+    }
 }
 
 group "simulations" {

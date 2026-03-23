@@ -44,7 +44,12 @@ TimedGate::TimedGate(double start_time, iC3Options ic3_options, int example_idx)
                                      drake::Value<lcmt_timestamped_saved_traj>())
           .get_index();
 
-  actor_output_port =
+  radio_port_ =
+      this->DeclareAbstractInputPort("lcmt_radio_out",
+                                     drake::Value<dairlib::lcmt_radio_out>{})
+          .get_index();
+
+  actor_output_port_ =
       this->DeclareAbstractOutputPort(
               "actor_trajectory_output",
               dairlib::lcmt_timestamped_saved_traj(),
@@ -62,6 +67,8 @@ TimedGate::TimedGate(double start_time, iC3Options ic3_options, int example_idx)
 void TimedGate::OutputActorTrajectory(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output_traj) const {
+
+  if (called_ == false) return;
 
   double t0 = context.get_discrete_state(t0_idx_).GetAtIndex(0);
 
@@ -209,12 +216,22 @@ void TimedGate::OutputActorTrajectory(
 drake::systems::EventStatus TimedGate::SetFirstCallTime(
     const drake::systems::Context<double>& context,
     drake::systems::DiscreteValues<double>* discrete_state) const {
+
+  const auto& radio_out =
+      this->EvalInputValue<lcmt_radio_out>(context, radio_port_);
+
+  bool is_teleop = radio_out->channel[14];
+
   auto& vec = discrete_state->get_mutable_vector(t0_idx_);
-  if (!called_) {  
+  if (!called_ && !is_teleop) {  
     vec.SetAtIndex(0, context.get_time());
 		called_ = true;
   }
+  if (is_teleop) {
+    called_ = false;
+  }
   return drake::systems::EventStatus::Succeeded();
 }
+
 
 } // namespace dairlib

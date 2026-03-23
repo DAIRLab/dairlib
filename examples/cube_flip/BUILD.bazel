@@ -245,3 +245,15 @@ cc_binary(
         "@gflags",
     ],
 )
+
+py_binary(
+    name = "xbox_script",
+    srcs = ["xbox_script.py"],
+    data = [
+        "@lcm//:lcm-python",
+    ],
+    main = "xbox_script.py",
+    deps = [
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)

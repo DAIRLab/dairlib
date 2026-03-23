@@ -9,6 +9,7 @@
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "dairlib/lcmt_lqr_output.hpp"
+#include "dairlib/lcmt_radio_out.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "solvers/base_c3.h"
 #include "solvers/c3_options.h"
@@ -21,6 +22,7 @@
 #include "drake/systems/framework/leaf_system.h"
 
 using Eigen::VectorXd;
+using dairlib::lcmt_radio_out;
 
 namespace dairlib {
 namespace systems {
@@ -52,6 +54,10 @@ class iC3TrackingController : public drake::systems::LeafSystem<double> {
 
   const drake::systems::InputPort<double>& get_input_port_lcs() const {
     return this->get_input_port(lcs_input_port_);
+  }
+
+  const drake::systems::InputPort<double>& get_input_port_radio() const {
+    return this->get_input_port(radio_port_);
   }
 
   const drake::systems::OutputPort<double>& get_output_port_c3_solution()
@@ -94,6 +100,7 @@ class iC3TrackingController : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex lqr_input_port_;
   drake::systems::InputPortIndex ic3_x_port_;
   drake::systems::InputPortIndex ic3_u_port_;
+  drake::systems::InputPortIndex radio_port_;
   drake::systems::OutputPortIndex c3_solution_port_;
   drake::systems::OutputPortIndex c3_intermediates_port_;
 

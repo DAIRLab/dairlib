@@ -100,10 +100,14 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
   MatrixXd x_hat = c3_solution->x_sol_.cast<double>();
   MatrixXd u_hat = c3_solution->u_sol_.cast<double>();
 
-  
   if (track_dynamically_feasible_) {
     x_hat = SimulateLCS(x_hat.col(0), u_hat, lcs);
+  } else {
+    MatrixXd temp(x_hat.rows(), x_hat.cols() + 1);
+    temp << x_hat, x_hat.col(x_hat.cols()-1);
+    x_hat = temp; 
   }
+
 
   auto plant_context = plant_.CreateDefaultContext();		
   VectorXd tau_g = plant_.CalcGravityGeneralizedForces(*plant_context);
@@ -116,15 +120,12 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
     }
 
   } else if (example_idx_ == 2) {
-    double mass_ratio = 0.2 / 1e-6; // HARDCODED mass ratio between lcs and massless models
-    
-    std::cout << tau_g.transpose() << std::endl;
+
     for (int i = 0; i < u_hat.cols(); i++) {
       u_hat.col(i)(2) += (tau_g(2));
       u_hat.col(i)(5) += (tau_g(5));
       u_hat.col(i)(8) += (tau_g(8));
     }
-    u_hat = u_hat / mass_ratio;
 
   }
 
@@ -203,6 +204,20 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
       positions = x_hat.middleRows(ee_pos_idx, 9);
       forces = u_hat;
       time_vector = c3_solution->time_vector_.cast<double>();
+    }
+
+    // HARDCODED THRESHOLD POSITIONS TO JOINT LIMITS
+    for (int i = 0; i < positions.cols(); i++) {
+      positions.col(i)(0) = std::min(std::max(positions.col(i)(0), -0.1), 0.1);
+      positions.col(i)(1) = std::min(std::max(positions.col(i)(1), -0.02), 0.18);
+      positions.col(i)(2) = std::min(std::max(positions.col(i)(2), 0.02), 0.13);
+      positions.col(i)(3) = std::min(std::max(positions.col(i)(3), -0.06), 0.14);
+      positions.col(i)(4) = std::min(std::max(positions.col(i)(4), -0.18), 0.02);
+      positions.col(i)(5) = std::min(std::max(positions.col(i)(5), 0.02), 0.13);
+      positions.col(i)(6) = std::min(std::max(positions.col(i)(6), -0.14), 0.06);
+      positions.col(i)(7) = std::min(std::max(positions.col(i)(7), -0.18), 0.02);
+      positions.col(i)(8) = std::min(std::max(positions.col(i)(8), 0.02), 0.13);
+      
     }
   }
 	

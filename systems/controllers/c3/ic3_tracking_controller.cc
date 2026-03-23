@@ -128,6 +128,11 @@ iC3TrackingController::iC3TrackingController(
       this->DeclareAbstractInputPort("ic3_u_port", drake::Value<lcmt_timestamped_saved_traj>())
           .get_index();
 
+  radio_port_ =
+      this->DeclareAbstractInputPort("lcmt_radio_out",
+                                     drake::Value<lcmt_radio_out>{})
+          .get_index();
+          
   auto c3_solution = C3Output::C3Solution();
   c3_solution.x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
   c3_solution.lambda_sol_ = MatrixXf::Zero(n_lambda_, N_);
@@ -180,9 +185,13 @@ LCS iC3TrackingController::CreatePlaceholderLCS() const {
 drake::systems::EventStatus iC3TrackingController::ComputePlan(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
+
+  if (called_ == false) return drake::systems::EventStatus::Succeeded();
+
   auto start = std::chrono::high_resolution_clock::now();
 
   double t0 = context.get_discrete_state(t0_idx_).GetAtIndex(0);
+  std::cout << "t0 " << t0 << std::endl;
 
   const BasicVector<double>& x_des =
       *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
@@ -337,30 +346,30 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
 
     } else if (n_x_ == 31) {
       for (int i = 0; i < 3; i++) {
-        A(3*i, 3*i) = 1;
-        A(3*i+1, 3*i+1) = 1;
-        A(3*i+2, 3*i+2) = 1;
+        // A(3*i, 3*i) = 1;
+        // A(3*i+1, 3*i+1) = 1;
+        // A(3*i+2, 3*i+2) = 1;
 
         // Velocity constraints
         A(16 + 3*i) = 1;
         A(16 + 3*i + 1) = 1;
         A(16 + 3*i + 2) = 1;
 
-        lower_bound(3*i) = x_des.value()(3*i) - 0.1;
-        lower_bound(3*i+1) = x_des.value()(3*i+1) - 0.1;
-        lower_bound(3*i+2) = x_des.value()(3*i+2) - 0.03;
+        // lower_bound(3*i) = x_des.value()(3*i) - 0.1;
+        // lower_bound(3*i+1) = x_des.value()(3*i+1) - 0.1;
+        // lower_bound(3*i+2) = x_des.value()(3*i+2) - 0.03;
 
-        lower_bound(16 + 3*i) = -0.2;
-        lower_bound(16 + 3*i+1) = -0.2;
-        lower_bound(16 + 3*i+2) = -0.2;
+        lower_bound(16 + 3*i) = -0.01;
+        lower_bound(16 + 3*i+1) = -0.01;
+        lower_bound(16 + 3*i+2) = -0.01;
 
-        upper_bound(3*i) = x_des.value()(3*i) + 0.1;
-        upper_bound(3*i+1) = x_des.value()(3*i+1) + 0.1;
-        upper_bound(3*i+2) = x_des.value()(3*i+2) + 0.08;
+        // upper_bound(3*i) = x_des.value()(3*i) + 0.1;
+        // upper_bound(3*i+1) = x_des.value()(3*i+1) + 0.1;
+        // upper_bound(3*i+2) = x_des.value()(3*i+2) + 0.08;
 
-        upper_bound(16 + 3*i) = 0.2;
-        upper_bound(16 + 3*i+1) = 0.2;
-        upper_bound(16 + 3*i+2) = 0.2;
+        upper_bound(16 + 3*i) = 0.01;
+        upper_bound(16 + 3*i+1) = 0.01;
+        upper_bound(16 + 3*i+2) = 0.01;
       }
     }
     c3_->AddVectorLinearConstraint(A, lower_bound, upper_bound, 1);
@@ -386,14 +395,18 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
 
     } else if (n_u_ == 9) {
       for (int i = 0; i < 3; i++) {
-        A_u(3*i, 3*i) = 1;
-        A_u(3*i+1, 3*i+1) = 1;
+        // A_u(3*i, 3*i) = 1;
+        // A_u(3*i+1, 3*i+1) = 1;
+        A_u(3*i+2, 3*i+2) = 1;
         
-        lower_bound_u(3*i) = -5;
-        lower_bound_u(3*i+1) = -5;
-        
-        upper_bound_u(3*i) = 5;
-        upper_bound_u(3*i+1) = 5;
+        // lower_bound_u(3*i) = -0.5;
+        // lower_bound_u(3*i+1) = -0.5;
+        lower_bound_u(3*i+2) = 0;
+
+        // upper_bound_u(3*i) = 0.5;
+        // upper_bound_u(3*i+1) = 0.5;
+        upper_bound_u(3*i+2) = 0.4;
+
       }
     }
       
@@ -538,10 +551,19 @@ void iC3TrackingController::OutputC3Intermediates(
 drake::systems::EventStatus iC3TrackingController::SetFirstCallTime(
     const drake::systems::Context<double>& context,
     drake::systems::DiscreteValues<double>* discrete_state) const {
+
+  const auto& radio_out =
+      this->EvalInputValue<lcmt_radio_out>(context, radio_port_);
+  bool is_teleop = radio_out->channel[14];
+
   auto& vec = discrete_state->get_mutable_vector(t0_idx_);
-  if (!called_) {  
+  if (!called_ && !is_teleop) {  
     vec.SetAtIndex(0, context.get_time());
 		called_ = true;
+  }
+
+  if (is_teleop) {
+    called_ = false;
   }
   return drake::systems::EventStatus::Succeeded();
 }

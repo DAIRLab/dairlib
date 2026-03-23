@@ -9,7 +9,7 @@ contact_model: "anitescu"
 
 warm_start: true
 use_predicted_x0: true
-end_on_qp_step: true
+end_on_qp_step: false
 solve_time_filter_alpha: 0
 publish_frequency: 0
 
@@ -20,10 +20,10 @@ workspace_margins: 0 # UNUSED
 
 #mu: [0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6]
 mu: [0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8]
-dt: 0.02
-solve_dt: 0.02
+dt: 0.05
+solve_dt: 0.05
 lcs_dt_resolution: 1
-dt_cost: 0.02
+dt_cost: 0.05
 num_friction_directions: 2
 num_contacts: 14
 
@@ -43,15 +43,13 @@ w_U: 5 #State Tracking Error, assuming diagonal
 q_vector: [1000, 1000, 100,    # finger 1
              1000, 1000, 100,    # finger 2
              1000, 1000, 100,    # finger 3
-             # 500, 500, 50,    # finger 4
              1, 1, 1, 1,
-             500, 500, 300,
-             3, 3, 3,          # finger 1 velo
-             3, 3, 3,          # finger 2 velo
-             3, 3, 3,          # finger 3 velo 
-             # 1, 1, 1,          # finger 4 velo
-             1, 1, 1,
-             1, 1, 1]
+             1000, 1000, 300,
+             5, 5, 5,          # finger 1 velo
+             5, 5, 5,          # finger 2 velo
+             5, 5, 5,          # finger 3 velo 
+             5, 5, 5,
+             5, 5, 5]
 r_vector: [1, 1, 1,        # finger 1 actuation
             1, 1, 1,        # finger 2 actuation
             1, 1, 1]        # finger 3 actuation

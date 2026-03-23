@@ -9,11 +9,11 @@
       <!-- ========================= -->
       <link name="fingertip_1">
       <inertial>
-        <mass>0.2</mass>
+        <mass>0.02</mass>
         <inertia>
-          <ixx>8e-6</ixx>
-          <iyy>8e-6</iyy>
-          <izz>8e-6</izz>
+          <ixx>8e-7</ixx>
+          <iyy>8e-7</iyy>
+          <izz>8e-7</izz>
           <ixy>0</ixy>
           <ixz>0</ixz>
           <iyz>0</iyz>
@@ -44,11 +44,11 @@
       <!-- ========================= -->
       <link name="fingertip_2">
       <inertial>
-        <mass>0.2</mass>
+        <mass>0.02</mass>
         <inertia>
-          <ixx>8e-6</ixx>
-          <iyy>8e-6</iyy>
-          <izz>8e-6</izz>
+          <ixx>8e-7</ixx>
+          <iyy>8e-7</iyy>
+          <izz>8e-7</izz>
           <ixy>0</ixy>
           <ixz>0</ixz>
           <iyz>0</iyz>
@@ -79,11 +79,11 @@
       <!-- ========================= -->
       <link name="fingertip_3">
       <inertial>
-        <mass>0.2</mass>
+        <mass>0.02</mass>
         <inertia>
-          <ixx>8e-6</ixx>
-          <iyy>8e-6</iyy>
-          <izz>8e-6</izz>
+          <ixx>8e-7</ixx>
+          <iyy>8e-7</iyy>
+          <izz>8e-7</izz>
           <ixy>0</ixy>
           <ixz>0</ixz>
           <iyz>0</iyz>

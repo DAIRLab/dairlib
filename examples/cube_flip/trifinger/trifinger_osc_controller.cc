@@ -100,9 +100,9 @@ int DoMain(int argc, char* argv[]) {
 
   drake::multibody::MultibodyPlant<double> plant(0.0);
   Parser parser(&plant, nullptr);
-	parser.SetAutoRenaming(true);
-  
-	parser.package_map().Add(
+  parser.SetAutoRenaming(true);
+
+  parser.package_map().Add(
     "robot_properties_fingers", 
     "examples/cube_flip/trifinger/robot_properties_fingers"
   );
@@ -241,6 +241,9 @@ int DoMain(int argc, char* argv[]) {
       std::make_unique<ExternalForceTrackingData>(
           "end_effector_force", controller_params.W_ee_lambda, plant, plant,
           controller_params.end_effector_names, pts_to_track);
+
+  VectorXd ddq_min(-5 * VectorXd::Ones(9));
+  VectorXd ddq_max(5 * VectorXd::Ones(9));
   
   osc->AddTrackingData(std::move(ee_position_tracking_data_0));
   osc->AddTrackingData(std::move(ee_position_tracking_data_120));
@@ -251,7 +254,10 @@ int DoMain(int argc, char* argv[]) {
   osc->SetInputSmoothingCostWeights(gains.W_input_smoothing_regularization);
   osc->SetAccelerationConstraints(
       controller_params.enforce_acceleration_constraints);
+  osc->SetJointAccelerationBounds(ddq_min, ddq_max);      
   osc->SetContactFriction(controller_params.mu);
+  osc->SetJointLimitWeight(controller_params.w_joint_limit);
+  osc->SetJointLimitBuffer(controller_params.joint_limit_buffer);
   osc->SetOsqpSolverOptions(solver_options);
 
   osc->Build();

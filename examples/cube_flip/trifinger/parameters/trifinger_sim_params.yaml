@@ -1,5 +1,5 @@
 trifinger_model: examples/cube_flip/trifinger/robot_properties_fingers/urdf/trifinger.urdf
-end_effector_model: examples/cube_flip/urdf/fingertips_massless.sdf
+end_effector_model: examples/cube_flip/urdf/fingertips.sdf
 object_model: examples/cube_flip/urdf/actual_cube.sdf
 ground_model: examples/cube_flip/urdf/ground.urdf
 

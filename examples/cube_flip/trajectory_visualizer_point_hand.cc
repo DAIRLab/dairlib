@@ -84,6 +84,9 @@ int do_main(int argc, char* argv[]) {
   auto hand_splitter = 
       builder.AddSystem<TrajectoryLcmParserPointHand>(vis_params, 1, "hand_trajectory_splitter");
 
+  auto c3_hand_splitter = 
+      builder.AddSystem<TrajectoryLcmParserPointHand>(vis_params, 1, "c3_hand_trajectory_splitter");
+
   drake::geometry::MeshcatVisualizerParams params;
   params.publish_period = 1.0 / vis_params.visualizer_publish_rate;
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
@@ -95,6 +98,7 @@ int do_main(int argc, char* argv[]) {
   std::vector<systems::LcmPoseDrawer*> cube_trajectory_drawers;
   std::vector<systems::LcmPoseDrawer*> hand_drawers;
   std::vector<systems::LcmPoseDrawer*> c3_trajectory_drawers;
+  std::vector<systems::LcmPoseDrawer*> c3_hand_drawers;
 
   for (int i = skip_factor - 1; i < vis_params.ic3_num_iters; i += skip_factor) {
     std::cout << "pose drawer " << i << std::endl;
@@ -127,15 +131,25 @@ int do_main(int argc, char* argv[]) {
             vis_params.trajectory_length / vis_params.downsampling_factor, true,
             vis_params.ee_trace_color);
 
+    auto* c3_finger_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
+            meshcat,
+            FindResourceOrThrow(vis_params.ee_file),
+            "positions_" + std::to_string(i), 
+            "orientations_" + std::to_string(i),
+            "point_hand_c3_iteration_" + std::to_string(i), 
+            vis_params.trajectory_length / vis_params.downsampling_factor, true,
+            vis_params.ee_trace_color);
 
     cube_trajectory_drawers.push_back(drawer);
     hand_drawers.push_back(finger_drawer);
+    c3_hand_drawers.push_back(c3_finger_drawer);
     c3_trajectory_drawers.push_back(c3_drawer);
   }
 
   builder.Connect(trajectory_sub_x->get_output_port(), cube_trajectory_splitter->get_input_port_trajectory());
   builder.Connect(trajectory_sub_x->get_output_port(), hand_splitter->get_input_port_trajectory());
   builder.Connect(trajectory_sub_c3->get_output_port(), c3_trajectory_splitter->get_input_port_trajectory());
+  builder.Connect(trajectory_sub_c3->get_output_port(), c3_hand_splitter->get_input_port_trajectory());
 
   for (int i = 0; i < vis_params.ic3_num_iters / skip_factor; i++) {
     builder.Connect(cube_trajectory_splitter->get_output_port(i), 
@@ -144,6 +158,8 @@ int do_main(int argc, char* argv[]) {
         hand_drawers.at(i)->get_input_port_trajectory());
     builder.Connect(c3_trajectory_splitter->get_output_port(i), 
         c3_trajectory_drawers.at(i)->get_input_port_trajectory());
+     builder.Connect(c3_hand_splitter->get_output_port(i), 
+        c3_hand_drawers.at(i)->get_input_port_trajectory());       
   }
 
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(

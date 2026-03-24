@@ -93,8 +93,10 @@ bazel_dep(name = "c3")
 git_override(
     module_name = "c3",
     remote = "https://github.com/DAIRLab/c3.git",
-    commit = "ee740029598ea0f990cae2beca709d1eeed651f2"
+    commit = "93362ddefd8e79684948027bef506c997daff3b1"
 )
+# TODO @bibit: replace the commit hash with the one from merging the C3 cost
+# evaluation PR into C3's main branch.
 
 
 INEKF_COMMIT = "297c308e50fa599af92ce3bd5f11d71e2bf8af69"

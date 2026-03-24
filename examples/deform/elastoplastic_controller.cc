@@ -33,17 +33,17 @@ ElastoPlasticController::ElastoPlasticController(
     drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
     drake::systems::Context<drake::AutoDiffXd>* context_ad,
     const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
-    const ElastoPlasticC3Options& elastoplastic_c3_options)
+    const ElastoPlasticSC3Options& elastoplastic_sc3_options)
     : plant_(plant),
       context_(context),
       plant_ad_(plant_ad),
       context_ad_(context_ad),
       contact_pairs_(contact_geoms),
-      elastoplastic_c3_options_(std::move(elastoplastic_c3_options)),
-      N_(elastoplastic_c3_options.N),
-      dt_(elastoplastic_c3_options.dt),
+      elastoplastic_sc3_options_(std::move(elastoplastic_sc3_options)),
+      N_(elastoplastic_sc3_options.N),
+      dt_(elastoplastic_sc3_options.dt),
       solve_time_filter_alpha_(
-          elastoplastic_c3_options.solve_time_filter_alpha) {
+          elastoplastic_sc3_options.solve_time_filter_alpha) {
   this->set_name("elastoplastic_controller");
 
   n_q_ = plant_.num_positions();
@@ -55,24 +55,24 @@ ElastoPlasticController::ElastoPlasticController(
   teleop_target_.resize(n_u_);
 
   // Determine n_lambda_ from the contact model.
-  if (elastoplastic_c3_options_.contact_model == "stewart_and_trinkle") {
+  if (elastoplastic_sc3_options_.contact_model == "stewart_and_trinkle") {
     contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
-    n_lambda_ = 2 * elastoplastic_c3_options_.num_contacts +
-                2 * elastoplastic_c3_options_.num_friction_directions *
-                    elastoplastic_c3_options_.num_contacts;
-  } else if (elastoplastic_c3_options_.contact_model == "anitescu") {
+    n_lambda_ = 2 * elastoplastic_sc3_options_.num_contacts +
+                2 * elastoplastic_sc3_options_.num_friction_directions *
+                    elastoplastic_sc3_options_.num_contacts;
+  } else if (elastoplastic_sc3_options_.contact_model == "anitescu") {
     contact_model_ = solvers::ContactModel::kAnitescu;
-    n_lambda_ = 2 * elastoplastic_c3_options_.num_friction_directions *
-                elastoplastic_c3_options_.num_contacts;
+    n_lambda_ = 2 * elastoplastic_sc3_options_.num_friction_directions *
+                elastoplastic_sc3_options_.num_contacts;
   } else {
     std::cerr << "Unknown or unsupported contact model: "
-              << elastoplastic_c3_options_.contact_model << std::endl;
+              << elastoplastic_sc3_options_.contact_model << std::endl;
     DRAKE_THROW_UNLESS(false);
   }
 
   // Initialize cost matrices.
   double discount_factor = 1;
-  C3Options c3_options = elastoplastic_c3_options_.GetC3Options();
+  C3Options c3_options = elastoplastic_sc3_options_.GetC3Options();
   for (int i = 0; i < N_ + 1; ++i) {
     Q_.push_back(discount_factor * c3_options.Q);
     if (i < N_) {
@@ -80,7 +80,7 @@ ElastoPlasticController::ElastoPlasticController(
       G_.push_back(c3_options.G);
       U_.push_back(c3_options.U);
     } else {
-      Q_.back() *= elastoplastic_c3_options_.w_Q_final;
+      Q_.back() *= elastoplastic_sc3_options_.w_Q_final;
     }
     discount_factor *= c3_options.gamma;
   }
@@ -178,14 +178,14 @@ drake::systems::EventStatus ElastoPlasticController::ComputePlan(
   vector<SortedPair<GeometryId>> resolved_contact_pairs =
       LCSFactory::PreProcessor(
           plant_, *context_, contact_pairs_,
-          elastoplastic_c3_options_.resolve_contacts_to,
-          elastoplastic_c3_options_.num_friction_directions, false);
+          elastoplastic_sc3_options_.resolve_contacts_to,
+          elastoplastic_sc3_options_.num_friction_directions, false);
   LCS lcs_object = LCSFactory::LinearizePlantToLCS(
       plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
-      elastoplastic_c3_options_.mu, dt_, N_,
-      elastoplastic_c3_options_.n_lambda_with_tangential,
-      elastoplastic_c3_options_.num_friction_directions_per_contact,
-      elastoplastic_c3_options_.starting_index_per_contact_in_lambda_t_vector,
+      elastoplastic_sc3_options_.mu, dt_, N_,
+      elastoplastic_sc3_options_.n_lambda_with_tangential,
+      elastoplastic_sc3_options_.num_friction_directions_per_contact,
+      elastoplastic_sc3_options_.starting_index_per_contact_in_lambda_t_vector,
       contact_model_);
 
   // Solve C3.
@@ -265,8 +265,8 @@ void ElastoPlasticController::OutputC3Forces(
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
   resolved_contact_pairs = LCSFactory::PreProcessor(
       plant_, *context_, contact_pairs_,
-      elastoplastic_c3_options_.resolve_contacts_to,
-      elastoplastic_c3_options_.num_friction_directions);
+      elastoplastic_sc3_options_.resolve_contacts_to,
+      elastoplastic_sc3_options_.num_friction_directions);
 
   // Grab the latest solve's contact forces.
   std::vector<VectorXd> lambda_sol = c3_mpc_->GetForceSolution();
@@ -284,7 +284,7 @@ void ElastoPlasticController::OutputC3Forces(
   for (int i = 0; i < num_contacts; i++) {
     multibody::GeomGeomCollider collider(plant_, resolved_contact_pairs[i]);
     int num_force_basis =
-        2 * elastoplastic_c3_options_.num_friction_directions_per_contact[i];
+        2 * elastoplastic_sc3_options_.num_friction_directions_per_contact[i];
     bool is_planar_contact = num_force_basis == 2;
     auto [p_WCa, force_basis] =
         collider.CalcWitnessPointsAndForceBasisInWorldFrame(*context_,
@@ -294,7 +294,7 @@ void ElastoPlasticController::OutputC3Forces(
     for (int j = 1; j < 5; j++) {
       anitescu_force_basis.row(j - 1) =
           force_basis.row(0) +
-          elastoplastic_c3_options_.mu[i] * force_basis.row(j);
+          elastoplastic_sc3_options_.mu[i] * force_basis.row(j);
     }
 
     auto force_in_world_frame =
@@ -383,12 +383,12 @@ void ElastoPlasticController::OutputRobotEfforts(
   std::vector<double> efforts_vector(n_u_);
   for (int i = 0; i < n_u_; i++) {
     double u_feedback =
-        elastoplastic_c3_options_.Kp[i] * (q_des[i] - x_lcs_curr(i)) +
-        elastoplastic_c3_options_.Kd[i] * (v_des[i] - x_lcs_curr(i + n_q_));
+        elastoplastic_sc3_options_.Kp[i] * (q_des[i] - x_lcs_curr(i)) +
+        elastoplastic_sc3_options_.Kd[i] * (v_des[i] - x_lcs_curr(i + n_q_));
     efforts_vector[i] = u_feedforward[i] + u_feedback;
     // std::clamp(u_feedforward + u_feedback,
-    //            elastoplastic_c3_options_.u_horizontal_limits[0],
-    //            elastoplastic_c3_options_.u_horizontal_limits[1]);
+    //            elastoplastic_sc3_options_.u_horizontal_limits[0],
+    //            elastoplastic_sc3_options_.u_horizontal_limits[1]);
     std::cout << "Feedforward = " << u_feedforward[i]
               << ", Feedback = " << u_feedback
               << ", Total = " << efforts_vector[i] << std::endl;

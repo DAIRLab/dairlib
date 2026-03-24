@@ -13,7 +13,7 @@
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
-#include "examples/deform/parameter_headers/elastoplastic_c3_options.h"
+#include "examples/deform/parameter_headers/elastoplastic_sc3_options.h"
 #include "lcm/lcm_trajectory.h"
 #include "solvers/base_c3.h"
 #include "solvers/c3_output.h"
@@ -42,7 +42,7 @@ class ElastoPlasticController : public drake::systems::LeafSystem<double> {
       const std::vector<
           std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
           contact_geoms,
-      const ElastoPlasticC3Options& elastoplastic_c3_options);
+      const ElastoPlasticSC3Options& elastoplastic_sc3_options);
 
   // Input ports
   const drake::systems::InputPort<double>& get_input_port_lcs_state() const {
@@ -107,7 +107,7 @@ class ElastoPlasticController : public drake::systems::LeafSystem<double> {
   drake::systems::Context<double>* context_;
   drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
   drake::systems::Context<drake::AutoDiffXd>* context_ad_;
-  ElastoPlasticC3Options elastoplastic_c3_options_;
+  ElastoPlasticSC3Options elastoplastic_sc3_options_;
   mutable std::shared_ptr<solvers::C3Plus> c3_mpc_;
 
   // Contact information

@@ -10,7 +10,8 @@
 
 #include "examples/deform/deform_utils.h"
 #include "examples/deform/elastoplastic_controller.h"
-#include "examples/deform/parameter_headers/elastoplastic_c3_options.h"
+#include "examples/deform/parameter_headers/elastoplastic_sc3_options.h"
+#include "examples/deform/parameter_headers/goal_params.h"
 #include "examples/deform/parameter_headers/lcm_channels.h"
 #include "solvers/lcs_factory.h"
 #include "systems/framework/lcm_driven_loop.h"
@@ -61,12 +62,16 @@ int DoMain(int argc, char* argv[]) {
   DeformLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<DeformLcmChannels>(
           "examples/deform/parameters/lcm_channels_sim.yaml");
-  ElastoPlasticC3Options elastoplastic_c3_options =
-      drake::yaml::LoadYamlFile<ElastoPlasticC3Options>(
+  ElastoPlasticSC3Options elastoplastic_sc3_options =
+      drake::yaml::LoadYamlFile<ElastoPlasticSC3Options>(
           "examples/deform/parameters/demo_" + FLAGS_demo +
-          "/elastoplastic_c3_options.yaml");
+          "/elastoplastic_sc3_options.yaml");
+  ElastoPlasticGoalParams goal_params =
+      drake::yaml::LoadYamlFile<ElastoPlasticGoalParams>(
+          "examples/deform/parameters/demo_" + FLAGS_demo +
+          "/goal_params.yaml");
   std::cout << "g_lambda size in run_elastoplastic_control: "
-            << elastoplastic_c3_options.GetC3Options().g_lambda.size()
+            << elastoplastic_sc3_options.GetC3Options().g_lambda.size()
             << std::endl;
 
   // Create the LCS plant containing the two-link "elastoplastic," EE, and
@@ -126,7 +131,7 @@ int DoMain(int argc, char* argv[]) {
   // (1/6) Our C3 controller.
   auto controller = builder.AddSystem<ElastoPlasticController>(
       plant_lcs, &plant_lcs_context, *plant_lcs_autodiff,
-      plant_lcs_context_ad.get(), contact_pairs, elastoplastic_c3_options);
+      plant_lcs_context_ad.get(), contact_pairs, elastoplastic_sc3_options);
 
   // (2/6) Subscribers and state receivers:  radio, object state, robot state.
   auto lcm =
@@ -152,13 +157,9 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(*robot_state_sub, *robot_state_receiver);
 
   // (3/6) Constant vector source for desired goal state.
-  VectorXd x_lcs_pos = elastoplastic_c3_options.q_target;
-  VectorXd x_lcs_vel = VectorXd::Zero(plant_lcs.num_velocities());
   VectorXd x_lcs_des =
       VectorXd::Zero(plant_lcs.num_positions() + plant_lcs.num_velocities());
-  x_lcs_des.segment(0, plant_lcs.num_positions()) = x_lcs_pos;
-  x_lcs_des.segment(plant_lcs.num_positions(), plant_lcs.num_velocities()) =
-      x_lcs_vel;
+  x_lcs_des.segment(0, plant_lcs.num_positions()) = goal_params.fixed_q_target;
   auto x_lcs_des_source = builder.AddSystem<ConstantVectorSource>(x_lcs_des);
   builder.Connect(x_lcs_des_source->get_output_port(),
                   controller->get_input_port_target());
@@ -174,7 +175,7 @@ int DoMain(int argc, char* argv[]) {
                   controller->get_input_port_lcs_state());
 
   // (5/6) C3 state sender and C3 output sender.
-  std::vector<std::string> state_names = elastoplastic_c3_options.state_names;
+  std::vector<std::string> state_names = goal_params.state_names;
   auto c3_state_sender = builder.AddSystem<systems::C3StateSender>(
       plant_lcs.num_positions() + plant_lcs.num_velocities(), state_names);
   builder.Connect(x_lcs_des_source->get_output_port(),

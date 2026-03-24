@@ -67,6 +67,7 @@ enum PursuedTargetSource { kNoTarget, kPrevious, kNewSample, kFromBuffer };
 
 class SamplingC3Controller : public drake::systems::LeafSystem<double> {
  public:
+  // TODO make changes to constructor for EPSC3
   explicit SamplingC3Controller(
       drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context,
@@ -192,45 +193,79 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
     return this->get_output_port(unsuccessful_sample_buffer_costs_port_);
   }
 
- private:
+ protected:
   /// Function for computing one control loop
-  drake::systems::EventStatus ComputePlan(
+  // TODO rework for EPSC3
+  virtual drake::systems::EventStatus ComputePlan(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
-  /// Helper functions
-  solvers::LCS CreatePlaceholderLCS() const;
+  virtual solvers::LCS CreatePlaceholderLCS() const;
 
-  void ResolvePredictedEEState(const bool& is_teleop,
-                               drake::VectorX<double>& x_lcs_curr) const;
-
-  void ClampEndEffectorAcceleration(drake::VectorX<double>& x_lcs_curr) const;
-
-  void CheckForWorkspaceLimitViolations(
-      const TimestampedVector<double>* lcs_x_curr) const;
-
-  void UpdateCostMatrices(const drake::VectorX<double>& x_lcs_curr,
-                          const BasicVector<double>& x_lcs_des,
-                          const C3Options& c3_options) const;
-
-  std::pair<std::vector<solvers::LCS>, std::vector<solvers::LCS>>
+  // TODO rework for EPSC3
+  virtual std::pair<std::vector<solvers::LCS>, std::vector<solvers::LCS>>
   CreateLCSObjectsForSamples(
       const std::vector<Eigen::VectorXd>& candidate_states,
       const drake::VectorX<double>& x_lcs_curr, const C3Options& c3_options,
       const C3Options& c3_options_curr_location) const;
 
-  void UpdateC3ExecutionTrajectory(const Eigen::VectorXd& x_lcs,
-                                   const double& t_context) const;
-
-  void UpdateRepositioningExecutionTrajectory(const Eigen::VectorXd& x_lcs,
-                                              const double& t_context) const;
-
-  void PruneOutdatedSamplesFromBuffer(
+  virtual void PruneOutdatedSamplesFromBuffer(
       const Eigen::VectorXd& x_lcs, int* num_in_buffer,
       Eigen::MatrixXd* sample_buffer, Eigen::VectorXd* sample_costs_buffer,
       const double& pos_error_sample_retention,
       const double& ang_error_sample_retention) const;
 
+  /// Variables that are accessible to child classes.
+  SamplingC3ControllerParams controller_params_;
+  int n_q_;
+  int n_v_;
+  int n_x_;
+  int n_lambda_;
+  int n_u_;
+  int N_;
+  const bool verbose_;
+  mutable double dt_ = 0.1;
+  mutable double dt_cost_ = 0.02;
+  // This plant_ has been made 'not const' so that the context can be updated.
+  drake::multibody::MultibodyPlant<double>& plant_;
+  drake::systems::Context<double>* context_;
+  drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
+  drake::systems::Context<drake::AutoDiffXd>* context_ad_;
+  const std::vector<
+      std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
+      contact_pairs_;
+  solvers::ContactModel contact_model_;
+
+ private:
+  /// Helper functions
+  // TODO hardcodes robot state size
+  void ResolvePredictedEEState(const bool& is_teleop,
+                               drake::VectorX<double>& x_lcs_curr) const;
+
+  // TODO hardcodes robot state size
+  void ClampEndEffectorAcceleration(drake::VectorX<double>& x_lcs_curr) const;
+
+  // TODO hardcodes robot state size
+  void CheckForWorkspaceLimitViolations(
+      const TimestampedVector<double>* lcs_x_curr) const;
+
+  // TODO hardcodes object quaternions, etc. -- could avoid by having
+  // use_quaternion_dependent_cost false
+  void UpdateCostMatrices(const drake::VectorX<double>& x_lcs_curr,
+                          const BasicVector<double>& x_lcs_des,
+                          const C3Options& c3_options) const;
+
+  // TODO needs c3_curr_plan_, is_doing_c3_, filtered_solve_time_
+  // TODO hardcodes robot state size
+  void UpdateC3ExecutionTrajectory(const Eigen::VectorXd& x_lcs,
+                                   const double& t_context) const;
+
+  // TODO needs all_sample_locations_, best_sample_index_, some other params and
+  // flags
+  void UpdateRepositioningExecutionTrajectory(const Eigen::VectorXd& x_lcs,
+                                              const double& t_context) const;
+
+  // TODO hardcodes robot state size
   void MaintainSampleBuffers(const Eigen::VectorXd& x_lcs) const;
 
   void AugmentSamplesWithBuffer(
@@ -247,6 +282,13 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void ResetProgressMetrics() const;
 
   /// Output port functions
+  /// TODO:  many of these can stay the same as long as these variables are
+  /// properly set:  c3_curr_plan_, c3_best_plan_, all_sample_locations_,
+  /// best_sample_index_, filtered_solve_time_, is_doing_c3_,
+  /// c3_execution_lcm_traj_, repos_execution_lcm_traj_,
+  /// all_sample_dynamically_feasible_plans_, all_sample_costs_, debugging
+  /// stuff, sample_buffer_, sample_costs_buffer_, unsuccessful_sample_buffer_,
+  /// unsuccessful_sample_costs_buffer_
   void OutputC3SolutionCurrPlan(const drake::systems::Context<double>& context,
                                 C3Output::C3Solution* c3_solution) const;
   void OutputC3SolutionCurrPlanActor(
@@ -364,17 +406,6 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       unsuccessful_sample_buffer_configurations_port_;
   drake::systems::OutputPortIndex unsuccessful_sample_buffer_costs_port_;
 
-  // This plant_ has been made 'not const' so that the context can be updated.
-  drake::multibody::MultibodyPlant<double>& plant_;
-  drake::systems::Context<double>* context_;
-  drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad_;
-  drake::systems::Context<drake::AutoDiffXd>* context_ad_;
-  const std::vector<
-      std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
-      contact_pairs_;
-  solvers::ContactModel contact_model_;
-
-  SamplingC3ControllerParams controller_params_;
   SamplingC3Options sampling_c3_options_;
   SamplingParams sampling_params_;
   SamplingC3RepositionParams reposition_params_;
@@ -385,14 +416,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
           "solvers/osqp_options_default.yaml")
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
-  const bool verbose_;
-  int n_q_;
-  int n_v_;
-  int n_x_;
-  int n_lambda_;
-  int n_u_;
   int max_num_samples_;
-  int N_;
   int n_z_;
 
   double solve_time_filter_constant_;
@@ -401,9 +425,6 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   /// TODO:  There are many mutable class variables, which is not best practice
   /// in the Drake systems framework.  These could be converted to discrete
   /// state variables.
-  mutable double dt_ = 0.1;
-  mutable double dt_cost_ = 0.02;
-
   mutable std::vector<Eigen::MatrixXd> Q_;
   mutable std::vector<Eigen::MatrixXd> R_;
   mutable std::vector<Eigen::MatrixXd> G_;

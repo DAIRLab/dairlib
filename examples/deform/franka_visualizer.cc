@@ -13,7 +13,7 @@
 #include "examples/deform/deform_utils.h"
 #include "examples/deform/elastoplastic_model_interpreter.h"
 #include "examples/deform/parameter_headers/deform_settings.h"
-#include "examples/deform/parameter_headers/elastoplastic_c3_options.h"
+#include "examples/deform/parameter_headers/elastoplastic_sc3_options.h"
 #include "examples/deform/parameter_headers/lcm_channels.h"
 #include "examples/deform/parameter_headers/reduced_model_params.h"
 #include "examples/deform/parameter_headers/visualizer_params.h"

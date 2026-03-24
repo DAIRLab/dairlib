@@ -121,6 +121,18 @@ cc_library(
 )
 
 cc_library(
+    name = "elastoplastic_sampling_c3_controller",
+    srcs = ["elastoplastic_sampling_c3_controller.cc"],
+    hdrs = ["elastoplastic_sampling_c3_controller.h"],
+    deps = [
+        ":sampling_c3_controller",
+        "@drake//:drake_shared_library",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
+        "//examples/deform/parameter_headers:deform_params",
+    ],
+)
+
+cc_library(
     name = "face",
     hdrs = ["face.h"],
     visibility = ["//visibility:public"],

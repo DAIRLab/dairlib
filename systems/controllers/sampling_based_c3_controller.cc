@@ -525,7 +525,7 @@ SamplingC3Controller::SamplingC3Controller(
   }
 }
 
-
+// TODO @bibit:  may want to rework bc of new internal contacts
 LCS SamplingC3Controller::CreatePlaceholderLCS() const {
   MatrixXd A = MatrixXd::Ones(n_x_, n_x_);
   MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
@@ -539,7 +539,7 @@ LCS SamplingC3Controller::CreatePlaceholderLCS() const {
              sampling_c3_options_.planning_dt_position);
 }
 
-
+// TODO @bibit:  may need to be entirely replaced
 drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
@@ -1204,6 +1204,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 // Optionally, there is a reset mechanism to prevent using a predicted EE
 // location if the last state is closer to the current state than the
 // prediction.
+// TODO @bibit:  hardcodes EE is first 3 states
 void SamplingC3Controller::ResolvePredictedEEState(
     const bool& is_teleop, drake::VectorX<double>& x_lcs_curr) const {
   // Store the current actual state before applying prediction in preparation
@@ -1255,6 +1256,7 @@ void SamplingC3Controller::ResolvePredictedEEState(
 }
 
 // Clamp end effector acceleration if using predicted state.
+// TODO @bibit:  hardcodes EE is first 3 states
 void SamplingC3Controller::ClampEndEffectorAcceleration(
     drake::VectorX<double>& x_lcs_curr) const {
   // Use fixed approximate loop time for acceleration capping heuristic.
@@ -1274,6 +1276,7 @@ void SamplingC3Controller::ClampEndEffectorAcceleration(
 
 // Check for workspace limit violations.  If violated, the controller errors and
 // stops.
+// TODO @bibit:  hardcodes EE is first 3 states
 void SamplingC3Controller::CheckForWorkspaceLimitViolations(
     const TimestampedVector<double>* lcs_x_curr) const {
   // xyz checks
@@ -1296,6 +1299,7 @@ void SamplingC3Controller::CheckForWorkspaceLimitViolations(
 
 // Update the cost matrices (Q_, R_, G_, U_) in preparation for C3 solves.
 // Handle quaternion-dependent cost if enabled.
+// TODO @bibit:  hardcodes object quaternion locations, etc
 void SamplingC3Controller::UpdateCostMatrices(
     const drake::VectorX<double>& x_lcs_curr,
     const BasicVector<double>& x_lcs_des, const C3Options& c3_options) const {
@@ -1384,7 +1388,8 @@ void SamplingC3Controller::UpdateCostMatrices(
 
 // Create LCS objects (for the C3 solve and also for the C3 cost calculation)
 // for each sample.
-std::pair<std::vector<solvers::LCS>, std::vector<solvers::LCS>>
+// TODO @bibit:  may need to be entirely replaced
+std::pair<std::vector<LCS>, std::vector<LCS>>
 SamplingC3Controller::CreateLCSObjectsForSamples(
     const std::vector<Eigen::VectorXd>& candidate_states,
     const drake::VectorX<double>& x_lcs_curr, const C3Options& c3_options,
@@ -1461,13 +1466,15 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
   return std::make_pair(lcs_candidates, lcs_candidates_for_cost);
 }
 
+// TODO @bibit:  needs c3_curr_plan_, is_doing_c3_, filtered_solve_time_
+// TODO @bibit:  hardcodes robot state size/representation in a few places
 void SamplingC3Controller::UpdateC3ExecutionTrajectory(
     const VectorXd& x_lcs, const double& t_context) const {
   // Get the input and full state solution from the plan.
   vector<VectorXd> u_sol = c3_curr_plan_->GetInputSolution();
   vector<VectorXd> x_sol = c3_curr_plan_->GetStateSolution();
 
-  if (x_sol[0][2] >= 0.03) {
+  if (x_sol[0][2] >= 0.03) {  // TODO @bibit: hardcodes EE z location
     for (int i = 0; i < x_sol.size(); ++i) {
       x_sol[i][2] -= 0.01;
     }
@@ -1603,6 +1610,8 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
 }
 
 // Compute repositioning trajectory.
+// TODO @bibit:  needs all_sample_locations_, best_sample_index_, some other
+// params and flags
 void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     const VectorXd& x_lcs, const double& t_context) const {
   // Get the best sample location.
@@ -1709,6 +1718,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
 }
 
 // Prune outdated samples from a sample buffer, based on object motion.
+// TODO @bibit:  hardcodes object state sizes in a few places
 void SamplingC3Controller::PruneOutdatedSamplesFromBuffer(
     const Eigen::VectorXd& x_lcs, int* num_in_buffer,
     Eigen::MatrixXd* sample_buffer, Eigen::VectorXd* sample_costs_buffer,
@@ -1768,6 +1778,7 @@ void SamplingC3Controller::PruneOutdatedSamplesFromBuffer(
 // Maintain the sample buffers (both for keeping track of unattempted samples
 // and their costs, and of attempted unsuccessful samples):  prune outdated
 // samples and add new.
+// TODO @bibit:  hardcodes robot state size
 void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs) const {
   // First, handle the unsuccessful sample buffer.  This buffer just needs to
   // prune outdated samples; new samples get added one at a time when the
@@ -2078,6 +2089,7 @@ void SamplingC3Controller::ResetProgressMetrics() const {
 }
 
 // Output port handlers for current location
+// TODO @bibit:  needs c3_curr_plan_, filtered_solve_time_
 void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output) const {
@@ -2177,6 +2189,7 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
   output->utime = context.get_time() * 1e6;
 }
 
+// TODO @bibit:  needs c3_curr_plan_, filtered_solve_time_
 void SamplingC3Controller::OutputC3SolutionCurrPlanObject(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output) const {
@@ -2251,6 +2264,7 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanObject(
   output->utime = context.get_time() * 1e6;
 }
 
+// TODO @bibit:  needs c3_curr_plan_, filtered_solve_time_
 void SamplingC3Controller::OutputC3SolutionCurrPlan(
     const drake::systems::Context<double>& context,
     C3Output::C3Solution* c3_solution) const {
@@ -2269,6 +2283,7 @@ void SamplingC3Controller::OutputC3SolutionCurrPlan(
   }
 }
 
+// TODO @bibit:  needs c3_curr_plan_, filtered_solve_time_
 void SamplingC3Controller::OutputC3IntermediatesCurrPlan(
     const drake::systems::Context<double>& context,
     C3Output::C3Intermediates* c3_intermediates) const {
@@ -2286,6 +2301,7 @@ void SamplingC3Controller::OutputC3IntermediatesCurrPlan(
   }
 }
 
+// TODO @bibit:  should be good already -- queries x_lcs input port
 void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
     const drake::systems::Context<double>& context,
     std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*
@@ -2317,6 +2333,7 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
 }
 
 // Output port handlers for best sample location
+// TODO @bibit:  needs c3_best_plan_, filtered_solve_time_
 void SamplingC3Controller::OutputC3SolutionBestPlanActor(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output) const {
@@ -2425,6 +2442,7 @@ void SamplingC3Controller::OutputC3SolutionBestPlanActor(
   output->utime = context.get_time() * 1e6;
 }
 
+// TODO @bibit:  needs c3_best_plan_, filtered_solve_time_
 void SamplingC3Controller::OutputC3SolutionBestPlanObject(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output) const {
@@ -2492,6 +2510,7 @@ void SamplingC3Controller::OutputC3SolutionBestPlanObject(
   output->utime = context.get_time() * 1e6;
 }
 
+// TODO @bibit:  needs c3_best_plan_, filtered_solve_time_
 void SamplingC3Controller::OutputC3SolutionBestPlan(
     const drake::systems::Context<double>& context,
     C3Output::C3Solution* c3_solution) const {
@@ -2509,6 +2528,7 @@ void SamplingC3Controller::OutputC3SolutionBestPlan(
   }
 }
 
+// TODO @bibit:  needs c3_best_plan_, filtered_solve_time_
 void SamplingC3Controller::OutputC3IntermediatesBestPlan(
     const drake::systems::Context<double>& context,
     C3Output::C3Intermediates* c3_intermediates) const {
@@ -2526,6 +2546,7 @@ void SamplingC3Controller::OutputC3IntermediatesBestPlan(
   }
 }
 
+// TODO @bibit:  needs all_sample_locations_, best_sample_index_
 void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
     const drake::systems::Context<double>& context,
     std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*
@@ -2563,6 +2584,7 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
 }
 
 // Output port handlers for executing C3 and repositioning ports
+// TODO @bibit:  needs c3_execution_lcm_traj_
 void SamplingC3Controller::OutputC3TrajExecuteActor(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output_c3_execution_lcm_traj) const {
@@ -2586,6 +2608,7 @@ void SamplingC3Controller::OutputC3TrajExecuteActor(
   output_c3_execution_lcm_traj->utime = context.get_time() * 1e6;
 }
 
+// TODO @bibit:  needs repos_execution_lcm_traj_
 void SamplingC3Controller::OutputReposTrajExecuteActor(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output_repos_execution_lcm_traj)
@@ -2611,6 +2634,8 @@ void SamplingC3Controller::OutputReposTrajExecuteActor(
   output_repos_execution_lcm_traj->utime = context.get_time() * 1e6;
 }
 
+// TODO @bibit:  needs is_doing_c3_, c3_execution_lcm_traj_,
+// repos_execution_lcm_traj_
 void SamplingC3Controller::OutputTrajExecuteActor(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output_execution_lcm_traj) const {
@@ -2668,6 +2693,7 @@ void SamplingC3Controller::OutputIsC3Mode(
 // Output port handler for Dynamically feasible trajectory used for cost
 // computation. This will directy output an lcmt_timestamped_saved_traj
 // object with the dynamically feasible trajectory.
+// TODO @bibit:  needs all_sample_dynamically_feasible_plans_
 void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanActor(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* dynamically_feasible_curr_plan_actor)
@@ -2755,6 +2781,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanActor(
 
 // Output port handler for Dynamically feasible trajectory used for cost
 // computation.
+// TODO @bibit:  needs all_sample_dynamically_feasible_plans_
 void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* dynamically_feasible_curr_plan_object)
@@ -2824,6 +2851,8 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject(
   dynamically_feasible_curr_plan_object->utime = context.get_time() * 1e6;
 }
 
+// TODO @bibit:  needs all_sample_dynamically_feasible_plans_,
+// best_sample_index_
 void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanActor(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* dynamically_feasible_best_plan)
@@ -2910,6 +2939,8 @@ void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanActor(
   dynamically_feasible_best_plan->utime = context.get_time() * 1e6;
 }
 
+// TODO @bibit:  needs all_sample_dynamically_feasible_plans_,
+// best_sample_index_
 void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanObject(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* dynamically_feasible_best_plan)
@@ -2973,6 +3004,7 @@ void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanObject(
 }
 
 // Output port handlers for sample-related ports
+// TODO @bibit:  needs all_sample_locations_
 void SamplingC3Controller::OutputAllSampleLocations(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output_all_sample_locations) const {
@@ -3004,6 +3036,7 @@ void SamplingC3Controller::OutputAllSampleLocations(
   output_all_sample_locations->utime = context.get_time() * 1e6;
 }
 
+// TODO @bibit:  needs all_sample_costs_
 void SamplingC3Controller::OutputAllSampleCosts(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output_all_sample_costs) const {
@@ -3035,6 +3068,7 @@ void SamplingC3Controller::OutputAllSampleCosts(
   }
 }
 
+// TODO @bibit:  needs a lot of debugging stuff
 void SamplingC3Controller::OutputDebug(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_sampling_c3_debug* debug_msg) const {
@@ -3062,24 +3096,28 @@ void SamplingC3Controller::OutputDebug(
   debug_msg->current_rot_error = current_orientation_error_;
 }
 
+// TODO @bibit:  needs sample_buffer_
 void SamplingC3Controller::OutputSampleBufferConfigurations(
     const drake::systems::Context<double>& context,
     Eigen::MatrixXd* sample_buffer_configurations) const {
   *sample_buffer_configurations = sample_buffer_;
 }
 
+// TODO @bibit:  needs sample_costs_buffer_
 void SamplingC3Controller::OutputSampleBufferCosts(
     const drake::systems::Context<double>& context,
     Eigen::VectorXd* sample_buffer_costs) const {
   *sample_buffer_costs = sample_costs_buffer_;
 }
 
+// TODO @bibit:  needs unsuccessful_sample_buffer_
 void SamplingC3Controller::OutputUnsuccessfulSampleBufferConfigurations(
     const drake::systems::Context<double>& context,
     Eigen::MatrixXd* unsuccessful_sample_buffer_configurations) const {
   *unsuccessful_sample_buffer_configurations = unsuccessful_sample_buffer_;
 }
 
+// TODO @bibit:  needs unsuccessful_sample_costs_buffer_
 void SamplingC3Controller::OutputUnsuccessfulSampleBufferCosts(
     const drake::systems::Context<double>& context,
     Eigen::VectorXd* unsuccessful_sample_buffer_costs) const {

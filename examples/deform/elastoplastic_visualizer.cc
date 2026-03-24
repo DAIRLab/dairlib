@@ -8,7 +8,7 @@
 #include <gflags/gflags.h>
 
 #include "examples/deform/deform_utils.h"
-#include "examples/deform/parameter_headers/elastoplastic_c3_options.h"
+#include "examples/deform/parameter_headers/elastoplastic_sc3_options.h"
 #include "examples/deform/parameter_headers/lcm_channels.h"
 #include "examples/deform/parameter_headers/visualizer_params.h"
 #include "systems/primitives/subvector_pass_through.h"
@@ -56,10 +56,10 @@ int do_main(int argc, char* argv[]) {
   DeformLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<DeformLcmChannels>(
           "examples/deform/parameters/lcm_channels_sim.yaml");
-  ElastoPlasticC3Options elastoplastic_c3_options =
-      drake::yaml::LoadYamlFile<ElastoPlasticC3Options>(
+  ElastoPlasticSC3Options elastoplastic_sc3_options =
+      drake::yaml::LoadYamlFile<ElastoPlasticSC3Options>(
           "examples/deform/parameters/demo_" + FLAGS_demo +
-          "/elastoplastic_c3_options.yaml");
+          "/elastoplastic_sc3_options.yaml");
 
   DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
@@ -175,7 +175,7 @@ int do_main(int argc, char* argv[]) {
       throw std::runtime_error("Demo " + FLAGS_demo + " not handled yet.");
     }
     auto c3_plan_drawer = builder.AddSystem<systems::LcmC3PlanDrawer>(
-        meshcat, elastoplastic_c3_options.N, object_model, kEndEffector1DModel,
+        meshcat, elastoplastic_sc3_options.N, object_model, kEndEffector1DModel,
         "base_link", RigidTransformd(), RigidTransformd(k1DRobotPosOffset),
         vis_params.c3_object_color, vis_params.c3_ee_color,
         vis_params.visualize_c3_plan_object,

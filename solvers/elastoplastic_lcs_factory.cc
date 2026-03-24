@@ -47,7 +47,7 @@ LCS PlasticNetworkLCSFactory::ToLCS(
   // Compute some relevant quantities.
   // TODO (@bibit): This has a lot of repeated computations; consider not
   // reusing LCSFactory:LinearizeToLCS and instead replicating the functionality
-  // here.  This would duplicate the code but not the run-time computation.
+  // here.  This would duplicate the code instead of run-time computation.
   Eigen::SparseMatrix<double> Nqt;
   Nqt = plant.MakeVelocityToQDotMap(context);
   MatrixXd qdotNv = MatrixXd(Nqt);

@@ -98,14 +98,7 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
 
   RigidTransform<double> X_G_lcs = RigidTransform<double>(
     drake::math::RotationMatrix<double>(), {0, 0, 0.0});
-  // RigidTransform<double> X_1_lcs = RigidTransform<double>(
-  //   drake::math::RotationMatrix<double>(), {0.08, 0, 0.05});
-  // RigidTransform<double> X_2_lcs = RigidTransform<double>(
-  //   drake::math::RotationMatrix<double>(), {-0.08, 0, 0.05});
-  // RigidTransform<double> X_3_lcs = RigidTransform<double>(
-  //   drake::math::RotationMatrix<double>(), {0, 0.08, 0.05});
-  // RigidTransform<double> X_4_lcs = RigidTransform<double>(
-  //   drake::math::RotationMatrix<double>(), {0, -0.08, 0.05});
+
 
   RigidTransform<double> X_1_lcs = RigidTransform<double>(
     drake::math::RotationMatrix<double>(), {0.0, 0, 0.0});

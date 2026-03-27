@@ -4,9 +4,9 @@ trifinger_model: examples/cube_flip/trifinger/robot_properties_fingers/urdf/trif
 end_effector_model: examples/cube_flip/urdf/fingertips.sdf
 end_effector_names: ["fingertip_1", "fingertip_2", "fingertip_3"]
 
-neutral_position: [[0, 0.08, 0.08],  # finger 0
-                   [0.04, -0.08, 0.05],  # finger 120
-                   [-0.04, -0.08, 0.05]]  # finger 240
+neutral_position: [[0, 0.07, 0.07],  # finger 0
+                   [0.07, -0.06, 0.07],  # finger 120
+                   [-0.07, -0.06, 0.07]]  # finger 240
 
 x_scale: 0.1
 y_scale: 0.1
@@ -20,14 +20,14 @@ w_lambda: 0.0001
 impact_threshold: 0.0001
 impact_tau: 0.0001
 mu: 1.0 # unused
-end_effector_acceleration: 1
+end_effector_acceleration: 50
 track_end_effector_orientation: false
 cancel_gravity_compensation: false
 enforce_acceleration_constraints: true # TODO: figure out why making this true breaks stuff (hardcoded rn)
 publish_debug_info: true
 
 w_joint_limit: 10000.0
-joint_limit_buffer: 0.2
+joint_limit_buffer: 0.1
 
 W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01 ]
 W_input_reg: [ 1, 1, 1, 1, 1, 1, 1, 1, 1 ]
@@ -39,17 +39,17 @@ W_lambda_h_reg: [ 0.0001, 0.0001, 0.0001,
                   0.0001, 0.0001, 0.0001 ]
 
 EndEffectorW:
-  [500, 0, 0,
-   0, 500, 0,
-   0, 0, 500]
+  [300, 0, 0,
+   0, 300, 0,
+   0, 0, 300]
 EndEffectorKp:
-  [ 400, 0, 0,
-    0, 400, 0,
-    0, 0, 400 ]
+  [ 300, 0, 0,
+    0, 300, 0,
+    0, 0, 300 ]
 EndEffectorKd:
-  [ 20, 0, 0,
-    0, 20, 0,
-    0, 0, 20 ]
+  [ 30, 0, 0,
+    0, 30, 0,
+    0, 0, 30 ]
 LambdaEndEffectorW:
   [ 200, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 200, 0, 0, 0, 0, 0, 0, 0,

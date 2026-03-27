@@ -12,7 +12,7 @@ dt: 0.01 # REMOVE after importing all options from c3 repo
 c3_dt_scaling: 5 # c3_dt / ic3_dt
 
 iter_to_use: 1
-num_timesteps_to_use: 240
+num_timesteps_to_use: 300
 
 hold_last_timestep_position: true
 vertical_offset: -0.0

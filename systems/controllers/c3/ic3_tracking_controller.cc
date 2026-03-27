@@ -346,30 +346,31 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
 
     } else if (n_x_ == 31) {
       for (int i = 0; i < 3; i++) {
-        // A(3*i, 3*i) = 1;
-        // A(3*i+1, 3*i+1) = 1;
-        // A(3*i+2, 3*i+2) = 1;
+        A(3*i, 3*i) = 1;
+        A(3*i+1, 3*i+1) = 1;
+        A(3*i+2, 3*i+2) = 1;
 
         // Velocity constraints
         A(16 + 3*i) = 1;
         A(16 + 3*i + 1) = 1;
         A(16 + 3*i + 2) = 1;
 
-        // lower_bound(3*i) = x_des.value()(3*i) - 0.1;
-        // lower_bound(3*i+1) = x_des.value()(3*i+1) - 0.1;
-        // lower_bound(3*i+2) = x_des.value()(3*i+2) - 0.03;
+        lower_bound(3*i) = x_des.value()(3*i) - 0.1;
+        lower_bound(3*i+1) = x_des.value()(3*i+1) - 0.1;
+        // lower_bound(3*i+2) = x_des.value()(3*i+2) - 0.01;
+        lower_bound(3*i+2) = 0.07;
 
-        lower_bound(16 + 3*i) = -0.01;
-        lower_bound(16 + 3*i+1) = -0.01;
-        lower_bound(16 + 3*i+2) = -0.01;
+        lower_bound(16 + 3*i, 16 + 3*i) = -0.3;
+        lower_bound(16 + 3*i+1, 16 + 3*i+1) = -0.3;
+        lower_bound(16 + 3*i+2, 16 + 3*i+2) = -0.3;
 
-        // upper_bound(3*i) = x_des.value()(3*i) + 0.1;
-        // upper_bound(3*i+1) = x_des.value()(3*i+1) + 0.1;
-        // upper_bound(3*i+2) = x_des.value()(3*i+2) + 0.08;
+        upper_bound(3*i) = x_des.value()(3*i) + 0.1;
+        upper_bound(3*i+1) = x_des.value()(3*i+1) + 0.1;
+        upper_bound(3*i+2) = 0.09;
 
-        upper_bound(16 + 3*i) = 0.01;
-        upper_bound(16 + 3*i+1) = 0.01;
-        upper_bound(16 + 3*i+2) = 0.01;
+        upper_bound(16 + 3*i) = 0.3;
+        upper_bound(16 + 3*i+1) = 0.3;
+        upper_bound(16 + 3*i+2) = 0.3;
       }
     }
     c3_->AddVectorLinearConstraint(A, lower_bound, upper_bound, 1);
@@ -395,17 +396,17 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
 
     } else if (n_u_ == 9) {
       for (int i = 0; i < 3; i++) {
-        // A_u(3*i, 3*i) = 1;
-        // A_u(3*i+1, 3*i+1) = 1;
+        A_u(3*i, 3*i) = 1;
+        A_u(3*i+1, 3*i+1) = 1;
         A_u(3*i+2, 3*i+2) = 1;
         
-        // lower_bound_u(3*i) = -0.5;
-        // lower_bound_u(3*i+1) = -0.5;
-        lower_bound_u(3*i+2) = 0;
+        lower_bound_u(3*i) = -0.5;
+        lower_bound_u(3*i+1) = -0.5;
+        lower_bound_u(3*i+2) = 0.18;
 
-        // upper_bound_u(3*i) = 0.5;
-        // upper_bound_u(3*i+1) = 0.5;
-        upper_bound_u(3*i+2) = 0.4;
+        upper_bound_u(3*i) = 0.5;
+        upper_bound_u(3*i+1) = 0.5;
+        upper_bound_u(3*i+2) = 0.22;
 
       }
     }
@@ -417,7 +418,8 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
 
   auto c3_start = std::chrono::high_resolution_clock::now();
   c3_->Solve(x_lcs);
-
+  c3_->RemoveUserConstraints();
+  
   auto finish = std::chrono::high_resolution_clock::now();
   auto elapsed = finish - start;
   double solve_time =
@@ -498,6 +500,10 @@ void iC3TrackingController::UpdateQuaternionCosts(
 
   /// TODO Move to param file
   double Q_quaternion_weight = 5000;
+  if (x_curr.size() == 31) {
+    Q_quaternion_weight = 3000;
+  }
+
   double quaternion_regularizer_fraction = 0.0;
 
   discount_factor = 1;
@@ -552,9 +558,15 @@ drake::systems::EventStatus iC3TrackingController::SetFirstCallTime(
     const drake::systems::Context<double>& context,
     drake::systems::DiscreteValues<double>* discrete_state) const {
 
-  const auto& radio_out =
+  const auto* radio_out =
       this->EvalInputValue<lcmt_radio_out>(context, radio_port_);
-  bool is_teleop = radio_out->channel[14];
+  
+  bool is_teleop = false;
+  // HARDCODED
+  if (n_x_ == 23) {
+    is_teleop = radio_out->channel[14];
+  }
+
 
   auto& vec = discrete_state->get_mutable_vector(t0_idx_);
   if (!called_ && !is_teleop) {  

@@ -209,14 +209,14 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
     // HARDCODED THRESHOLD POSITIONS TO JOINT LIMITS
     for (int i = 0; i < positions.cols(); i++) {
       positions.col(i)(0) = std::min(std::max(positions.col(i)(0), -0.1), 0.1);
-      positions.col(i)(1) = std::min(std::max(positions.col(i)(1), -0.02), 0.18);
-      positions.col(i)(2) = std::min(std::max(positions.col(i)(2), 0.02), 0.13);
-      positions.col(i)(3) = std::min(std::max(positions.col(i)(3), -0.06), 0.14);
-      positions.col(i)(4) = std::min(std::max(positions.col(i)(4), -0.18), 0.02);
-      positions.col(i)(5) = std::min(std::max(positions.col(i)(5), 0.02), 0.13);
-      positions.col(i)(6) = std::min(std::max(positions.col(i)(6), -0.14), 0.06);
-      positions.col(i)(7) = std::min(std::max(positions.col(i)(7), -0.18), 0.02);
-      positions.col(i)(8) = std::min(std::max(positions.col(i)(8), 0.02), 0.13);
+      positions.col(i)(1) = std::min(std::max(positions.col(i)(1), -0.03), 0.17);
+      positions.col(i)(2) = std::min(std::max(positions.col(i)(2), 0.07), 0.09);
+      positions.col(i)(3) = std::min(std::max(positions.col(i)(3), -0.03), 0.17);
+      positions.col(i)(4) = std::min(std::max(positions.col(i)(4), -0.16), 0.04);
+      positions.col(i)(5) = std::min(std::max(positions.col(i)(5), 0.07), 0.09);
+      positions.col(i)(6) = std::min(std::max(positions.col(i)(6), -0.17), 0.03);
+      positions.col(i)(7) = std::min(std::max(positions.col(i)(7), -0.16), 0.04);
+      positions.col(i)(8) = std::min(std::max(positions.col(i)(8), 0.07), 0.09);
       
     }
   }

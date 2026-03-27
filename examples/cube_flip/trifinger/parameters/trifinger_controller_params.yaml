@@ -14,17 +14,15 @@ track_dynamically_feasible: false
 
 time_to_wait: 1.0
 
-nominal_position: [0, 0.08, 0.08,  # finger 0
-                   0.04, -0.08, 0.05,  # finger 120
-                   -0.04, -0.08, 0.05]  # finger 240
+nominal_position: [0, 0.07, 0.07,  # finger 0
+                   0.07, -0.06, 0.07,  # finger 120
+                   -0.07, -0.06, 0.07]  # finger 240
 
-x_target: [0, 0.08, 0.05,  # finger 1  
-         0.04, -0.08, 0.05,   # finger 2
-         -0.04, -0.08, 0.05,   # finger 3
-         # 0, 0, 0.0,   # finger 4
-         # 0, 0, 1, 0,  # cube orientation (180 about y)
-         0.707, 0.707, 0, 0,  # cube orientation (90 about y)
-         #0, 0, 0, 1,  # cube orientation (180 about z)
+x_target: [0, 0.06, 0.08,  # finger 1  
+         0.06, -0.06, 0.08,   # finger 2
+         -0.06, -0.06, 0.08,   # finger 3
+         #0.707, 0.707, 0, 0,  # cube orientation (90 about y)
+         0, 0, 0, 1,  # cube orientation (180 about z)
          0, 0, 0.05,  # cube position
          0, 0, 0,     # finger 1 velo
          0, 0, 0,     # finger 2 velo

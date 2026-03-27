@@ -220,7 +220,12 @@ drake::systems::EventStatus TimedGate::SetFirstCallTime(
   const auto& radio_out =
       this->EvalInputValue<lcmt_radio_out>(context, radio_port_);
 
-  bool is_teleop = radio_out->channel[14];
+  bool is_teleop = false;
+  
+  // HARDCODED
+  if (example_idx_ == 0) {
+    is_teleop = radio_out->channel[14];
+  }
 
   auto& vec = discrete_state->get_mutable_vector(t0_idx_);
   if (!called_ && !is_teleop) {  

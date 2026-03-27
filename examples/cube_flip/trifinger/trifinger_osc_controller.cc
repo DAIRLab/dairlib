@@ -242,8 +242,8 @@ int DoMain(int argc, char* argv[]) {
           "end_effector_force", controller_params.W_ee_lambda, plant, plant,
           controller_params.end_effector_names, pts_to_track);
 
-  VectorXd ddq_min(-5 * VectorXd::Ones(9));
-  VectorXd ddq_max(5 * VectorXd::Ones(9));
+  VectorXd ddq_min(-50 * VectorXd::Ones(9));
+  VectorXd ddq_max(50 * VectorXd::Ones(9));
   
   osc->AddTrackingData(std::move(ee_position_tracking_data_0));
   osc->AddTrackingData(std::move(ee_position_tracking_data_120));
@@ -255,7 +255,6 @@ int DoMain(int argc, char* argv[]) {
   osc->SetAccelerationConstraints(
       controller_params.enforce_acceleration_constraints);
   osc->SetJointAccelerationBounds(ddq_min, ddq_max);      
-  osc->SetContactFriction(controller_params.mu);
   osc->SetJointLimitWeight(controller_params.w_joint_limit);
   osc->SetJointLimitBuffer(controller_params.joint_limit_buffer);
   osc->SetOsqpSolverOptions(solver_options);

@@ -77,8 +77,8 @@
         <axis>
           <xyz>1 0 0</xyz>
           <limit>
-            <effort>100.0</effort>
-            <velocity>0.5</velocity>
+            <effort>0.5</effort>
+            <velocity>0.3</velocity>
             <lower> -0.1 </lower>
             <upper> 0.1 </upper>
             <!-- <lower> -0.08 </lower>
@@ -106,8 +106,8 @@
         <axis>
           <xyz>0 1 0</xyz>
            <limit>
-            <effort>100.0</effort>
-            <velocity>0.5</velocity>
+            <effort>0.5</effort>
+            <velocity>0.3</velocity>
             <lower> -0.04 </lower>
             <upper> 0.16 </upper>
             <!-- <lower> -0 </lower>
@@ -122,8 +122,8 @@
         <axis>
           <xyz>0 0 1</xyz>
           <limit>
-          <effort>100.0</effort>
-          <velocity>0.5</velocity>
+          <effort>0.5</effort>
+          <velocity>0.3</velocity>
           <lower> 0.04 </lower>
           <upper> 0.06 </upper>
         </limit>
@@ -201,8 +201,8 @@
         <axis>
             <xyz>1 0 0</xyz>
           <limit>
-            <effort>100.0</effort>
-            <velocity>0.5</velocity>
+            <effort>0.5</effort>
+            <velocity>0.3</velocity>
             <lower> -0.04 </lower>
             <upper> 0.16 </upper>
             <!-- <lower> -0.04 </lower>
@@ -230,8 +230,8 @@
         <axis>
           <xyz>0 1 0</xyz>
           <limit>
-            <effort>100.0</effort>
-            <velocity>0.5</velocity>
+            <effort>0.5</effort>
+            <velocity>0.3</velocity>
             <lower> -0.16 </lower>
             <upper> 0.04 </upper>
             <!-- <lower> -0.16 </lower>
@@ -246,8 +246,8 @@
         <axis>
           <xyz>0 0 1</xyz>
           <limit>
-            <effort>100.0</effort>
-            <velocity>0.5</velocity>
+            <effort>0.5</effort>
+            <velocity>0.3</velocity>
             <lower> 0.04 </lower>
             <upper> 0.06 </upper>
           </limit>
@@ -325,8 +325,8 @@
         <axis>
           <xyz>1 0 0</xyz>
           <limit>
-            <effort>100.0</effort>
-            <velocity>0.5</velocity>
+            <effort>0.5</effort>
+            <velocity>0.3</velocity>
             <lower> -0.16 </lower>
             <upper> 0.04 </upper>
             <!-- <lower> -0.12 </lower>
@@ -354,8 +354,8 @@
         <axis>
           <xyz>0 1 0</xyz>
           <limit>
-            <effort>100.0</effort>
-            <velocity>0.5</velocity>
+            <effort>0.5</effort>
+            <velocity>0.3</velocity>
             <lower> -0.16 </lower>
             <upper> 0.04 </upper>
             <!-- <lower> -0.16 </lower>
@@ -370,8 +370,8 @@
         <axis>
           <xyz>0 0 1</xyz>
           <limit>
-            <effort>100.0</effort>
-            <velocity>0.5</velocity>
+            <effort>0.5</effort>
+            <velocity>0.3</velocity>
             <lower> 0.04 </lower>
             <upper> 0.06 </upper>
           </limit>
@@ -445,8 +445,8 @@
         <axis>
           <xyz>1 0 0</xyz>
           <limit>
-            <effort>100.0</effort>
-            <velocity>0.5</velocity>
+            <effort>0.5</effort>
+            <velocity>0.3</velocity>
             <lower> -0.1 </lower>
             <upper> 0.1 </upper>
           </limit>
@@ -472,8 +472,8 @@
         <axis>
           <xyz>0 1 0</xyz>
           <limit>
-            <effort>100.0</effort>
-            <velocity>0.5</velocity>
+            <effort>0.5</effort>
+            <velocity>0.3</velocity>
             <lower> -0.1 </lower>
             <upper> 0.1 </upper>
           </limit>
@@ -486,8 +486,8 @@
         <axis>
           <xyz>0 0 1</xyz>
           <limit>
-            <effort>100.0</effort>
-            <velocity>0.5</velocity>
+            <effort>0.5</effort>
+            <velocity>0.3</velocity>
             <lower> -0.03 </lower>
             <upper> 0.1 </upper>
           </limit>

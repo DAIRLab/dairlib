@@ -214,22 +214,10 @@ void C3Base::UpdateCostMatrices(const C3Base::CostMatrices& costs) {
 
 void C3Base::UpdateFinalCost(const Eigen::MatrixXd Qf, const Eigen::VectorXd bias) {  
 
-  // std::cout << Qf.rows() << ", " << Qf.cols() << std::endl;
-  // std::cout << bias.size() << std::endl;
 
-  // std::cout << "Qf norm: " << Qf.norm() << std::endl;
-
-  // std::cout << "min eigenvalue = "
-  //           << Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd>(Qf)
-  //             .eigenvalues().minCoeff()
-  //           << std::endl;
-
-  MatrixXd Q_sym = Qf + Qf.transpose();
-  Q_[N_] = Q_sym; // Convert to symmetric, want 2 * Qf
-  Eigen::VectorXd linear_term = -2 * Qf * x_desired_[N_] + bias;
+  Q_[N_] = Qf + Qf.transpose(); // Convert to symmetric, want 2 * Qf
   auto* qf_evaluator = target_cost_[N_];
-
-  qf_evaluator->UpdateCoefficients(Q_sym, linear_term);
+  qf_evaluator->UpdateCoefficients(Qf + Qf.transpose(), -2 * Qf * x_desired_[N_] + bias);
 }
 
 void C3Base::UpdateLCS(const LCS& lcs) {

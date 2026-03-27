@@ -47,6 +47,13 @@ bazel_dep(name = "gazelle", version = "0.44.0")
 
 bazel_dep(name = "osqp", version = "0.6.3.bcr.2")
 
+bazel_dep(name = "c3")
+git_override(
+    module_name = "c3",
+    remote = "https://github.com/DAIRLab/c3.git",
+    branch = "eric/stuff_for_ic3_tracking",
+)
+
 # Use gurobi_cxx, which Drake deprecated
 gurobi_extension = use_extension("@dairlib//tools/workspace/gurobi:repository.bzl", "gurobi_extension")
 use_repo(gurobi_extension, "my_gurobi")

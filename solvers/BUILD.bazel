@@ -169,6 +169,6 @@ cc_test(
     deps = [
         ":optimization_utils",
         "@drake//common/test_utilities:eigen_matrix_compare",
-        "@gtest//:main",
+        "@googletest//:gtest",
     ],
 )

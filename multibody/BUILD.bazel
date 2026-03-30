@@ -1,7 +1,5 @@
 # -*- python -*-
 
-load("@drake//tools/lint:lint.bzl", "add_lint_tests")
-
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
@@ -94,7 +92,7 @@ cc_test(
         "//common",
         "//examples/Cassie:cassie_urdf",
         "@drake//:drake_shared_library",
-        "@gtest//:main",
+        "@googletest//:gtest",
     ],
 )
 

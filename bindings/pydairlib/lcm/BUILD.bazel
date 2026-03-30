@@ -33,7 +33,7 @@ pybind_py_library(
 py_library(
     name = "process_lcm_log",
     srcs = ["process_lcm_log.py"],
-    data = ["@lcm//:lcm-python"],
+    data = ["@lcm//lcm-python:lcm-python"],
     deps = [
     ],
 )

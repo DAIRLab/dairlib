@@ -1,6 +1,7 @@
 #include <gflags/gflags.h>
 
 #include "common/find_resource.h"
+#include "drake/common/text_logging.h"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"

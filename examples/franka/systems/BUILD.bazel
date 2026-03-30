@@ -19,7 +19,7 @@ cc_library(
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
-        "@lcm",
+        "@lcm//lcm:lcm-shared",
     ],
 )
 
@@ -32,7 +32,7 @@ cc_library(
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
-        "@lcm",
+        "@lcm//lcm:lcm-shared",
     ],
 )
 

@@ -1,5 +1,7 @@
 #include "deformable_drawer.h"
 
+#include <cassert>
+
 namespace dairlib {
 namespace examples {
 namespace magna {

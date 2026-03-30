@@ -1,5 +1,6 @@
 #include "examples/magna/systems/state_estimation/drake_deformable_state_to_round_belt_state_converter.h"
 
+#include <cassert>
 #include <iostream>
 
 #include <drake/lcmt_viewer_link_data.hpp>

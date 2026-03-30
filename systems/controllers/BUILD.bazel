@@ -45,7 +45,7 @@ cc_library(
         "//multibody:utils",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
-        "@lcm",
+        "@lcm//lcm:lcm-shared",
     ],
 )
 
@@ -56,7 +56,7 @@ cc_library(
     deps = [
         "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
-        "@lcm",
+        "@lcm//lcm:lcm-shared",
     ],
 )
 
@@ -211,7 +211,7 @@ cc_test(
     ],
     deps = [
         ":controllers",
-        "@gtest//:main",
+        "@googletest//:gtest"
     ],
 )
 

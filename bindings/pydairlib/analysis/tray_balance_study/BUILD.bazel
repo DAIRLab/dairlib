@@ -16,7 +16,7 @@ py_binary(
     srcs = ["run_tray_parameter_study.py"],
     data = [
         "@drake_models//:franka_description",
-        "@lcm//:lcm-python",
+        "@lcm//lcm-python:lcm-python",
     ],
     deps = [
         "//bindings/pydairlib/common",
@@ -31,7 +31,7 @@ py_binary(
         ":parameter_study_config.yaml",
         "//examples/franka:parameters",
         "@drake_models//:franka_description",
-        "@lcm//:lcm-python",
+        "@lcm//lcm-python:lcm-python",
     ],
     deps = [
         "//bindings/pydairlib/analysis:mbp_plotting_utils",

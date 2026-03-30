@@ -1,6 +1,7 @@
 #include "fast_osqp_solver.h"
 
 #include <iostream>
+#include <variant>
 #include <vector>
 
 #include <osqp.h>
@@ -140,7 +141,8 @@ void ParseLinearConstraints(
     const std::vector<int> x_indices =
         prog.FindDecisionVariableIndices(constraint.variables());
     const std::vector<Eigen::Triplet<double>> Ai_triplets =
-        SparseOrDenseMatrixToTriplets(constraint.evaluator()->GetDenseA());
+        drake::math::SparseMatrixToTriplets(
+            constraint.evaluator()->get_sparse_A());
     const Binding<Constraint> constraint_cast =
         BindingDynamicCast<Constraint>(constraint);
     constraint_start_row->emplace(constraint_cast, *num_A_rows);
@@ -289,10 +291,19 @@ void SetFastOsqpSolverSettingWithDefaultValue(
 
 void SetFastOsqpSolverSettings(const SolverOptions& solver_options,
                                OSQPSettings* settings) {
-  const std::unordered_map<std::string, double>& options_double =
-      solver_options.GetOptionsDouble(OsqpSolver::id());
-  const std::unordered_map<std::string, int>& options_int =
-      solver_options.GetOptionsInt(OsqpSolver::id());
+  std::unordered_map<std::string, double> options_double;
+  std::unordered_map<std::string, int> options_int;
+  const auto solver_it =
+      solver_options.options.find(OsqpSolver::id().name());
+  if (solver_it != solver_options.options.end()) {
+    for (const auto& [key, value] : solver_it->second) {
+      if (std::holds_alternative<double>(value)) {
+        options_double.emplace(key, std::get<double>(value));
+      } else if (std::holds_alternative<int>(value)) {
+        options_int.emplace(key, std::get<int>(value));
+      }
+    }
+  }
   SetFastOsqpSolverSetting(options_double, "rho", &(settings->rho));
   SetFastOsqpSolverSetting(options_double, "sigma", &(settings->sigma));
   SetFastOsqpSolverSetting(options_int, "max_iter", &(settings->max_iter));
@@ -395,6 +406,7 @@ void FastOsqpSolver::InitializeSolver(const MathematicalProgram& prog,
       osqp_setup(&workspace_, osqp_data_, osqp_settings_);
   DRAKE_DEMAND(osqp_setup_err == 0);
   const c_int osqp_solve_err = osqp_solve(workspace_);
+  (void)osqp_solve_err;
 
   is_init_ = true;
 }

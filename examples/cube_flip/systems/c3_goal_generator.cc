@@ -5,7 +5,6 @@
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
-#include "multibody/multibody_utils.h"
 
 namespace dairlib {
 
@@ -14,28 +13,31 @@ using drake::systems::DiscreteValues;
 using Eigen::MatrixXd;
 using Eigen::MatrixXf;
 using Eigen::VectorXd;
-using solvers::LCS;
-using solvers::LCSFactory;
+using c3::LCS;
+using c3::C3Options;
+using c3::systems::C3ControllerOptions;
+using c3::ContactPairConfig;
+using c3::multibody::LCSFactory;
 
 C3GoalGenerator::C3GoalGenerator(
 		MultibodyPlant<double>& plant, 
 		Context<double>* context,
 		MultibodyPlant<AutoDiffXd>& plant_ad,
 		Context<AutoDiffXd>* context_ad,
-		vector<SortedPair<GeometryId>>& contact_geoms,
-		C3Options c3_options, VectorXd x_des, int example_idx)
+		C3ControllerOptions c3_controller_options, 
+    VectorXd x_des, int example_idx)
     : plant_(plant), 
 			context_(context),
 			plant_ad_(plant_ad),
 			context_ad_(context_ad),
-			contact_geoms_(contact_geoms),
-			c3_options_(std::move(c3_options)),
+      c3_controller_options_(std::move(c3_controller_options)),
+			c3_options_(std::move(c3_controller_options.c3_options)),
 			x_des_(x_des),
       example_idx_(example_idx)
   {
+  DRAKE_DEMAND(c3_controller_options_.lcs_factory_options.contact_pair_configs.has_value());
 		
   this->set_name("c3_goal_generator");
-
 	n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
   n_x_ = n_q_ + n_v_;
@@ -43,19 +45,24 @@ C3GoalGenerator::C3GoalGenerator(
 
 	std::cout << "n_x_" << n_x_ << std::endl;
 
-	int n_lambda_with_tangential = 2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
-  if (c3_options_.contact_model == "stewart_and_trinkle") {
-    contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
+	int n_lambda_with_tangential = 0;
+  int num_contacts = c3_controller_options_.lcs_factory_options.contact_pair_configs.value().size();
+  for (ContactPairConfig pair : c3_controller_options_.lcs_factory_options.contact_pair_configs.value()) {
+    n_lambda_with_tangential += 2 * pair.num_friction_directions;
+  }
+
+  if (c3_controller_options_.lcs_factory_options.contact_model == "stewart_and_trinkle") {
     n_lambda_ =
-        2 * c3_options_.num_contacts + n_lambda_with_tangential;
-  } else if (c3_options_.contact_model == "anitescu") {
-    contact_model_ = solvers::ContactModel::kAnitescu;
+        2 * num_contacts + n_lambda_with_tangential;
+  } else if (c3_controller_options_.lcs_factory_options.contact_model == "anitescu") {
     n_lambda_ = n_lambda_with_tangential;
   } else {
     std::cerr << ("Unknown or unsupported contact model: " +
-      c3_options_.contact_model) << std::endl;
+      c3_controller_options_.lcs_factory_options.contact_model) << std::endl;
     DRAKE_THROW_UNLESS(false);
   }
+
+  lcs_factory_ = std::make_unique<LCSFactory>(plant_, *context_, plant_ad_, *context_ad_, c3_controller_options_.lcs_factory_options);
 
   state_port_ =
       this->DeclareVectorInputPort("x_input", TimestampedVector<double>(n_x_))
@@ -98,7 +105,8 @@ C3GoalGenerator::C3GoalGenerator(
   MatrixXd F = MatrixXd::Zero(n_lambda_, n_lambda_);
   MatrixXd H = MatrixXd::Zero(n_lambda_, n_u_);
   VectorXd c = VectorXd::Zero(n_lambda_);
-  LCS dummy_lcs =  LCS(A, B, D, d, E, F, H, c, c3_options_.N, c3_options_.dt);
+  LCS dummy_lcs =  LCS(A, B, D, d, E, F, H, c, 
+      c3_controller_options_.lcs_factory_options.N, c3_controller_options_.lcs_factory_options.dt);
 	
   lcs_port_ =
       this->DeclareAbstractOutputPort(
@@ -177,25 +185,16 @@ void C3GoalGenerator::OutputLCS(
     u_nominal(8) = 0.2 * 9.8;
   }
 
-	multibody::SetContext<double>(plant_, x_lcs, u_nominal,  context_);
+	c3::multibody::SetContext<double>(plant_, x_lcs, u_nominal,  context_);
 	drake::VectorX<double> q_v_u(n_x_ + n_u_);
 	q_v_u << x_lcs, u_nominal;
 	drake::AutoDiffVecXd q_v_u_ad = drake::math::InitializeAutoDiff(q_v_u);
-	multibody::SetPositionsAndVelocitiesIfNew<AutoDiffXd>(plant_ad_, q_v_u_ad.head(n_x_),
+	c3::multibody::SetPositionsAndVelocitiesIfNew<AutoDiffXd>(plant_ad_, q_v_u_ad.head(n_x_),
 																						context_ad_);
-	multibody::SetInputsIfNew<AutoDiffXd>(plant_ad_, q_v_u_ad.tail(n_u_), context_ad_);
+	c3::multibody::SetInputsIfNew<AutoDiffXd>(plant_ad_, q_v_u_ad.tail(n_u_), context_ad_);
 
 	// Linearize
-	vector<int> starting_index_per_contact_in_lambda_t_vector;
-	vector<int> num_friction_directions_vector;
-	for (int i = 0; i < c3_options_.num_contacts; i++) {
-		starting_index_per_contact_in_lambda_t_vector.push_back(2 * c3_options_.num_friction_directions * i);
-		num_friction_directions_vector.push_back(c3_options_.num_friction_directions);
-	}
-
-	LCS lcs = LCSFactory::LinearizePlantToLCS(plant_, *context_, plant_ad_, 
-		*context_ad_, contact_geoms_, c3_options_.mu, c3_options_.dt, c3_options_.N, n_lambda_,
-		num_friction_directions_vector, starting_index_per_contact_in_lambda_t_vector, contact_model_);
+	LCS lcs = lcs_factory_->GenerateLCS();
 
 	*lcs_out = lcs;
 }

@@ -6,7 +6,7 @@ object_model: examples/cube_flip/urdf/cube.sdf
 
 osqp_settings_file: examples/cube_flip/parameters/franka_plate_osqp_settings.yaml
 ic3_options_file: examples/cube_flip/parameters/iC3_options.yaml
-c3_options_file: examples/cube_flip/parameters/plate_c3_options.yaml
+c3_controller_options_file: examples/cube_flip/parameters/plate_c3_options.yaml
 
 include_end_effector_orientation: true
 

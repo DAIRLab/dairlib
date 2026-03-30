@@ -30,7 +30,10 @@
 #include "systems/framework/lcm_driven_loop.h"
 
 #include "examples/cube_flip/parameter_headers/iC3_options.h"
-#include "solvers/c3_options.h"
+#include "c3/systems/c3_controller_options.h"
+#include "c3/core/solver_options_io.h"
+#include "c3/systems/lcs_factory_system.h"
+
 #include "examples/cube_flip/toy_system/toy_system_params.h"
 #include "examples/cube_flip/toy_system/toy_utils.h"
 
@@ -59,6 +62,8 @@ using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 
+using c3::systems::C3ControllerOptions;
+
 namespace dairlib {
 
 // Takes ic3 trajectory and executes it
@@ -68,8 +73,8 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
       drake::yaml::LoadYamlFile<iC3Options>(
           "examples/cube_flip/toy_system/toy_ic3_options.yaml");
 
-  C3Options c3_options =
-      drake::yaml::LoadYamlFile<C3Options>(
+  C3ControllerOptions c3_controller_options =
+      drake::yaml::LoadYamlFile<C3ControllerOptions>(
           "examples/cube_flip/toy_system/toy_c3_options.yaml");
 
   ToySystemParams toy_params =
@@ -77,7 +82,7 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
           "examples/cube_flip/toy_system/toy_system_params.yaml");
 
   drake::solvers::SolverOptions solver_options =
-      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
+      drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(
           "examples/cube_flip/toy_system/toy_osqp_options.yaml")
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
@@ -224,14 +229,14 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
           builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_lqr_output>(
               "iC3_LQR", &lcm));
     auto controller =
-        builder.AddSystem<systems::iC3TrackingController>(plant_for_lcs, c3_options, ic3_options, toy_params.time_to_wait);
-    controller->SetOsqpSolverOptions(solver_options);
+        builder.AddSystem<systems::iC3TrackingController>(plant_for_lcs, c3_controller_options, ic3_options, toy_params.time_to_wait);
+    // controller->SetOsqpSolverOptions(solver_options);
 
     auto vector_to_timestamped_vector =
       builder.AddSystem<Vector2TimestampedVector>(plant.num_positions() + plant.num_velocities());
-    auto lcs_factory_system = builder.AddSystem<systems::LCSFactorySystem>(
+    auto lcs_factory_system = builder.AddSystem<c3::systems::LCSFactorySystem>(
       plant_for_lcs, plant_for_lcs_context, *plant_autodiff,
-      *plant_context_autodiff, contact_pairs, c3_options);
+      *plant_context_autodiff, c3_controller_options.lcs_factory_options);
     auto xdes =
       builder.AddSystem<drake::systems::ConstantVectorSource<double>>(toy_params.x_des);
     auto c3_input = builder.AddSystem<C3Solution2Input>(plant);

@@ -1,4 +1,4 @@
-#include "systems/controllers/c3/ic3_tracking_controller.h"
+#include "c3/systems/framework/c3_output.h"
 #include <drake/common/yaml/yaml_io.h>
 #include "examples/cube_flip/toy_system/toy_system_params.h"
 #include "examples/cube_flip/parameter_headers/iC3_options.h"
@@ -21,7 +21,7 @@ class C3Solution2Input : public drake::systems::LeafSystem<double> {
     // Declare input port for C3 solutions.
     c3_solution_port_index_ =
         this->DeclareAbstractInputPort("c3_solution",
-                                       drake::Value<C3Output::C3Solution>())
+                                       drake::Value<c3::systems::C3Output::C3Solution>())
             .get_index();
     curr_obj_x_port_ =
         this->DeclareVectorInputPort("x", plant.num_positions() + plant.num_velocities())
@@ -59,7 +59,7 @@ class C3Solution2Input : public drake::systems::LeafSystem<double> {
                   drake::systems::BasicVector<double>* output) const {
     const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
     DRAKE_ASSERT(input != nullptr);
-    const auto& sol = input->get_value<C3Output::C3Solution>();
+    const auto& sol = input->get_value<c3::systems::C3Output::C3Solution>();
 
     const BasicVector<double>* x_curr =
       (BasicVector<double>*)this->EvalVectorInput(context, curr_obj_x_port_);
@@ -101,7 +101,7 @@ class C3Solution2InputHand : public drake::systems::LeafSystem<double> {
     // Declare input port for C3 solutions.
     c3_solution_port_index_ =
         this->DeclareAbstractInputPort("c3_solution",
-                                       drake::Value<C3Output::C3Solution>())
+                                       drake::Value<c3::systems::C3Output::C3Solution>())
             .get_index();
     curr_obj_x_port_ =
         this->DeclareVectorInputPort("x", plant.num_positions() + plant.num_velocities())
@@ -139,7 +139,7 @@ class C3Solution2InputHand : public drake::systems::LeafSystem<double> {
                   drake::systems::BasicVector<double>* output) const {
     const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
     DRAKE_ASSERT(input != nullptr);
-    const auto& sol = input->get_value<C3Output::C3Solution>();
+    const auto& sol = input->get_value<c3::systems::C3Output::C3Solution>();
 
     const BasicVector<double>* x_curr =
       (BasicVector<double>*)this->EvalVectorInput(context, curr_obj_x_port_);

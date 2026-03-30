@@ -6,7 +6,6 @@
 #include "common/find_resource.h"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "multibody/multibody_utils.h"
-#include "solvers/lcs.h"
 
 namespace dairlib {
 
@@ -17,7 +16,6 @@ using drake::systems::DiscreteValues;
 using Eigen::MatrixXd;
 using Eigen::MatrixXf;
 using Eigen::VectorXd;
-using solvers::LCS;
 
 iC3TrajectoryGenerator::iC3TrajectoryGenerator(
     const drake::multibody::MultibodyPlant<double>& plant, iC3Options ic3_options)

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "solvers/c3_options.h"
-
 #include "drake/common/yaml/yaml_read_archive.h"
 
 struct TrifingerControllerParams {
@@ -16,7 +14,7 @@ struct TrifingerControllerParams {
 
   std::string osqp_settings_file;
   std::string ic3_options_file;
-  std::string c3_options_file;
+  std::string c3_controller_options_file;
 
 
   bool track_dynamically_feasible;
@@ -39,7 +37,7 @@ struct TrifingerControllerParams {
 
     a->Visit(DRAKE_NVP(osqp_settings_file));
     a->Visit(DRAKE_NVP(ic3_options_file));
-    a->Visit(DRAKE_NVP(c3_options_file));
+    a->Visit(DRAKE_NVP(c3_controller_options_file));
     a->Visit(DRAKE_NVP(time_to_wait));
 
     a->Visit(DRAKE_NVP(track_dynamically_feasible));

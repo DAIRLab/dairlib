@@ -21,11 +21,9 @@
 
 
 #include "multibody/multibody_utils.h"
-#include "solvers/lcs_factory.h"
-#include "solvers/c3_options.h"
-
-#include "systems/controllers/c3/lcs_factory_system.h"
-#include "systems/controllers/c3/c3_controller.h"
+#include "c3/core/c3_options.h"
+#include "c3/systems/c3_controller_options.h"
+#include "c3/core/solver_options_io.h"
 
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/primitives/radio_parser.h"
@@ -35,7 +33,6 @@
 
 namespace dairlib {
 
-using dairlib::solvers::LCSFactory;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::math::RigidTransform;
@@ -49,6 +46,9 @@ using drake::systems::TriggerTypeSet;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using Eigen::MatrixXd;
+
+using c3::C3Options;
+using c3::systems::C3ControllerOptions;
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -82,12 +82,12 @@ int DoMain(int argc, char* argv[]) {
       drake::yaml::LoadYamlFile<iC3Options>(
           controller_params.ic3_options_file);
 
-  C3Options c3_options =
-      drake::yaml::LoadYamlFile<C3Options>(
-          controller_params.c3_options_file);
+  C3ControllerOptions c3_controller_options =
+      drake::yaml::LoadYamlFile<C3ControllerOptions>(
+          controller_params.c3_controller_options_file);
 
   drake::solvers::SolverOptions solver_options =
-      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
+      drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(
           FindResourceOrThrow(controller_params.osqp_settings_file))
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
@@ -240,7 +240,7 @@ int DoMain(int argc, char* argv[]) {
 
     auto c3_goal_generator = 
         builder.AddSystem<C3GoalGenerator>(plant_for_lcs, &plant_lcs_context, *plant_for_lcs_autodiff, 
-          plant_lcs_context_ad.get(), contact_pairs, c3_options, controller_params.x_target, 0); 
+          plant_lcs_context_ad.get(), c3_controller_options, controller_params.x_target, 0); 
 
     auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
@@ -257,11 +257,11 @@ int DoMain(int argc, char* argv[]) {
 
     auto controller =
         builder.AddSystem<systems::iC3TrackingController>
-            (plant_for_lcs, c3_options, ic3_options, 
+            (plant_for_lcs, c3_controller_options, ic3_options, 
 							controller_params.time_to_wait);
 
     auto c3_trajectory_generator =
-        builder.AddSystem<C3TrajectoryGenerator>(plant_for_lcs, c3_options, 
+        builder.AddSystem<C3TrajectoryGenerator>(plant_for_lcs, c3_controller_options, 
             controller_params.track_dynamically_feasible, 0); 
     c3_trajectory_generator->SetPublishEndEffectorOrientation(true);
     

@@ -13,10 +13,11 @@
 #include "examples/cube_flip/parameter_headers/iC3_options.h"
 #include "drake/systems/framework/leaf_system.h"
 #include "multibody/multibody_utils.h"
-#include "solvers/c3_options.h"
-#include "solvers/lcs.h"
-#include "multibody/multibody_utils.h"
-#include "solvers/lcs_factory.h"
+#include "c3/core/c3_options.h"
+#include "c3/core/lcs.h"
+#include "c3/multibody/lcs_factory.h"
+#include "c3/multibody/multibody_utils.h"
+#include "c3/systems/c3_controller_options.h"
 #include "systems/framework/timestamped_vector.h"
 
 using dairlib::LcmTrajectory;
@@ -32,7 +33,6 @@ using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 using drake::AutoDiffXd;
 using drake::systems::BasicVector;
-using dairlib::solvers::LCS;
 using dairlib::systems::TimestampedVector;
 
 namespace dairlib {
@@ -47,8 +47,8 @@ class C3GoalGenerator : public drake::systems::LeafSystem<double> {
         Context<double>* context,
         MultibodyPlant<AutoDiffXd>& plant_ad,
         Context<AutoDiffXd>* context_ad,
-        vector<SortedPair<GeometryId>>& contact_geoms,
-        C3Options c3_options, VectorXd x_des, int example_idx);
+        c3::systems::C3ControllerOptions c3_controller_options, 
+        VectorXd x_des, int example_idx);
 
     const drake::systems::InputPort<double>& get_input_port_state() const {
       return this->get_input_port(state_port_);
@@ -73,7 +73,7 @@ class C3GoalGenerator : public drake::systems::LeafSystem<double> {
     void OutputState(const Context<double>& context,
                       TimestampedVector<double>* state_output) const;
     void OutputLCS(const Context<double>& context,
-                  LCS* lcs) const;
+                  c3::LCS* lcs) const;
 
     drake::systems::InputPortIndex state_port_;
     drake::systems::InputPortIndex nominal_position_port_;
@@ -82,12 +82,14 @@ class C3GoalGenerator : public drake::systems::LeafSystem<double> {
     drake::systems::OutputPortIndex lcs_port_;
     drake::systems::OutputPortIndex x_lcs_port_;
 
-    drake::multibody::MultibodyPlant<double>& plant_;
+    const drake::multibody::MultibodyPlant<double>& plant_;
     Context<double>* context_;
-    MultibodyPlant<AutoDiffXd>& plant_ad_;
+    const MultibodyPlant<AutoDiffXd>& plant_ad_;
     Context<AutoDiffXd>* context_ad_;
-    vector<SortedPair<GeometryId>>& contact_geoms_;
-    C3Options c3_options_;
+
+    std::unique_ptr<c3::multibody::LCSFactory> lcs_factory_;
+    c3::C3Options c3_options_;
+    c3::systems::C3ControllerOptions c3_controller_options_;
     VectorXd x_des_;
 
     int N_;
@@ -100,7 +102,6 @@ class C3GoalGenerator : public drake::systems::LeafSystem<double> {
     int example_idx_;
     
     int n_lambda_;
-    solvers::ContactModel contact_model_;
 
 };
 

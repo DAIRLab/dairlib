@@ -5,9 +5,8 @@
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
-#include "systems/franka_kinematics_vector.h"
 #include "multibody/multibody_utils.h"
-#include "solvers/c3_output.h"
+#include "c3/systems/framework/c3_output.h"
 
 namespace dairlib {
 
@@ -19,15 +18,20 @@ using Eigen::MatrixXd;
 using Eigen::MatrixXf;
 using Eigen::VectorXd;
 using Eigen::Vector3d;
-using systems::TimestampedVector;
 
+using c3::systems::C3Output;
+using c3::systems::C3ControllerOptions;
+using c3::LCSFactoryOptions;
+using c3::LCS;
+using c3::ContactPairConfig;
 
 C3TrajectoryGenerator::C3TrajectoryGenerator(
     const drake::multibody::MultibodyPlant<double>& plant, 
-      C3Options c3_options, bool track_dynamically_feasible, int example_idx)
+      C3ControllerOptions c3_controller_options, bool track_dynamically_feasible, int example_idx)
     : plant_(plant), 
-    c3_options_(std::move(c3_options)), 
-    N_(c3_options_.N), 
+    c3_controller_options_(c3_controller_options),
+    lcs_factory_options_(c3_controller_options.lcs_factory_options),
+    N_(lcs_factory_options_.N), 
     track_dynamically_feasible_(track_dynamically_feasible),
     example_idx_(example_idx) {
   this->set_name("c3_trajectory_generator");
@@ -37,13 +41,23 @@ C3TrajectoryGenerator::C3TrajectoryGenerator(
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
   n_x_ = n_q_ + n_v_;
-  if (c3_options_.contact_model == "stewart_and_trinkle") {
+
+
+	int n_lambda_with_tangential = 0;
+  int num_contacts = lcs_factory_options_.contact_pair_configs.value().size();
+  for (ContactPairConfig pair : lcs_factory_options_.contact_pair_configs.value()) {
+    n_lambda_with_tangential += 2 * pair.num_friction_directions;
+  }
+
+  if (lcs_factory_options_.contact_model == "stewart_and_trinkle") {
     n_lambda_ =
-        2 * c3_options_.num_contacts +
-        2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
-  } else if (c3_options_.contact_model == "anitescu") {
-    n_lambda_ =
-        2 * c3_options_.num_friction_directions * c3_options_.num_contacts;
+        2 * num_contacts + n_lambda_with_tangential;
+  } else if (lcs_factory_options_.contact_model == "anitescu") {
+    n_lambda_ = n_lambda_with_tangential;
+  } else {
+    std::cerr << ("Unknown or unsupported contact model: " +
+      lcs_factory_options_.contact_model) << std::endl;
+    DRAKE_THROW_UNLESS(false);
   }
   n_u_ = plant_.num_actuators();
 
@@ -163,8 +177,7 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
 
       time_vector = VectorXd::Zero(2);
       time_vector[0] = c3_solution->time_vector_.cast<double>()(0);
-      time_vector[1] = time_vector[0] + c3_options_.dt;
-      // time_vector[1] = c3_options_.dt;
+      time_vector[1] = time_vector[0] + lcs_factory_options_.dt;
 
     } else {
       x_hat = x_hat.rightCols(x_hat.cols() - 1); // Remove x0 for size consistency
@@ -196,7 +209,7 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
 
       time_vector = VectorXd::Zero(2);
       time_vector[0] = c3_solution->time_vector_.cast<double>()(0);
-      time_vector[1] = time_vector[0] + c3_options_.dt;
+      time_vector[1] = time_vector[0] + lcs_factory_options_.dt;
 
     } else {
       x_hat = x_hat.rightCols(x_hat.cols() - 1); // Remove x0 for size consistency
@@ -340,11 +353,13 @@ void C3TrajectoryGenerator::OutputObjectTrajectory(
 
 MatrixXd C3TrajectoryGenerator::SimulateLCS(VectorXd x0, MatrixXd u_hat, LCS lcs) const {
 
-  MatrixXd x_hat(MatrixXd::Zero(x0.size(), lcs.N_ + 1));
+  MatrixXd x_hat(MatrixXd::Zero(x0.size(), lcs.N() + 1));
   x_hat.col(0) = x0;
 
-  for (int i = 0; i < lcs.N_; i++) {
-    x_hat.col(i+1) = lcs.Simulate(x_hat.col(i), u_hat.col(i));
+  for (int i = 0; i < lcs.N(); i++) {
+    Eigen::VectorXd x = x_hat.col(i);
+    Eigen::VectorXd u = u_hat.col(i);
+    x_hat.col(i+1) = lcs.Simulate(x, u);
   }
   return x_hat;
 }
@@ -358,7 +373,7 @@ LCS C3TrajectoryGenerator::CreatePlaceholderLCS() const {
   MatrixXd F = MatrixXd::Zero(n_lambda_, n_lambda_);
   MatrixXd H = MatrixXd::Zero(n_lambda_, n_u_);
   VectorXd c = VectorXd::Zero(n_lambda_);
-  return LCS(A, B, D, d, E, F, H, c, c3_options_.N, c3_options_.dt);
+  return LCS(A, B, D, d, E, F, H, c, lcs_factory_options_.N, lcs_factory_options_.dt);
 }
 
 }  // namespace dairlib

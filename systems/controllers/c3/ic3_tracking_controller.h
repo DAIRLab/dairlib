@@ -11,12 +11,15 @@
 #include "dairlib/lcmt_lqr_output.hpp"
 #include "dairlib/lcmt_radio_out.hpp"
 #include "lcm/lcm_trajectory.h"
-#include "solvers/base_c3.h"
-#include "solvers/c3_options.h"
+#include <c3/core/c3.h>
+#include <c3/core/c3_options.h>
+#include <c3/core/lcs.h>
+#include <c3/core/solver_options_io.h>
+#include <c3/systems/framework/c3_output.h>
+#include <c3/systems/c3_controller_options.h>
+
 #include "examples/cube_flip/parameter_headers/iC3_options.h"
-#include "solvers/c3_output.h"
-#include "solvers/lcs.h"
-#include "solvers/solver_options_io.h"
+
 #include "systems/framework/timestamped_vector.h"
 
 #include "drake/systems/framework/leaf_system.h"
@@ -30,7 +33,7 @@ namespace systems {
 class iC3TrackingController : public drake::systems::LeafSystem<double> {
  public:
   explicit iC3TrackingController(const drake::multibody::MultibodyPlant<double>& plant,
-                        C3Options c3_options, iC3Options ic3_options, double time_to_wait);
+                        c3::systems::C3ControllerOptions controller_options, iC3Options ic3_options, double time_to_wait);
 
   const drake::systems::InputPort<double>& get_input_port_target() const {
     return this->get_input_port(target_input_port_);
@@ -69,23 +72,23 @@ class iC3TrackingController : public drake::systems::LeafSystem<double> {
     return this->get_output_port(c3_intermediates_port_);
   }
 
-  void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
-    solver_options_ = options;
-    c3_->SetOsqpSolverOptions(solver_options_);
-  }
+  // void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
+  //   solver_options_ = options;
+  //   c3_->SetOsqpSolverOptions(solver_options_);
+  // }
 
  private:
-  solvers::LCS CreatePlaceholderLCS() const;
+  c3::LCS CreatePlaceholderLCS() const;
 
   drake::systems::EventStatus ComputePlan(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
   void OutputC3Solution(const drake::systems::Context<double>& context,
-                        C3Output::C3Solution* c3_solution) const;
+                        c3::systems::C3Output::C3Solution* c3_solution) const;
 
   void OutputC3Intermediates(const drake::systems::Context<double>& context,
-                             C3Output::C3Intermediates* c3_intermediates) const;
+                             c3::systems::C3Output::C3Intermediates* c3_intermediates) const;
 
   void UpdateQuaternionCosts(
       const VectorXd& x_curr, const Eigen::VectorXd& x_des) const;
@@ -106,7 +109,10 @@ class iC3TrackingController : public drake::systems::LeafSystem<double> {
 
   const drake::multibody::MultibodyPlant<double>& plant_;
 
-  C3Options c3_options_;
+  c3::systems::C3ControllerOptions controller_options_;
+  c3::C3Options c3_options_;
+  c3::LCSFactoryOptions lcs_factory_options_;
+
   iC3Options ic3_options_;
   drake::solvers::SolverOptions solver_options_;
   // drake::solvers::SolverOptions solver_options_ =
@@ -120,11 +126,10 @@ class iC3TrackingController : public drake::systems::LeafSystem<double> {
   int n_x_;
   int n_lambda_;
   int n_u_;
-  double dt_;
 
   double time_to_wait_;
 
-  mutable std::unique_ptr<solvers::C3Base> c3_;
+  mutable std::unique_ptr<c3::C3> c3_;
 
   double solve_time_filter_constant_;
   drake::systems::DiscreteStateIndex plan_start_time_index_;
@@ -134,7 +139,9 @@ class iC3TrackingController : public drake::systems::LeafSystem<double> {
   mutable std::vector<Eigen::MatrixXd> R_;
   mutable std::vector<Eigen::MatrixXd> G_;
   mutable std::vector<Eigen::MatrixXd> U_;
-  int N_;
+
+  int N_; // N for c3 (NOT the same as iC3 horizon)
+  double dt_; // dt for c3 (NOT the same as iC3 dt)
 
   double t0_idx_;
   mutable bool called_;

@@ -24,6 +24,7 @@
 #include "drake/multibody/plant/deformable_model.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/diagram_builder.h"
+#include "drake/common/text_logging.h"
 
 namespace dairlib {
 namespace examples {

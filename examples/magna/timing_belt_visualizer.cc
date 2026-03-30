@@ -17,6 +17,7 @@
 #include "systems/system_utils.h"
 #include "systems/visualization/lcm_visualization_systems.h"
 
+#include "drake/common/text_logging.h"
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/geometry/meshcat_visualizer.h"
 #include "drake/geometry/meshcat_visualizer_params.h"
@@ -29,7 +30,6 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/multiplexer.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
-
 namespace dairlib {
 namespace examples {
 namespace magna {

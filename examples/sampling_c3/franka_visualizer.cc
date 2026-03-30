@@ -38,6 +38,7 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/multiplexer.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
+#include "drake/common/text_logging.h"
 
 namespace dairlib {
 

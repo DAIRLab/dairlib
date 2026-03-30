@@ -921,9 +921,9 @@ vector<VectorXd> C3Base::SolveQP(const VectorXd& x0, const vector<MatrixXd>& G,
 
   // H matrix does not depend on u, so just simulate passive system
   if (h_is_zero_ == 1) {
-    drake::solvers::MobyLCPSolver<double> LCPSolver;
+    drake::solvers::MobyLcpSolver LcpSolver;
     VectorXd lambda0;
-    LCPSolver.SolveLcpLemkeRegularized(F_[0], E_[0] * x0 + c_[0], &lambda0);
+    LcpSolver.SolveLcpLemkeRegularized(F_[0], E_[0] * x0 + c_[0], &lambda0);
     constraints_.push_back(prog_.AddLinearConstraint(lambda_[0] == lambda0));
   }
 

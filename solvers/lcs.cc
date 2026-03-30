@@ -101,10 +101,10 @@ const VectorXd LCS::Simulate(const VectorXd& x_init, const VectorXd& input,
                              bool verbose) {
   VectorXd x_final;
   // calculate force
-  drake::solvers::MobyLCPSolver<double> LCPSolver;
+  drake::solvers::MobyLcpSolver LcpSolver;
   VectorXd force;
 
-  auto flag = LCPSolver.SolveLcpFastRegularized(
+  auto flag = LcpSolver.SolveLcpFastRegularized(
       F_[0], E_[0] * x_init + c_[0] + H_[0] * input, &force, -8, 1, 1);
 
   if (flag == 0) {

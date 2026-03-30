@@ -15,7 +15,7 @@ py_binary(
     name = "plot_five_link_biped",
     srcs = ["plot_five_link_biped.py"],
     data = [
-        "@lcm//:lcm-python",
+        "@lcm//lcm-python:lcm-python",
     ],
     deps = [
         "//bindings/pydairlib/analysis:mbp_plotting_utils",
@@ -34,7 +34,7 @@ py_binary(
     name = "jumping_parameter_study",
     srcs = ["jumping_parameter_study.py"],
     data = [
-        "@lcm//:lcm-python",
+        "@lcm//lcm-python:lcm-python",
     ],
     deps = [
         "//bindings/pydairlib/analysis:cassie_plotting_utils",

@@ -1,14 +1,12 @@
 # -*- python -*-
 
-load("@drake//tools/lint:lint.bzl", "add_lint_tests")
-
 package(default_visibility = ["//visibility:public"])
 
 cc_binary(
     name = "log_sequence_rectifier",
     srcs = ["log_sequence_rectifier.cc"],
     deps = [
-        "@lcm",
+        "@lcm//lcm:lcm-shared",
     ],
 )
 
@@ -27,7 +25,7 @@ cc_library(
     deps = [
         "//lcmtypes:lcmt_robot",
         "@drake//:drake_shared_library",
-        "@lcm",
+        "@lcm//lcm:lcm-shared",
     ],
 )
 
@@ -42,7 +40,7 @@ cc_library(
         "//systems/trajectory_optimization:dircon",
         "//systems/trajectory_optimization/dircon",
         "@drake//:drake_shared_library",
-        "@lcm",
+        "@lcm//lcm:lcm-shared",
     ],
 )
 
@@ -60,7 +58,7 @@ cc_test(
     deps = [
         ":lcm_trajectory_saver",
         "@drake//:drake_shared_library",
-        "@gtest//:main",
+        "@googletest//:gtest",
     ],
 )
 

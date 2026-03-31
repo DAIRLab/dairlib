@@ -1,7 +1,7 @@
 #include <iostream>
 #include <Eigen/Dense>
 #include <gflags/gflags.h>
-#include "lcm/lcm-cpp.hpp"
+#include <lcm/lcm-cpp.hpp>
 
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_output.hpp"

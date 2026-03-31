@@ -5,6 +5,8 @@
 #include <iostream>
 
 #include <drake/multibody/plant/multibody_plant.h>
+#include <drake/common/trajectories/piecewise_polynomial.h>
+#include <drake/common/trajectories/piecewise_quaternion.h>
 
 #include "multibody/multibody_utils.h"
 
@@ -26,6 +28,21 @@ namespace dairlib::systems::controllers {
 
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
+
+namespace {
+bool IsEmptyTrajectory(const drake::trajectories::Trajectory<double>& traj) {
+  if (const auto* pp =
+          dynamic_cast<const drake::trajectories::PiecewisePolynomial<double>*>(
+              &traj)) {
+    return pp->get_number_of_segments() == 0;
+  }
+  if (const auto* slerp = dynamic_cast<
+          const drake::trajectories::PiecewiseQuaternionSlerp<double>*>(&traj)) {
+    return slerp->get_number_of_segments() == 0;
+  }
+  return false;
+}
+}  // namespace
 
 /**** OscTrackingData ****/
 OscTrackingData::OscTrackingData(const string& name, int n_y, int n_ydot,
@@ -87,6 +104,18 @@ void OscTrackingData::UpdateActual(
 void OscTrackingData::UpdateDesired(
     const drake::trajectories::Trajectory<double>& traj, double t,
     double t_since_state_switch) {
+  // Some trajectory input ports are intentionally initialized with an empty
+  // piecewise trajectory before the first planner message arrives.
+  // In that case, hold the current output and avoid evaluating segment 0.
+  if (IsEmptyTrajectory(traj)) {
+    y_des_ = y_;
+    ydot_des_ = VectorXd::Zero(n_ydot_);
+    yddot_des_ = VectorXd::Zero(n_ydot_);
+    UpdateYddotDes(t, t_since_state_switch);
+    time_through_trajectory_ = 0.0;
+    return;
+  }
+
   // 2. Update desired output
   if (traj.has_derivative()) {
     if (traj.rows() == 2 * n_ydot_) {

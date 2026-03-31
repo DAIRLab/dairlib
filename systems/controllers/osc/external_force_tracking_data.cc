@@ -1,5 +1,8 @@
 #include "external_force_tracking_data.h"
 
+#include <drake/common/trajectories/piecewise_polynomial.h>
+#include <drake/common/trajectories/piecewise_quaternion.h>
+
 using Eigen::MatrixXd;
 using Eigen::Quaterniond;
 using Eigen::Vector3d;
@@ -12,6 +15,20 @@ using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
 
 namespace dairlib::systems::controllers {
+namespace {
+bool IsEmptyTrajectory(const drake::trajectories::Trajectory<double>& traj) {
+  if (const auto* pp =
+          dynamic_cast<const drake::trajectories::PiecewisePolynomial<double>*>(
+              &traj)) {
+    return pp->get_number_of_segments() == 0;
+  }
+  if (const auto* slerp = dynamic_cast<
+          const drake::trajectories::PiecewiseQuaternionSlerp<double>*>(&traj)) {
+    return slerp->get_number_of_segments() == 0;
+  }
+  return false;
+}
+}  // namespace
 
 ExternalForceTrackingData::ExternalForceTrackingData(
     const string& name, const MatrixXd& W,
@@ -38,8 +55,12 @@ void ExternalForceTrackingData::Update(
     const drake::systems::Context<double>& context_wo_spr,
     const drake::trajectories::Trajectory<double>& traj,
     double t) {
-  DRAKE_DEMAND(traj.rows() == 3);
-  lambda_des_ = traj.value(t);
+  if (IsEmptyTrajectory(traj)) {
+    lambda_des_ = Vector3d::Zero();
+  } else {
+    DRAKE_DEMAND(traj.rows() == 3);
+    lambda_des_ = traj.value(t);
+  }
   J_ = MatrixXd::Zero(3, plant_wo_spr_.num_velocities());
   plant_wo_spr_.CalcJacobianTranslationalVelocity(
       context_wo_spr, JacobianWrtVariable::kV, *body_frame_wo_spr_, pt_on_body_,

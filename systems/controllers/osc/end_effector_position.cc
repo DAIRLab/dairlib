@@ -6,6 +6,7 @@
 #include <iostream>
 #include "dairlib/lcmt_radio_out.hpp"
 #include "multibody/multibody_utils.h"
+#include "systems/controllers/osc/trajectory_utils.h"
 
 using Eigen::Map;
 using Eigen::MatrixXd;
@@ -92,8 +93,7 @@ void EndEffectorPositionTrajectoryGenerator::CalcNeutralPoseBasedTraj(
     result = drake::trajectories::PiecewisePolynomial<double>(y_0);
     *casted_traj = result;
   } else {
-    if (trajectory_input.value(0).isZero()) {
-    } else {
+    if (dairlib::systems::controllers::HasUsableTrajectory(trajectory_input)) {
       *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
           const PiecewisePolynomial<double>*>(&trajectory_input);
     }
@@ -146,8 +146,7 @@ void EndEffectorPositionTrajectoryGenerator::CalcPoseShiftingTraj(
   }
   else {
     was_in_teleop_mode_ = false;
-    if (trajectory_input.value(0).isZero()) {
-    } else {
+    if (dairlib::systems::controllers::HasUsableTrajectory(trajectory_input)) {
       *casted_traj = *(PiecewisePolynomial<double>*)dynamic_cast<
           const PiecewisePolynomial<double>*>(&trajectory_input);
     }

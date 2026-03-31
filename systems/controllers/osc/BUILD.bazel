@@ -170,10 +170,19 @@ cc_library(
 )
 
 cc_library(
+    name = "trajectory_utils",
+    hdrs = ["trajectory_utils.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "end_effector_position",
     srcs = ["end_effector_position.cc"],
     hdrs = ["end_effector_position.h"],
     deps = [
+        ":trajectory_utils",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/framework:vector",
@@ -187,6 +196,7 @@ cc_library(
     srcs = ["end_effector_force.cc"],
     hdrs = ["end_effector_force.h"],
     deps = [
+        ":trajectory_utils",
         "//lcmtypes:lcmt_robot",
         "//multibody:utils",
         "//systems/framework:vector",

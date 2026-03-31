@@ -2,6 +2,7 @@
 
 #include "dairlib/lcmt_radio_out.hpp"
 #include "multibody/multibody_utils.h"
+#include "systems/controllers/osc/trajectory_utils.h"
 
 using Eigen::Map;
 using Eigen::Vector2d;
@@ -52,7 +53,7 @@ EventStatus EndEffectorForceTrajectoryGenerator::DiscreteVariableUpdate(
           ->get_value<drake::trajectories::Trajectory<double>>();
   bool using_c3 = context.get_discrete_state(controller_switch_index_)[0];
   if (!using_c3 && radio_out->channel[14] == 0) {
-    if (!trajectory_input.value(0).isZero() &&
+    if (dairlib::systems::controllers::HasUsableTrajectory(trajectory_input) &&
         (context.get_time() - trajectory_input.start_time()) < 0.04) {
       discrete_state->get_mutable_value(controller_switch_index_)[0] = 1;
     }
@@ -73,7 +74,7 @@ void EndEffectorForceTrajectoryGenerator::CalcTraj(
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
   if (radio_out->channel[11] || radio_out->channel[14] ||
-      trajectory_input.value(0).isZero()) {
+      !dairlib::systems::controllers::HasUsableTrajectory(trajectory_input)) {
     *casted_traj =
         drake::trajectories::PiecewisePolynomial<double>(Vector3d::Zero());
   } else {

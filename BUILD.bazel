@@ -38,7 +38,7 @@ cc_library(
         "@drake//:drake_shared_library",
         "@eigen",
         "@gflags",
-        "@lcm",
+        "@lcm//lcm:lcm-shared",
     ],
     include_prefix = "dairlib",
     visibility = ["//visibility:public"],

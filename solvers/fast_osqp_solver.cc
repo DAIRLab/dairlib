@@ -315,9 +315,9 @@ void SetFastOsqpSolverSettings(const SolverOptions& solver_options,
                            &(settings->eps_dual_inf));
   SetFastOsqpSolverSetting(options_double, "alpha", &(settings->alpha));
   SetFastOsqpSolverSetting(options_double, "delta", &(settings->delta));
-  // Default polish to true, to get an accurate solution.
-  SetFastOsqpSolverSettingWithDefaultValue(options_int, "polish",
-                                           &(settings->polish), 1);
+  // Default polishing to true, to get an accurate solution.
+  SetFastOsqpSolverSettingWithDefaultValue(options_int, "polishing",
+                                           &(settings->polishing), 1);
   SetFastOsqpSolverSetting(options_int, "polish_refine_iter",
                            &(settings->polish_refine_iter));
   SetFastOsqpSolverSettingWithDefaultValue(options_int, "verbose",
@@ -326,7 +326,7 @@ void SetFastOsqpSolverSettings(const SolverOptions& solver_options,
                            &(settings->scaled_termination));
   SetFastOsqpSolverSetting(options_int, "check_termination",
                            &(settings->check_termination));
-  SetFastOsqpSolverSetting(options_int, "warm_start", &(settings->warm_start));
+  SetFastOsqpSolverSetting(options_int, "warm_starting", &(settings->warm_starting));
   SetFastOsqpSolverSetting(options_int, "scaling", &(settings->scaling));
   SetFastOsqpSolverSetting(options_int, "adaptive_rho",
                            &(settings->adaptive_rho));

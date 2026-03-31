@@ -42,13 +42,13 @@ class FastOsqpSolver final : public drake::solvers::SolverBase {
 
   /// Solver will automatically reenable warm starting after a successful solve
   void DisableWarmStart() const {
-    osqp_settings_->warm_start = false;
+    osqp_settings_->warm_starting = false;
     warm_start_ = false;
     is_init_ = false;
   }
   /// Solver will automatically reenable warm starting after a successful solve
   void EnableWarmStart() const {
-    osqp_settings_->warm_start = true;
+    osqp_settings_->warm_starting = true;
     warm_start_ = true;
   }
 
@@ -64,19 +64,18 @@ class FastOsqpSolver final : public drake::solvers::SolverBase {
                const Eigen::VectorXd&, const drake::solvers::SolverOptions&,
                drake::solvers::MathematicalProgramResult*) const final;
 
-  OSQPData* osqp_data_;
-  mutable csc* P_csc_ = nullptr;
-  mutable csc* A_csc_ = nullptr;
-  mutable Eigen::SparseMatrix<c_float> P_sparse_;
-  mutable Eigen::SparseMatrix<c_float> A_sparse_;
-  mutable std::vector<c_float> l_;
-  mutable std::vector<c_float> u_;
-  mutable std::vector<c_float> q_;
-  mutable std::vector<Eigen::Triplet<c_float>> P_triplets_;
-  mutable std::vector<Eigen::Triplet<c_float>> A_triplets_;
+  mutable OSQPCscMatrix* P_csc_ = nullptr;
+  mutable OSQPCscMatrix* A_csc_ = nullptr;
+  mutable Eigen::SparseMatrix<OSQPFloat> P_sparse_;
+  mutable Eigen::SparseMatrix<OSQPFloat> A_sparse_;
+  mutable std::vector<OSQPFloat> l_;
+  mutable std::vector<OSQPFloat> u_;
+  mutable std::vector<OSQPFloat> q_;
+  mutable std::vector<Eigen::Triplet<OSQPFloat>> P_triplets_;
+  mutable std::vector<Eigen::Triplet<OSQPFloat>> A_triplets_;
 
   mutable OSQPSettings* osqp_settings_;
-  mutable OSQPWorkspace* workspace_;
+  mutable OSQPSolver* workspace_ = nullptr;
   mutable bool warm_start_ = true;
   mutable bool is_init_ = false;
 };

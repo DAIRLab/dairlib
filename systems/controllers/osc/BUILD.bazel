@@ -8,6 +8,9 @@ cc_library(
     hdrs = [
         "operational_space_control.h",
     ],
+    data = [
+        "//solvers:default_osc_options",
+    ],
     deps = [
         ":osc_gains",
         ":osc_tracking_datas",

@@ -1,5 +1,6 @@
 #include "systems/controllers/osc/operational_space_control.h"
 
+#include <cmath>
 #include <iostream>
 
 #include <drake/multibody/plant/multibody_plant.h>
@@ -474,7 +475,7 @@ void OperationalSpaceControl::Build() {
             .get();
   }
   //   3. external force cost
-  for (auto& force_tracking_data : *force_tracking_data_vec_) {
+  for ([[maybe_unused]] auto& force_tracking_data : *force_tracking_data_vec_) {
     lambda_ext_cost_ =
         prog_
             ->AddQuadraticCost(MatrixXd::Zero(n_lambda_ext_, n_lambda_ext_),
@@ -1220,7 +1221,8 @@ void OperationalSpaceControl::CheckTracking(
   if (soft_constraint_cost_ != nullptr) {
     soft_constraint_cost_->Eval(*epsilon_sol_, &y_soft_constraint_cost);
   }
-  if (y_soft_constraint_cost[0] > 1e5 || isnan(y_soft_constraint_cost[0])) {
+  if (y_soft_constraint_cost[0] > 1e5 ||
+      std::isnan(y_soft_constraint_cost[0])) {
     output->get_mutable_value()(0) = 1.0;
   }
 }

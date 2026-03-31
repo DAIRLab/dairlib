@@ -74,7 +74,7 @@ VectorXd C3QP::SolveSingleProjection(const MatrixXd& U, const VectorXd& delta_c,
 
   solver_options.SetOption(OsqpSolver::id(), "max_iter", 500);
   solver_options.SetOption(OsqpSolver::id(), "verbose", 0);
-  solver_options.SetOption(OsqpSolver::id(), "polish", 1);
+  solver_options.SetOption(OsqpSolver::id(), "polishing", 1);
   solver_options.SetOption(OsqpSolver::id(), "polish_refine_iter", 1);
   solver_options.SetOption(OsqpSolver::id(), "rho", 1e-4);
   solver_options.SetOption(OsqpSolver::id(), "scaled_termination", 1);

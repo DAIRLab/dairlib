@@ -90,7 +90,7 @@ bazel_dep(name = "c3")
 git_override(
     module_name = "c3",
     remote = "https://github.com/DAIRLab/c3.git",
-    commit = "2c28e37e87285dad06fa88748debd16870284901"
+    commit = "0b65aec539de8f7ccaa42e41dd3eb06e31020d4e"
 )
 
 
@@ -124,6 +124,7 @@ use_repo(libomp_extension, "libomp")
 
 python_repository(
     name = "python",
+    macos_interpreter_path = "/opt/homebrew/bin/python3.13",
     linux_interpreter_path = "/usr/bin/python3",
     requirements_flavor = "build",
 )

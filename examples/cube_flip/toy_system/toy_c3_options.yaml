@@ -1,94 +1,79 @@
-
-admm_iter: 2
-rho: 0 # unused
-rho_scale: 1.1
-num_threads: 10
-delta_option: 1
 projection_type: "C3+"
-contact_model: "anitescu"
 
-warm_start: true
-use_predicted_x0: false
-end_on_qp_step: true
-solve_time_filter_alpha: 0
+solve_time_filter_alpha: 0.0
 publish_frequency: 0
+state_prediction_joints: []
 
-u_horizontal_limits: [-20, 20] # UNUSED
-u_vertical_limits: [-100, 100] # UNUSED
-workspace_limits: [[1, 0, 0, -1, 1], [0, 1, 0, -1, 1], [0, 0, 1, -1, 1]] # UNUSED
-workspace_margins: 0 # UNUSED
+quaternion_weight: 5000
+quaternion_regularizer_fraction: 0.0
 
-#mu: [0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6]
-mu: [0.6, 0.6, 0.6, 0.6]
-dt: 0.04
-solve_dt: 0.04
-lcs_dt_resolution: 1
-dt_cost: 0.04
-num_friction_directions: 2
-num_contacts: 4
+lcs_factory_options: 
+  contact_model: "anitescu"
+  num_contacts: 4
+  spring_stiffness: 0
+  N: 1
+  dt: 0.04
+  contact_pair_configs:
+    - body_A: "cube" # TODO: CHANGE LCS MODEL, THIS IS NOT A CUBE LOL
+      body_A_collision_geom_indices: [1, 2, 3, 4]
+      body_B: "plate"
+      body_B_collision_geom_indices: [0]
+      mu: 0.6
+      num_friction_directions: 2
 
-qp_projection_alpha: 0.01
-qp_projection_scaling: 1
-penalize_changes_in_u_across_solves: false
+c3_options: 
+  warm_start: true
+  end_on_qp_step: true
+  scale_lcs: true
+  penalize_input_change: false
 
-N: 1
-gamma: 1.0
+  num_threads: 10
+  delta_option: 1
 
-w_Q: 5
-w_R: 50 #Penalty on all decision variables, assuming scalar
-w_G: 10 #Penalty on all decision variables, assuming scalar
-w_U: 10 #State Tracking Error, assuming diagonal
+  admm_iter: 2
+
+  gamma: 1.0
+  rho_scale: 1.0
+
+  w_Q: 5
+  w_R: 50 #Penalty on all decision variables, assuming scalar
+  w_G: 10 #Penalty on all decision variables, assuming scalar
+  w_U: 10 #State Tracking Error, assuming diagonal
 
 
-q_vector: [400, 400, 400,                # plate pos
-            200, 200,                    # plate rot
-            1, 1, 1, 1,              # cube rot
-            500, 500, 50,           # cube pos              
-            1, 1, 1,                # plate velo
-            8, 8,                    # plate ang velo
-            1, 1, 1,             # cube ang velo
-            1, 1, 1]                # cube veloo
+  q_vector: [400, 400, 400,                # plate pos
+              200, 200,                    # plate rot
+              1, 1, 1, 1,              # cube rot
+              500, 500, 50,           # cube pos              
+              1, 1, 1,                # plate velo
+              8, 8,                    # plate ang velo
+              1, 1, 1,             # cube ang velo
+              1, 1, 1]                # cube veloo
 
-r_vector: [40, 40, 20, 30, 30]  
+  r_vector: [40, 40, 20, 30, 30]  
 
-#Penalty on matching projected variables
-g_x: [50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 10, 1 , 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-# g_gamma: [1, 1, 1, 1, 1, 1, 1, 1]
-# g_lambda_n: [1, 1, 1, 1, 1, 1, 1, 1]
-# g_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-# g_lambda: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
-g_gamma: [1, 1, 1, 1]
-g_lambda_n: [1, 1, 1, 1]
-g_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-g_lambda: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
-g_u: [0, 0, 0, 0, 0] 
+  #Penalty on matching projected variables
+  g_x: [50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 10, 1 , 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  g_gamma: [1, 1, 1, 1]
+  g_lambda_n: [1, 1, 1, 1]
+  g_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  g_lambda: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+  g_u: [0, 0, 0, 0, 0] 
 
-# g_eta_slack: [1, 1, 1, 1, 1, 1, 1, 1]
-# g_eta_n: [1, 1, 1, 1, 1, 1, 1, 1]
-# g_eta_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-# g_eta: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-g_eta_slack: [1, 1, 1, 1]
-g_eta_n: [1, 1, 1,1 ]
-g_eta_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-g_eta: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  g_eta_slack: [1, 1, 1, 1]
+  g_eta_n: [1, 1, 1,1 ]
+  g_eta_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  g_eta: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 
-#Penalty on matching the QP variables
-u_x: [50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
-# u_gamma: [1, 1, 1, 1, 1, 1, 1, 1]
-# u_lambda_n: [1, 1, 1, 1, 1, 1, 1, 1]
-# u_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-# u_lambda: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
-u_gamma: [1, 1, 1, 1]
-u_lambda_n: [1, 1, 1, 1]
-u_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-u_lambda: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
-u_u: [1, 1, 1, 1, 1]
+  #Penalty on matching the QP variables
+  u_x: [50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+  u_gamma: [1, 1, 1, 1]
+  u_lambda_n: [1, 1, 1, 1]
+  u_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  u_lambda: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+  u_u: [1, 1, 1, 1, 1]
 
-# u_eta_slack: [1, 1, 1, 1, 1, 1, 1, 1]
-# u_eta_n: [1, 1, 1, 1, 1, 1, 1, 1]
-# u_eta_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-# u_eta: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]u_eta_slack: [1, 1, 1, 1, 1, 1, 1, 1]
-u_eta_slack: [1, 1, 1, 1]
-u_eta_n: [1, 1, 1, 1]
-u_eta_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-u_eta: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  u_eta_slack: [1, 1, 1, 1]
+  u_eta_n: [1, 1, 1, 1]
+  u_eta_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  u_eta: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]

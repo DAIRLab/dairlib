@@ -30,8 +30,8 @@ C3GoalGenerator::C3GoalGenerator(
 			context_(context),
 			plant_ad_(plant_ad),
 			context_ad_(context_ad),
-      c3_controller_options_(std::move(c3_controller_options)),
-			c3_options_(std::move(c3_controller_options.c3_options)),
+      c3_controller_options_(c3_controller_options),
+			c3_options_(c3_controller_options.c3_options),
 			x_des_(x_des),
       example_idx_(example_idx)
   {

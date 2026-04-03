@@ -130,6 +130,8 @@ class iC3TrackingController : public drake::systems::LeafSystem<double> {
   double time_to_wait_;
 
   mutable std::unique_ptr<c3::C3> c3_;
+  
+  std::vector<int> quaternion_indices_;  // indices for quaternion-valued joints
 
   double solve_time_filter_constant_;
   drake::systems::DiscreteStateIndex plan_start_time_index_;

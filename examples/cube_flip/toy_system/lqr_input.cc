@@ -64,8 +64,8 @@ void LQRInput::ComputeLQRInput(const drake::systems::Context<double>& context,
   Eigen::MatrixXd x_data = x_trajectory.GetTrajectory(final_trajectory_name).datapoints;
   Eigen::MatrixXd u_data = u_trajectory.GetTrajectory(final_trajectory_name).datapoints;
 
-  const std::vector<std::vector<std::vector<double>>>& source_K = lqr_all_inputs.K;
-  const std::vector<std::vector<double>>& source_k_ff = lqr_all_inputs.k_ff;
+  const std::vector<std::vector<std::vector<double>>>& source_K = lqr_all_inputs.K[iter_to_use_];
+  const std::vector<std::vector<double>>& source_k_ff = lqr_all_inputs.k_ff[iter_to_use_];
 
   vector<Eigen::MatrixXd> K;
   vector<Eigen::VectorXd> k_ff;
@@ -89,10 +89,16 @@ void LQRInput::ComputeLQRInput(const drake::systems::Context<double>& context,
 	auto& context_ref = *plant_context;  
   VectorXd tau_g = plant_.CalcGravityGeneralizedForces(context_ref);
 
-  Eigen::VectorXd u_gravity = Eigen::VectorXd::Zero(5);
+  Eigen::VectorXd u_gravity = Eigen::VectorXd::Zero(plant.num_actuators());
 
-  u_gravity[2] = -(tau_g[2] + tau_g[10]); // Hard-coded cube + plate
-  u_gravity[4] = -(tau_g[4] + 0.13 * tau_g[10]); // Hard-coded cube + plate
+  if (plant.num_actuators() == 5) {
+    u_gravity[2] = -(tau_g[2] + tau_g[10]); // Hard-coded cube + plate
+    u_gravity[4] = -(tau_g[4] + 0.13 * tau_g[10]); // Hard-coded cube + plate
+  } else if (plant.num_actuators() == 9) {
+    u_gravity[2] = -tau_g[2]; 
+    u_gravity[5] = -tau_g[5]; 
+    u_gravity[8] = -tau_g[8]; 
+  }
 
   if (t > dt_ * N_ + time_to_wait_ || t < time_to_wait_) { 
     // Just compensate gravity if time is past horizon

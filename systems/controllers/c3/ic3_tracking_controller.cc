@@ -4,7 +4,7 @@
 #include <c3/core/c3_miqp.h>
 #include <c3/core/c3_qp.h>
 #include <c3/core/c3_plus.h>
-#include "common/quaternion_error_hessian.h"
+#include "c3/systems/common/quaternion_error_hessian.h"
 #include <iostream>
 
 namespace dairlib {
@@ -38,10 +38,10 @@ iC3TrackingController::iC3TrackingController(
     const drake::multibody::MultibodyPlant<double>& plant, C3ControllerOptions controller_options, 
       iC3Options ic3_options, double time_to_wait)
     : plant_(plant),
-      controller_options_(std::move(controller_options)),
-      c3_options_(std::move(controller_options.c3_options)),
-      lcs_factory_options_(std::move(controller_options.lcs_factory_options)),
-      ic3_options_(std::move(ic3_options)),
+      controller_options_(controller_options),
+      c3_options_(controller_options.c3_options),
+      lcs_factory_options_(controller_options.lcs_factory_options),
+      ic3_options_(ic3_options),
       N_(lcs_factory_options_.N), 
       dt_(lcs_factory_options_.dt),
       G_(std::vector<MatrixXd>(N_, c3_options_.G)),
@@ -90,8 +90,14 @@ iC3TrackingController::iC3TrackingController(
     DRAKE_THROW_UNLESS(false);
   }
   VectorXd zeros = VectorXd::Zero(n_x_ + n_lambda_ + n_u_);
-
   n_u_ = plant_.num_actuators();
+
+  // Get quaternion bodies
+  for (const auto& body_idx : plant_.GetFloatingBaseBodies()) {
+    const auto& body = plant_.get_body(body_idx);
+    int start = body.floating_positions_start();
+    quaternion_indices_.push_back(start);
+  }
 
   // Creates placeholder lcs to construct base C3 problem
   // Placeholder LCS will have correct size as it's already determined by the
@@ -294,8 +300,8 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
     const auto& lqr_all_inputs = lqr_input->get_value<lcmt_lqr_output>();
     int idx = ic3_timestep + N_ * ic3_options_.c3_dt_scaling; // Want H[k + N]
 
-    const std::vector<std::vector<std::vector<double>>>& source_H = lqr_all_inputs.H;
-    const std::vector<std::vector<double>>& source_g = lqr_all_inputs.g;
+    const std::vector<std::vector<std::vector<double>>>& source_H = lqr_all_inputs.H[ic3_options_.iter_to_use];
+    const std::vector<std::vector<double>>& source_g = lqr_all_inputs.g[ic3_options_.iter_to_use];
 
     vector<Eigen::MatrixXd> H;
     vector<Eigen::VectorXd> g;
@@ -483,58 +489,45 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
 void iC3TrackingController::UpdateQuaternionCosts(
     const Eigen::VectorXd& x_curr, const Eigen::VectorXd& x_des) const {
     
-  Q_.clear();
-  R_.clear();
-  G_.clear();
-  U_.clear();
+  // Early return if no quaternions or cost parameters not set
+  if (quaternion_indices_.size() == 0 ||
+      !controller_options_.quaternion_weight.has_value() ||
+      !controller_options_.quaternion_regularizer_fraction.has_value()) {
+    return;
+  }
 
-  double discount_factor = 1;
-  for (int i = 0; i < N_; i++) {
-    Q_.push_back(discount_factor * c3_options_.Q);
-    discount_factor *=  c3_options_.gamma;
-    if (i < N_) {
-      R_.push_back(discount_factor *  c3_options_.R);
-      G_.push_back(c3_options_.G);
-      U_.push_back(c3_options_.U);
+  for (int index : quaternion_indices_) {
+    Eigen::VectorXd quat_curr_i = x_curr.segment(index, 4);
+    Eigen::VectorXd quat_des_i = x_des.segment(index, 4);
+
+    Eigen::MatrixXd quat_hessian_i =
+        c3::systems::common::hessian_of_squared_quaternion_angle_difference(
+                  quat_curr_i, quat_des_i);
+
+    // Regularize hessian so Q is always PSD
+    double min_eigenval = quat_hessian_i.eigenvalues().real().minCoeff();
+    Eigen::MatrixXd quat_regularizer_1 =
+        std::max(0.0, -min_eigenval) * Eigen::MatrixXd::Identity(4, 4);
+    Eigen::MatrixXd quat_regularizer_2 = quat_des_i * quat_des_i.transpose();
+
+    // Additional regularization term to help with numerical issues
+    Eigen::MatrixXd quat_regularizer_3 = 1e-8 * Eigen::MatrixXd::Identity(4, 4);
+
+    double quaternion_weight = controller_options_.quaternion_weight.value();
+    double quaternion_regularizer_fraction =
+        controller_options_.quaternion_regularizer_fraction.value();
+
+    // Replace quaternion blocks in Q
+    double discount_factor = 1;
+    for (int i = 0; i < N_ + 1; i++) {
+      Q_[i].block(index, index, 4, 4) =
+          discount_factor * quaternion_weight *
+          (quat_hessian_i + quat_regularizer_1 +
+           quaternion_regularizer_fraction * quat_regularizer_2 +
+           quat_regularizer_3);
+      discount_factor *= controller_options_.c3_options.gamma;
     }
-  }  
-  Q_.push_back(discount_factor * c3_options_.Q); 
-
-  int index = 5;
-  if (x_curr.size() == 31) {
-    index = 9;
   }
-      
-  Eigen::VectorXd quat_curr_i = x_curr.segment(index, 4);
-  Eigen::VectorXd quat_des_i = x_des.segment(index, 4);
-
-  Eigen::MatrixXd quat_hessian_i = hessian_of_squared_quaternion_angle_difference(quat_curr_i, quat_des_i);
-
-  // Regularize hessian so Q is always PSD
-  double min_eigenval = quat_hessian_i.eigenvalues().real().minCoeff();
-  Eigen::MatrixXd quat_regularizer_1 = std::max(0.0, -min_eigenval) * Eigen::MatrixXd::Identity(4, 4);
-  Eigen::MatrixXd quat_regularizer_2 = quat_des_i * quat_des_i.transpose();
-  Eigen::MatrixXd quat_regularizer_3 = 1e-8 * Eigen::MatrixXd::Identity(4, 4);
-
-  /// TODO Move to param file
-  double Q_quaternion_weight = 5000;
-  if (x_curr.size() == 31) {
-    Q_quaternion_weight = 3000;
-  }
-
-  double quaternion_regularizer_fraction = 0.0;
-
-  discount_factor = 1;
-  for (int i = 0; i < N_ + 1; i++) {
-    Q_[i].block(index, index, 4, 4) = 
-      discount_factor * Q_quaternion_weight * 
-      (quat_hessian_i + quat_regularizer_1 + 
-        quaternion_regularizer_fraction * quat_regularizer_2 + quat_regularizer_3);
-    discount_factor *= c3_options_.gamma;
-
-    double Q_min_eigenval = Q_[i].eigenvalues().real().minCoeff();
-  }
-  
 }
 
 void iC3TrackingController::OutputC3Solution(

@@ -1,7 +1,7 @@
 input_type: "open"
 
 time_to_wait: 3
-sim_rate: 0.5
+sim_rate: 1
 
 x_init: [0, 0.08, 0.05,  # finger 1  
          0.08, -0.06, 0.05,   # finger 2

@@ -89,12 +89,12 @@ void LQRInput::ComputeLQRInput(const drake::systems::Context<double>& context,
 	auto& context_ref = *plant_context;  
   VectorXd tau_g = plant_.CalcGravityGeneralizedForces(context_ref);
 
-  Eigen::VectorXd u_gravity = Eigen::VectorXd::Zero(plant.num_actuators());
+  Eigen::VectorXd u_gravity = Eigen::VectorXd::Zero(plant_.num_actuators());
 
-  if (plant.num_actuators() == 5) {
+  if (plant_.num_actuators() == 5) {
     u_gravity[2] = -(tau_g[2] + tau_g[10]); // Hard-coded cube + plate
     u_gravity[4] = -(tau_g[4] + 0.13 * tau_g[10]); // Hard-coded cube + plate
-  } else if (plant.num_actuators() == 9) {
+  } else if (plant_.num_actuators() == 9) {
     u_gravity[2] = -tau_g[2]; 
     u_gravity[5] = -tau_g[5]; 
     u_gravity[8] = -tau_g[8]; 

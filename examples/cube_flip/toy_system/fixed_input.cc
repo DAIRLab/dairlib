@@ -54,6 +54,8 @@ void FixedInput::ComputeFixedInput(const drake::systems::Context<double>& contex
     if (t < time_to_wait_) {
       u_gravity[4] = -(0.13 * tau_g[10]); // Hard-coded cube + plate
     }
+    std::cout << u_gravity.transpose() << std::endl;
+
   } else if (plant_.num_actuators() == 9) {
     u_gravity[2] = -(tau_g[2]); // Hard-coded fingertip
     u_gravity[5] = -(tau_g[5]); // Hard-coded fingertip

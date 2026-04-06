@@ -2,7 +2,7 @@ franka_model: package://drake_models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/cube_flip/urdf/plate_end_effector.sdf
 object_model: examples/cube_flip/urdf/cube.sdf
 franka_publish_rate: 1000
-object_publish_rate: 1000
+object_publish_rate: 10
 visualizer_publish_rate: 32
 actuator_delay: 0.000
 

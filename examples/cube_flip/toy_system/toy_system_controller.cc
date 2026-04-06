@@ -81,10 +81,10 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
       drake::yaml::LoadYamlFile<ToySystemParams>(
           "examples/cube_flip/toy_system/toy_system_params.yaml");
 
-  drake::solvers::SolverOptions solver_options =
-      drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(
-          "examples/cube_flip/toy_system/toy_osqp_options.yaml")
-          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+  // drake::solvers::SolverOptions solver_options =
+  //     drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(
+  //         "examples/cube_flip/toy_system/toy_osqp_options.yaml")
+  //         .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   DiagramBuilder<double> plant_builder;
   auto [plant_for_lcs, scene_graph_for_lcs] =

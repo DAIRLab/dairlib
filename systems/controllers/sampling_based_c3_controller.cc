@@ -80,6 +80,9 @@ SamplingC3Controller::SamplingC3Controller(
       sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_);
 
   DRAKE_DEMAND(sampling_c3_options_.lcs_dt_resolution > 0);
+  dt_ =
+      sampling_c3_options_.planning_dt_position;  // Initialize dt_ to position
+                                                  // mode's dt by default.
 
   // Initialize Q_ and R_ to proper size.  Values don't matter because the
   // values get rewritten at the beginning of every control loop.
@@ -1051,6 +1054,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                 << std::endl;
     }
     crossed_cost_switching_threshold_ = false;
+    dt_ =
+        sampling_c3_options_.planning_dt_position;  // Always set dt_ according
+                                                    // to pose or position mode.
     x_final_target_ = x_lcs_final_des.value();
     // is_doing_c3_ = false;
     detected_goal_changes_++;
@@ -1078,6 +1084,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     if (pose_diff < progress_params_.cost_switching_threshold_distance *
                         controller_params_.num_objects) {
       crossed_cost_switching_threshold_ = true;
+      dt_ = sampling_c3_options_.planning_dt_pose;  // Always set dt_ according
+                                                    // to pose or position mode.
       std::cout << "Crossed cost switching threshold." << std::endl;
 
       // Reset the sample buffers and metrics now that the costs have changed.

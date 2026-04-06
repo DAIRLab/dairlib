@@ -420,8 +420,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   /// TODO:  There are many mutable class variables, which is not best practice
   /// in the Drake systems framework.  These could be converted to discrete
   /// state variables.
-  mutable double dt_ = 0.1;
-  mutable double dt_cost_ = 0.02;
+  mutable double dt_;
+
 
   mutable std::vector<Eigen::MatrixXd> Q_;
   mutable std::vector<Eigen::MatrixXd> R_;

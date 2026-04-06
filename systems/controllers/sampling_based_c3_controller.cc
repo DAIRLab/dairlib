@@ -757,92 +757,95 @@ std::pair<double, std::vector<Eigen::VectorXd>> SamplingC3Controller::CalcCost(
   DRAKE_DEMAND(!std::isnan(cost_contrib_obj_vel));
 
   // Handle the N_th state.
-  cost = cost + (XX[N_] - x_desired[N_]).transpose() * Q_eff.at(N_) *
-                    (XX[N_] - x_desired[N_]);
+  cost = cost + (XX[N_ * resolution] - x_desired[N_]).transpose() *
+                    Q_eff.at(N_) * (XX[N_ * resolution] - x_desired[N_]);
 
   error_contrib_ee_pos +=
-      (XX[N_].segment(0, 3) - x_desired[N_].segment(0, 3)).transpose() *
-      (XX[N_].segment(0, 3) - x_desired[N_].segment(0, 3));
+      (XX[N_ * resolution].segment(0, 3) - x_desired[N_].segment(0, 3))
+          .transpose() *
+      (XX[N_ * resolution].segment(0, 3) - x_desired[N_].segment(0, 3));
   for (int j = 0; j < num_objects; j++) {
     obj_orientation_index = 7 * j + 3;
     obj_pos_index = 7 * j + 7;
     error_contrib_obj_orientation +=
-        (XX[N_].segment(obj_orientation_index, 4) -
+        (XX[N_ * resolution].segment(obj_orientation_index, 4) -
          x_desired[N_].segment(obj_orientation_index, 4))
             .transpose() *
-        (XX[N_].segment(obj_orientation_index, 4) -
+        (XX[N_ * resolution].segment(obj_orientation_index, 4) -
          x_desired[N_].segment(obj_orientation_index, 4));
-    error_contrib_obj_pos += (XX[N_].segment(obj_pos_index, 3) -
+    error_contrib_obj_pos += (XX[N_ * resolution].segment(obj_pos_index, 3) -
                               x_desired[N_].segment(obj_pos_index, 3))
                                  .transpose() *
-                             (XX[N_].segment(obj_pos_index, 3) -
+                             (XX[N_ * resolution].segment(obj_pos_index, 3) -
                               x_desired[N_].segment(obj_pos_index, 3));
   }
-  error_contrib_ee_vel +=
-      (XX[N_].segment(ee_vel_index, 3) - x_desired[N_].segment(ee_vel_index, 3))
-          .transpose() *
-      (XX[N_].segment(ee_vel_index, 3) -
-       x_desired[N_].segment(ee_vel_index, 3));
+  error_contrib_ee_vel += (XX[N_ * resolution].segment(ee_vel_index, 3) -
+                           x_desired[N_].segment(ee_vel_index, 3))
+                              .transpose() *
+                          (XX[N_ * resolution].segment(ee_vel_index, 3) -
+                           x_desired[N_].segment(ee_vel_index, 3));
 
   for (int j = 0; j < num_objects; j++) {
     obj_ang_vel_index = 6 * j + 6 + 7 * num_objects;
     obj_vel_index = 6 * j + 9 + 7 * num_objects;
-    error_contrib_obj_ang_vel += (XX[N_].segment(obj_ang_vel_index, 3) -
-                                  x_desired[N_].segment(obj_ang_vel_index, 3))
-                                     .transpose() *
-                                 (XX[N_].segment(obj_ang_vel_index, 3) -
-                                  x_desired[N_].segment(obj_ang_vel_index, 3));
-    error_contrib_obj_vel += (XX[N_].segment(obj_vel_index, 3) -
+    error_contrib_obj_ang_vel +=
+        (XX[N_ * resolution].segment(obj_ang_vel_index, 3) -
+         x_desired[N_].segment(obj_ang_vel_index, 3))
+            .transpose() *
+        (XX[N_ * resolution].segment(obj_ang_vel_index, 3) -
+         x_desired[N_].segment(obj_ang_vel_index, 3));
+    error_contrib_obj_vel += (XX[N_ * resolution].segment(obj_vel_index, 3) -
                               x_desired[N_].segment(obj_vel_index, 3))
                                  .transpose() *
-                             (XX[N_].segment(obj_vel_index, 3) -
+                             (XX[N_ * resolution].segment(obj_vel_index, 3) -
                               x_desired[N_].segment(obj_vel_index, 3));
   }
 
   cost_contrib_ee_pos +=
-      (XX[N_].segment(0, 3) - x_desired[N_].segment(0, 3)).transpose() *
+      (XX[N_ * resolution].segment(0, 3) - x_desired[N_].segment(0, 3))
+          .transpose() *
       Q_eff.at(N_).block(0, 0, 3, 3) *
-      (XX[N_].segment(0, 3) - x_desired[N_].segment(0, 3));
+      (XX[N_ * resolution].segment(0, 3) - x_desired[N_].segment(0, 3));
   for (int j = 0; j < num_objects; j++) {
     obj_orientation_index = 7 * j + 3;
     obj_pos_index = 7 * j + 7;
     cost_contrib_obj_orientation +=
-        (XX[N_].segment(obj_orientation_index, 4) -
+        (XX[N_ * resolution].segment(obj_orientation_index, 4) -
          x_desired[N_].segment(obj_orientation_index, 4))
             .transpose() *
         Q_eff.at(N_).block(obj_orientation_index, obj_orientation_index, 4, 4) *
-        (XX[N_].segment(obj_orientation_index, 4) -
+        (XX[N_ * resolution].segment(obj_orientation_index, 4) -
          x_desired[N_].segment(obj_orientation_index, 4));
     cost_contrib_obj_pos +=
-        (XX[N_].segment(obj_pos_index, 3) -
+        (XX[N_ * resolution].segment(obj_pos_index, 3) -
          x_desired[N_].segment(obj_pos_index, 3))
             .transpose() *
         Q_eff.at(N_).block(obj_pos_index, obj_pos_index, 3, 3) *
-        (XX[N_].segment(obj_pos_index, 3) -
+        (XX[N_ * resolution].segment(obj_pos_index, 3) -
          x_desired[N_].segment(obj_pos_index, 3));
   }
-  cost_contrib_ee_vel +=
-      (XX[N_].segment(ee_vel_index, 3) - x_desired[N_].segment(ee_vel_index, 3))
-          .transpose() *
-      Q_eff.at(N_).block(ee_vel_index, ee_vel_index, 3, 3) *
-      (XX[N_].segment(ee_vel_index, 3) -
-       x_desired[N_].segment(ee_vel_index, 3));
+  cost_contrib_ee_vel += (XX[N_ * resolution].segment(ee_vel_index, 3) -
+                          x_desired[N_].segment(ee_vel_index, 3))
+                             .transpose() *
+                         Q_eff.at(N_).block(ee_vel_index, ee_vel_index, 3, 3) *
+                         (XX[N_ * resolution].segment(ee_vel_index, 3) -
+                          x_desired[N_].segment(ee_vel_index, 3));
   for (int j = 0; j < num_objects; j++) {
     obj_ang_vel_index = 6 * j + 6 + 7 * num_objects;
     obj_vel_index = 6 * j + 9 + 7 * num_objects;
     cost_contrib_obj_ang_vel +=
-        (XX[N_].segment(obj_ang_vel_index, 3) -
+        (XX[N_ * resolution].segment(obj_ang_vel_index, 3) -
          x_desired[N_].segment(obj_ang_vel_index, 3))
             .transpose() *
         Q_eff.at(N_).block(obj_ang_vel_index, obj_ang_vel_index, 3, 3) *
-        (XX[N_].segment(obj_ang_vel_index, 3) -
+        (XX[N_ * resolution].segment(obj_ang_vel_index, 3) -
          x_desired[N_].segment(obj_ang_vel_index, 3));
     cost_contrib_obj_vel +=
-        (XX[N_].segment(obj_vel_index, 3) -
+        (XX[N_ * resolution].segment(obj_vel_index, 3) -
          x_desired[N_].segment(obj_vel_index, 3))
             .transpose() *
         Q_eff.at(N_).block(obj_vel_index, obj_vel_index, 3, 3) *
-        (XX[N_].segment(obj_vel_index, 3) -
+        (XX[N_ * resolution].segment(obj_vel_index, 3) -
          x_desired[N_].segment(obj_vel_index, 3));
   }
 

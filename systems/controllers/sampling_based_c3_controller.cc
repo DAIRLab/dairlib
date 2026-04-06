@@ -1897,8 +1897,8 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
         .planar_normal_direction = sampling_c3_options_.planar_normal_direction,
         .planar_normal_direction_per_contact = std::nullopt,
         .contact_pair_configs = std::nullopt,
-        .N = N_ * sampling_c3_options_.lcs_dt_resolution,
-        .dt = dt_ / sampling_c3_options_.lcs_dt_resolution};
+        .N = lcs_factory_options.N * sampling_c3_options_.lcs_dt_resolution,
+        .dt = lcs_factory_options.dt / sampling_c3_options_.lcs_dt_resolution};
     LCS lcs_object_sample_for_cost_simulation =
         LCSFactory(plant_, *context_, plant_ad_, *context_ad_,
                    resolved_contact_pairs_for_cost_simulation,

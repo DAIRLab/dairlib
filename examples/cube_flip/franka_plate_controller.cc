@@ -200,7 +200,11 @@ int DoMain(int argc, char* argv[]) {
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_actor_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));   
+ 
           
+	auto object_state_sub =
+			builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
+					lcm_channel_params.object_state_channel, &lcm));
   // auto c3_object_trajectory_sender = builder.AddSystem(
   //     LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
   //         lcm_channel_params.c3_object_channel, &lcm,
@@ -224,16 +228,9 @@ int DoMain(int argc, char* argv[]) {
                     ic3_target_generator->get_input_port_iC3_u_trajectory());
   } else {
     auto lqr_sub =
-        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_lqr_output>(
-                "iC3_LQR", &lcm));
+            builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_lqr_output>(
+                    "iC3_LQR", &lcm));
 
-    auto radio_sub =
-        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
-          	lcm_channel_params.radio_channel, &lcm));
-
-    auto object_state_sub =
-        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
-            lcm_channel_params.object_state_channel, &lcm));
 
     auto object_state_receiver =
         builder.AddSystem<systems::ObjectStateReceiver>(plant_object);
@@ -331,7 +328,8 @@ int DoMain(int argc, char* argv[]) {
   DrawAndSaveDiagramGraph(*loop.get_diagram());
 
   LcmHandleSubscriptionsUntil(
-      &lcm, [&]() { return ic3_x_trajectory_sub->GetInternalMessageCount() > 0; });
+      &lcm, [&]() { return ic3_x_trajectory_sub->GetInternalMessageCount() > 0 
+            && object_state_sub->GetInternalMessageCount() > 0; });
   loop.Simulate();
   return 0;
 }

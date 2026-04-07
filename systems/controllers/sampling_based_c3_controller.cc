@@ -566,7 +566,7 @@ std::pair<double, std::vector<Eigen::VectorXd>> SamplingC3Controller::CalcCost(
     for (int i = 0; i < N_ * resolution; i++) {
       UU[i] = z_fin[i / resolution].segment(n_x_ + n_lambda_, n_u_);
       XX[i] = z_fin[i / resolution].segment(0, n_x_);
-      if (i == N_ - 1) {
+      if (i == N_ * resolution - 1) {
         XX[i + 1] = lcs_for_cost.Simulate(XX[i], UU[i], simulate_config);
       }
     }
@@ -582,11 +582,14 @@ std::pair<double, std::vector<Eigen::VectorXd>> SamplingC3Controller::CalcCost(
       XX[i + 1] = lcs_for_cost.Simulate(XX[i], UU[i], simulate_config);
     }
     // Replace ee traj with those from z_fin.
-    for (int i = 0; i < N_; i++) {
+    for (int i = 0; i < N_ * resolution; i++) {
       XX[i].segment(0, 3) = z_fin[i / resolution].segment(0, 3);
-      if (i == N_ - 1) {
-        XX[i + 1].segment(0, 3) =
-            lcs_for_cost.Simulate(XX[i], UU[i], simulate_config).segment(0, 3);
+      XX[i].segment(ee_vel_index, 3) =
+          z_fin[i / resolution].segment(ee_vel_index, 3);
+      if (i == N_ * resolution - 1) {
+        VectorXd last_x = lcs_for_cost.Simulate(XX[i], UU[i], simulate_config);
+        XX[i + 1].segment(0, 3) = last_x.segment(0, 3);
+        XX[i + 1].segment(ee_vel_index, 3) = last_x.segment(ee_vel_index, 3);
       }
     }
   }
@@ -608,11 +611,13 @@ std::pair<double, std::vector<Eigen::VectorXd>> SamplingC3Controller::CalcCost(
     // Replace the end effector position and velocity plans with the ones from
     // the C3 plan.
     for (int i = 0; i < N_ * resolution; i++) {
-      XX[i].segment(0, 3) = z_fin[i].segment(0, 3);
-      XX[i].segment(ee_vel_index, 3) = z_fin[i].segment(ee_vel_index, 3);
+      XX[i].segment(0, 3) = z_fin[i / resolution].segment(0, 3);
+      XX[i].segment(ee_vel_index, 3) =
+          z_fin[i / resolution].segment(ee_vel_index, 3);
       if (i == N_ * resolution - 1) {
-        XX[i + 1].segment(0, 3) = z_fin[i].segment(0, 3);
-        XX[i + 1].segment(ee_vel_index, 3) = z_fin[i].segment(ee_vel_index, 3);
+        VectorXd last_x = lcs_for_cost.Simulate(XX[i], UU[i], simulate_config);
+        XX[i + 1].segment(0, 3) = last_x.segment(0, 3);
+        XX[i + 1].segment(ee_vel_index, 3) = last_x.segment(ee_vel_index, 3);
       }
     }
   }

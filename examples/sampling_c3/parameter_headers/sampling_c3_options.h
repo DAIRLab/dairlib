@@ -373,17 +373,14 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
       }
     }
 
-    options->g_vector = g_vector;
-    options->u_vector = u_vector;
-
     Eigen::VectorXd q = Eigen::Map<const Eigen::VectorXd>(
         options->q_vector.data(), options->q_vector.size());
     Eigen::VectorXd r = Eigen::Map<const Eigen::VectorXd>(
         options->r_vector.data(), options->r_vector.size());
-    Eigen::VectorXd g = Eigen::Map<const Eigen::VectorXd>(
-        options->g_vector.data(), options->g_vector.size());
-    Eigen::VectorXd u = Eigen::Map<const Eigen::VectorXd>(
-        options->u_vector.data(), options->u_vector.size());
+    Eigen::VectorXd g =
+        Eigen::Map<const Eigen::VectorXd>(g_vector.data(), g_vector.size());
+    Eigen::VectorXd u =
+        Eigen::Map<const Eigen::VectorXd>(u_vector.data(), u_vector.size());
 
     options->Q = options->w_Q * q.asDiagonal();
     options->R = options->w_R * r.asDiagonal();

@@ -203,7 +203,7 @@ cc_test(
     ],
     deps = [
         ":controllers",
-        "@googletest//:gtest"
+        "@googletest//:gtest_main"
     ],
 )
 

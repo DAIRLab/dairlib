@@ -64,6 +64,6 @@ cc_test(
         "//common",
         "//examples/PlanarWalker:urdf",
         "@drake//common/test_utilities",
-        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )

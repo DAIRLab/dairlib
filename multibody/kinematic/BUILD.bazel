@@ -1,7 +1,4 @@
 # -*- python -*-
-
-load("@drake//tools/lint:lint.bzl", "add_lint_tests")
-
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
@@ -67,6 +64,6 @@ cc_test(
         "//common",
         "//examples/PlanarWalker:urdf",
         "@drake//common/test_utilities",
-        "@gtest//:main",
+        "@googletest//:gtest_main",
     ],
 )

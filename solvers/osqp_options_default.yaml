@@ -3,8 +3,8 @@ log_file_name: ""
 int_options:
   max_iter: 200
   verbose: 0
-  warm_start: 1
-  polish: 1
+  warm_starting: 1
+  polishing: 1
   scaled_termination: 1
   check_termination: 25
   polish_refine_iter: 3

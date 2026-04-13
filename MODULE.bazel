@@ -11,41 +11,39 @@ drake_dep_repositories = use_extension(
 # If you don't want to support building on macOS, you may remove the next line.
 # Note that it must appear prior to loading "rules_cc", per the documentation:
 #  https://github.com/bazelbuild/apple_support?tab=readme-ov-file#bazel-7-setup
-bazel_dep(name = "apple_support", version = "1.17.1")
+bazel_dep(name = "apple_support", version = "2.3.0")
 
 # Add the Bazel rules we need.
-bazel_dep(name = "rules_cc", version = "0.1.1")
-bazel_dep(name = "rules_python", version = "1.0.0")
-bazel_dep(name = "bazel_skylib", version = "1.7.1")
+bazel_dep(name = "rules_java", version = "9.6.1")
+bazel_dep(name = "rules_cc", version = "0.2.17")
+bazel_dep(name = "rules_python", version = "1.9.0")
+bazel_dep(name = "bazel_skylib", version = "1.9.0")
+bazel_dep(name = "rules_foreign_cc", version = "0.15.1")
+bazel_dep(name = "platforms", version = "1.0.0")
+bazel_dep(name = "lcm", version = "1.5.2")
+bazel_dep(name = "gflags", version = "2.2.2.bcr.1")
+bazel_dep(name = "googletest", version = "1.17.0.bcr.2")
 
 use_repo(
     drake_dep_repositories,
     "blas",
-    "buildifier",
     "drake_models",
-    "eigen",
     "fmt",
-    "gflags",
     "glib",
-    "gtest",
     "lapack",
-    "lcm",
     "meshcat",
     "mosek",
     "opencl",
     "pybind11",
-    "pycodestyle",
     "snopt",
     "spdlog",
-    "styleguide",
-    "x11",
     "zlib",
     "gurobi",
+    "eigen",
 )
 
 bazel_dep(name = "gazelle", version = "0.44.0")
-
-bazel_dep(name = "osqp", version = "0.6.3.bcr.2")
+bazel_dep(name = "osqp", version = "1.0.0.bcr.2")
 
 # Use gurobi_cxx, which Drake deprecated
 gurobi_extension = use_extension("@dairlib//tools/workspace/gurobi:repository.bzl", "gurobi_extension")
@@ -71,8 +69,8 @@ bazel_dep(name = "inekf")
 # this will also work to override inekf 
 
 # You can also use DRAKE_COMMIT to choose a Drake release; e.g.:
-DRAKE_VERSION = "v1.42.0"
-DRAKE_CHECKSUM = "d860c15f50397c8a946fcc79e0a58a91ebc56f2189ef9edfcac929aa04157f8b"
+DRAKE_VERSION = "v1.51.1"
+DRAKE_CHECKSUM = "40cb4d0e3d378ba67c21aca8cc1396399774b333b12d0030f5fbe4ddff1dc786"
 
 # Before changing the DRAKE_VERSION, temporarily uncomment the next line so that Bazel
 # displays the suggested new value for the CHECKSUM.
@@ -93,7 +91,7 @@ bazel_dep(name = "c3")
 git_override(
     module_name = "c3",
     remote = "https://github.com/DAIRLab/c3.git",
-    commit = "ee740029598ea0f990cae2beca709d1eeed651f2"
+    commit = "d9169b27469e392494bab87b54718f3e2f221ddd"
 )
 
 

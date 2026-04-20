@@ -764,7 +764,6 @@ int DoMain(int argc, char* argv[]) {
     return true;
   });
   std::cout << "After LcmHandleSubscriptionsUntil" << std::endl;
-  // std::this_thread::sleep_for(std::chrono::seconds(20));
   loop.Simulate();
   return 0;
 }

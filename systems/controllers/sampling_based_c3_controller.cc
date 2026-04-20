@@ -117,6 +117,9 @@ SamplingC3Controller::SamplingC3Controller(
   }
   solve_time_filter_constant_ = sampling_c3_options_.solve_time_filter_alpha;
 
+
+  DRAKE_DEMAND(sampling_c3_options_.num_contacts.has_value());
+  DRAKE_DEMAND(sampling_c3_options_.num_friction_directions_per_contact.has_value());
   n_lambda_ = LCSFactory::GetNumContactVariables(
       c3::multibody::GetContactModelMap().at(
           controller_params_.sampling_c3_options.contact_model),

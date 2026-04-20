@@ -29,8 +29,9 @@ using c3::C3MIQP;
 using c3::C3Plus;
 using c3::C3QP;
 using c3::LCS;
+using c3::multibody::LCSContactDescription;
 using c3::multibody::LCSFactory;
-using dairlib::C3Output;
+using c3::systems::C3Output;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::multibody::ModelInstanceIndex;
@@ -116,11 +117,14 @@ SamplingC3Controller::SamplingC3Controller(
   }
   solve_time_filter_constant_ = sampling_c3_options_.solve_time_filter_alpha;
 
+
+  DRAKE_DEMAND(sampling_c3_options_.num_contacts.has_value());
+  DRAKE_DEMAND(sampling_c3_options_.num_friction_directions_per_contact.has_value());
   n_lambda_ = LCSFactory::GetNumContactVariables(
       c3::multibody::GetContactModelMap().at(
           controller_params_.sampling_c3_options.contact_model),
-      sampling_c3_options_.num_contacts,
-      sampling_c3_options_.num_friction_directions_per_contact);
+      sampling_c3_options_.num_contacts.value(),
+      sampling_c3_options_.num_friction_directions_per_contact.value());
 
   // Placeholder LCS will have correct size as it's already determined by the
   // contact model.
@@ -253,8 +257,7 @@ SamplingC3Controller::SamplingC3Controller(
   c3_intermediates.w_ = MatrixXf::Zero(n_z_, N_);
   c3_intermediates.delta_ = MatrixXf::Zero(n_z_, N_);
   c3_intermediates.time_vector_ = VectorXf::Zero(N_);
-  auto lcs_contact_jacobian = std::pair(Eigen::MatrixXd(n_x_, n_lambda_),
-                                        std::vector<Eigen::VectorXd>());
+  auto lcs_contact_descriptions = std::vector<LCSContactDescription>();
 
   // Since the num_additional_samples_repos means the additional samples
   // to generate in addition to the prev_repositioning_target_, add 1.
@@ -298,7 +301,7 @@ SamplingC3Controller::SamplingC3Controller(
           .get_index();
   lcs_contact_jacobian_curr_plan_port_ =
       this->DeclareAbstractOutputPort(
-              "J_lcs_curr_plan, p_lcs_curr_plan", lcs_contact_jacobian,
+              "J_lcs_curr_plan, p_lcs_curr_plan", lcs_contact_descriptions,
               &SamplingC3Controller::OutputLCSContactJacobianCurrPlan)
           .get_index();
 
@@ -329,7 +332,7 @@ SamplingC3Controller::SamplingC3Controller(
           .get_index();
   lcs_contact_jacobian_best_plan_port_ =
       this->DeclareAbstractOutputPort(
-              "J_lcs_best_plan, p_lcs_best_plan", lcs_contact_jacobian,
+              "J_lcs_best_plan, p_lcs_best_plan", lcs_contact_descriptions,
               &SamplingC3Controller::OutputLCSContactJacobianBestPlan)
           .get_index();
 
@@ -1872,7 +1875,8 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
         GetResolvedContactPairs(
             plant_, *context_, contact_pairs_,
             sampling_c3_options_.resolve_contacts_to,
-            sampling_c3_options_.num_friction_directions_per_contact, verbose_);
+            sampling_c3_options_.num_friction_directions_per_contact.value(),
+            verbose_);
     LCS lcs_object_sample =
         LCSFactory(plant_, *context_, plant_ad_, *context_ad_,
                    resolved_contact_pairs, lcs_factory_options)
@@ -1888,17 +1892,15 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
         verbose_);
     LCSFactoryOptions lcs_factory_options_for_cost = {
         .contact_model = controller_params_.sampling_c3_options.contact_model,
+        .N = N_ * sampling_c3_options_.lcs_dt_resolution,
+        .dt = dt_ / sampling_c3_options_.lcs_dt_resolution,
         .num_contacts = resolved_contact_pairs_for_cost_simulation.size(),
         .spring_stiffness = 0.0,
-        .num_friction_directions = std::nullopt,
         .num_friction_directions_per_contact =
             sampling_c3_options_.num_friction_directions_per_contact_for_cost,
-        .mu = sampling_c3_options_.mu_for_cost,
-        .planar_normal_direction = sampling_c3_options_.planar_normal_direction,
-        .planar_normal_direction_per_contact = std::nullopt,
-        .contact_pair_configs = std::nullopt,
-        .N = N_ * sampling_c3_options_.lcs_dt_resolution,
-        .dt = dt_ / sampling_c3_options_.lcs_dt_resolution};
+        .mu_per_contact = sampling_c3_options_.mu_for_cost,
+        .planar_normal_direction =
+            sampling_c3_options_.planar_normal_direction};
     LCS lcs_object_sample_for_cost_simulation =
         LCSFactory(plant_, *context_, plant_ad_, *context_ad_,
                    resolved_contact_pairs_for_cost_simulation,
@@ -2756,8 +2758,7 @@ void SamplingC3Controller::OutputC3IntermediatesCurrPlan(
 
 void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
     const drake::systems::Context<double>& context,
-    std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*
-        lcs_contact_jacobian) const {
+    std::vector<LCSContactDescription>* lcs_contact_descriptions) const {
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
@@ -2774,13 +2775,14 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
   resolved_contact_pairs = GetResolvedContactPairs(
       plant_, *context_, contact_pairs_,
       sampling_c3_options_.resolve_contacts_to,
-      sampling_c3_options_.num_friction_directions_per_contact, verbose_);
+      sampling_c3_options_.num_friction_directions_per_contact.value(),
+      verbose_);
 
   // print size of resolved_contact_pairs
-  *lcs_contact_jacobian =
+  *lcs_contact_descriptions =
       LCSFactory(plant_, *context_, plant_ad_, *context_ad_,
                  resolved_contact_pairs, lcs_factory_options)
-          .GetContactJacobianAndPoints();
+          .GetContactDescriptions();
 }
 
 // Output port handlers for best sample location
@@ -2993,8 +2995,7 @@ void SamplingC3Controller::OutputC3IntermediatesBestPlan(
 
 void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
     const drake::systems::Context<double>& context,
-    std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*
-        lcs_contact_jacobian) const {
+    std::vector<LCSContactDescription>* lcs_contact_descriptions) const {
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
@@ -3014,11 +3015,12 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
   resolved_contact_pairs = GetResolvedContactPairs(
       plant_, *context_, contact_pairs_,
       sampling_c3_options_.resolve_contacts_to,
-      sampling_c3_options_.num_friction_directions_per_contact, verbose_);
-  *lcs_contact_jacobian =
+      sampling_c3_options_.num_friction_directions_per_contact.value(),
+      verbose_);
+  *lcs_contact_descriptions =
       LCSFactory(plant_, *context_, plant_ad_, *context_ad_,
                  resolved_contact_pairs, lcs_factory_options)
-          .GetContactJacobianAndPoints();
+          .GetContactDescriptions();
 
   // Revert the context.
   UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,

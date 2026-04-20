@@ -39,7 +39,6 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
 
   int num_planar_contacts;
   int n_lambda_with_tangential;
-  std::vector<int> num_friction_directions_per_contact;
   std::vector<int> starting_index_per_contact_in_lambda_t_vector;
 
   int num_planar_contacts_cost;
@@ -124,7 +123,8 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
   std::vector<Eigen::VectorXd>
       workspace_limits;      ///< Workspace boundaries as vectors.
   double workspace_margins;  ///< Margins to be maintained within the workspace.
-  std::vector<double> ee_velocity_limits;  ///< Limits for end-effector velocities.
+  std::vector<double>
+      ee_velocity_limits;  ///< Limits for end-effector velocities.
 
   C3Options c3_options_pose;
   LCSFactoryOptions lcs_factory_options_pose;
@@ -243,10 +243,11 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     num_contacts_for_cost =
         std::accumulate(resolve_contacts_to_for_cost.begin(),
                         resolve_contacts_to_for_cost.end(), 0);
-    mu = std::vector<double>();
+    mu_per_contact = std::vector<double>();
     for (size_t i = 0; i < mu_per_pair_type.size(); ++i) {
       int repeat = resolve_contacts_to_lists[num_contacts_index][i];
-      mu.value().insert(mu.value().end(), repeat, mu_per_pair_type[i]);
+      mu_per_contact.value().insert(mu_per_contact.value().end(), repeat,
+                                    mu_per_pair_type[i]);
     }
     mu_for_cost = std::vector<double>();
     for (size_t i = 0; i < mu_per_pair_type.size(); ++i) {
@@ -265,28 +266,32 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
                                         resolve_contacts_to_for_cost,
                                         num_friction_directions.value());
 
-    for (size_t i = 0; i < num_contacts; ++i) {
+    for (size_t i = 0; i < static_cast<size_t>(num_contacts.value()); ++i) {
       starting_index_per_contact_in_lambda_t_vector.push_back(
-          2 * std::accumulate(num_friction_directions_per_contact.begin(),
-                              num_friction_directions_per_contact.begin() + i,
-                              0));
+          2 * std::accumulate(
+                  num_friction_directions_per_contact.value().begin(),
+                  num_friction_directions_per_contact.value().begin() + i, 0));
     }
-    for (size_t i = 0; i < num_contacts_for_cost; ++i) {
+    for (size_t i = 0; i < static_cast<size_t>(num_contacts_for_cost); ++i) {
       starting_index_per_contact_in_lambda_t_vector_cost.push_back(
           2 * std::accumulate(
                   num_friction_directions_per_contact_for_cost.begin(),
                   num_friction_directions_per_contact_for_cost.begin() + i, 0));
     }
 
-    n_lambda_with_tangential = 2 * num_friction_directions.value() *
-                                   (num_contacts - num_planar_contacts) +
-                               2 * num_planar_contacts;
+    n_lambda_with_tangential =
+        2 * num_friction_directions.value() *
+            (num_contacts.value() - num_planar_contacts) +
+        2 * num_planar_contacts;
     n_lambda_with_tangential_cost =
         2 * num_friction_directions.value() *
             (num_contacts_for_cost - num_planar_contacts_cost) +
         2 * num_planar_contacts_cost;
 
     // Create C3 options for both pose and position tracking.
+    std::cout
+        << "Setting C3 and LCS factory options for pose and position tracking."
+        << std::endl;
     SetCommonOptions(&c3_options_pose, &lcs_factory_options_pose);
     SetPoseTrackingOptions(&c3_options_pose, &lcs_factory_options_pose);
     SetCommonOptions(&c3_options_position, &lcs_factory_options_position);
@@ -368,17 +373,14 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
       }
     }
 
-    options->g_vector = g_vector;
-    options->u_vector = u_vector;
-
     Eigen::VectorXd q = Eigen::Map<const Eigen::VectorXd>(
         options->q_vector.data(), options->q_vector.size());
     Eigen::VectorXd r = Eigen::Map<const Eigen::VectorXd>(
         options->r_vector.data(), options->r_vector.size());
-    Eigen::VectorXd g = Eigen::Map<const Eigen::VectorXd>(
-        options->g_vector.data(), options->g_vector.size());
-    Eigen::VectorXd u = Eigen::Map<const Eigen::VectorXd>(
-        options->u_vector.data(), options->u_vector.size());
+    Eigen::VectorXd g =
+        Eigen::Map<const Eigen::VectorXd>(g_vector.data(), g_vector.size());
+    Eigen::VectorXd u =
+        Eigen::Map<const Eigen::VectorXd>(u_vector.data(), u_vector.size());
 
     options->Q = options->w_Q * q.asDiagonal();
     options->R = options->w_R * r.asDiagonal();
@@ -413,7 +415,7 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     lcs_factory_options->num_contacts = num_contacts;
     lcs_factory_options->num_friction_directions = num_friction_directions;
     lcs_factory_options->spring_stiffness = 0;  // not used in sampling C3
-    lcs_factory_options->mu = mu;
+    lcs_factory_options->mu_per_contact = mu_per_contact;
     lcs_factory_options->N = N;
     lcs_factory_options->num_friction_directions_per_contact =
         num_friction_directions_per_contact;
@@ -568,7 +570,7 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     int num_planar_contacts = 0;
     int planar_contact = 1;
     std::vector<int> num_friction_directions_per_contact;
-    for (int i = 0; i < resolve_contacts_to_list.size(); ++i) {
+    for (size_t i = 0; i < resolve_contacts_to_list.size(); ++i) {
       for (int j = 0; j < resolve_contacts_to_list[i]; ++j) {
         num_planar_contacts += (resolve_as_planar_contacts_list[i] ? 1 : 0);
         num_friction_directions_per_contact.push_back(

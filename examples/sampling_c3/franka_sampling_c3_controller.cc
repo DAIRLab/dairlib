@@ -94,9 +94,6 @@ int DoMain(int argc, char* argv[]) {
   std::vector<ModelInstanceIndex> object_indices = AddObjectsToPlant(
       &plant_object, nullptr, controller_params.object_models);
 
-  // exclude ee and ground
-  // std::vector<ModelInstanceIndex>
-  // object_indices(full_object_indices.begin()+2, full_object_indices.end());
   plant_object.Finalize();
   auto object_context = plant_object.CreateDefaultContext();
 

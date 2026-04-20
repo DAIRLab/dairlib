@@ -1010,16 +1010,6 @@ int DoMain(int argc, char* argv[]) {
 
   std::cout << "Finished ForcedPublish" << std::endl;
 
-  // Example of getting the C3 solution by evaluating the output port.
-  // auto solution = controller->get_output_port_solution_curr_plan(
-  //   ).Eval<C3Output::C3Solution>(*controller_context);
-  // std::cout << "\nsolution.x_sol_ = " << solution.x_sol_ << std::endl;
-  // std::cout << "\nsolution.lambda_sol_ = " << solution.lambda_sol_
-  //   << std::endl;
-  // std::cout << "\nsolution.u_sol_ = " << solution.u_sol_ << std::endl;
-  // std::cout << "\nsolution.time_vector_ = " << solution.time_vector_
-  //   << std::endl;
-
   return 0;
 }
 

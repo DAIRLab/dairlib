@@ -12,6 +12,7 @@
 #include "c3/core/c3_plus.h"
 #include "c3/core/c3_qp.h"
 #include "c3/core/lcs.h"
+#include "c3/core/traj_eval.h"
 #include "c3/multibody/lcs_factory.h"
 #include "common/quaternion_error_hessian.h"
 #include "dairlib/lcmt_radio_out.hpp"
@@ -30,6 +31,7 @@ using c3::C3Plus;
 using c3::C3QP;
 using c3::LCS;
 using c3::multibody::LCSFactory;
+using c3::traj_eval::TrajectoryEvaluator;
 using dairlib::C3Output;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
@@ -456,6 +458,17 @@ SamplingC3Controller::SamplingC3Controller(
 
   DeclareForcedDiscreteUpdateEvent(&SamplingC3Controller::ComputePlan);
 
+  // Set Kp and Kd vectors for cost computation.  These are only used for
+  // certain cost computation types.
+  Kp_for_cost_ = VectorXd::Zero(n_x_);
+  Kp_for_cost_(0) = sampling_c3_options_.Kp_for_ee_pd_rollout[0];
+  Kp_for_cost_(1) = sampling_c3_options_.Kp_for_ee_pd_rollout[1];
+  Kp_for_cost_(2) = sampling_c3_options_.Kp_for_ee_pd_rollout[2];
+  Kd_for_cost_ = VectorXd::Zero(n_x_);
+  Kd_for_cost_(n_q_ + 0) = sampling_c3_options_.Kd_for_ee_pd_rollout[0];
+  Kd_for_cost_(n_q_ + 1) = sampling_c3_options_.Kd_for_ee_pd_rollout[1];
+  Kd_for_cost_(n_q_ + 2) = sampling_c3_options_.Kd_for_ee_pd_rollout[2];
+
   // Set parallelization settings.
   omp_set_dynamic(0);  // Explicitly disable dynamic teams.
   omp_set_nested(1);   // Enable nested threading.
@@ -535,7 +548,144 @@ SamplingC3Controller::SamplingC3Controller(
   }
 }
 
+std::pair<double, vector<VectorXd>> SamplingC3Controller::NewCalcCost(
+    C3CostComputationType cost_type, const LCS& lcs_for_cost,
+    const C3::CostMatrices& cost_mats, const std::shared_ptr<C3>& c3_object,
+    const bool& force_tracking_disabled, int num_objects) const {
+  // Extract needed information from the C3 object.
+  const LCS lcs_for_plan = c3_object->GetLCS();
+  vector<VectorXd> x_desired = c3_object->GetDesiredState();
+  vector<VectorXd> x_plan = c3_object->GetStateSolution();
+  vector<VectorXd> u_plan = c3_object->GetInputSolution();
+
+  // TODO @bibit: The original CalcCost extracts the x and u trajectories from
+  // the C3 object's z_sol_ vector, which can differ from the C3 object's
+  // x_sol_ and u_sol_ vectors if end_on_qp_step is false.  This may be
+  // considered a bug in C3, but for now, extract the same trajectories to
+  // maintain functionality.  If C3 is fixed so that x_sol_ and u_sol_ (and
+  // lambda_sol_) always reflect the trajectories corresponding to z_sol_, then
+  // the following 5 lines can be removed since x_plan and u_plan will already
+  // be correct from the above getters.
+  vector<VectorXd> z_plan = c3_object->GetFullSolution();
+  for (int i = 0; i < N_; i++) {
+    x_plan[i] = z_plan[i].segment(0, n_x_);
+    u_plan[i] = z_plan[i].segment(n_x_ + n_lambda_, n_u_);
+  }
+  DRAKE_THROW_UNLESS(z_plan.size() == N_);
+  DRAKE_THROW_UNLESS(x_plan.size() == N_);
+  DRAKE_THROW_UNLESS(u_plan.size() == N_);
+
+  // The x_plan from the C3 object does not include the x_N state, so add it in
+  // by simulating forward one step from x_{N-1} and u_{N-1}.
+  auto simulate_config = c3::LCSSimulateConfig();
+  simulate_config.regularized = true;
+  simulate_config.min_exp = -8;
+  // TODO @bibit: figure out which LCS makes the most sense to simulate here
+  // (probably lcs_for_plan), or do x[N] = A x[N-1] + B u[N-1] + D lambda[N-1] +
+  // d instead of LCS simulating.
+  x_plan.push_back(
+      lcs_for_cost.Simulate(x_plan.back(), u_plan.back(), simulate_config));
+
+  // Initialize the cost-driving trajectories to match the C3 plan.
+  vector<VectorXd> XX = x_plan;
+  vector<VectorXd> UU = u_plan;
+
+  // Declare the matrices to use for cost computation.
+  vector<MatrixXd> Q_cost = cost_mats.Q;
+  vector<MatrixXd> R_cost = cost_mats.R;
+
+  // Set a few more variables necessary for some of the cost types.
+  const int ee_vel_index = 7 * num_objects + 3;
+
+  // Compute the states and controls to use for cost computation, and change the
+  // cost matrices if necessary.
+  if (cost_type == C3CostComputationType::kSimLCS) {
+    // Simulate the LCS from initial condition using the C3 plan's controls.
+    XX = TrajectoryEvaluator::SimulateLCSOverTrajectory(
+        x_plan[0], u_plan, lcs_for_plan, lcs_for_cost, simulate_config);
+
+  } else if (cost_type == C3CostComputationType::kUseC3Plan) {
+    // No need to do anything here.
+
+  } else if (cost_type == C3CostComputationType::kSimLCSReplaceC3EEPlan) {
+    // Simulate the LCS from initial condition using the C3 plan's controls.
+    vector<VectorXd> XX_sim = TrajectoryEvaluator::SimulateLCSOverTrajectory(
+        x_plan[0], u_plan, lcs_for_plan, lcs_for_cost, simulate_config);
+
+    // Use the simulated object trajectories but the planned robot trajectory.
+    for (int i = 0; i < N_ + 1; i++) {
+      XX[i].segment(3, 7 * num_objects) = XX_sim[i].segment(3, 7 * num_objects);
+      XX[i].segment(ee_vel_index + 3, 6 * num_objects) =
+          XX_sim[i].segment(ee_vel_index + 3, 6 * num_objects);
+    }
+    // TODO @bibit: don't do the other weird sim step.
+    // TEMP BELOW //
+    VectorXd last_x =
+        lcs_for_cost.Simulate(XX[N_ - 1], UU[N_ - 1], simulate_config);
+    XX[N_].segment(0, 3) = last_x.segment(0, 3);
+    XX[N_].segment(ee_vel_index, 3) = last_x.segment(ee_vel_index, 3);
+    // TEMP ABOVE //
+
+  } else if (cost_type == C3CostComputationType::kSimImpedance) {
+    // Simulate PD with feedforward control using the C3 plan's states and
+    // controls from the initial condition.
+    auto [XX_sim, UU_sim] = TrajectoryEvaluator::SimulatePDControlWithLCS(
+        x_plan, UU, Kp_for_cost_, Kd_for_cost_, lcs_for_plan, lcs_for_cost,
+        !force_tracking_disabled, simulate_config);
+    XX = XX_sim;
+    UU = UU_sim;
+
+  } else if (cost_type == C3CostComputationType::kSimImpedanceReplaceC3EEPlan) {
+    // Simulate PD with feedforward control using the C3 plan's states and
+    // controls from the initial condition.
+    auto [XX_sim, UU_sim] = TrajectoryEvaluator::SimulatePDControlWithLCS(
+        x_plan, UU, Kp_for_cost_, Kd_for_cost_, lcs_for_plan, lcs_for_cost,
+        !force_tracking_disabled, simulate_config);
+    UU = UU_sim;
+
+    // Use the simulated object trajectories but the planned robot trajectory.
+    for (int i = 0; i < N_ + 1; i++) {
+      XX[i].segment(3, 7 * num_objects) = XX_sim[i].segment(3, 7 * num_objects);
+      XX[i].segment(ee_vel_index + 3, 6 * num_objects) =
+          XX_sim[i].segment(ee_vel_index + 3, 6 * num_objects);
+    }
+    // TODO @bibit: don't do the other weird sim step.
+    // TEMP BELOW //
+    VectorXd last_x =
+        lcs_for_cost.Simulate(XX[N_ - 1], UU[N_ - 1], simulate_config);
+    XX[N_].segment(0, 3) = last_x.segment(0, 3);
+    XX[N_].segment(ee_vel_index, 3) = last_x.segment(ee_vel_index, 3);
+    // TEMP ABOVE //
+
+  } else if (cost_type == C3CostComputationType::kSimImpedanceObjectCostOnly) {
+    // Simulate PD with feedforward control using the C3 plan's states and
+    // controls from the initial condition.
+    auto [XX_sim, UU_sim] = TrajectoryEvaluator::SimulatePDControlWithLCS(
+        x_plan, UU, Kp_for_cost_, Kd_for_cost_, lcs_for_plan, lcs_for_cost,
+        !force_tracking_disabled, simulate_config);
+    XX = XX_sim;
+    UU = UU_sim;
+
+    // Set R and the robot portion of the Q matrix to zero so that only the
+    // object state errors contribute to cost.
+    for (int i = 0; i < N_ + 1; i++) {
+      Q_cost[i].block(0, 0, 3, 3) *= 0.0;
+      Q_cost[i].block(3 + 7 * num_objects, 3 + 7 * num_objects, 3, 3) *= 0.0;
+      if (i < N_) {
+        R_cost[i] *= 0.0;
+      }
+    }
+  }
+
+  double cost = TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+      XX, x_desired, Q_cost, UU, R_cost);
+
+  std::pair<double, std::vector<VectorXd>> ret(cost, XX);
+  return ret;
+}
+
 // This function relies on the previously computed z_fin from Solve.
+// TODO @bibit:  remove this and replace with NewCalcCost
 std::pair<double, std::vector<Eigen::VectorXd>> SamplingC3Controller::CalcCost(
     C3CostComputationType cost_type, const LCS& lcs_for_cost,
     const C3::CostMatrices& c3_cost, const std::vector<VectorXd> x_desired,
@@ -905,19 +1055,11 @@ std::pair<double, std::vector<Eigen::VectorXd>> SamplingC3Controller::CalcCost(
   }
   XX_downsampled[N_] = XX[N_ * resolution];
 
-  // for (int i = 0; i < XX_downsampled.size(); i++) {
-  //   std::cout << XX_downsampled[i].transpose() << std::endl;
-  // }
-  // std::cout << "\n\n" << std::endl;
-
   std::pair<double, std::vector<VectorXd>> ret(cost, XX_downsampled);
-  // for (int j =0; j <= N_; j++) {
-  //   std::cout << XX[j].transpose() << std::endl;
-  // }
-  // std::cout << "\n\n" << std::endl;
   return ret;
 }
 
+// TODO @bibit: remove
 std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
 SamplingC3Controller::SimulatePDControl(
     const LCS& lcs_for_cost, const std::vector<Eigen::VectorXd> z_fin,
@@ -1229,6 +1371,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Parallelize over computing C3 costs for each sample.
   auto c3_start = std::chrono::high_resolution_clock::now();
+  std::cout << "LOOP START" << std::endl;  // TODO @bibit: remove after testing
 #pragma omp parallel for num_threads(num_threads_to_use_)
   for (int i = 0; i < num_total_samples; i++) {
     bool print_cost_breakdown =
@@ -1318,16 +1461,32 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     test_c3_object->Solve(test_state);
 
     auto cc_start = std::chrono::high_resolution_clock::now();
-    std::pair<double, std::vector<Eigen::VectorXd>> cost_trajectory_pair =
-        CalcCost(cost_type, lcs_candidates_for_cost.at(i), c3_costmat,
-                 x_desired, test_c3_object->GetFullSolution(),
-                 force_tracking_disabled, controller_params_.num_objects,
-                 print_cost_breakdown, verbose_);
+    std::pair<double, vector<VectorXd>> cost_trajectory_pair = CalcCost(
+        cost_type, lcs_candidates_for_cost.at(i), c3_costmat, x_desired,
+        test_c3_object->GetFullSolution(), force_tracking_disabled,
+        controller_params_.num_objects, print_cost_breakdown, verbose_);
+    // NewCalcCost(cost_type, lcs_candidates_for_cost.at(i), c3_costmat,
+    //             test_c3_object, force_tracking_disabled,
+    //             controller_params_.num_objects);
     auto cc_end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> duration_ms = cc_end - cc_start;
 
     double c3_cost = cost_trajectory_pair.first;
     all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;
+
+    /* TEMPORARY TEST: Check that the new and old cost computation methods
+    produce the same results. */
+    auto [cost_new, __] = NewCalcCost(
+        cost_type, lcs_candidates_for_cost.at(i), c3_costmat, test_c3_object,
+        force_tracking_disabled, controller_params_.num_objects);
+    std::cout << "Sample " << i << " cost difference: "
+              << std::abs(c3_cost - cost_new) / c3_cost * 100.0 << "% change"
+              << "  (old cost: " << c3_cost << ", new cost: " << cost_new << ")"
+              << std::endl;
+
+    // Quit the program if a huge cost error is detected.
+    DRAKE_THROW_UNLESS(cost_new < 1e10);
+    /* END OF TEMPORARY TEST */
 
 #pragma omp critical
     {

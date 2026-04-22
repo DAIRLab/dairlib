@@ -560,6 +560,7 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::NewCalcCost(
   vector<VectorXd> x_desired = c3_object->GetDesiredState();
   vector<VectorXd> x_plan = c3_object->GetStateSolution();
   vector<VectorXd> u_plan = c3_object->GetInputSolution();
+  vector<VectorXd> lambda_plan = c3_object->GetForceSolution();
 
   // TODO @bibit: The original CalcCost extracts the x and u trajectories from
   // the C3 object's z_sol_ vector, which can differ from the C3 object's
@@ -572,6 +573,7 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::NewCalcCost(
   vector<VectorXd> z_plan = c3_object->GetFullSolution();
   for (int i = 0; i < N_; i++) {
     x_plan[i] = z_plan[i].segment(0, n_x_);
+    lambda_plan[i] = z_plan[i].segment(n_x_, n_lambda_);
     u_plan[i] = z_plan[i].segment(n_x_ + n_lambda_, n_u_);
   }
   DRAKE_THROW_UNLESS(z_plan.size() == N_);
@@ -579,15 +581,13 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::NewCalcCost(
   DRAKE_THROW_UNLESS(u_plan.size() == N_);
 
   // The x_plan from the C3 object does not include the x_N state, so add it in
-  // by simulating forward one step from x_{N-1} and u_{N-1}.
-  auto simulate_config = c3::LCSSimulateConfig();
-  simulate_config.regularized = true;
-  simulate_config.min_exp = -8;
-  // TODO @bibit: figure out which LCS makes the most sense to simulate here
-  // (probably lcs_for_plan), or do x[N] = A x[N-1] + B u[N-1] + D lambda[N-1] +
-  // d instead of LCS simulating.
-  x_plan.push_back(
-      lcs_for_cost.Simulate(x_plan.back(), u_plan.back(), simulate_config));
+  // using the LCS rollout from the last x, u, and lambda.
+  Eigen::MatrixXd A_N = lcs_for_plan.A().back();
+  Eigen::MatrixXd B_N = lcs_for_plan.B().back();
+  Eigen::MatrixXd D_N = lcs_for_plan.D().back();
+  Eigen::VectorXd d_N = lcs_for_plan.d().back();
+  x_plan.push_back(A_N * x_plan.back() + B_N * u_plan.back() +
+                   D_N * lambda_plan.back() + d_N);
 
   // Initialize the cost-driving trajectories to match the C3 plan.
   vector<VectorXd> XX = x_plan;
@@ -599,6 +599,9 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::NewCalcCost(
 
   // Set a few more variables necessary for some of the cost types.
   const int ee_vel_index = 7 * num_objects + 3;
+  auto simulate_config = c3::LCSSimulateConfig();
+  simulate_config.regularized = true;
+  simulate_config.min_exp = -8;
 
   // Compute the states and controls to use for cost computation, and change the
   // cost matrices if necessary.
@@ -621,13 +624,6 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::NewCalcCost(
       XX[i].segment(ee_vel_index + 3, 6 * num_objects) =
           XX_sim[i].segment(ee_vel_index + 3, 6 * num_objects);
     }
-    // TODO @bibit: don't do the other weird sim step.
-    // TEMP BELOW //
-    VectorXd last_x =
-        lcs_for_cost.Simulate(XX[N_ - 1], UU[N_ - 1], simulate_config);
-    XX[N_].segment(0, 3) = last_x.segment(0, 3);
-    XX[N_].segment(ee_vel_index, 3) = last_x.segment(ee_vel_index, 3);
-    // TEMP ABOVE //
 
   } else if (cost_type == C3CostComputationType::kSimImpedance) {
     // Simulate PD with feedforward control using the C3 plan's states and
@@ -652,13 +648,6 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::NewCalcCost(
       XX[i].segment(ee_vel_index + 3, 6 * num_objects) =
           XX_sim[i].segment(ee_vel_index + 3, 6 * num_objects);
     }
-    // TODO @bibit: don't do the other weird sim step.
-    // TEMP BELOW //
-    VectorXd last_x =
-        lcs_for_cost.Simulate(XX[N_ - 1], UU[N_ - 1], simulate_config);
-    XX[N_].segment(0, 3) = last_x.segment(0, 3);
-    XX[N_].segment(ee_vel_index, 3) = last_x.segment(ee_vel_index, 3);
-    // TEMP ABOVE //
 
   } else if (cost_type == C3CostComputationType::kSimImpedanceObjectCostOnly) {
     // Simulate PD with feedforward control using the C3 plan's states and

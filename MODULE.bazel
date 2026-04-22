@@ -91,12 +91,7 @@ bazel_dep(name = "c3")
 git_override(
     module_name = "c3",
     remote = "https://github.com/DAIRLab/c3.git",
-    commit = "ef873a41eb73f73760fd7820f3d5efa2ede3df52"  # after: might work?
-    #commit = "ef873a41eb73f73760fd7820f3d5efa2ede3df52"  # before: Drake mismatch
-    #commit = "ddd70cb3309fc8542e57a54d2a1f25ecd4786be0"  # before: Drake mismatch
-    #commit = "9cacea5c2c8ee10f0efabd1b022bb39737139798"  # before: works
-    #commit = "412a14c5ef4883a72f655df2f8689c313615b43f"  # no matching function call
-    #commit = "e2170374aaec3fc40dc0566e869d980482ed309d"  # from push_anything_dev
+    commit = "ef873a41eb73f73760fd7820f3d5efa2ede3df52"
 )
 
 

@@ -12,6 +12,7 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/serializer.h"
+#include "drake/common/text_logging.h"
 
 namespace dairlib {
 

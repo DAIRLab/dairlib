@@ -44,7 +44,7 @@ cc_library(
         "//examples/sampling_c3:shared_params_yamls",
     ],
     deps = [
-        "//solvers:c3",
+        "@c3//:libc3",
         "@drake//:drake_shared_library",
     ],
 )
@@ -57,7 +57,7 @@ cc_library(
     ],
     deps = [
         "//examples/sampling_c3/parameter_headers:goal_params",
-        "//solvers:c3",
+        "@c3//:libc3",
         "@drake//:drake_shared_library",
     ],
 )
@@ -70,7 +70,7 @@ cc_library(
     ],
     deps = [
         "//common/parameters:franka_drake_lcm_driver_channels",
-        "//solvers:c3",
+        "@c3//:libc3",
         "@drake//:drake_shared_library",
     ],
 )

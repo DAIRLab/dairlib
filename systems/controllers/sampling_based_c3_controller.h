@@ -14,6 +14,7 @@
 #include "c3/core/solver_options_io.h"
 #include "c3/multibody/lcs_factory.h"
 #include "c3/multibody/lcs_factory_options.h"
+#include "c3/systems/framework/c3_output.h"
 #include "common/find_resource.h"
 #include "common/update_context.h"
 #include "dairlib/lcmt_sampling_c3_debug.hpp"
@@ -25,7 +26,6 @@
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "examples/sampling_c3/parameter_headers/sampling_params.h"
 #include "lcm/lcm_trajectory.h"
-#include "solvers/c3_output.h"
 #include "systems/controllers/face.h"
 #include "systems/framework/timestamped_vector.h"
 
@@ -276,7 +276,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   /// Output port functions
   void OutputC3SolutionCurrPlan(
       const drake::systems::Context<double>& context,
-      dairlib::C3Output::C3Solution* c3_solution) const;
+      c3::systems::C3Output::C3Solution* c3_solution) const;
   void OutputC3SolutionCurrPlanActor(
       const drake::systems::Context<double>& context,
       dairlib::lcmt_timestamped_saved_traj* output) const;
@@ -285,14 +285,14 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       dairlib::lcmt_timestamped_saved_traj* output) const;
   void OutputC3IntermediatesCurrPlan(
       const drake::systems::Context<double>& context,
-      dairlib::C3Output::C3Intermediates* c3_intermediates) const;
+      c3::systems::C3Output::C3Intermediates* c3_intermediates) const;
   void OutputLCSContactJacobianCurrPlan(
       const drake::systems::Context<double>& context,
-      std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*
-          lcs_contact_jacobian) const;
+      std::vector<c3::multibody::LCSContactDescription>*
+          lcs_contact_descriptions) const;
   void OutputC3SolutionBestPlan(
       const drake::systems::Context<double>& context,
-      dairlib::C3Output::C3Solution* c3_solution) const;
+      c3::systems::C3Output::C3Solution* c3_solution) const;
   void OutputC3SolutionBestPlanActor(
       const drake::systems::Context<double>& context,
       dairlib::lcmt_timestamped_saved_traj* output) const;
@@ -301,11 +301,11 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       dairlib::lcmt_timestamped_saved_traj* output) const;
   void OutputC3IntermediatesBestPlan(
       const drake::systems::Context<double>& context,
-      dairlib::C3Output::C3Intermediates* c3_intermediates) const;
+      c3::systems::C3Output::C3Intermediates* c3_intermediates) const;
   void OutputLCSContactJacobianBestPlan(
       const drake::systems::Context<double>& context,
-      std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*
-          lcs_contact_jacobian) const;
+      std::vector<c3::multibody::LCSContactDescription>*
+          lcs_contact_descriptions) const;
   void OutputDynamicallyFeasibleCurrPlanActor(
       const drake::systems::Context<double>& context,
       dairlib::lcmt_timestamped_saved_traj*

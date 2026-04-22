@@ -12,6 +12,9 @@
 #include <gflags/gflags.h>
 #include <lcm/lcm-cpp.hpp>
 
+#include "c3/core/c3_options.h"
+#include "c3/multibody/lcs_factory_options.h"
+#include "c3/lcmt_output.hpp"
 #include "dairlib/lcmt_c3_state.hpp"
 #include "dairlib/lcmt_object_state.hpp"
 #include "dairlib/lcmt_radio_out.hpp"
@@ -21,8 +24,6 @@
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "examples/sampling_c3/sampling_c3_utils.h"
-#include "solvers/c3_output.h"
-#include "solvers/lcs_factory.h"
 #include "systems/controllers/sampling_based_c3_controller.h"
 #include "systems/framework/timestamped_vector.h"
 #include "systems/system_utils.h"
@@ -58,6 +59,8 @@ DEFINE_string(demo_name, "unkown",
 
 namespace dairlib {
 
+using c3::C3Options;
+using c3::multibody::LCSFactory;
 using dairlib::systems::TimestampedVector;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
@@ -66,7 +69,6 @@ using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
-using solvers::LCSFactory;
 
 // Declare function that will generate samples around T location.
 std::vector<Eigen::VectorXd> GenerateEvenlySpacedSamplesAroundT(
@@ -243,16 +245,12 @@ int DoMain(int argc, char* argv[]) {
   Eigen::VectorXd x_lcs_actual = Eigen::VectorXd::Zero(19);
   Eigen::VectorXd x_lcs_desired = Eigen::VectorXd::Zero(19);
   Eigen::VectorXd x_lcs_final_desired = Eigen::VectorXd::Zero(19);
-  Eigen::MatrixXd dyn_feas_curr_plan_obj_pos =
-      Eigen::MatrixXd::Zero(3, N + 1);
-  Eigen::MatrixXd dyn_feas_curr_plan_ee_pos =
-      Eigen::MatrixXd::Zero(3, N + 1);
+  Eigen::MatrixXd dyn_feas_curr_plan_obj_pos = Eigen::MatrixXd::Zero(3, N + 1);
+  Eigen::MatrixXd dyn_feas_curr_plan_ee_pos = Eigen::MatrixXd::Zero(3, N + 1);
   Eigen::MatrixXd dyn_feas_curr_plan_obj_orientation =
       Eigen::MatrixXd::Zero(4, N + 1);
-  Eigen::MatrixXd dyn_feas_best_plan_obj_pos =
-      Eigen::MatrixXd::Zero(3, N + 1);
-  Eigen::MatrixXd dyn_feas_best_plan_ee_pos =
-      Eigen::MatrixXd::Zero(3, N + 1);
+  Eigen::MatrixXd dyn_feas_best_plan_obj_pos = Eigen::MatrixXd::Zero(3, N + 1);
+  Eigen::MatrixXd dyn_feas_best_plan_ee_pos = Eigen::MatrixXd::Zero(3, N + 1);
   Eigen::MatrixXd dyn_feas_best_plan_obj_orientation =
       Eigen::MatrixXd::Zero(4, N + 1);
 
@@ -405,7 +403,7 @@ int DoMain(int argc, char* argv[]) {
       }
     } else if (event->channel == "C3_DEBUG_CURR") {
       if (event->timestamp >= time_into_log_in_microsecs + u_init_time) {
-        dairlib::lcmt_c3_output message;
+        c3::lcmt_output message;
         if (message.decode(event->data, 0, event->datalen) > 0) {
           std::cout << "Received C3_DEBUG_CURR message in seconds utime: "
                     << (message.utime) / 1e6 << " and event timestamp "
@@ -413,31 +411,31 @@ int DoMain(int argc, char* argv[]) {
           for (int i = 0; i < 3; i++) {
             for (int j = 0; j < N; j++) {
               u_sol(i, j) =
-                  static_cast<double>(message.c3_solution.u_sol[i][j]);
+                  static_cast<double>(message.solution.u_sol[i][j]);
             }
           }
           for (int i = 0; i < 19; i++) {
             for (int j = 0; j < N; j++) {
               x_sol(i, j) =
-                  static_cast<double>(message.c3_solution.x_sol[i][j]);
+                  static_cast<double>(message.solution.x_sol[i][j]);
             }
           }
           for (int i = 0; i < 16; i++) {
             for (int j = 0; j < N; j++) {
               lambda_sol(i, j) =
-                  static_cast<double>(message.c3_solution.lambda_sol[i][j]);
+                  static_cast<double>(message.solution.lambda_sol[i][j]);
             }
           }
           for (int i = 0; i < 38; i++) {
             for (int j = 0; j < N; j++) {
               w_sol(i, j) =
-                  static_cast<double>(message.c3_intermediates.w_sol[i][j]);
+                  static_cast<double>(message.intermediates.w_sol[i][j]);
             }
           }
           for (int i = 0; i < 38; i++) {
             for (int j = 0; j < N; j++) {
               delta_sol(i, j) =
-                  static_cast<double>(message.c3_intermediates.delta_sol[i][j]);
+                  static_cast<double>(message.intermediates.delta_sol[i][j]);
             }
           }
         } else {
@@ -466,7 +464,7 @@ int DoMain(int argc, char* argv[]) {
                     << "seconds utime: " << (message.utime) / 1e6
                     << " and event " << "timestamp "
                     << adjusted_utimestamp / 1e6 << std::endl;
-          for (int i = 0;
+          for (size_t i = 0;
                i < message.saved_traj.trajectories[0].datapoints[0].size();
                i++) {
             Eigen::VectorXd sample_location = Eigen::VectorXd::Zero(3);
@@ -488,7 +486,7 @@ int DoMain(int argc, char* argv[]) {
                     << "seconds utime: " << (message.utime) / 1e6
                     << " and event " << "timestamp "
                     << adjusted_utimestamp / 1e6 << std::endl;
-          for (int i = 0;
+          for (size_t i = 0;
                i < message.saved_traj.trajectories[0].datapoints[0].size();
                i++) {
             sample_costs_in_log.push_back(Eigen::VectorXd::Constant(
@@ -505,14 +503,12 @@ int DoMain(int argc, char* argv[]) {
       if ((x_lcs_actual != Eigen::VectorXd::Zero(19)) &&
           (x_lcs_desired != Eigen::VectorXd::Zero(19)) &&
           (x_lcs_final_desired != Eigen::VectorXd::Zero(19)) &&
-          (dyn_feas_curr_plan_ee_pos !=
-           Eigen::MatrixXd::Zero(3, N + 1)) &&
-          (dyn_feas_curr_plan_obj_pos !=
-           Eigen::MatrixXd::Zero(3, N + 1)) &&
+          (dyn_feas_curr_plan_ee_pos != Eigen::MatrixXd::Zero(3, N + 1)) &&
+          (dyn_feas_curr_plan_obj_pos != Eigen::MatrixXd::Zero(3, N + 1)) &&
           (dyn_feas_curr_plan_obj_orientation !=
            Eigen::MatrixXd::Zero(4, N + 1)) &&
-          (u_sol != Eigen::MatrixXd::Zero(3, N)) &&
-          (is_c3_mode_set) && (sample_locations_in_log.size() > 0) &&
+          (u_sol != Eigen::MatrixXd::Zero(3, N)) && (is_c3_mode_set) &&
+          (sample_locations_in_log.size() > 0) &&
           (sample_costs_in_log.size() > 0)) {
         break;
       }
@@ -1013,16 +1009,6 @@ int DoMain(int argc, char* argv[]) {
 #endif
 
   std::cout << "Finished ForcedPublish" << std::endl;
-
-  // Example of getting the C3 solution by evaluating the output port.
-  // auto c3_solution = controller->get_output_port_c3_solution_curr_plan(
-  //   ).Eval<C3Output::C3Solution>(*controller_context);
-  // std::cout << "\nc3_solution.x_sol_ = " << c3_solution.x_sol_ << std::endl;
-  // std::cout << "\nc3_solution.lambda_sol_ = " << c3_solution.lambda_sol_
-  //   << std::endl;
-  // std::cout << "\nc3_solution.u_sol_ = " << c3_solution.u_sol_ << std::endl;
-  // std::cout << "\nc3_solution.time_vector_ = " << c3_solution.time_vector_
-  //   << std::endl;
 
   return 0;
 }

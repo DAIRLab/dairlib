@@ -14,6 +14,7 @@
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
+#include "drake/common/text_logging.h"
 
 namespace dairlib {
 

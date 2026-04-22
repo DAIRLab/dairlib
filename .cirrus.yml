@@ -2,7 +2,7 @@ registry_config: ENCRYPTED[!88cf0d757d2f8b93dca9e57dc166b65ddedef6378e7ac12a91a0
 build_jammy_task:
   timeout_in: 120m
   container:
-    image: ghcr.io/dairlab/docker-dair/jammy-dair-base:v1.42
+    image: ghcr.io/dairlab/docker-dair/jammy-dair-base:v1.42.0-2
     cpu: 8
     memory: 24G
   test_script:
@@ -21,7 +21,7 @@ build_jammy_task:
 build_noble_task:
   timeout_in: 120m
   container:
-    image: ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42
+    image: ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42.0-2
     cpu: 8
     memory: 24G
   test_script:
@@ -40,7 +40,7 @@ build_noble_task:
 drake_master_build_task:
   timeout_in: 120m
   container:
-    image: ghcr.io/dairlab/docker-dair/jammy-dair-base:v1.42
+    image: ghcr.io/dairlab/docker-dair/jammy-dair-base:v1.42.0-2
     cpu: 8
     memory: 24G
   allow_failures: true

@@ -194,27 +194,12 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   }
 
  private:
-  // TODO @bibit:  Functionality to add into NewCalcCost:
-  //  [x] enable/disable force tracking
-  //  [x] print cost breakdown
-  //  [x] verbose printouts
-  std::pair<double, std::vector<Eigen::VectorXd>> NewCalcCost(
+  std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
       C3CostComputationType cost_type, const c3::LCS& lcs_for_cost,
       const c3::C3::CostMatrices& cost_mats,
       const std::shared_ptr<c3::C3>& c3_object,
       const bool& force_tracking_disabled, int num_objects,
       const bool& print_cost_breakdown) const;
-  // TODO @bibit: remove and replace with NewCalcCost
-  std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
-      C3CostComputationType cost_type, const c3::LCS& lcs_for_cost,
-      const c3::C3::CostMatrices& c3_cost,
-      const std::vector<VectorXd> x_desired,
-      const std::vector<Eigen::VectorXd> z_fin, bool force_tracking_disabled,
-      int num_objects, bool print_cost_breakdown, bool verbose) const;
-  std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
-  SimulatePDControl(const c3::LCS& lcs_for_cost,
-                    const std::vector<Eigen::VectorXd> z_fin, int num_objects,
-                    bool force_tracking_disabled, bool verbose) const;
   /// Function for computing one control loop
   drake::systems::EventStatus ComputePlan(
       const drake::systems::Context<double>& context,

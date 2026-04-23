@@ -196,14 +196,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
  private:
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
       C3CostComputationType cost_type, const c3::LCS& lcs_for_cost,
-      const c3::C3::CostMatrices& c3_cost,
-      const std::vector<VectorXd> x_desired,
-      const std::vector<Eigen::VectorXd> z_fin, bool force_tracking_disabled,
-      int num_objects, bool print_cost_breakdown, bool verbose) const;
-  std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
-  SimulatePDControl(const c3::LCS& lcs_for_cost,
-                    const std::vector<Eigen::VectorXd> z_fin, int num_objects,
-                    bool force_tracking_disabled, bool verbose) const;
+      const c3::C3::CostMatrices& cost_mats,
+      const std::shared_ptr<c3::C3>& c3_object,
+      const bool& force_tracking_disabled, int num_objects,
+      const bool& print_cost_breakdown) const;
   /// Function for computing one control loop
   drake::systems::EventStatus ComputePlan(
       const drake::systems::Context<double>& context,
@@ -420,8 +416,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   /// TODO:  There are many mutable class variables, which is not best practice
   /// in the Drake systems framework.  These could be converted to discrete
   /// state variables.
-  mutable double dt_ = 0.1;
-  mutable double dt_cost_ = 0.02;
+  mutable double dt_;
+
+  Eigen::VectorXd Kp_for_cost_;
+  Eigen::VectorXd Kd_for_cost_;
 
   mutable std::vector<Eigen::MatrixXd> Q_;
   mutable std::vector<Eigen::MatrixXd> R_;

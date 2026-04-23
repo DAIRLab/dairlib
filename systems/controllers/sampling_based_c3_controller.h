@@ -196,13 +196,14 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
  private:
   // TODO @bibit:  Functionality to add into NewCalcCost:
   //  [x] enable/disable force tracking
-  //  [ ] print cost breakdown
-  //  [ ] verbose printouts
+  //  [x] print cost breakdown
+  //  [x] verbose printouts
   std::pair<double, std::vector<Eigen::VectorXd>> NewCalcCost(
       C3CostComputationType cost_type, const c3::LCS& lcs_for_cost,
       const c3::C3::CostMatrices& cost_mats,
       const std::shared_ptr<c3::C3>& c3_object,
-      const bool& force_tracking_disabled, int num_objects) const;
+      const bool& force_tracking_disabled, int num_objects,
+      const bool& print_cost_breakdown) const;
   // TODO @bibit: remove and replace with NewCalcCost
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
       C3CostComputationType cost_type, const c3::LCS& lcs_for_cost,

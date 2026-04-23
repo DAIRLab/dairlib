@@ -554,7 +554,8 @@ SamplingC3Controller::SamplingC3Controller(
 std::pair<double, vector<VectorXd>> SamplingC3Controller::NewCalcCost(
     C3CostComputationType cost_type, const LCS& lcs_for_cost,
     const C3::CostMatrices& cost_mats, const std::shared_ptr<C3>& c3_object,
-    const bool& force_tracking_disabled, int num_objects) const {
+    const bool& force_tracking_disabled, int num_objects,
+    const bool& print_cost_breakdown) const {
   // Extract needed information from the C3 object.
   const LCS lcs_for_plan = c3_object->GetLCS();
   vector<VectorXd> x_desired = c3_object->GetDesiredState();
@@ -598,7 +599,7 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::NewCalcCost(
   vector<MatrixXd> R_cost = cost_mats.R;
 
   // Set a few more variables necessary for some of the cost types.
-  const int ee_vel_index = 7 * num_objects + 3;
+  const int ee_vel_index = 3 + 7 * num_objects;
   auto simulate_config = c3::LCSSimulateConfig();
   simulate_config.regularized = true;
   simulate_config.min_exp = -8;
@@ -669,8 +670,111 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::NewCalcCost(
     }
   }
 
+  // Compute the cost.
   double cost = TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
       XX, x_desired, Q_cost, UU, R_cost);
+
+  if (print_cost_breakdown) {
+    std::cout << "===== NEW COST BREAKDOWN =====" << std::endl;
+    // Errors
+    MatrixXd Q_identity = MatrixXd::Identity(n_x_, n_x_);
+    double error_contrib_ee_pos =
+        TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(0, 3, XX, x_desired,
+                                                            Q_identity);
+    double error_contrib_ee_vel =
+        TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+            ee_vel_index, ee_vel_index + 3, XX, x_desired, Q_identity);
+
+    double error_contrib_obj_orientation = 0.0;
+    double error_contrib_obj_pos = 0.0;
+    double error_contrib_obj_ang_vel = 0.0;
+    double error_contrib_obj_vel = 0.0;
+    for (int obj_idx = 0; obj_idx < num_objects; obj_idx++) {
+      error_contrib_obj_orientation +=
+          TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+              3 + 7 * obj_idx, 3 + 7 * obj_idx + 4, XX, x_desired, Q_identity);
+      error_contrib_obj_pos +=
+          TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+              3 + 7 * obj_idx + 4, 3 + 7 * obj_idx + 7, XX, x_desired,
+              Q_identity);
+      error_contrib_obj_ang_vel +=
+          TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+              ee_vel_index + 3 + 6 * obj_idx,
+              ee_vel_index + 3 + 6 * obj_idx + 3, XX, x_desired, Q_identity);
+      error_contrib_obj_vel +=
+          TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+              ee_vel_index + 3 + 6 * obj_idx + 3,
+              ee_vel_index + 3 + 6 * obj_idx + 6, XX, x_desired, Q_identity);
+    }
+
+    // Costs
+    double cost_contrib_ee_pos =
+        TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(0, 3, XX, x_desired,
+                                                            Q_cost);
+    double cost_contrib_ee_vel =
+        TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+            ee_vel_index, ee_vel_index + 3, XX, x_desired, Q_cost);
+    double cost_contrib_u =
+        TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(UU, R_cost);
+
+    double cost_contrib_obj_orientation = 0.0;
+    double cost_contrib_obj_pos = 0.0;
+    double cost_contrib_obj_ang_vel = 0.0;
+    double cost_contrib_obj_vel = 0.0;
+    for (int obj_idx = 0; obj_idx < num_objects; obj_idx++) {
+      cost_contrib_obj_orientation +=
+          TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+              3 + 7 * obj_idx, 3 + 7 * obj_idx + 4, XX, x_desired, Q_cost);
+      cost_contrib_obj_pos +=
+          TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+              3 + 7 * obj_idx + 4, 3 + 7 * obj_idx + 7, XX, x_desired, Q_cost);
+      cost_contrib_obj_ang_vel +=
+          TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+              ee_vel_index + 3 + 6 * obj_idx,
+              ee_vel_index + 3 + 6 * obj_idx + 3, XX, x_desired, Q_cost);
+      cost_contrib_obj_vel +=
+          TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+              ee_vel_index + 3 + 6 * obj_idx + 3,
+              ee_vel_index + 3 + 6 * obj_idx + 6, XX, x_desired, Q_cost);
+    }
+
+    std::cout << "Error breakdown" << std::endl;
+    std::cout << "\t total error contribution from x_ee: "
+              << error_contrib_ee_pos << std::endl;
+    std::cout << "\t total error contribution from q_obj: "
+              << error_contrib_obj_orientation << std::endl;
+    std::cout << "\t total error contribution from x_obj: "
+              << error_contrib_obj_pos << std::endl;
+    std::cout << "\t total error contribution from v_ee: "
+              << error_contrib_ee_vel << std::endl;
+    std::cout << "\t total error contribution from w_obj: "
+              << error_contrib_obj_ang_vel << std::endl;
+    std::cout << "\t total error contribution from v_obj: "
+              << error_contrib_obj_vel << std::endl;
+
+    std::cout << "\nCOST BREAKDOWN" << std::endl;
+    std::cout << "\t total cost contribution from x_ee: " << cost_contrib_ee_pos
+              << std::endl;
+    std::cout << "\t total cost contribution from q_obj: "
+              << cost_contrib_obj_orientation << std::endl;
+    std::cout << "\t total cost contribution from x_obj: "
+              << cost_contrib_obj_pos << std::endl;
+    std::cout << "\t total cost contribution from v_ee: " << cost_contrib_ee_vel
+              << std::endl;
+    std::cout << "\t total cost contribution from w_obj: "
+              << cost_contrib_obj_ang_vel << std::endl;
+    std::cout << "\t total cost contribution from v_obj: "
+              << cost_contrib_obj_vel << std::endl;
+    std::cout << "\t total cost contribution from u: " << cost_contrib_u
+              << std::endl;
+
+    std::cout << "\t total cost is: " << cost << std::endl;
+    std::cout << "\t total cost object terms only is : "
+              << cost_contrib_obj_pos + cost_contrib_obj_orientation +
+                     cost_contrib_obj_vel + cost_contrib_obj_ang_vel
+              << std::endl;
+    std::cout << "\n\n";
+  }
 
   std::pair<double, std::vector<VectorXd>> ret(cost, XX);
   return ret;
@@ -1002,6 +1106,7 @@ std::pair<double, std::vector<Eigen::VectorXd>> SamplingC3Controller::CalcCost(
   }
 
   if (verbose || print_cost_breakdown) {
+    std::cout << "===== OLD COST BREAKDOWN =====" << std::endl;
     std::cout << "Error breakdown" << std::endl;
     std::cout << "\t total error contribution from x_ee: "
               << error_contrib_ee_pos << std::endl;
@@ -1456,7 +1561,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     std::pair<double, vector<VectorXd>> cost_trajectory_pair = CalcCost(
         cost_type, lcs_candidates_for_cost.at(i), c3_costmat, x_desired,
         test_c3_object->GetFullSolution(), force_tracking_disabled,
-        controller_params_.num_objects, print_cost_breakdown, verbose_);
+        controller_params_.num_objects, print_cost_breakdown,
+        verbose_ || (i == SampleIndex::kCurrentLocation));
     // NewCalcCost(cost_type, lcs_candidates_for_cost.at(i), c3_costmat,
     //             test_c3_object, force_tracking_disabled,
     //             controller_params_.num_objects);
@@ -1470,7 +1576,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     produce the same results. */
     auto [cost_new, __] = NewCalcCost(
         cost_type, lcs_candidates_for_cost.at(i), c3_costmat, test_c3_object,
-        force_tracking_disabled, controller_params_.num_objects);
+        force_tracking_disabled, controller_params_.num_objects,
+        print_cost_breakdown || verbose_ ||
+            (i == SampleIndex::kCurrentLocation));
     std::cout << "Sample " << i << " cost difference: "
               << std::abs(c3_cost - cost_new) / c3_cost * 100.0 << "% change"
               << "  (old cost: " << c3_cost << ", new cost: " << cost_new << ")"
@@ -1478,6 +1586,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
     // Quit the program if a huge cost error is detected.
     DRAKE_THROW_UNLESS(cost_new < 1e10);
+    DRAKE_THROW_UNLESS(i != SampleIndex::kCurrentLocation);
     /* END OF TEMPORARY TEST */
 
 #pragma omp critical

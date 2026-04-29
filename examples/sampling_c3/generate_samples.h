@@ -10,7 +10,6 @@
 #include "examples/sampling_c3/parameter_headers/sampling_params.h"
 #include "multibody/geom_geom_collider.h"
 #include "multibody/multibody_utils.h"
-#include "solvers/c3_options.h"
 #include <drake/geometry/query_object.h>
 #include "systems/controllers/face.h"
 

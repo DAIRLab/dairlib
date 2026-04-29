@@ -17,6 +17,7 @@
 
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "drake/common/text_logging.h"
 
 namespace dairlib {
 

@@ -10,6 +10,7 @@
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
+#include "drake/common/text_logging.h"
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/geometry/drake_visualizer.h"
 #include "drake/geometry/meshcat_visualizer.h"

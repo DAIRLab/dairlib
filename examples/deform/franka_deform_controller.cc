@@ -12,6 +12,7 @@
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
 
+#include "c3/multibody/lcs_factory.h"
 #include "common/eigen_utils.h"
 #include "examples/deform/deform_utils.h"
 #include "examples/deform/mpm_model_reducer.h"
@@ -19,7 +20,6 @@
 #include "examples/deform/parameter_headers/lcm_channels.h"
 #include "examples/deform/parameter_headers/reduced_model_params.h"
 #include "multibody/multibody_utils.h"
-#include "solvers/lcs_factory.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/franka_kinematics.h"
 #include "systems/robot_lcm_systems.h"
@@ -27,7 +27,7 @@
 
 namespace dairlib {
 
-using dairlib::solvers::LCSFactory;
+using c3::multibody::LCSFactory;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::math::RigidTransform;

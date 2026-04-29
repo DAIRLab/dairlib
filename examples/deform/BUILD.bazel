@@ -151,9 +151,6 @@ cc_binary(
     deps = [
         "//examples/deform/parameter_headers:deform_params",
         "//examples/deform:deform_utils",
-        #"//examples/deform/parameter_headers:sampling_c3_controller_params",
-        #"//examples/deform/parameter_headers:lcm_channels",
-        #"//examples/deform/parameter_headers:osc_params",
         "//common",
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
@@ -165,10 +162,6 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
-    #linkopts = [
-    #    "-L/lib/x86_64-linux-gnu",
-    #    "-lopenblas",
-    #],
 )
 
 cc_binary(
@@ -207,48 +200,5 @@ cc_binary(
         "//systems/framework:lcm_driven_loop",
         "@drake//:drake_shared_library",
         "@gflags",
-    ],
-)
-
-cc_binary(
-    name = "run_elastoplastic_control",
-    srcs = ["run_elastoplastic_control.cc"],
-    data = [
-    ],
-    deps = [
-        "//examples/deform:deform_utils",
-        "//examples/deform/parameter_headers:deform_params",
-        "//common",
-        "//lcm:lcm_trajectory_saver",
-        "//systems:franka_kinematics",
-        "//examples/deform:elastoplastic_controller",
-        "//systems/senders:sample_buffer_sender",
-        "//systems/senders:senders",
-        "//systems:robot_lcm_systems",
-        "//systems/primitives",
-        "//systems:system_utils",
-        "//systems:simple_robot_object_kinematics",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/trajectory_optimization:c3_output_systems",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
-cc_library(
-    name = "elastoplastic_controller",
-    srcs = ["elastoplastic_controller.cc"],
-    hdrs = ["elastoplastic_controller.h"],
-    deps = [
-        "//common:update_context",
-        "//examples/deform/parameter_headers:deform_params",
-        "//lcm:lcm_trajectory_saver",
-        "//lcmtypes:lcmt_robot",
-        "//multibody:utils",
-        "//solvers:c3",
-        "//solvers:c3_output",
-        "//solvers:solver_options_io",
-        "//systems/framework:vector",
-        "@drake//:drake_shared_library",
     ],
 )

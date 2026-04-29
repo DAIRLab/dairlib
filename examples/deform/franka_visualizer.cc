@@ -13,7 +13,7 @@
 #include "examples/deform/deform_utils.h"
 #include "examples/deform/elastoplastic_model_interpreter.h"
 #include "examples/deform/parameter_headers/deform_settings.h"
-#include "examples/deform/parameter_headers/elastoplastic_c3_options.h"
+#include "examples/deform/parameter_headers/elastoplastic_sc3_options.h"
 #include "examples/deform/parameter_headers/lcm_channels.h"
 #include "examples/deform/parameter_headers/reduced_model_params.h"
 #include "examples/deform/parameter_headers/visualizer_params.h"
@@ -25,6 +25,7 @@
 #include "systems/visualization/lcm_visualization_systems.h"
 
 #include "drake/common/find_resource.h"
+#include "drake/common/text_logging.h"
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/geometry/drake_visualizer.h"
 #include "drake/geometry/meshcat_point_cloud_visualizer.h"

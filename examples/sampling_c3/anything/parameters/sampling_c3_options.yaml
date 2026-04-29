@@ -11,7 +11,7 @@ warm_start: false
 end_on_qp_step: false
 solve_time_filter_alpha: 0.95
 publish_frequency: 0
-penalize_changes_in_u_across_solves: false  # Penalize (u-u_prev) instead of u.
+penalize_changes_in_u_across_solves: true  # Penalize (u-u_prev) instead of u.
 num_friction_directions: 2
 
 N: 5
@@ -28,6 +28,7 @@ robot_radius_limits: [0.1, 0.9]
 workspace_margins: 0.02
 u_horizontal_limits: [-50, 50]
 u_vertical_limits: [-50, 50]
+ee_velocity_limits: [-0.14, 0.14]
 
 ### Whether to use a predicted EE location for each mode.
 use_predicted_x0_c3: true
@@ -122,7 +123,6 @@ use_predicted_x0: false   # instead:  use_predicted_x0_c3,
 dt: 0             # instead:  planning_dt_pose, planning_dt_position
 dt_cost: 0
 solve_dt: 0       # unused
-mu: []            # instead based on indexing into mu_per_pair_type
 num_contacts: 0   # instead based on summing index of resolve_contacts_to_lists
 # Instead for the below, index into their _list versions.
 g_gamma: []

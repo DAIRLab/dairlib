@@ -249,9 +249,6 @@ def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
 
     samp_c3_options_yaml["q_vector_position"] = q_vector_position
 
-    samp_c3_options_yaml["g_x"] = (
-        [950] * 3 + [1] * (7 * num_objects) + [0.1] * (3 + 6 * num_objects)
-    )
     samp_c3_options_yaml["g_gamma_list"] = [
         [1] * calculate_contacts(num_objects, include_walls * num_objects)
     ]
@@ -263,6 +260,10 @@ def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
     ]
 
     if is_c3_plus:
+        n_x = 6 + (13 * num_objects)
+        n_lambda = 4 * calculate_contacts(num_objects, include_walls * num_objects) - 2 * sum(samp_c3_options_yaml["resolve_as_planar_contacts_list"])
+        n_u = 3
+        samp_c3_options_yaml["g_x"] = [0] * (3 + 7 * num_objects + 3 + 6 * num_objects)
         samp_c3_options_yaml["g_eta_slack_list"] = [
             [1] * calculate_contacts(num_objects, include_walls * num_objects)
         ]
@@ -278,7 +279,12 @@ def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
         samp_c3_options_yaml["g_lambda_list"] = [
             [2] * (4 * calculate_contacts(num_objects, include_walls * num_objects))
         ]
+        samp_c3_options_yaml["final_augmented_cost_contact_scaling"] = 1000
+        samp_c3_options_yaml["final_augmented_cost_contact_indices"] = [i for i in range(4)]
     else:
+        samp_c3_options_yaml["g_x"] = (
+            [950] * 3 + [1] * (7 * num_objects) + [0.1] * (3 + 6 * num_objects)
+        )
         samp_c3_options_yaml["g_lambda_list"] = [
             [0.05] * (4 * calculate_contacts(num_objects, include_walls * num_objects))
         ]
@@ -336,6 +342,9 @@ def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
     ]
 
     if is_c3_plus:
+        n_x = 6 + (13 * num_objects)
+        n_lambda = 4 * calculate_contacts(num_objects, include_walls * num_objects) - 2 * sum(samp_c3_options_yaml["resolve_as_planar_contacts_list"])
+        n_u = 3
         samp_c3_options_yaml["g_eta_slack_position_list"] = [
             [1] * calculate_contacts(num_objects, include_walls * num_objects)
         ]
@@ -351,14 +360,11 @@ def update_c3_options(is_c3_plus, samp_c3_options_yaml_path):
         samp_c3_options_yaml["g_eta_position_list"] = [
             [1] * (4 * calculate_contacts(num_objects, include_walls * num_objects))
         ]
-        samp_c3_options_yaml["g_x_position"] = (
-            [950] * 3 + [1] * (7 * num_objects) + [0.1] * (3 + 6 * num_objects)
-        )
     else:
         samp_c3_options_yaml["g_lambda_position_list"] = [
             [0.005] * (4 * calculate_contacts(num_objects, include_walls * num_objects))
         ]
-        samp_c3_options_yaml["g_x_position"] = [0] * (6 + (13 * num_objects))
+    samp_c3_options_yaml["g_x_position"] = [0] * (6 + (13 * num_objects))
 
     samp_c3_options_yaml["u_gamma_position_list"] = [
         [1] * calculate_contacts(num_objects, include_walls * num_objects)
@@ -550,7 +556,6 @@ def main():
         max_zs_world[i] = -0.029 + heights[i]
 
     min_max_z = min(max_zs_world)
-
 
     # Update c3_options
     is_c3_plus = "plus" in samp_c3_options_yaml_path

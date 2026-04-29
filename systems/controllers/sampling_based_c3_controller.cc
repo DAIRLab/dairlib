@@ -8,22 +8,32 @@
 #include <Eigen/Dense>
 #include <omp.h>
 
+#include "c3/core/c3_miqp.h"
+#include "c3/core/c3_plus.h"
+#include "c3/core/c3_qp.h"
+#include "c3/core/lcs.h"
+#include "c3/core/traj_eval.h"
+#include "c3/multibody/lcs_factory.h"
 #include "common/quaternion_error_hessian.h"
 #include "dairlib/lcmt_radio_out.hpp"
 #include "examples/sampling_c3/generate_samples.h"
 #include "examples/sampling_c3/reposition.h"
 #include "multibody/multibody_utils.h"
-#include "solvers/c3_miqp.h"
-#include "solvers/c3_options.h"
-#include "solvers/c3_plus.h"
-#include "solvers/c3_qp.h"
-#include "solvers/lcs.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/plant/multibody_plant.h"
 
 namespace dairlib {
 
+using c3::C3;
+using c3::C3MIQP;
+using c3::C3Plus;
+using c3::C3QP;
+using c3::LCS;
+using c3::multibody::LCSContactDescription;
+using c3::multibody::LCSFactory;
+using c3::systems::C3Output;
+using c3::traj_eval::TrajectoryEvaluator;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::multibody::ModelInstanceIndex;
@@ -37,12 +47,6 @@ using Eigen::MatrixXf;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 using Eigen::VectorXf;
-using solvers::C3Base;
-using solvers::C3MIQP;
-using solvers::C3Plus;
-using solvers::C3QP;
-using solvers::LCS;
-using solvers::LCSFactory;
 using std::vector;
 using systems::TimestampedVector;
 
@@ -80,7 +84,10 @@ SamplingC3Controller::SamplingC3Controller(
   C3Options c3_options =
       sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_);
 
-  DRAKE_DEMAND(c3_options.lcs_dt_resolution > 0);
+  DRAKE_DEMAND(sampling_c3_options_.lcs_dt_resolution > 0);
+  dt_ =
+      sampling_c3_options_.planning_dt_position;  // Initialize dt_ to position
+                                                  // mode's dt by default.
 
   // Initialize Q_ and R_ to proper size.  Values don't matter because the
   // values get rewritten at the beginning of every control loop.
@@ -100,8 +107,8 @@ SamplingC3Controller::SamplingC3Controller(
   n_x_ = n_q_ + n_v_;
 
   if (verbose_) {
-    std::cout << "resolution: " << c3_options.lcs_dt_resolution << std::endl;
-    std::cout << "dt_cost: " << c3_options.dt_cost << std::endl;
+    std::cout << "resolution: " << sampling_c3_options_.lcs_dt_resolution
+              << std::endl;
     std::cout << "n_q_" << n_q_ << std::endl;
     std::cout << "n_v_" << n_v_ << std::endl;
     std::cout << "n_u_" << n_u_ << std::endl;
@@ -117,58 +124,53 @@ SamplingC3Controller::SamplingC3Controller(
   }
   solve_time_filter_constant_ = sampling_c3_options_.solve_time_filter_alpha;
 
-  if (sampling_c3_options_.contact_model == "stewart_and_trinkle") {
-    contact_model_ = solvers::ContactModel::kStewartAndTrinkle;
-    n_lambda_ = 2 * sampling_c3_options_.num_contacts +
-                sampling_c3_options_.n_lambda_with_tangential;
-  } else if (sampling_c3_options_.contact_model == "anitescu") {
-    contact_model_ = solvers::ContactModel::kAnitescu;
-    n_lambda_ = sampling_c3_options_.n_lambda_with_tangential;
-  } else {
-    std::cerr << ("Unknown or unsupported contact model: " +
-                  sampling_c3_options_.contact_model)
-              << std::endl;
-    DRAKE_THROW_UNLESS(false);
-  }
+  DRAKE_DEMAND(sampling_c3_options_.num_contacts.has_value());
+  DRAKE_DEMAND(
+      sampling_c3_options_.num_friction_directions_per_contact.has_value());
+  n_lambda_ = LCSFactory::GetNumContactVariables(
+      c3::multibody::GetContactModelMap().at(
+          controller_params_.sampling_c3_options.contact_model),
+      sampling_c3_options_.num_contacts.value(),
+      sampling_c3_options_.num_friction_directions_per_contact.value());
 
   // Placeholder LCS will have correct size as it's already determined by the
   // contact model.
-  auto lcs_placeholder = CreatePlaceholderLCS();
+  auto lcs_placeholder =
+      LCS::CreatePlaceholderLCS(n_x_, n_u_, n_lambda_, sampling_c3_options_.N,
+                                sampling_c3_options_.planning_dt_position);
+
   auto x_desired_placeholder =
       std::vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
 
   if (sampling_c3_options_.projection_type == "MIQP") {
-    c3_curr_plan_ = std::make_unique<C3MIQP>(
-        lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_),
-        x_desired_placeholder, c3_options);
-
-    c3_best_plan_ = std::make_unique<C3MIQP>(
-        lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_),
-        x_desired_placeholder, c3_options);
-
+    c3_curr_plan_ = std::make_unique<C3MIQP>(lcs_placeholder,
+                                             C3::CostMatrices(Q_, R_, G_, U_),
+                                             x_desired_placeholder, c3_options);
+    c3_best_plan_ = std::make_unique<C3MIQP>(lcs_placeholder,
+                                             C3::CostMatrices(Q_, R_, G_, U_),
+                                             x_desired_placeholder, c3_options);
     c3_buffer_plan_ = std::make_unique<C3MIQP>(
-        lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_),
+        lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_),
         x_desired_placeholder, c3_options);
-
   } else if (sampling_c3_options_.projection_type == "QP") {
     c3_curr_plan_ = std::make_unique<C3QP>(lcs_placeholder,
-                                           C3Base::CostMatrices(Q_, R_, G_, U_),
+                                           C3::CostMatrices(Q_, R_, G_, U_),
                                            x_desired_placeholder, c3_options);
     c3_best_plan_ = std::make_unique<C3QP>(lcs_placeholder,
-                                           C3Base::CostMatrices(Q_, R_, G_, U_),
+                                           C3::CostMatrices(Q_, R_, G_, U_),
                                            x_desired_placeholder, c3_options);
-    c3_buffer_plan_ = std::make_unique<C3QP>(
-        lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_),
-        x_desired_placeholder, c3_options);
+    c3_buffer_plan_ = std::make_unique<C3QP>(lcs_placeholder,
+                                             C3::CostMatrices(Q_, R_, G_, U_),
+                                             x_desired_placeholder, c3_options);
   } else if (sampling_c3_options_.projection_type == "C3+") {
-    c3_curr_plan_ = std::make_unique<C3Plus>(
-        lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_),
-        x_desired_placeholder, c3_options);
-    c3_best_plan_ = std::make_unique<C3Plus>(
-        lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_),
-        x_desired_placeholder, c3_options);
+    c3_curr_plan_ = std::make_unique<C3Plus>(lcs_placeholder,
+                                             C3::CostMatrices(Q_, R_, G_, U_),
+                                             x_desired_placeholder, c3_options);
+    c3_best_plan_ = std::make_unique<C3Plus>(lcs_placeholder,
+                                             C3::CostMatrices(Q_, R_, G_, U_),
+                                             x_desired_placeholder, c3_options);
     c3_buffer_plan_ = std::make_unique<C3Plus>(
-        lcs_placeholder, C3Base::CostMatrices(Q_, R_, G_, U_),
+        lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_),
         x_desired_placeholder, c3_options);
   } else {
     std::cerr << ("Unknown projection type") << std::endl;
@@ -176,13 +178,12 @@ SamplingC3Controller::SamplingC3Controller(
   }
   n_z_ = c3_curr_plan_->GetZSize();
 
-  c3_curr_plan_->SetOsqpSolverOptions(solver_options_);
-  c3_best_plan_->SetOsqpSolverOptions(solver_options_);
-  c3_buffer_plan_->SetOsqpSolverOptions(solver_options_);
-  std::cout << "Set solver options" << std::endl;
+  c3_curr_plan_->SetSolverOptions(solver_options_);
+  c3_best_plan_->SetSolverOptions(solver_options_);
+  c3_buffer_plan_->SetSolverOptions(solver_options_);
 
+  // Set actor bounds.
   if (!sampling_c3_options_.include_walls) {
-    // Set actor bounds.
     for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
       Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
       A.segment(0, 3) = sampling_c3_options_.workspace_limits[i].segment(0, 3);
@@ -191,35 +192,52 @@ SamplingC3Controller::SamplingC3Controller(
       // to put a comment here when the T example is added. The fourth parameter
       // decides which optimization variable the constraint is applied to. 1 =
       // x, 2 = u, 3 = lambda.
-      c3_curr_plan_->AddLinearConstraint(A, c3_options.workspace_limits[i][3],
-                                         c3_options.workspace_limits[i][4], 1);
-      c3_best_plan_->AddLinearConstraint(A, c3_options.workspace_limits[i][3],
-                                         c3_options.workspace_limits[i][4], 1);
-      c3_buffer_plan_->AddLinearConstraint(A, c3_options.workspace_limits[i][3],
-                                           c3_options.workspace_limits[i][4],
-                                           1);
+      c3_curr_plan_->AddLinearConstraint(
+          A, sampling_c3_options_.workspace_limits[i][3],
+          sampling_c3_options_.workspace_limits[i][4],
+          c3::ConstraintVariable::STATE);
+      c3_best_plan_->AddLinearConstraint(
+          A, sampling_c3_options_.workspace_limits[i][3],
+          sampling_c3_options_.workspace_limits[i][4],
+          c3::ConstraintVariable::STATE);
+      c3_buffer_plan_->AddLinearConstraint(
+          A, sampling_c3_options_.workspace_limits[i][3],
+          sampling_c3_options_.workspace_limits[i][4],
+          c3::ConstraintVariable::STATE);
     }
   }
 
   for (int i : vector<int>({0, 1})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
     A(i) = 1.0;
-    c3_curr_plan_->AddLinearConstraint(A, c3_options.u_horizontal_limits[0],
-                                       c3_options.u_horizontal_limits[1], 2);
-    c3_best_plan_->AddLinearConstraint(A, c3_options.u_horizontal_limits[0],
-                                       c3_options.u_horizontal_limits[1], 2);
-    c3_buffer_plan_->AddLinearConstraint(A, c3_options.u_horizontal_limits[0],
-                                         c3_options.u_horizontal_limits[1], 2);
+    c3_curr_plan_->AddLinearConstraint(
+        A, sampling_c3_options_.u_horizontal_limits[0],
+        sampling_c3_options_.u_horizontal_limits[1],
+        c3::ConstraintVariable::INPUT);
+    c3_best_plan_->AddLinearConstraint(
+        A, sampling_c3_options_.u_horizontal_limits[0],
+        sampling_c3_options_.u_horizontal_limits[1],
+        c3::ConstraintVariable::INPUT);
+    c3_buffer_plan_->AddLinearConstraint(
+        A, sampling_c3_options_.u_horizontal_limits[0],
+        sampling_c3_options_.u_horizontal_limits[1],
+        c3::ConstraintVariable::INPUT);
   }
   for (int i : vector<int>({2})) {
     Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
     A(i) = 1.0;
-    c3_curr_plan_->AddLinearConstraint(A, c3_options.u_vertical_limits[0],
-                                       c3_options.u_vertical_limits[1], 2);
-    c3_best_plan_->AddLinearConstraint(A, c3_options.u_vertical_limits[0],
-                                       c3_options.u_vertical_limits[1], 2);
-    c3_buffer_plan_->AddLinearConstraint(A, c3_options.u_vertical_limits[0],
-                                         c3_options.u_vertical_limits[1], 2);
+    c3_curr_plan_->AddLinearConstraint(
+        A, sampling_c3_options_.u_vertical_limits[0],
+        sampling_c3_options_.u_vertical_limits[1],
+        c3::ConstraintVariable::INPUT);
+    c3_best_plan_->AddLinearConstraint(
+        A, sampling_c3_options_.u_vertical_limits[0],
+        sampling_c3_options_.u_vertical_limits[1],
+        c3::ConstraintVariable::INPUT);
+    c3_buffer_plan_->AddLinearConstraint(
+        A, sampling_c3_options_.u_vertical_limits[0],
+        sampling_c3_options_.u_vertical_limits[1],
+        c3::ConstraintVariable::INPUT);
   }
 
   // Input ports.
@@ -246,8 +264,7 @@ SamplingC3Controller::SamplingC3Controller(
   c3_intermediates.w_ = MatrixXf::Zero(n_z_, N_);
   c3_intermediates.delta_ = MatrixXf::Zero(n_z_, N_);
   c3_intermediates.time_vector_ = VectorXf::Zero(N_);
-  auto lcs_contact_jacobian = std::pair(Eigen::MatrixXd(n_x_, n_lambda_),
-                                        std::vector<Eigen::VectorXd>());
+  auto lcs_contact_descriptions = std::vector<LCSContactDescription>();
 
   // Since the num_additional_samples_repos means the additional samples
   // to generate in addition to the prev_repositioning_target_, add 1.
@@ -291,7 +308,7 @@ SamplingC3Controller::SamplingC3Controller(
           .get_index();
   lcs_contact_jacobian_curr_plan_port_ =
       this->DeclareAbstractOutputPort(
-              "J_lcs_curr_plan, p_lcs_curr_plan", lcs_contact_jacobian,
+              "J_lcs_curr_plan, p_lcs_curr_plan", lcs_contact_descriptions,
               &SamplingC3Controller::OutputLCSContactJacobianCurrPlan)
           .get_index();
 
@@ -322,7 +339,7 @@ SamplingC3Controller::SamplingC3Controller(
           .get_index();
   lcs_contact_jacobian_best_plan_port_ =
       this->DeclareAbstractOutputPort(
-              "J_lcs_best_plan, p_lcs_best_plan", lcs_contact_jacobian,
+              "J_lcs_best_plan, p_lcs_best_plan", lcs_contact_descriptions,
               &SamplingC3Controller::OutputLCSContactJacobianBestPlan)
           .get_index();
 
@@ -446,6 +463,17 @@ SamplingC3Controller::SamplingC3Controller(
 
   DeclareForcedDiscreteUpdateEvent(&SamplingC3Controller::ComputePlan);
 
+  // Set Kp and Kd vectors for cost computation.  These are only used for
+  // certain cost computation types.
+  Kp_for_cost_ = VectorXd::Zero(n_x_);
+  Kp_for_cost_(0) = sampling_c3_options_.Kp_for_ee_pd_rollout[0];
+  Kp_for_cost_(1) = sampling_c3_options_.Kp_for_ee_pd_rollout[1];
+  Kp_for_cost_(2) = sampling_c3_options_.Kp_for_ee_pd_rollout[2];
+  Kd_for_cost_ = VectorXd::Zero(n_x_);
+  Kd_for_cost_(n_q_ + 0) = sampling_c3_options_.Kd_for_ee_pd_rollout[0];
+  Kd_for_cost_(n_q_ + 1) = sampling_c3_options_.Kd_for_ee_pd_rollout[1];
+  Kd_for_cost_(n_q_ + 2) = sampling_c3_options_.Kd_for_ee_pd_rollout[2];
+
   // Set parallelization settings.
   omp_set_dynamic(0);  // Explicitly disable dynamic teams.
   omp_set_nested(1);   // Enable nested threading.
@@ -525,20 +553,235 @@ SamplingC3Controller::SamplingC3Controller(
   }
 }
 
+// This function relies on the previously computed z_fin from Solve.
+std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
+    C3CostComputationType cost_type, const LCS& lcs_for_cost,
+    const C3::CostMatrices& cost_mats, const std::shared_ptr<C3>& c3_object,
+    const bool& force_tracking_disabled, int num_objects,
+    const bool& print_cost_breakdown) const {
+  // Extract needed information from the C3 object.
+  const LCS lcs_for_plan = c3_object->GetLCS();
+  vector<VectorXd> x_desired = c3_object->GetDesiredState();
+  vector<VectorXd> x_plan = c3_object->GetStateSolution();
+  vector<VectorXd> u_plan = c3_object->GetInputSolution();
+  vector<VectorXd> lambda_plan = c3_object->GetForceSolution();
 
-LCS SamplingC3Controller::CreatePlaceholderLCS() const {
-  MatrixXd A = MatrixXd::Ones(n_x_, n_x_);
-  MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
-  VectorXd d = VectorXd::Zero(n_x_);
-  MatrixXd D = MatrixXd::Ones(n_x_, n_lambda_);
-  MatrixXd E = MatrixXd::Zero(n_lambda_, n_x_);
-  MatrixXd F = MatrixXd::Zero(n_lambda_, n_lambda_);
-  MatrixXd H = MatrixXd::Zero(n_lambda_, n_u_);
-  VectorXd c = VectorXd::Zero(n_lambda_);
-  return LCS(A, B, D, d, E, F, H, c, sampling_c3_options_.N,
-             sampling_c3_options_.planning_dt_position);
+  // TODO @bibit: The original CalcCost extracts the x and u trajectories from
+  // the C3 object's z_sol_ vector, which can differ from the C3 object's
+  // x_sol_ and u_sol_ vectors if end_on_qp_step is false.  This may be
+  // considered a bug in C3, but for now, extract the same trajectories to
+  // maintain functionality.  If C3 is fixed so that x_sol_ and u_sol_ (and
+  // lambda_sol_) always reflect the trajectories corresponding to z_sol_, then
+  // the following 5 lines can be removed since x_plan and u_plan will already
+  // be correct from the above getters.
+  vector<VectorXd> z_plan = c3_object->GetFullSolution();
+  for (int i = 0; i < N_; i++) {
+    x_plan[i] = z_plan[i].segment(0, n_x_);
+    lambda_plan[i] = z_plan[i].segment(n_x_, n_lambda_);
+    u_plan[i] = z_plan[i].segment(n_x_ + n_lambda_, n_u_);
+  }
+  DRAKE_THROW_UNLESS(z_plan.size() == N_);
+  DRAKE_THROW_UNLESS(x_plan.size() == N_);
+  DRAKE_THROW_UNLESS(u_plan.size() == N_);
+
+  // The x_plan from the C3 object does not include the x_N state, so add it in
+  // using the LCS rollout from the last x, u, and lambda.
+  Eigen::MatrixXd A_N = lcs_for_plan.A().back();
+  Eigen::MatrixXd B_N = lcs_for_plan.B().back();
+  Eigen::MatrixXd D_N = lcs_for_plan.D().back();
+  Eigen::VectorXd d_N = lcs_for_plan.d().back();
+  x_plan.push_back(A_N * x_plan.back() + B_N * u_plan.back() +
+                   D_N * lambda_plan.back() + d_N);
+
+  // Initialize the cost-driving trajectories to match the C3 plan.
+  vector<VectorXd> XX = x_plan;
+  vector<VectorXd> UU = u_plan;
+
+  // Declare the matrices to use for cost computation.
+  vector<MatrixXd> Q_cost = cost_mats.Q;
+  vector<MatrixXd> R_cost = cost_mats.R;
+
+  // Set a few more variables necessary for some of the cost types.
+  const int ee_vel_index = 3 + 7 * num_objects;
+  auto simulate_config = c3::LCSSimulateConfig();
+  simulate_config.regularized = true;
+  simulate_config.min_exp = -8;
+
+  // Compute the states and controls to use for cost computation, and change the
+  // cost matrices if necessary.
+  if (cost_type == C3CostComputationType::kSimLCS) {
+    // Simulate the LCS from initial condition using the C3 plan's controls.
+    XX = TrajectoryEvaluator::SimulateLCSOverTrajectory(
+        x_plan[0], u_plan, lcs_for_plan, lcs_for_cost, simulate_config);
+
+  } else if (cost_type == C3CostComputationType::kUseC3Plan) {
+    // No need to do anything here.
+
+  } else if (cost_type == C3CostComputationType::kSimLCSReplaceC3EEPlan) {
+    // Simulate the LCS from initial condition using the C3 plan's controls.
+    vector<VectorXd> XX_sim = TrajectoryEvaluator::SimulateLCSOverTrajectory(
+        x_plan[0], u_plan, lcs_for_plan, lcs_for_cost, simulate_config);
+
+    // Use the simulated object trajectories but the planned robot trajectory.
+    for (int i = 0; i < N_ + 1; i++) {
+      XX[i].segment(3, 7 * num_objects) = XX_sim[i].segment(3, 7 * num_objects);
+      XX[i].segment(ee_vel_index + 3, 6 * num_objects) =
+          XX_sim[i].segment(ee_vel_index + 3, 6 * num_objects);
+    }
+
+  } else if (cost_type == C3CostComputationType::kSimImpedance) {
+    // Simulate PD with feedforward control using the C3 plan's states and
+    // controls from the initial condition.
+    auto [XX_sim, UU_sim] = TrajectoryEvaluator::SimulatePDControlWithLCS(
+        x_plan, UU, Kp_for_cost_, Kd_for_cost_, lcs_for_plan, lcs_for_cost,
+        !force_tracking_disabled, simulate_config);
+    XX = XX_sim;
+    UU = UU_sim;
+
+  } else if (cost_type == C3CostComputationType::kSimImpedanceReplaceC3EEPlan) {
+    // Simulate PD with feedforward control using the C3 plan's states and
+    // controls from the initial condition.
+    auto [XX_sim, UU_sim] = TrajectoryEvaluator::SimulatePDControlWithLCS(
+        x_plan, UU, Kp_for_cost_, Kd_for_cost_, lcs_for_plan, lcs_for_cost,
+        !force_tracking_disabled, simulate_config);
+    UU = UU_sim;
+
+    // Use the simulated object trajectories but the planned robot trajectory.
+    for (int i = 0; i < N_ + 1; i++) {
+      XX[i].segment(3, 7 * num_objects) = XX_sim[i].segment(3, 7 * num_objects);
+      XX[i].segment(ee_vel_index + 3, 6 * num_objects) =
+          XX_sim[i].segment(ee_vel_index + 3, 6 * num_objects);
+    }
+
+  } else if (cost_type == C3CostComputationType::kSimImpedanceObjectCostOnly) {
+    // Simulate PD with feedforward control using the C3 plan's states and
+    // controls from the initial condition.
+    auto [XX_sim, UU_sim] = TrajectoryEvaluator::SimulatePDControlWithLCS(
+        x_plan, UU, Kp_for_cost_, Kd_for_cost_, lcs_for_plan, lcs_for_cost,
+        !force_tracking_disabled, simulate_config);
+    XX = XX_sim;
+    UU = UU_sim;
+
+    // Set R and the robot portion of the Q matrix to zero so that only the
+    // object state errors contribute to cost.
+    for (int i = 0; i < N_ + 1; i++) {
+      Q_cost[i].block(0, 0, 3, 3) *= 0.0;
+      Q_cost[i].block(3 + 7 * num_objects, 3 + 7 * num_objects, 3, 3) *= 0.0;
+      if (i < N_) {
+        R_cost[i] *= 0.0;
+      }
+    }
+  }
+
+  // Compute the cost.
+  double cost = TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+      XX, x_desired, Q_cost, UU, R_cost);
+
+  if (print_cost_breakdown) {
+    std::cout << "===== NEW COST BREAKDOWN =====" << std::endl;
+    // Errors
+    MatrixXd Q_identity = MatrixXd::Identity(n_x_, n_x_);
+    double error_contrib_ee_pos =
+        TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(0, 3, XX, x_desired,
+                                                            Q_identity);
+    double error_contrib_ee_vel =
+        TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+            ee_vel_index, ee_vel_index + 3, XX, x_desired, Q_identity);
+
+    double error_contrib_obj_orientation = 0.0;
+    double error_contrib_obj_pos = 0.0;
+    double error_contrib_obj_ang_vel = 0.0;
+    double error_contrib_obj_vel = 0.0;
+    for (int obj_idx = 0; obj_idx < num_objects; obj_idx++) {
+      error_contrib_obj_orientation +=
+          TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+              3 + 7 * obj_idx, 3 + 7 * obj_idx + 4, XX, x_desired, Q_identity);
+      error_contrib_obj_pos +=
+          TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+              3 + 7 * obj_idx + 4, 3 + 7 * obj_idx + 7, XX, x_desired,
+              Q_identity);
+      error_contrib_obj_ang_vel +=
+          TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+              ee_vel_index + 3 + 6 * obj_idx,
+              ee_vel_index + 3 + 6 * obj_idx + 3, XX, x_desired, Q_identity);
+      error_contrib_obj_vel +=
+          TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+              ee_vel_index + 3 + 6 * obj_idx + 3,
+              ee_vel_index + 3 + 6 * obj_idx + 6, XX, x_desired, Q_identity);
+    }
+
+    // Costs
+    double cost_contrib_ee_pos =
+        TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(0, 3, XX, x_desired,
+                                                            Q_cost);
+    double cost_contrib_ee_vel =
+        TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+            ee_vel_index, ee_vel_index + 3, XX, x_desired, Q_cost);
+    double cost_contrib_u =
+        TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(UU, R_cost);
+
+    double cost_contrib_obj_orientation = 0.0;
+    double cost_contrib_obj_pos = 0.0;
+    double cost_contrib_obj_ang_vel = 0.0;
+    double cost_contrib_obj_vel = 0.0;
+    for (int obj_idx = 0; obj_idx < num_objects; obj_idx++) {
+      cost_contrib_obj_orientation +=
+          TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+              3 + 7 * obj_idx, 3 + 7 * obj_idx + 4, XX, x_desired, Q_cost);
+      cost_contrib_obj_pos +=
+          TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+              3 + 7 * obj_idx + 4, 3 + 7 * obj_idx + 7, XX, x_desired, Q_cost);
+      cost_contrib_obj_ang_vel +=
+          TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+              ee_vel_index + 3 + 6 * obj_idx,
+              ee_vel_index + 3 + 6 * obj_idx + 3, XX, x_desired, Q_cost);
+      cost_contrib_obj_vel +=
+          TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+              ee_vel_index + 3 + 6 * obj_idx + 3,
+              ee_vel_index + 3 + 6 * obj_idx + 6, XX, x_desired, Q_cost);
+    }
+
+    std::cout << "Error breakdown" << std::endl;
+    std::cout << "\t total error contribution from x_ee: "
+              << error_contrib_ee_pos << std::endl;
+    std::cout << "\t total error contribution from q_obj: "
+              << error_contrib_obj_orientation << std::endl;
+    std::cout << "\t total error contribution from x_obj: "
+              << error_contrib_obj_pos << std::endl;
+    std::cout << "\t total error contribution from v_ee: "
+              << error_contrib_ee_vel << std::endl;
+    std::cout << "\t total error contribution from w_obj: "
+              << error_contrib_obj_ang_vel << std::endl;
+    std::cout << "\t total error contribution from v_obj: "
+              << error_contrib_obj_vel << std::endl;
+
+    std::cout << "\nCOST BREAKDOWN" << std::endl;
+    std::cout << "\t total cost contribution from x_ee: " << cost_contrib_ee_pos
+              << std::endl;
+    std::cout << "\t total cost contribution from q_obj: "
+              << cost_contrib_obj_orientation << std::endl;
+    std::cout << "\t total cost contribution from x_obj: "
+              << cost_contrib_obj_pos << std::endl;
+    std::cout << "\t total cost contribution from v_ee: " << cost_contrib_ee_vel
+              << std::endl;
+    std::cout << "\t total cost contribution from w_obj: "
+              << cost_contrib_obj_ang_vel << std::endl;
+    std::cout << "\t total cost contribution from v_obj: "
+              << cost_contrib_obj_vel << std::endl;
+    std::cout << "\t total cost contribution from u: " << cost_contrib_u
+              << std::endl;
+
+    std::cout << "\t total cost is: " << cost << std::endl;
+    std::cout << "\t total cost object terms only is : "
+              << cost_contrib_obj_pos + cost_contrib_obj_orientation +
+                     cost_contrib_obj_vel + cost_contrib_obj_ang_vel
+              << std::endl;
+    std::cout << "\n\n";
+  }
+
+  std::pair<double, std::vector<VectorXd>> ret(cost, XX);
+  return ret;
 }
-
 
 drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     const Context<double>& context,
@@ -619,6 +862,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                 << std::endl;
     }
     crossed_cost_switching_threshold_ = false;
+    dt_ =
+        sampling_c3_options_.planning_dt_position;  // Always set dt_ according
+                                                    // to pose or position mode.
     x_final_target_ = x_lcs_final_des.value();
     // is_doing_c3_ = false;
     detected_goal_changes_++;
@@ -646,6 +892,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     if (pose_diff < progress_params_.cost_switching_threshold_distance *
                         controller_params_.num_objects) {
       crossed_cost_switching_threshold_ = true;
+      dt_ = sampling_c3_options_.planning_dt_pose;  // Always set dt_ according
+                                                    // to pose or position mode.
       std::cout << "Crossed cost switching threshold." << std::endl;
 
       // Reset the sample buffers and metrics now that the costs have changed.
@@ -668,6 +916,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // crossed_cost_switching_threshold_ flag.
   C3Options c3_options =
       sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_);
+  LCSFactoryOptions lcs_factory_options =
+      sampling_c3_options_.GetLCSFactoryOptions(
+          crossed_cost_switching_threshold_);
 
   // Update the cost matrices:  Q_, R_, G_, and U_.
   UpdateCostMatrices(x_lcs_curr, x_lcs_des, c3_options);
@@ -757,10 +1008,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   for (int i = 0; i < num_total_samples; i++) {
     all_sample_locations_.push_back(candidate_states[i].head(3));
   }
-
   // Make LCS objects for each sample.
   auto lcs_pair = SamplingC3Controller::CreateLCSObjectsForSamples(
-      candidate_states, x_lcs_curr, c3_options, c3_options);
+      candidate_states, x_lcs_curr, lcs_factory_options);
   std::vector<LCS> lcs_candidates = lcs_pair.first;
   std::vector<LCS> lcs_candidates_for_cost = lcs_pair.second;
 
@@ -770,8 +1020,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       std::vector<std::vector<Eigen::VectorXd>>(
           num_total_samples,
           std::vector<Eigen::VectorXd>(N_ + 1, VectorXd::Zero(n_x_)));
-  std::vector<std::shared_ptr<solvers::C3Base>> c3_objects(num_total_samples,
-                                                           nullptr);
+  std::vector<std::shared_ptr<C3>> c3_objects(num_total_samples, nullptr);
   bool force_tracking_disabled = radio_out->channel[11];
   C3CostComputationType cost_type = progress_params_.cost_type;
   if (!crossed_cost_switching_threshold_) {
@@ -790,21 +1039,19 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     LCS test_system = lcs_candidates.at(i);
 
     // Set up C3 with proper projection type and post-solve cost matrices.
-    std::shared_ptr<solvers::C3Base> test_c3_object;
-    std::vector<VectorXd> x_desired =
-        std::vector<VectorXd>(N_ + 1, x_lcs_des.value());
-    if (c3_options.projection_type == "MIQP") {
-      test_c3_object = std::make_shared<C3MIQP>(
-          test_system, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired,
-          c3_options);
-    } else if (c3_options.projection_type == "QP") {
-      test_c3_object = std::make_shared<C3QP>(
-          test_system, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired,
-          c3_options);
-    } else if (c3_options.projection_type == "C3+") {
-      test_c3_object = std::make_shared<C3Plus>(
-          test_system, C3Base::CostMatrices(Q_, R_, G_, U_), x_desired,
-          c3_options);
+    std::shared_ptr<C3> test_c3_object;
+    std::vector<VectorXd> x_desired(N_ + 1, x_lcs_des.value());
+
+    C3::CostMatrices c3_costmat(Q_, R_, G_, U_);
+    if (sampling_c3_options_.projection_type == "MIQP") {
+      test_c3_object = std::make_shared<C3MIQP>(test_system, c3_costmat,
+                                                x_desired, c3_options);
+    } else if (sampling_c3_options_.projection_type == "QP") {
+      test_c3_object = std::make_shared<C3QP>(test_system, c3_costmat,
+                                              x_desired, c3_options);
+    } else if (sampling_c3_options_.projection_type == "C3+") {
+      test_c3_object = std::make_shared<C3Plus>(test_system, c3_costmat,
+                                                x_desired, c3_options);
     }  // Unknown projection types are rejected in the initialization.
 
     if (!sampling_c3_options_.include_walls) {
@@ -815,11 +1062,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
             sampling_c3_options_.workspace_limits[i].segment(0, 3);
         test_c3_object->AddLinearConstraint(
             A,
-            c3_options.workspace_limits[i][3] -
+            sampling_c3_options_.workspace_limits[i][3] -
                 sampling_c3_options_.workspace_margins,
-            c3_options.workspace_limits[i][4] +
+            sampling_c3_options_.workspace_limits[i][4] +
                 sampling_c3_options_.workspace_margins,
-            1);
+            c3::ConstraintVariable::STATE);
       }
       // Set object bounds
       for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
@@ -829,11 +1076,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
               sampling_c3_options_.workspace_limits[i].segment(0, 3);
           test_c3_object->AddLinearConstraint(
               A,
-              c3_options.workspace_limits[i][3] -
+              sampling_c3_options_.workspace_limits[i][3] -
                   sampling_c3_options_.workspace_margins,
-              c3_options.workspace_limits[i][4] +
+              sampling_c3_options_.workspace_limits[i][4] +
                   sampling_c3_options_.workspace_margins,
-              1);
+              c3::ConstraintVariable::STATE);
         }
       }
     }
@@ -842,35 +1089,39 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     for (int i : vector<int>({0, 1, 2})) {
       Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
       A(n_q_ + i) = 1.0;
-      test_c3_object->AddLinearConstraint(A, -0.14, 0.14, 1);
+      test_c3_object->AddLinearConstraint(
+          A, sampling_c3_options_.ee_velocity_limits[0],
+          sampling_c3_options_.ee_velocity_limits[1],
+          c3::ConstraintVariable::STATE);
     }
 
     // Add force constraints
     for (int i : vector<int>({0, 1})) {
       Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
       A(i) = 1.0;
-      test_c3_object->AddLinearConstraint(A, c3_options.u_horizontal_limits[0],
-                                          c3_options.u_horizontal_limits[1], 2);
+      test_c3_object->AddLinearConstraint(
+          A, sampling_c3_options_.u_horizontal_limits[0],
+          sampling_c3_options_.u_horizontal_limits[1],
+          c3::ConstraintVariable::INPUT);
     }
     for (int i : vector<int>({2})) {
       Eigen::RowVectorXd A = VectorXd::Zero(n_u_);
       A(i) = 1.0;
-      test_c3_object->AddLinearConstraint(A, c3_options.u_vertical_limits[0],
-                                          c3_options.u_vertical_limits[1], 2);
+      test_c3_object->AddLinearConstraint(
+          A, sampling_c3_options_.u_vertical_limits[0],
+          sampling_c3_options_.u_vertical_limits[1],
+          c3::ConstraintVariable::INPUT);
     }
 
-    test_c3_object->UpdateCostLCS(lcs_candidates_for_cost.at(i));
-
     // Solve C3, store resulting object and cost.
-    test_c3_object->SetOsqpSolverOptions(solver_options_);
-    test_c3_object->Solve(test_state, verbose_);
+    test_c3_object->SetSolverOptions(solver_options_);
+    test_c3_object->Solve(test_state);
 
     auto cc_start = std::chrono::high_resolution_clock::now();
-    std::pair<double, std::vector<Eigen::VectorXd>> cost_trajectory_pair =
-        test_c3_object->CalcCost(
-            cost_type, sampling_c3_options_.Kp_for_ee_pd_rollout,
-            sampling_c3_options_.Kd_for_ee_pd_rollout, force_tracking_disabled,
-            controller_params_.num_objects, print_cost_breakdown, verbose_);
+    std::pair<double, vector<VectorXd>> cost_trajectory_pair = CalcCost(
+        cost_type, lcs_candidates_for_cost.at(i), c3_costmat, test_c3_object,
+        force_tracking_disabled, controller_params_.num_objects,
+        print_cost_breakdown || verbose_);
     auto cc_end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> duration_ms = cc_end - cc_start;
 
@@ -1138,10 +1389,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       std::cout << "z[" << i << "]: " << zs[i].transpose() << std::endl;
     }
     LCS verbose_lcs = lcs_candidates.at(SampleIndex::kCurrentLocation);
-    Eigen::MatrixXd E = verbose_lcs.E_[0];
-    Eigen::MatrixXd F = verbose_lcs.F_[0];
-    Eigen::MatrixXd H = verbose_lcs.H_[0];
-    Eigen::VectorXd c = verbose_lcs.c_[0];
+    Eigen::MatrixXd E = verbose_lcs.E()[0];
+    Eigen::MatrixXd F = verbose_lcs.F()[0];
+    Eigen::MatrixXd H = verbose_lcs.H()[0];
+    Eigen::VectorXd c = verbose_lcs.c()[0];
     std::cout << "\nRight side of complementarity: " << std::endl;
     for (int i = 0; i < N_; i++) {
       Eigen::VectorXd x = zs[i].head(n_x_);
@@ -1305,8 +1556,6 @@ void SamplingC3Controller::UpdateCostMatrices(
   U_.clear();
   double discount_factor = 1;
 
-  dt_ = c3_options.dt;
-  dt_cost_ = c3_options.dt_cost;
   for (int i = 0; i < N_ + 1; ++i) {
     Q_.push_back(discount_factor * c3_options.Q);
     discount_factor *= c3_options.gamma;
@@ -1382,13 +1631,48 @@ void SamplingC3Controller::UpdateCostMatrices(
   }
 }
 
+vector<SortedPair<GeometryId>> SamplingC3Controller::GetResolvedContactPairs(
+    const MultibodyPlant<double>& plant, const Context<double>& context,
+    const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
+    const vector<int>& resolve_contacts_to_list,
+    std::vector<int> num_friction_directions, bool verbose) const {
+  int n_contacts = std::accumulate(resolve_contacts_to_list.begin(),
+                                   resolve_contacts_to_list.end(), 0);
+  std::vector<SortedPair<GeometryId>> resolved_contacts;
+  resolved_contacts.clear();
+
+  // contact_geoms represents contact pair groups, where each group may contain
+  // contact pairs between two objects, or between one object and multiple
+  // objects eg. the end-effector and multiple objects in the environment.
+  // resolve_contacts_to_list represents how many contact pairs to resolve to
+  // for each contact pair group. For each contact pair group, select the
+  // closest contact pairs up to the number specified by
+  // resolve_contacts_to_list for that group, and add those to the
+  // resolved_contacts list.
+  for (int i = 0; i < contact_geoms.size(); i++) {
+    DRAKE_DEMAND(contact_geoms[i].size() >= resolve_contacts_to_list[i]);
+
+    const auto& candidates = contact_geoms[i];
+    const int num_to_select = resolve_contacts_to_list[i];
+
+    auto active_contacts = LCSFactory::GetNClosestContactPairs(
+        plant, context, contact_geoms[i], num_to_select);
+    if (!active_contacts.empty()) {
+      resolved_contacts.insert(resolved_contacts.end(), active_contacts.begin(),
+                               active_contacts.end());
+    }
+  }
+  DRAKE_DEMAND(resolved_contacts.size() == n_contacts);
+  return resolved_contacts;
+}
+
 // Create LCS objects (for the C3 solve and also for the C3 cost calculation)
 // for each sample.
-std::pair<std::vector<solvers::LCS>, std::vector<solvers::LCS>>
+std::pair<std::vector<LCS>, std::vector<LCS>>
 SamplingC3Controller::CreateLCSObjectsForSamples(
     const std::vector<Eigen::VectorXd>& candidate_states,
-    const drake::VectorX<double>& x_lcs_curr, const C3Options& c3_options,
-    const C3Options& c3_options_curr_location) const {
+    const drake::VectorX<double>& x_lcs_curr,
+    const LCSFactoryOptions& lcs_factory_options) const {
   std::vector<LCS> lcs_candidates;
   std::vector<LCS> lcs_candidates_for_cost;
 
@@ -1400,36 +1684,40 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
 
     // Resolve the contact pairs and create the LCS.
     vector<SortedPair<GeometryId>> resolved_contact_pairs =
-        LCSFactory::PreProcessor(plant_, *context_, contact_pairs_,
-                                 sampling_c3_options_.resolve_contacts_to,
-                                 c3_options.num_friction_directions, verbose_);
-
-    LCS lcs_object_sample = solvers::LCSFactory::LinearizePlantToLCS(
-        plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
-        c3_options.mu, dt_, N_, sampling_c3_options_.n_lambda_with_tangential,
-        sampling_c3_options_.num_friction_directions_per_contact,
-        sampling_c3_options_.starting_index_per_contact_in_lambda_t_vector,
-        contact_model_);
-
+        GetResolvedContactPairs(
+            plant_, *context_, contact_pairs_,
+            sampling_c3_options_.resolve_contacts_to,
+            sampling_c3_options_.num_friction_directions_per_contact.value(),
+            verbose_);
+    LCS lcs_object_sample =
+        LCSFactory(plant_, *context_, plant_ad_, *context_ad_,
+                   resolved_contact_pairs, lcs_factory_options)
+            .GenerateLCS();
     lcs_candidates.push_back(lcs_object_sample);
 
     // Create different LCS objects for cost calculation.
     vector<SortedPair<GeometryId>> resolved_contact_pairs_for_cost_simulation;
-    resolved_contact_pairs_for_cost_simulation = LCSFactory::PreProcessor(
+    resolved_contact_pairs_for_cost_simulation = GetResolvedContactPairs(
         plant_, *context_, contact_pairs_,
         sampling_c3_options_.resolve_contacts_to_for_cost,
-        sampling_c3_options_.num_friction_directions, verbose_);
+        sampling_c3_options_.num_friction_directions_per_contact_for_cost,
+        verbose_);
+    LCSFactoryOptions lcs_factory_options_for_cost = {
+        .contact_model = controller_params_.sampling_c3_options.contact_model,
+        .N = N_ * sampling_c3_options_.lcs_dt_resolution,
+        .dt = dt_ / sampling_c3_options_.lcs_dt_resolution,
+        .num_contacts = resolved_contact_pairs_for_cost_simulation.size(),
+        .spring_stiffness = 0.0,
+        .num_friction_directions_per_contact =
+            sampling_c3_options_.num_friction_directions_per_contact_for_cost,
+        .mu_per_contact = sampling_c3_options_.mu_for_cost,
+        .planar_normal_direction =
+            sampling_c3_options_.planar_normal_direction};
     LCS lcs_object_sample_for_cost_simulation =
-        solvers::LCSFactory::LinearizePlantToLCS(
-            plant_, *context_, plant_ad_, *context_ad_,
-            resolved_contact_pairs_for_cost_simulation,
-            sampling_c3_options_.mu_for_cost, dt_cost_,
-            N_ * sampling_c3_options_.lcs_dt_resolution,
-            sampling_c3_options_.n_lambda_with_tangential_cost,
-            sampling_c3_options_.num_friction_directions_per_contact_cost,
-            sampling_c3_options_
-                .starting_index_per_contact_in_lambda_t_vector_cost,
-            contact_model_);
+        LCSFactory(plant_, *context_, plant_ad_, *context_ad_,
+                   resolved_contact_pairs_for_cost_simulation,
+                   lcs_factory_options_for_cost)
+            .GenerateLCS();
     lcs_candidates_for_cost.push_back(lcs_object_sample_for_cost_simulation);
   }
 
@@ -1441,21 +1729,21 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
     // Print the LCS matrices for verbose inspection.
     LCS verbose_lcs = lcs_candidates.at(SampleIndex::kCurrentLocation);
     std::cout << "A: " << std::endl;
-    std::cout << verbose_lcs.A_[0] << std::endl;
+    std::cout << verbose_lcs.A()[0] << std::endl;
     std::cout << "B: " << std::endl;
-    std::cout << verbose_lcs.B_[0] << std::endl;
+    std::cout << verbose_lcs.B()[0] << std::endl;
     std::cout << "D: " << std::endl;
-    std::cout << verbose_lcs.D_[0] << std::endl;
+    std::cout << verbose_lcs.D()[0] << std::endl;
     std::cout << "d: " << std::endl;
-    std::cout << verbose_lcs.d_[0] << std::endl;
+    std::cout << verbose_lcs.d()[0] << std::endl;
     std::cout << "E: " << std::endl;
-    std::cout << verbose_lcs.E_[0] << std::endl;
+    std::cout << verbose_lcs.E()[0] << std::endl;
     std::cout << "F: " << std::endl;
-    std::cout << verbose_lcs.F_[0] << std::endl;
+    std::cout << verbose_lcs.F()[0] << std::endl;
     std::cout << "H: " << std::endl;
-    std::cout << verbose_lcs.H_[0] << std::endl;
+    std::cout << verbose_lcs.H()[0] << std::endl;
     std::cout << "c: " << std::endl;
-    std::cout << verbose_lcs.c_[0] << std::endl;
+    std::cout << verbose_lcs.c()[0] << std::endl;
   }
 
   return std::make_pair(lcs_candidates, lcs_candidates_for_cost);
@@ -1864,7 +2152,7 @@ void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs) const {
 // If eligible, augment the current control loop's considered samples with the
 // best one from the buffer.
 void SamplingC3Controller::AugmentSamplesWithBuffer(
-    std::vector<std::shared_ptr<solvers::C3Base>>& c3_objects) const {
+    std::vector<std::shared_ptr<C3>>& c3_objects) const {
   // Add the best from the buffer to the samples, but only if in C3 mode and
   // only if the best in the buffer is distinct from the current set of samples.
   if ((is_doing_c3_) &&
@@ -2288,8 +2576,7 @@ void SamplingC3Controller::OutputC3IntermediatesCurrPlan(
 
 void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
     const drake::systems::Context<double>& context,
-    std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*
-        lcs_contact_jacobian) const {
+    std::vector<LCSContactDescription>* lcs_contact_descriptions) const {
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
@@ -2297,23 +2584,23 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
   UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
                 lcs_x->get_data());
 
-  C3Options c3_options =
-      sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_);
+  LCSFactoryOptions lcs_factory_options =
+      sampling_c3_options_.GetLCSFactoryOptions(
+          crossed_cost_switching_threshold_);
 
   // Preprocessing the contact pairs
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
-  resolved_contact_pairs =
-      LCSFactory::PreProcessor(plant_, *context_, contact_pairs_,
-                               sampling_c3_options_.resolve_contacts_to,
-                               c3_options.num_friction_directions, verbose_);
+  resolved_contact_pairs = GetResolvedContactPairs(
+      plant_, *context_, contact_pairs_,
+      sampling_c3_options_.resolve_contacts_to,
+      sampling_c3_options_.num_friction_directions_per_contact.value(),
+      verbose_);
 
   // print size of resolved_contact_pairs
-  *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
-      plant_, *context_, resolved_contact_pairs, c3_options.mu,
-      sampling_c3_options_.n_lambda_with_tangential,
-      sampling_c3_options_.num_friction_directions_per_contact,
-      sampling_c3_options_.starting_index_per_contact_in_lambda_t_vector,
-      contact_model_);
+  *lcs_contact_descriptions =
+      LCSFactory(plant_, *context_, plant_ad_, *context_ad_,
+                 resolved_contact_pairs, lcs_factory_options)
+          .GetContactDescriptions();
 }
 
 // Output port handlers for best sample location
@@ -2528,8 +2815,7 @@ void SamplingC3Controller::OutputC3IntermediatesBestPlan(
 
 void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
     const drake::systems::Context<double>& context,
-    std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*
-        lcs_contact_jacobian) const {
+    std::vector<LCSContactDescription>* lcs_contact_descriptions) const {
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
@@ -2540,22 +2826,21 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
   UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
                 x_sample);
 
-  C3Options c3_options =
-      sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_);
+  LCSFactoryOptions lcs_factory_options =
+      sampling_c3_options_.GetLCSFactoryOptions(
+          crossed_cost_switching_threshold_);
 
   // Preprocess the contact pairs.
   vector<SortedPair<GeometryId>> resolved_contact_pairs;
-  resolved_contact_pairs =
-      LCSFactory::PreProcessor(plant_, *context_, contact_pairs_,
-                               sampling_c3_options_.resolve_contacts_to,
-                               c3_options.num_friction_directions, verbose_);
-
-  *lcs_contact_jacobian = LCSFactory::ComputeContactJacobian(
-      plant_, *context_, resolved_contact_pairs, c3_options.mu,
-      sampling_c3_options_.n_lambda_with_tangential,
-      sampling_c3_options_.num_friction_directions_per_contact,
-      sampling_c3_options_.starting_index_per_contact_in_lambda_t_vector,
-      contact_model_);
+  resolved_contact_pairs = GetResolvedContactPairs(
+      plant_, *context_, contact_pairs_,
+      sampling_c3_options_.resolve_contacts_to,
+      sampling_c3_options_.num_friction_directions_per_contact.value(),
+      verbose_);
+  *lcs_contact_descriptions =
+      LCSFactory(plant_, *context_, plant_ad_, *context_ad_,
+                 resolved_contact_pairs, lcs_factory_options)
+          .GetContactDescriptions();
 
   // Revert the context.
   UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,

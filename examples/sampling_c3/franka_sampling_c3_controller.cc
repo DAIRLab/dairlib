@@ -10,13 +10,15 @@
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
 
+#include "c3/multibody/lcs_factory.h"
+#include "c3/systems/lcmt_generators/c3_output_generator.h"
+#include "c3/systems/lcmt_generators/contact_force_generator.h"
 #include "common/eigen_utils.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/sampling_c3_utils.h"
 #include "goal_generator.h"
 #include "multibody/multibody_utils.h"
-#include "solvers/lcs_factory.h"
 #include "systems/controllers/sampling_based_c3_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/franka_kinematics.h"
@@ -24,11 +26,12 @@
 #include "systems/senders/c3_state_sender.h"
 #include "systems/senders/sample_buffer_sender.h"
 #include "systems/system_utils.h"
-#include "systems/trajectory_optimization/c3_output_systems.h"
 
 namespace dairlib {
 
-using dairlib::solvers::LCSFactory;
+using c3::multibody::LCSFactory;
+using c3::systems::lcmt_generators::C3OutputGenerator;
+using c3::systems::lcmt_generators::ContactForceGenerator;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
 using drake::math::RigidTransform;
@@ -91,9 +94,6 @@ int DoMain(int argc, char* argv[]) {
   std::vector<ModelInstanceIndex> object_indices = AddObjectsToPlant(
       &plant_object, nullptr, controller_params.object_models);
 
-  // exclude ee and ground
-  // std::vector<ModelInstanceIndex>
-  // object_indices(full_object_indices.begin()+2, full_object_indices.end());
   plant_object.Finalize();
   auto object_context = plant_object.CreateDefaultContext();
 
@@ -506,31 +506,6 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.c3_object_best_plan_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
-  // C3 senders.
-  auto c3_output_sender_curr_plan =
-      builder.AddNamedSystem("c3_output_sender_curr_plan",
-                             std::make_unique<systems::C3OutputSender>());
-  auto c3_output_publisher_curr_plan =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
-          lcm_channel_params.c3_debug_output_curr_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
-  auto c3_forces_publisher_curr_plan =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_forces>(
-          lcm_channel_params.c3_force_curr_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
-
-  auto c3_output_sender_best_plan =
-      builder.AddNamedSystem("c3_output_sender_best_plan",
-                             std::make_unique<systems::C3OutputSender>());
-  auto c3_output_publisher_best_plan =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_output>(
-          lcm_channel_params.c3_debug_output_best_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
-  auto c3_forces_publisher_best_plan =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_forces>(
-          lcm_channel_params.c3_force_best_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
-
   // Systems for publishing the tracking output.
   auto actor_c3_execution_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
@@ -681,30 +656,28 @@ int DoMain(int argc, char* argv[]) {
                   actor_trajectory_sender_best_plan->get_input_port());
   builder.Connect(controller->get_output_port_c3_solution_best_plan_object(),
                   object_trajectory_sender_best_plan->get_input_port());
-  builder.Connect(controller->get_output_port_c3_solution_curr_plan(),
-                  c3_output_sender_curr_plan->get_input_port_c3_solution());
-  builder.Connect(
+
+  C3OutputGenerator::AddLcmPublisherToBuilder(
+      builder, controller->get_output_port_c3_solution_curr_plan(),
       controller->get_output_port_c3_intermediates_curr_plan(),
-      c3_output_sender_curr_plan->get_input_port_c3_intermediates());
-  builder.Connect(
+      lcm_channel_params.c3_debug_output_curr_channel, &lcm,
+      TriggerTypeSet({TriggerType::kForced}));
+  ContactForceGenerator::AddLcmPublisherToBuilder(
+      builder, controller->get_output_port_c3_solution_curr_plan(),
       controller->get_output_port_lcs_contact_jacobian_curr_plan(),
-      c3_output_sender_curr_plan->get_input_port_lcs_contact_info());
-  builder.Connect(c3_output_sender_curr_plan->get_output_port_c3_debug(),
-                  c3_output_publisher_curr_plan->get_input_port());
-  builder.Connect(c3_output_sender_curr_plan->get_output_port_c3_force(),
-                  c3_forces_publisher_curr_plan->get_input_port());
-  builder.Connect(controller->get_output_port_c3_solution_best_plan(),
-                  c3_output_sender_best_plan->get_input_port_c3_solution());
-  builder.Connect(
+      lcm_channel_params.c3_force_curr_channel, &lcm,
+      TriggerTypeSet({TriggerType::kForced}));
+  C3OutputGenerator::AddLcmPublisherToBuilder(
+      builder, controller->get_output_port_c3_solution_best_plan(),
       controller->get_output_port_c3_intermediates_best_plan(),
-      c3_output_sender_best_plan->get_input_port_c3_intermediates());
-  builder.Connect(
+      lcm_channel_params.c3_debug_output_best_channel, &lcm,
+      TriggerTypeSet({TriggerType::kForced}));
+  ContactForceGenerator::AddLcmPublisherToBuilder(
+      builder, controller->get_output_port_c3_solution_best_plan(),
       controller->get_output_port_lcs_contact_jacobian_best_plan(),
-      c3_output_sender_best_plan->get_input_port_lcs_contact_info());
-  builder.Connect(c3_output_sender_best_plan->get_output_port_c3_debug(),
-                  c3_output_publisher_best_plan->get_input_port());
-  builder.Connect(c3_output_sender_best_plan->get_output_port_c3_force(),
-                  c3_forces_publisher_best_plan->get_input_port());
+      lcm_channel_params.c3_force_best_channel, &lcm,
+      TriggerTypeSet({TriggerType::kForced}));
+
   builder.Connect(
       controller->get_output_port_dynamically_feasible_curr_plan_actor(),
       dynamically_feasible_curr_plan_actor_publisher->get_input_port());

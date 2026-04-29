@@ -2,7 +2,7 @@
 
 #include <drake/common/yaml/yaml_io.h>
 
-// #include "examples/deform/parameter_headers/elastoplastic_c3_options.h"
+// #include "examples/deform/parameter_headers/elastoplastic_sc3_options.h"
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
@@ -18,7 +18,7 @@ struct DeformSettings {
   std::string lcm_channels_simulation_file;
 
   //   /// Store sub-parameter classes internally.
-  //   ElastoPlasticC3Options deform_c3_options;
+  //   ElastoPlasticSC3Options deform_c3_options;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -33,7 +33,7 @@ struct DeformSettings {
     a->Visit(DRAKE_NVP(lcm_channels_simulation_file));
 
     // /// Store individual parameter classes internally.
-    // deform_c3_options = drake::yaml::LoadYamlFile<ElastoPlasticC3Options>(
+    // deform_c3_options = drake::yaml::LoadYamlFile<ElastoPlasticSC3Options>(
     //     deform_c3_options_file);
   }
 };

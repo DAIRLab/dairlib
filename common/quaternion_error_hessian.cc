@@ -45,8 +45,8 @@ Eigen::MatrixXd hessian_of_squared_quaternion_angle_difference(
         std::pow(q_z, 2)*std::pow(r_x, 2) + std::pow(q_z, 2)*std::pow(r_y, 2);
     double exp_4 = std::pow(q_w, 2) + std::pow(q_x, 2) +
         std::pow(q_y, 2) + std::pow(q_z, 2);
-    double exp_5 = std::pow(exp_4, 2)*std::pow(exp_2 + exp_3, 5/2);
-    double exp_6 = std::pow(exp_2 + exp_3, 3/2);
+    double exp_5 = std::pow(exp_4, 2)*std::pow(exp_2 + exp_3, 2.5);
+    double exp_6 = std::pow(exp_2 + exp_3, 1.5);
     double exp_7 = q_w*q_x*r_x + q_w*q_y*r_y + q_w*q_z*r_z -
         std::pow(q_x, 2)*r_w - std::pow(q_y, 2)*r_w - std::pow(q_z, 2)*r_w;
     double exp_8 = std::pow(q_w, 2)*r_y - q_w*q_y*r_w + std::pow(q_x, 2)*r_y -

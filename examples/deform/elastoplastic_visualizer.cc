@@ -8,7 +8,7 @@
 #include <gflags/gflags.h>
 
 #include "examples/deform/deform_utils.h"
-#include "examples/deform/parameter_headers/elastoplastic_c3_options.h"
+#include "examples/deform/parameter_headers/elastoplastic_sc3_options.h"
 #include "examples/deform/parameter_headers/lcm_channels.h"
 #include "examples/deform/parameter_headers/visualizer_params.h"
 #include "systems/primitives/subvector_pass_through.h"
@@ -17,6 +17,7 @@
 #include "systems/trajectory_optimization/lcm_trajectory_systems.h"
 #include "systems/visualization/lcm_visualization_systems.h"
 
+#include "drake/common/text_logging.h"
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/geometry/drake_visualizer.h"
 #include "drake/geometry/meshcat_visualizer.h"
@@ -56,8 +57,8 @@ int do_main(int argc, char* argv[]) {
   DeformLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<DeformLcmChannels>(
           "examples/deform/parameters/lcm_channels_sim.yaml");
-  ElastoPlasticC3Options elastoplastic_c3_options =
-      drake::yaml::LoadYamlFile<ElastoPlasticC3Options>(
+  ElastoPlasticSC3Options elastoplastic_c3_options =
+      drake::yaml::LoadYamlFile<ElastoPlasticSC3Options>(
           "examples/deform/parameters/demo_" + FLAGS_demo +
           "/elastoplastic_c3_options.yaml");
 

@@ -26,7 +26,6 @@ cc_library(
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "//lcm:lcm_trajectory_saver",
-        "@lcm",
     ],
 )
 
@@ -45,7 +44,7 @@ cc_library(
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
         "//lcm:lcm_trajectory_saver",
-        "@lcm",
+        "@lcm//lcm:lcm-shared",
     ],
 )
 

@@ -1,20 +1,38 @@
 #pragma once
-#include <numeric>
 
+#include <drake/common/yaml/yaml_io.h>
+
+#include "common/file_utils.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 
+#include "drake/common/yaml/yaml_read_archive.h"
+
+/* Deformable model type options:
+    0. kPlastic:  forms a plastic network (plastic prismatic joints with
+         corresponding complementarity forces).
+    1. kElastic:  forms an elastic network (spring-dampers).
+    2. kElastoPlastic:  forms an elasto-plastic network (where each connection
+         is a spring in series with a plastic prismatic joint, both in parallel
+         with a damper). */
+enum DeformableModelType {
+  kPlastic,
+  kElastic,        // TODO @bibit:  unimplemented
+  kElastoPlastic,  // TODO @bibit:  unimplemented
+};
+
 struct ElastoPlasticSC3Options : SamplingC3Options {
-  Eigen::VectorXd q_target;
-  std::vector<std::string> state_names;
-  Eigen::VectorXd Kp;
-  Eigen::VectorXd Kd;
+  DeformableModelType deformable_model_type;
+
+  std::vector<double> Kp;
+  std::vector<double> Kd;
   double w_Q_final;
 
+  // Serialize.
   template <typename Archive>
   void Serialize(Archive* a) {
     SamplingC3Options::Serialize(a);
-    a->Visit(DRAKE_NVP(q_target));
-    a->Visit(DRAKE_NVP(state_names));
+    ENUM_DESERIALIZE(a, deformable_model_type);
+
     a->Visit(DRAKE_NVP(Kp));
     a->Visit(DRAKE_NVP(Kd));
     a->Visit(DRAKE_NVP(w_Q_final));

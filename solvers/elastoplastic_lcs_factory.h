@@ -22,10 +22,12 @@ namespace solvers {
 
 class PlasticNetworkLCSFactory {
  public:
-  /// Build a time-invariant LCS that represents the a system including the
-  /// dynamics of an elastoplastic network linearized about a given state.  The
+  /// Build a time-invariant LCS that represents a system including the dynamics
+  /// of an elastoplastic network linearized about a given state.  The
   /// complementarity variables include internal plasticity forces, in addition
   /// to any external contacts.
+  /// NOTE:  Is compatible with LCSFactory::PreProcessor to obtain
+  /// external_contact_geoms that can then be passed into this method.
   static LCS ToLCS(
       const MultibodyPlant<double>& plant, const Context<double>& context,
       const MultibodyPlant<drake::AutoDiffXd>& plant_ad,

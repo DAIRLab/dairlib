@@ -52,6 +52,8 @@ using drake::systems::lcm::LcmSubscriberSystem;
 using dairlib::systems::AddActuationRecieverAndStateSenderLcm;
 using drake::math::RigidTransform;
 using drake::math::RotationMatrix;
+using drake::math::RigidTransformd;
+using drake::math::RotationMatrixd;
 
 namespace dairlib {
 
@@ -144,6 +146,35 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
   drake::multibody::meshcat::ContactVisualizer<double>::AddToBuilder(
       &builder, plant, meshcat,
       drake::multibody::meshcat::ContactVisualizerParams());
+
+  VectorXd xd = toy_params.x_des; 
+
+  Eigen::Vector4d q_vec = xd.segment(9, 4);
+	Eigen::Quaterniond q(q_vec(0), q_vec(1), q_vec(2), q_vec(3));
+	q.normalize();
+  RotationMatrixd R_target(q);
+	RigidTransformd X_WF(R_target, xd.segment(13, 3));
+
+	const double axis_len = 0.2;
+	const double radius = 0.01;
+
+	meshcat->SetObject("target_pose/x_axis", drake::geometry::Cylinder(radius, axis_len), drake::geometry::Rgba(1, 0, 0, 0.5));
+	RigidTransformd X_FX(
+		RotationMatrixd::MakeYRotation(-M_PI / 2.0),
+		Eigen::Vector3d(axis_len / 2.0, 0, 0));
+	meshcat->SetTransform("target_pose/x_axis", X_WF * X_FX);
+
+	meshcat->SetObject("target_pose/y_axis", drake::geometry::Cylinder(radius, axis_len), drake::geometry::Rgba(0, 1, 0, 0.5));
+	RigidTransformd X_FY(
+		RotationMatrixd::MakeXRotation(M_PI / 2.0),
+		Eigen::Vector3d(0, axis_len / 2.0, 0));
+	meshcat->SetTransform("target_pose/y_axis", X_WF * X_FY);
+
+	meshcat->SetObject("target_pose/z_axis", drake::geometry::Cylinder(radius, axis_len), drake::geometry::Rgba(0, 0, 1, 0.5));
+	RigidTransformd X_FZ(
+		RotationMatrixd::Identity(),
+		Eigen::Vector3d(0, 0, axis_len / 2.0));
+	meshcat->SetTransform("target_pose/z_axis", X_WF * X_FZ);
 
   std::cout << "Before sim" << std::endl;
 

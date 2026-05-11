@@ -4,9 +4,9 @@ trifinger_model: examples/cube_flip/trifinger/robot_properties_fingers/urdf/trif
 end_effector_model: examples/cube_flip/urdf/fingertips.sdf
 end_effector_names: ["fingertip_1", "fingertip_2", "fingertip_3"]
 
-neutral_position: [[0, 0.07, 0.07],  # finger 0
-                   [0.07, -0.06, 0.07],  # finger 120
-                   [-0.07, -0.06, 0.07]]  # finger 240
+neutral_position: [[0, 0.08, 0.08],  # finger 0
+                   [ 0.07, -0.06, 0.08],  # finger 120
+                   [-0.07, -0.06, 0.08]]  # finger 240
 
 x_scale: 0.1
 y_scale: 0.1
@@ -43,21 +43,21 @@ EndEffectorW:
    0, 300, 0,
    0, 0, 300]
 EndEffectorKp:
-  [ 300, 0, 0,
-    0, 300, 0,
-    0, 0, 300 ]
+  [ 200, 0, 0,
+    0, 200, 0,
+    0, 0, 200 ]
 EndEffectorKd:
-  [ 30, 0, 0,
-    0, 30, 0,
-    0, 0, 30 ]
+  [ 10, 0, 0,
+    0, 10, 0,
+    0, 0, 10 ]
 LambdaEndEffectorW:
   [ 200, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 200, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 200, 0, 0, 0, 0, 0, 0,
+    0, 0, 20, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 200, 0, 0, 0, 0, 0, 
     0, 0, 0, 0, 200, 0, 0, 0, 0, 
-    0, 0, 0, 0, 0, 200, 0, 0, 0, 
+    0, 0, 0, 0, 0, 20, 0, 0, 0, 
     0, 0, 0, 0, 0, 0, 200, 0, 0, 
     0, 0, 0, 0, 0, 0, 0, 200, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 200 ]
+    0, 0, 0, 0, 0, 0, 0, 0, 20 ]
 

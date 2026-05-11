@@ -4,57 +4,39 @@ solve_time_filter_alpha: 0.0
 publish_frequency: 0
 state_prediction_joints: []
 
-quaternion_weight: 300
+quaternion_weight: 800
 quaternion_regularizer_fraction: 0.0
 
 lcs_factory_options:
   contact_model: "anitescu"
-  num_contacts: 14
+  num_contacts: 7
   spring_stiffness: 0
-  N: 3
+  N: 4
   dt: 0.02
   contact_pair_configs:
     - body_A: "fingertip_1"
       body_A_collision_geom_indices: [0]
       body_B: "cube"
       body_B_collision_geom_indices: [0]
-      mu: 0.6
+      mu: 0.8
       num_friction_directions: 2
     - body_A: "fingertip_2"
       body_A_collision_geom_indices: [0]
       body_B: "cube"
       body_B_collision_geom_indices: [0]
-      mu: 0.6
+      mu: 0.8
       num_friction_directions: 2
     - body_A: "fingertip_3"
       body_A_collision_geom_indices: [0]
       body_B: "cube"
       body_B_collision_geom_indices: [0]
-      mu: 0.6
-      num_friction_directions: 2
-    - body_A: "fingertip_1"
-      body_A_collision_geom_indices: [0]
-      body_B: "ground"
-      body_B_collision_geom_indices: [0]
-      mu: 0.6
-      num_friction_directions: 2
-    - body_A: "fingertip_2"
-      body_A_collision_geom_indices: [0]
-      body_B: "ground"
-      body_B_collision_geom_indices: [0]
-      mu: 0.6
-      num_friction_directions: 2
-    - body_A: "fingertip_3"
-      body_A_collision_geom_indices: [0]
-      body_B: "ground"
-      body_B_collision_geom_indices: [0]
-      mu: 0.6
+      mu: 0.8
       num_friction_directions: 2
     - body_A: "cube"
-      body_A_collision_geom_indices: [1, 2, 3, 4, 5, 6, 7, 8]
+      body_A_collision_geom_indices: [1, 2, 3, 4]
       body_B: "ground"
       body_B_collision_geom_indices: [0]
-      mu: 0.6
+      mu: 0.8
       num_friction_directions: 2
 
 
@@ -64,67 +46,73 @@ c3_options:
   scale_lcs: true
   penalize_input_change: false
 
+  num_threads: 10
+  delta_option: 1
+
+  admm_iter: 7
+
   M: 1000
   gamma: 1.0
   rho_scale: 1.0
 
   w_Q: 5
-  w_R: 1000 #Penalty on all decision variables, assuming scalar
-  w_G: 200 #Penalty on all decision variables, assuming scalar
-  w_U: 100 #State Tracking Error, assuming diagonal
+  w_R: 5000 #Penalty on all decision variables, assuming scalar
+  w_G: 22 #Penalty on all decision variables, assuming scalar
+  w_U: 5 #State Tracking Error, assuming diagonal
 
 
-  q_vector: [100000, 100000, 5000,    # finger 1
-             100000, 100000, 5000,    # finger 2
-             100000, 100000, 5000,    # finger 3
+  q_vector: [50000, 50000, 5000,    # finger 1
+             50000, 50000, 5000,    # finger 2
+             50000, 50000, 5000,    # finger 3
              1, 1, 1, 1,
-             500000, 500000, 10000,
+             80000, 80000, 20000,
              1, 1, 1,          # finger 1 velo
              1, 1, 1,          # finger 2 velo
              1, 1, 1,          # finger 3 velo 
-             3, 3, 3,
-             30, 30, 30]
+             0.2, 0.2, 0.2,
+             5, 5, 5]
 
   r_vector: [1, 1, 1,        # finger 1 actuation
               1, 1, 1,        # finger 2 actuation
               1, 1, 1]        # finger 3 actuation
 
-  g_x: [10, 10, 10, 10, 10, 10, 10, 10, 10, # 1, 1, 1,   # hand pos
+  g_x: [50, 50, 50, 50, 50, 50, 50, 50, 50,    # hand pos
         50, 50, 50, 50, 50, 50, 50,                      	# cube pos
-        1, 1, 1, 1, 1, 1, 1, 1, 1, # 1, 1, 1,  						  # hand velo
+        1, 1, 1, 1, 1, 1, 1, 1, 1,  						  # hand velo
         1, 1, 1, 1, 1, 1]                                 # cube velo
 
-  g_gamma: [20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20] #, 1, 1]
-  g_lambda_n: [20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20] #, 20, 20]
-  g_lambda_t: [20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
-              20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20] #, 20, 20, 20, 20, 20, 20, 20, 20]
-  g_lambda: [20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
-        20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20] #, 20, 20, 20, 20, 20, 20, 20, 20]
-
-  g_eta_slack: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2] #, 2, 2]
-  g_eta_n: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2] #, 2, 2]
-  g_eta_t: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2] #, 2, 2, 2, 2, 2, 2, 2, 2]
-  g_eta: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2] #, 2, 2, 2, 2, 2, 2, 2, 2]
-  g_u: [1, 1, 1, 1, 1, 1, 1, 1, 1] #, 1, 1, 1] 
+  g_lambda: [75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75]
+   #, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75] 
+  
+  g_eta_slack: [3, 3, 3, 3, 3, 3, 3] #, 3, 3, 3, 3, 3, 3, 3]
+  g_eta_n: [3, 3, 3, 3, 3, 3, 3] #, 3, 3, 3, 3, 3, 3, 3] 
+  g_eta_t: [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3] 
+      #, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3] 
+  g_eta: [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3] 
+       # , 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3] 
+  g_u: [50, 50, 50, 50, 50, 50, 50, 50, 50] 
 
 
-  u_x: [10, 10, 10, 10, 10, 10, 10, 10, 10, # 1, 1, 1,   # hand pos
-        50, 50, 50, 50, 100, 100, 100,                       # cube pos
-        1, 1, 1, 1, 1, 1, 1, 1, 1, # 1, 1, 1,   # hand velo
+
+  u_x: [50, 50, 50, 50, 50, 50, 50, 50, 50,   # hand pos
+        50, 50, 50, 50, 50, 50, 50,                       # cube pos
+        1, 1, 1, 1, 1, 1, 1, 1, 1,   # hand velo
         1, 1, 1, 1, 1, 1]                           # cube velo
-  u_gamma: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10] #, 10, 10]
-  u_lambda_n: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10] #, 10, 10]
-  u_lambda_t: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
-              10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10] #, 10, 10, 10, 10, 10, 10, 10, 10]
-  u_lambda: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
-        10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10] #, 10, 10, 10, 10, 10, 10, 10, 10]
-  u_u: [1, 1, 1, 1, 1, 1, 1, 1, 1] #, 1, 1, 1]
 
-  u_eta_slack: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2] #, 2, 2]
-  u_eta_n: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2] #, 2, 2]
-  u_eta_t: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2] #, 2, 2, 2, 2, 2, 2, 2, 2]
-  u_eta: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2] #, 2, 2, 2, 2, 2, 2, 2, 2]
+  u_lambda: [75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75] 
+            # , 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75, 75] 
+  u_u: [30, 30, 30, 30, 30, 30, 30, 30, 30]
+
+  u_eta_slack: [3, 3, 3, 3, 3, 3, 3] #, 3, 3, 3, 3, 3, 3, 3] 
+  u_eta_n: [3, 3, 3, 3, 3, 3, 3] #, 3, 3, 3, 3, 3, 3, 3] 
+  u_eta_t: [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3] 
+            #, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3] 
+  u_eta: [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+             #, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3] 
+
+  g_gamma: []
+  g_lambda_n: []
+  g_lambda_t: []
+  u_gamma: [] 
+  u_lambda_n: [] 
+  u_lambda_t: []

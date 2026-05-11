@@ -202,9 +202,9 @@ int DoMain(int argc, char* argv[]) {
           TriggerTypeSet({TriggerType::kForced})));   
  
           
-	auto object_state_sub =
-			builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
-					lcm_channel_params.object_state_channel, &lcm));
+  auto object_state_sub =
+          builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
+                  lcm_channel_params.object_state_channel, &lcm));
   // auto c3_object_trajectory_sender = builder.AddSystem(
   //     LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
   //         lcm_channel_params.c3_object_channel, &lcm,
@@ -231,6 +231,9 @@ int DoMain(int argc, char* argv[]) {
             builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_lqr_output>(
                     "iC3_LQR", &lcm));
 
+  auto radio_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
+          lcm_channel_params.radio_channel, &lcm));
 
     auto object_state_receiver =
         builder.AddSystem<systems::ObjectStateReceiver>(plant_object);

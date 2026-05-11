@@ -44,8 +44,6 @@ iC3TrackingController::iC3TrackingController(
       ic3_options_(ic3_options),
       N_(lcs_factory_options_.N), 
       dt_(lcs_factory_options_.dt),
-      G_(std::vector<MatrixXd>(N_, c3_options_.G)),
-      U_(std::vector<MatrixXd>(N_, c3_options_.U)),
       time_to_wait_(time_to_wait) {
   this->set_name("ic3_tracking_controller");
 
@@ -54,11 +52,16 @@ iC3TrackingController::iC3TrackingController(
   for (int i = 0; i < N_; ++i) {
     Q_.push_back(discount_factor * c3_options_.Q * ic3_options.c3_dt_scaling);
     R_.push_back(discount_factor * c3_options_.R * ic3_options.c3_dt_scaling);
+    G_.push_back(discount_factor * c3_options_.G * ic3_options.c3_dt_scaling);
+    U_.push_back(discount_factor * c3_options_.U * ic3_options.c3_dt_scaling);
+
     discount_factor *= c3_options_.gamma;
   }
   Q_.push_back(discount_factor * c3_options_.Q * ic3_options.c3_dt_scaling);
   DRAKE_DEMAND(Q_.size() == N_ + 1);
   DRAKE_DEMAND(R_.size() == N_);
+  DRAKE_DEMAND(G_.size() == N_);
+  DRAKE_DEMAND(U_.size() == N_);
 
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
@@ -74,9 +77,10 @@ iC3TrackingController::iC3TrackingController(
   solve_time_filter_constant_ = controller_options_.solve_time_filter_alpha;
   
   int n_lambda_with_tangential = 0;
-  int num_contacts = lcs_factory_options_.contact_pair_configs.value().size();
+  int num_contacts = lcs_factory_options_.num_contacts;
   for (ContactPairConfig pair : lcs_factory_options_.contact_pair_configs.value()) {
-    n_lambda_with_tangential += 2 * pair.num_friction_directions;
+    int num_pairs = pair.body_A_collision_geom_indices.size() * pair.body_B_collision_geom_indices.size();
+    n_lambda_with_tangential += 2 * num_pairs * pair.num_friction_directions;
   }
 
   if (lcs_factory_options_.contact_model == "stewart_and_trinkle") {
@@ -127,6 +131,17 @@ iC3TrackingController::iC3TrackingController(
 
   // c3_->SetOsqpSolverOptions(solver_options_);
 
+  // HARDCODED
+  int ee_start_idx;
+  int ee_size;
+  if (n_x_ == 23) {
+    ee_start_idx = 0;
+    ee_size = 5;
+  } else if (n_x_ == 31) {
+    ee_start_idx = 0;
+    ee_size = 9;
+  }
+  c3_->AddEETrackingCost(ee_start_idx, ee_size);
 
   lcs_state_input_port_ =
       this->DeclareVectorInputPort("x_lcs", TimestampedVector<double>(n_x_))
@@ -224,7 +239,6 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
   auto& lcs =
       this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
   drake::VectorX<double> x_lcs = lcs_x->get_data();
-  //std::cout << "x_lcs " << x_lcs.transpose() << std::endl;
 
   auto& x_pred = context.get_discrete_state(x_pred_index_).value();
   auto mutable_x_pred = discrete_state->get_mutable_value(x_pred_index_);
@@ -242,6 +256,7 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
   LcmTrajectory::Trajectory force_trajectory = u_trajectory.GetTrajectory(trajectory_name);
   MatrixXd state_data = state_trajectory.datapoints;
   MatrixXd force_data = force_trajectory.datapoints;
+
 
   double curr_time = context.get_time() - t0;  
   double ic3_dt = ic3_options_.dt;
@@ -271,21 +286,38 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
   std::vector<VectorXd> x_desired =
       std::vector<VectorXd>(N_ + 1, x_des.value());
 
-  /*
-  // HARDCODED, set x_des for plate state to planned states
+  
+  // Set x_des of ee to match ic3 plan
   if (0 <= ic3_timestep) {
-    for (int i = 0; i < N_+1; i++) {
-      int idx = ic3_timestep + i;
-      if (idx < ic3_options_.N + 1) {
-        x_desired[i].segment(0, 5) = state_data.col(idx).segment(0, 5);
-        x_desired[i].segment(12, 5) = state_data.col(idx).segment(12, 5);
-      } else {
-        x_desired[i].segment(0, 5) = state_data.col(ic3_options_.N ).segment(0, 5);
-        x_desired[i].segment(12, 5) = state_data.col(ic3_options_.N ).segment(12, 5);
-      }
+    int ee_start_idx;
+    int ee_size;
+
+    // HARDCODED
+    if (n_x_ == 23) {
+      ee_start_idx = 0;
+      ee_size = 5;
+    } else if (n_x_ == 31) {
+      ee_start_idx = 0;
+      ee_size = 9;
     }
+
+    vector<VectorXd> ee_x_des;
+    for (int i = 0; i < N_+1; i++) {
+      int idx = std::min(ic3_timestep + i * ic3_options_.c3_dt_scaling, ic3_options_.N); 
+      ee_x_des.push_back(state_data.col(idx).segment(ee_start_idx, ee_size));
+
+      // HARDCODED OFFSET 
+      ee_x_des.at(i)(2) = 0.08;
+      ee_x_des.at(i)(5) = 0.08;
+      ee_x_des.at(i)(8) = 0.08;
+
+
+    }
+    c3_->UpdateEETrackingTargetAndCost(ee_x_des, ic3_options_.ee_tracking_weight, ee_start_idx, ee_size);
+
   }
-  */    
+
+   
 
   UpdateQuaternionCosts(x_lcs, x_des.value());
   C3::CostMatrices new_costs(Q_, R_, G_, U_);
@@ -370,33 +402,33 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
 
     } else if (n_x_ == 31) {
       for (int i = 0; i < 3; i++) {
-        A(3*i, 3*i) = 1;
-        A(3*i+1, 3*i+1) = 1;
-        A(3*i+2, 3*i+2) = 1;
+        // A(3*i, 3*i) = 1;
+        // A(3*i+1, 3*i+1) = 1;
+        // A(3*i+2, 3*i+2) = 1;
 
         // Velocity constraints
-        A(16 + 3*i) = 1;
-        A(16 + 3*i + 1) = 1;
-        A(16 + 3*i + 2) = 1;
+        A(16 + 3*i, 16 + 3*i) = 3;
+        A(16 + 3*i + 1, 16 + 3*i+1) = 3;
+        A(16 + 3*i + 2, 16 + 3*i+2) = 1;
 
-        lower_bound(3*i) = x_des.value()(3*i) - 0.1;
-        lower_bound(3*i+1) = x_des.value()(3*i+1) - 0.1;
-        // lower_bound(3*i+2) = x_des.value()(3*i+2) - 0.01;
-        lower_bound(3*i+2) = 0.07;
+        // lower_bound(3*i) = x_des.value()(3*i) - 0.1;
+        // lower_bound(3*i+1) = x_des.value()(3*i+1) - 0.1;
+        // lower_bound(3*i+2) = x_des.value()(3*i+2) - 0.03;
 
-        lower_bound(16 + 3*i, 16 + 3*i) = -0.3;
-        lower_bound(16 + 3*i+1, 16 + 3*i+1) = -0.3;
-        lower_bound(16 + 3*i+2, 16 + 3*i+2) = -0.3;
+        lower_bound(16 + 3*i) = -0.3;
+        lower_bound(16 + 3*i+1) = -0.3;
+        lower_bound(16 + 3*i+2) = -0.05;
 
-        upper_bound(3*i) = x_des.value()(3*i) + 0.1;
-        upper_bound(3*i+1) = x_des.value()(3*i+1) + 0.1;
-        upper_bound(3*i+2) = 0.09;
+        // upper_bound(3*i) = x_des.value()(3*i) + 0.1;
+        // upper_bound(3*i+1) = x_des.value()(3*i+1) + 0.1;
+        // upper_bound(3*i+2) = x_des.value()(3*i+2) + 0.03;
 
         upper_bound(16 + 3*i) = 0.3;
         upper_bound(16 + 3*i+1) = 0.3;
-        upper_bound(16 + 3*i+2) = 0.3;
+        upper_bound(16 + 3*i+2) = 0.05;
       }
     }
+
     c3_->AddLinearConstraint(A, lower_bound, upper_bound, c3::ConstraintVariable::STATE);
  
     
@@ -424,12 +456,12 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
         A_u(3*i+1, 3*i+1) = 1;
         A_u(3*i+2, 3*i+2) = 1;
         
-        lower_bound_u(3*i) = -0.5;
-        lower_bound_u(3*i+1) = -0.5;
+        lower_bound_u(3*i) = -1;
+        lower_bound_u(3*i+1) = -1;
         lower_bound_u(3*i+2) = 0.18;
 
-        upper_bound_u(3*i) = 0.5;
-        upper_bound_u(3*i+1) = 0.5;
+        upper_bound_u(3*i) = 1;
+        upper_bound_u(3*i+1) = 1;
         upper_bound_u(3*i+2) = 0.22;
 
       }
@@ -442,6 +474,7 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
 
   auto c3_start = std::chrono::high_resolution_clock::now();
   c3_->Solve(x_lcs);
+
   c3_->RemoveConstraints();
   
   auto finish = std::chrono::high_resolution_clock::now();
@@ -497,6 +530,7 @@ void iC3TrackingController::UpdateQuaternionCosts(
   }
 
   for (int index : quaternion_indices_) {
+    std::cout << "quat idx " << index << std::endl;
     Eigen::VectorXd quat_curr_i = x_curr.segment(index, 4);
     Eigen::VectorXd quat_des_i = x_des.segment(index, 4);
 

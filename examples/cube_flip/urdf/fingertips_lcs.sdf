@@ -39,15 +39,15 @@
             </sphere>
           </geometry>
           <drake:proximity_properties>
-            <drake:mu_static>0.8</drake:mu_static>
-            <drake:mu_dynamic>0.7</drake:mu_dynamic>
+            <drake:mu_static>0.6</drake:mu_static>
+            <drake:mu_dynamic>0.6</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
       </link>
 
       <link name="base_link_1">
         <inertial>
-          <mass>1.0e-6</mass>
+          <mass>1.0e-8</mass>
           <inertia>
             <ixx>1.0e-6</ixx>
             <ixy>0</ixy>
@@ -60,7 +60,7 @@
       </link>
       <link name="link_x_1">
         <inertial>
-          <mass>1.0e-6</mass>
+          <mass>1.0e-8</mass>
           <inertia>
             <ixx>1.0e-6</ixx>
             <ixy>0</ixy>
@@ -77,8 +77,8 @@
         <axis>
           <xyz>1 0 0</xyz>
           <limit>
-            <effort>0.8</effort>
-            <velocity>0.2</velocity>
+            <effort>0.6</effort>
+            <velocity>0.15</velocity>
             <lower> -0.1 </lower>
             <upper> 0.1 </upper>
             <!-- <lower> -0.08 </lower>
@@ -89,7 +89,7 @@
 
       <link name="link_y_1">
       <inertial>
-          <mass>1.0e-6</mass>
+          <mass>1.0e-8</mass>
           <inertia>
             <ixx>1.0e-6</ixx>
             <ixy>0</ixy>
@@ -106,12 +106,14 @@
         <axis>
           <xyz>0 1 0</xyz>
            <limit>
-            <effort>0.8</effort>
-            <velocity>0.2</velocity>
+            <effort>0.6</effort>
+            <velocity>0.15</velocity>
             <lower> -0.02 </lower>
             <upper> 0.18 </upper>
             <!-- <lower> -0.0 </lower>
             <upper> 0.16 </upper> -->
+            <!-- <lower> 0.01 </lower>
+            <upper> 0.17 </upper> -->
           </limit>
         </axis>
       </joint>
@@ -122,8 +124,8 @@
         <axis>
           <xyz>0 0 1</xyz>
           <limit>
-          <effort>0.8</effort>
-          <velocity>0.2</velocity>
+          <effort>0.6</effort>
+          <velocity>0.15</velocity>
           <lower> 0.04 </lower>
           <upper> 0.06 </upper>
         </limit>
@@ -163,15 +165,15 @@
             </sphere>
           </geometry>
           <drake:proximity_properties>
-            <drake:mu_static>0.8</drake:mu_static>
-            <drake:mu_dynamic>0.7</drake:mu_dynamic>
+            <drake:mu_static>0.6</drake:mu_static>
+            <drake:mu_dynamic>0.6</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
       </link>
 
       <link name="base_link_2">
         <inertial>
-          <mass>1.0e-6</mass>
+          <mass>1.0e-8</mass>
           <inertia>
             <ixx>1.0e-6</ixx>
             <ixy>0</ixy>
@@ -184,7 +186,7 @@
       </link>
       <link name="link_x_2">
         <inertial>
-          <mass>1.0e-6</mass>
+          <mass>1.0e-8</mass>
           <inertia>
             <ixx>1.0e-6</ixx>
             <ixy>0</ixy>
@@ -201,11 +203,13 @@
         <axis>
             <xyz>1 0 0</xyz>
           <limit>
-            <effort>0.8</effort>
-            <velocity>0.2</velocity>
-            <lower> -0.02 </lower>
-            <upper> 0.18 </upper>
+            <effort>0.6</effort>
+            <velocity>0.15</velocity>
+            <lower> -0.03 </lower>
+            <upper> 0.17 </upper>
             <!-- <lower> -0.00 </lower>
+            <upper> 0.16 </upper> -->
+            <!-- <lower> -0.0 </lower>
             <upper> 0.16 </upper> -->
           </limit>
         </axis>
@@ -213,7 +217,7 @@
 
       <link name="link_y_2">
         <inertial>
-          <mass>1.0e-6</mass>
+          <mass>1.0e-8</mass>
           <inertia>
             <ixx>1.0e-6</ixx>
             <ixy>0</ixy>
@@ -230,12 +234,14 @@
         <axis>
           <xyz>0 1 0</xyz>
           <limit>
-            <effort>0.8</effort>
-            <velocity>0.2</velocity>
+            <effort>0.6</effort>
+            <velocity>0.15</velocity>
             <lower> -0.16 </lower>
             <upper> 0.04 </upper>
             <!-- <lower> -0.14 </lower>
             <upper> 0.02 </upper> -->
+            <!-- <lower> -0.16 </lower>
+            <upper> 0.0 </upper> -->
           </limit>
         </axis>
       </joint>
@@ -246,8 +252,8 @@
         <axis>
           <xyz>0 0 1</xyz>
           <limit>
-            <effort>0.8</effort>
-            <velocity>0.2</velocity>
+            <effort>0.6</effort>
+            <velocity>0.15</velocity>
             <lower> 0.04 </lower>
             <upper> 0.06 </upper>
           </limit>
@@ -287,15 +293,15 @@
             </sphere>
           </geometry>
           <drake:proximity_properties>
-            <drake:mu_static>0.8</drake:mu_static>
-            <drake:mu_dynamic>0.7</drake:mu_dynamic>
+            <drake:mu_static>0.6</drake:mu_static>
+            <drake:mu_dynamic>0.6</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
       </link>
 
       <link name="base_link_3">
         <inertial>
-          <mass>1.0e-6</mass>
+          <mass>1.0e-8</mass>
           <inertia>
             <ixx>1.0e-6</ixx>
             <ixy>0</ixy>
@@ -308,7 +314,7 @@
       </link>
       <link name="link_x_3">
         <inertial>
-          <mass>1.0e-6</mass>
+          <mass>1.0e-8</mass>
           <inertia>
             <ixx>1.0e-6</ixx>
             <ixy>0</ixy>
@@ -325,10 +331,12 @@
         <axis>
           <xyz>1 0 0</xyz>
           <limit>
-            <effort>0.8</effort>
-            <velocity>0.2</velocity>
-            <lower> -0.18 </lower>
-            <upper> 0.02 </upper>
+            <effort>0.6</effort>
+            <velocity>0.15</velocity>
+            <lower> -0.17 </lower>
+            <upper> 0.03 </upper>
+            <!-- <lower> -0.16 </lower>
+            <upper> 0.0 </upper> -->
             <!-- <lower> -0.16 </lower>
             <upper> 0.0 </upper> -->
           </limit>
@@ -337,7 +345,7 @@
 
       <link name="link_y_3">
         <inertial>
-          <mass>1.0e-6</mass>
+          <mass>1.0e-8</mass>
           <inertia>
             <ixx>1.0e-6</ixx>
             <ixy>0</ixy>
@@ -354,12 +362,14 @@
         <axis>
           <xyz>0 1 0</xyz>
           <limit>
-            <effort>0.8</effort>
-            <velocity>0.2</velocity>
+            <effort>0.6</effort>
+            <velocity>0.15</velocity>
             <lower> -0.16 </lower>
             <upper> 0.04 </upper>
             <!-- <lower> -0.14 </lower>
             <upper> 0.02 </upper> -->
+            <!-- <lower> -0.16 </lower>
+            <upper> 0.0 </upper> -->
           </limit>
         </axis>
       </joint>
@@ -370,8 +380,8 @@
         <axis>
           <xyz>0 0 1</xyz>
           <limit>
-            <effort>0.8</effort>
-            <velocity>0.2</velocity>
+            <effort>0.6</effort>
+            <velocity>0.15</velocity>
             <lower> 0.04 </lower>
             <upper> 0.06 </upper>
           </limit>

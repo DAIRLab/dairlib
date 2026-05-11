@@ -32,6 +32,11 @@ group "operator" {
         host = "localhost";
     }
 
+    cmd "point_hand_trajectory_slider" {
+        exec = "bazel-bin/examples/cube_flip/trajectory_visualizer_point_hand_slider";
+        host = "localhost";
+    }
+
     cmd "visualizer" {
         exec = "bazel-bin/examples/cube_flip/franka_plate_visualizer";
         host = "localhost";
@@ -41,6 +46,19 @@ group "operator" {
         exec = "bazel-bin/examples/cube_flip/xbox_script";
         host = "localhost";
     }
+}
+
+group "logging" {
+	cmd "start_logging" {
+			exec = "python3 examples/cube_flip/start_logging.py sim /home/ericcui/logs";
+			host = "localhost";
+	}
+
+
+	cmd "view_logs" {
+			exec = "/opt/lcm/1.4.0/bin/lcm-logplayer-gui -f PMD.*";
+			host = "localhost";
+	}
 }
 
 group "simulations" {

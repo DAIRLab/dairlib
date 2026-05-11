@@ -19,6 +19,7 @@ struct iC3Options {
   double dt; // REMOVE after importing all options from c3 repo
 
   int c3_dt_scaling; 
+  double ee_tracking_weight;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -34,6 +35,7 @@ struct iC3Options {
     a->Visit(DRAKE_NVP(N)); // REMOVE after importing all options from c3 repo
     a->Visit(DRAKE_NVP(dt)); // REMOVE after importing all options from c3 repo
     a->Visit(DRAKE_NVP(c3_dt_scaling)); 
+    a->Visit(DRAKE_NVP(ee_tracking_weight)); 
 
   }
 };

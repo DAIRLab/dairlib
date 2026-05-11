@@ -78,9 +78,8 @@ void FixedInput::ComputeFixedInput(const drake::systems::Context<double>& contex
   } else {
 
     int k = (int)((t - time_to_wait_) / dt_);
-    //std::cout << "k " << k << std::endl;
     // std::cout << "u: " << u_data.col(k).transpose() << std::endl;
-    if (std::abs((t / dt_) - static_cast<int>(t / dt_)) < 1e-3) {
+    if (std::abs(((t - time_to_wait_) / dt_) - std::floor((t - time_to_wait_) / dt_)) < 1e-4) {
       std::cout << "open " << k << ": " << u_data.col(k).transpose() << std::endl;
     }
     

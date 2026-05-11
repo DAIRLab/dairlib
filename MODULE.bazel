@@ -51,7 +51,7 @@ bazel_dep(name = "c3")
 git_override(
     module_name = "c3",
     remote = "https://github.com/DAIRLab/c3.git",
-    commit = "de43330fb67d554481f8277b7c2254c9198f881c"
+    commit = "2584c47c4356d7c46587690c0b6ef98d9fe71588"
 )
 
 # Use gurobi_cxx, which Drake deprecated

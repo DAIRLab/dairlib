@@ -26,13 +26,11 @@
       <inertia ixx="4.166666666666667e-06" ixy="0" ixz="0" iyy="4.166666666666667e-06" iyz="0" izz="4.166666666666667e-06"/>
     </inertial>
   </link>
-
   <joint name="base_to_trifinger_base_joint" type="fixed">
     <parent link="base_link"/>
     <child link="trifinger_base_link"/>
     <origin rpy="0 0 -1.5707963267948966" xyz="0 0 0.28"/>
   </joint>
-
   <material name="fingeredu_0_material">
     <color rgba="0.6 0.0 0.0 1.0"/>
   </material>
@@ -40,13 +38,11 @@
     <color rgba="0.0 0.6 0.0 1.0"/>
   </material>
   <material name="fingeredu_240_material">
-    <color rgba="0 0.0 0.6 1.0"/>
+    <color rgba="0.0 0.0 0.6 1.0"/>
   </material>
-  <material name="densetact_material">
-    <color rgba="1.0 1.0 1.0 0.5"/>
-  </material>
-
-
+  <!--
+        Fixed links for the finger base (parts where the upper link is mounted).
+        -->
   <link name="finger_base_link_0">
     <visual>
       <origin rpy="0 0 0" xyz="-0.17995 0 0"/>
@@ -159,18 +155,18 @@
       <inertia ixx="0.00041" ixy="0.00000" ixz="0.00000" iyy="0.00041" iyz="0.00005" izz="0.00003"/>
     </inertial>
   </link>
-  <link name="finger_lower_link_120">
+  <link name="finger_lower_link_0">
     <visual>
-      <origin rpy="0 0 1.5707" xyz="0.0203 -0.02832 -0.126"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/edu/link_mount_dt2.obj" scale="0.001 0.001 0.001"/>
+        <mesh filename="../meshes/edu/lower_link.obj" scale="1 1 1"/>
       </geometry>
-      <material name="fingeredu_120_material"/>
+      <material name="fingeredu_0_material"/>
     </visual>
     <collision>
-      <origin rpy="0 0 1.5707" xyz="0.0203 -0.02832 -0.126"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/edu/link_mount_dt2.obj" scale="0.001 0.001 0.001"/>
+        <mesh filename="../meshes/edu/lower_link.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <!-- TODO: these are the interial values from the Solo lower leg
@@ -182,36 +178,19 @@
       <inertia ixx="0.00012" ixy="0.00000" ixz="0.00000" iyy="0.00012" iyz="0.00000" izz="0.00000"/>
     </inertial>
   </link>
-  <link name="densetact_120">
-      <inertial>
-        <mass value="0.035"/>
-        <inertia ixx="0.00012" ixy="0.00000" ixz="0.00000" iyy="0.00012" iyz="0.00000" izz="0.00000"/>
-      </inertial>
-    <visual>
-      <origin rpy="0 3.141 0" xyz="0.021226 -0.021226 0.03395"/>
-      <geometry>
-        <mesh filename="../meshes/edu/finger_tip_dt2.obj" scale="0.001 0.001 0.001"/>
-      </geometry>
-      <material name="fingeredu_120_material"/>
-    </visual>
-  </link>
-
-  <link name="optical_center_120">
-    <visual>
+  <!-- fixed link for finger tip -->
+  <link name="finger_tip_link_0">
+    <inertial>
       <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-         <sphere radius="0.01575"/>
-         <material name="densetact_material"/>
-      </geometry>
-    </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-         <sphere radius="0.01575"/>
-      </geometry>
-    </collision>
+      <mass value="0.01"/>
+      <inertia ixx="1.6666666666666668e-07" ixy="0" ixz="0" iyy="1.6666666666666668e-07" iyz="0" izz="1.6666666666666668e-07"/>
+    </inertial>
   </link>
-
+  <joint name="finger_lower_to_tip_joint_0" type="fixed">
+    <parent link="finger_lower_link_0"/>
+    <child link="finger_tip_link_0"/>
+    <origin xyz="0 -0.008 -0.16"/>
+  </joint>
   <!-- kinematics -->
   <joint name="finger_base_to_upper_joint_0" type="revolute">
     <parent link="finger_base_link_0"/>
@@ -232,25 +211,11 @@
     <child link="finger_lower_link_0"/>
     <limit effort="0.36" lower="-3.141592653589793" upper="3.141592653589793" velocity="20"/>
     <axis xyz="0 1 0"/>
-    <origin rpy="0 0 0" xyz="0.005 -0.03745 -0.16"/>
+    <origin rpy="0 0 0" xyz="0 -0.03745 -0.16"/>
   </joint>
-
-
-  <joint name="mount_to_densetact_120" type="fixed">
-    <parent link="finger_lower_link_120"/>
-    <child link="densetact_120"/>
-    <!-- <origin rpy="0 0 0" xyz="0 -0.008 -0.14485"/> -->
-    <origin rpy="0 0 0" xyz="0 -0.008 -0.14985"/>
-  </joint>
-
-  <joint name="densetact_120_to_optical_center" type="fixed">
-    <parent link="densetact_120"/>
-    <child link="optical_center_120"/>
-    <!--<origin rpy="0 0 0" xyz="0 0 -0.00360"/> -->
-    <origin rpy="0 3.14159 1.57079" xyz="0 0 0"/>
-  </joint>
-
-
+  <!--
+        Fixed links for the finger base (parts where the upper link is mounted).
+        -->
   <link name="finger_base_link_120">
     <visual>
       <origin rpy="0 0 0" xyz="-0.17995 0 0"/>
@@ -363,19 +328,18 @@
       <inertia ixx="0.00041" ixy="0.00000" ixz="0.00000" iyy="0.00041" iyz="0.00005" izz="0.00003"/>
     </inertial>
   </link>
-  <link name="finger_lower_link_0">
+  <link name="finger_lower_link_120">
     <visual>
-      <!-- FYI: changed Z from -0.1281, 5mm -->
-      <origin rpy="0 0 1.5707" xyz="0.01548 -0.02893 -0.1231"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/edu/link_mount_dt1.obj" scale="0.001 0.001 0.001"/>
+        <mesh filename="../meshes/edu/lower_link.obj" scale="1 1 1"/>
       </geometry>
-      <material name="fingeredu_0_material"/>
+      <material name="fingeredu_120_material"/>
     </visual>
     <collision>
-      <origin rpy="0 0 1.5707" xyz="0.01548 -0.02893 -0.1231"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/edu/link_mount_dt1.obj" scale="0.001 0.001 0.001"/>
+        <mesh filename="../meshes/edu/lower_link.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <!-- TODO: these are the interial values from the Solo lower leg
@@ -387,38 +351,19 @@
       <inertia ixx="0.00012" ixy="0.00000" ixz="0.00000" iyy="0.00012" iyz="0.00000" izz="0.00000"/>
     </inertial>
   </link>
-
-   <link name="densetact_0">
+  <!-- fixed link for finger tip -->
+  <link name="finger_tip_link_120">
     <inertial>
-      <mass value="0.035"/>
-      <inertia ixx="0.00012" ixy="0.00000" ixz="0.00000" iyy="0.00012" iyz="0.00000" izz="0.00000"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="0.01"/>
+      <inertia ixx="1.6666666666666668e-07" ixy="0" ixz="0" iyy="1.6666666666666668e-07" iyz="0" izz="1.6666666666666668e-07"/>
     </inertial>
-    <visual>
-      <origin rpy="0 3.141 0" xyz="0.021226 -0.021226 0.03395"/>
-      <geometry>
-        <mesh filename="../meshes/edu/finger_tip_dt1.obj" scale="0.001 0.001 0.001"/>
-      </geometry>
-      <material name="fingeredu_0_material"/>
-    </visual>
   </link>
-
-  <link name="optical_center_0">
-    <visual>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-         <sphere radius="0.01575"/>
-         <material name="densetact_material"/>
-      </geometry>
-    </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-         <sphere radius="0.01575"/>
-      </geometry>
-    </collision>
-  </link>
-
-
+  <joint name="finger_lower_to_tip_joint_120" type="fixed">
+    <parent link="finger_lower_link_120"/>
+    <child link="finger_tip_link_120"/>
+    <origin xyz="0 -0.008 -0.16"/>
+  </joint>
   <!-- kinematics -->
   <joint name="finger_base_to_upper_joint_120" type="revolute">
     <parent link="finger_base_link_120"/>
@@ -441,21 +386,9 @@
     <axis xyz="0 1 0"/>
     <origin rpy="0 0 0" xyz="0 -0.03745 -0.16"/>
   </joint>
-
-  <joint name="mount_to_densetact_0" type="fixed">
-    <parent link="finger_lower_link_0"/>
-    <child link="densetact_0"/>
-    <origin rpy="0 0 0" xyz="-0.005 -0.01 -0.142974"/>
-    <!-- <origin rpy="0 0 0" xyz="0 -0.008 -0.151974"/> -->
-  </joint>
-
-  <joint name="densetact_0_to_optical_center" type="fixed">
-    <parent link="densetact_0"/>
-    <child link="optical_center_0"/>
-    <!--<origin rpy="0 0 0" xyz="0 0 -0.00360"/> -->
-    <origin rpy="0 3.14159 1.57079" xyz="0 0 0"/>
-  </joint>
-
+  <!--
+        Fixed links for the finger base (parts where the upper link is mounted).
+        -->
   <link name="finger_base_link_240">
     <!-- <visual>
       <origin rpy="0 0 0" xyz="-0.17995 0 0"/>
@@ -463,39 +396,39 @@
         <mesh filename="../meshes/edu/base_back.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_240_material"/>
-    </visual> -->
+    </visual>
     <collision>
       <origin rpy="0 0 0" xyz="-0.17995 0 0"/>
       <geometry>
         <mesh filename="../meshes/edu/base_back.obj" scale="1 1 1"/>
       </geometry>
     </collision>
-    <!-- <visual>
+    <visual>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0 0"/>
       <geometry>
         <mesh filename="../meshes/edu/base_front.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_240_material"/>
-    </visual> -->
+    </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0 0"/>
       <geometry>
         <mesh filename="../meshes/edu/base_front.obj" scale="1 1 1"/>
       </geometry>
     </collision>
-    <!-- <visual>
+    <visual>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0.02 0.08"/>
       <geometry>
         <mesh filename="../meshes/edu/base_side_left.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_240_material"/>
-    </visual> -->
+    </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0.02 0.08"/>
       <geometry>
         <mesh filename="../meshes/edu/base_side_left.obj" scale="1 1 1"/>
       </geometry>
-    </collision>
+    </collision> -->
     <!-- Disable this part.  It is not very relevant for collisions but
                  would cause trouble in pybullet due to its concavity.
             <xacro:add_geometry
@@ -510,7 +443,7 @@
         <mesh filename="../meshes/edu/base_top.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_240_material"/>
-    </visual> -->
+    </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.025500000000000002 0 0.08"/>
       <geometry>
@@ -521,7 +454,7 @@
       <origin rpy="0 0 0" xyz="-0.1 0 0.4"/>
       <mass value="1"/>
       <inertia ixx="0.060833333333333336" ixy="0" ixz="0" iyy="0.05666666666666668" iyz="0" izz="0.010833333333333334"/>
-    </inertial>
+    </inertial> -->
   </link>
   <!-- The movable links (upper, middle and lower) of the finger. -->
   <!-- FIXME inertias are not correct! -->
@@ -532,13 +465,13 @@
         <mesh filename="../meshes/edu/upper_link.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_240_material"/>
-    </visual> -->
+    </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0.0195 0 0"/>
       <geometry>
         <mesh filename="../meshes/edu/upper_link.obj" scale="1 1 1"/>
       </geometry>
-    </collision>
+    </collision> -->
     <inertial>
       <!-- Note: This uses the values from the middle link, assuming
                      that it is similar enough. -->
@@ -555,7 +488,7 @@
         <mesh filename="../meshes/edu/middle_link.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_240_material"/>
-    </visual> -->
+    </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
@@ -566,7 +499,7 @@
       <origin rpy="0 0 0" xyz="0 -0.019 -0.079"/>
       <mass value="0.16"/>
       <inertia ixx="0.00041" ixy="0.00000" ixz="0.00000" iyy="0.00041" iyz="0.00005" izz="0.00003"/>
-    </inertial>
+    </inertial> -->
   </link>
   <link name="finger_lower_link_240">
     <!-- <visual>
@@ -575,29 +508,29 @@
         <mesh filename="../meshes/edu/lower_link.obj" scale="1 1 1"/>
       </geometry>
       <material name="fingeredu_240_material"/>
-    </visual> -->
+    </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/edu/lower_link.obj" scale="1 1 1"/>
       </geometry>
-    </collision>
+    </collision> -->
     <!-- TODO: these are the interial values from the Solo lower leg
                  link which is similar but not exactly the same to the FingerEdu
                  lower link. -->
-    <inertial>
+    <!-- <inertial>
       <origin rpy="0 0 0" xyz="0 -0.009 -0.089"/>
       <mass value="0.035"/>
       <inertia ixx="0.00012" ixy="0.00000" ixz="0.00000" iyy="0.00012" iyz="0.00000" izz="0.00000"/>
-    </inertial>
+    </inertial> -->
   </link>
   <!-- fixed link for finger tip -->
   <link name="finger_tip_link_240">
-    <inertial>
+    <!-- <inertial>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <mass value="0.01"/>
       <inertia ixx="1.6666666666666668e-07" ixy="0" ixz="0" iyy="1.6666666666666668e-07" iyz="0" izz="1.6666666666666668e-07"/>
-    </inertial>
+    </inertial> -->
   </link>
   <joint name="finger_lower_to_tip_joint_240" type="fixed">
     <parent link="finger_lower_link_240"/>
@@ -629,17 +562,17 @@
   <joint name="base_to_finger_0" type="fixed">
     <parent link="trifinger_base_link"/>
     <child link="finger_base_link_0"/>
-    <origin rpy="0 0 1.570796" xyz="-0.004 -0.043 0"/>
+    <origin rpy="0 0 1.570796" xyz="0 -0.045 0"/>
   </joint>
   <joint name="base_to_finger_120" type="fixed">
     <parent link="trifinger_base_link"/>
     <child link="finger_base_link_120"/>
-    <origin rpy="0 0 -1.570796" xyz="0.005 0.045 0"/>
+    <origin rpy="0 0 -1.570796" xyz="0 0.045 -0.002"/>
   </joint>
   <joint name="base_to_finger_240" type="fixed">
     <parent link="trifinger_base_link"/>
     <child link="finger_base_link_240"/>
-    <origin rpy="0 0 -4.1887902047863905" xyz="-0.98025 -0.034208 0"/>
+    <origin rpy="0 0 -4.1887902047863905" xyz="0.01975 -0.034208 0"/>
   </joint>
 
   <transmission name="finger_base_to_upper_joint_0_trans" type="SimpleTransmission">

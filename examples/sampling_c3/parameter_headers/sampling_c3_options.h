@@ -38,13 +38,8 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
   int num_contacts_for_cost;
 
   int num_planar_contacts;
-  int n_lambda_with_tangential;
-  std::vector<int> starting_index_per_contact_in_lambda_t_vector;
-
   int num_planar_contacts_cost;
-  int n_lambda_with_tangential_cost;
   std::vector<int> num_friction_directions_per_contact_for_cost;
-  std::vector<int> starting_index_per_contact_in_lambda_t_vector_cost;
 
   double planning_dt_pose;
   double planning_dt_position;
@@ -266,28 +261,6 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
                                         resolve_contacts_to_for_cost,
                                         num_friction_directions.value());
 
-    for (size_t i = 0; i < static_cast<size_t>(num_contacts.value()); ++i) {
-      starting_index_per_contact_in_lambda_t_vector.push_back(
-          2 * std::accumulate(
-                  num_friction_directions_per_contact.value().begin(),
-                  num_friction_directions_per_contact.value().begin() + i, 0));
-    }
-    for (size_t i = 0; i < static_cast<size_t>(num_contacts_for_cost); ++i) {
-      starting_index_per_contact_in_lambda_t_vector_cost.push_back(
-          2 * std::accumulate(
-                  num_friction_directions_per_contact_for_cost.begin(),
-                  num_friction_directions_per_contact_for_cost.begin() + i, 0));
-    }
-
-    n_lambda_with_tangential =
-        2 * num_friction_directions.value() *
-            (num_contacts.value() - num_planar_contacts) +
-        2 * num_planar_contacts;
-    n_lambda_with_tangential_cost =
-        2 * num_friction_directions.value() *
-            (num_contacts_for_cost - num_planar_contacts_cost) +
-        2 * num_planar_contacts_cost;
-
     // Create C3 options for both pose and position tracking.
     std::cout
         << "Setting C3 and LCS factory options for pose and position tracking."
@@ -299,22 +272,23 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
                                &lcs_factory_options_position);
   }
 
-  C3Options GetC3Options(const bool& is_pose_tracking) const {
+  virtual C3Options GetC3Options(const bool& is_pose_tracking) const {
     if (is_pose_tracking) {
       return c3_options_pose;
     }
     return c3_options_position;
   }
 
-  LCSFactoryOptions GetLCSFactoryOptions(const bool& is_pose_tracking) const {
+  virtual LCSFactoryOptions GetLCSFactoryOptions(
+      const bool& is_pose_tracking) const {
     if (is_pose_tracking) {
       return lcs_factory_options_pose;
     }
     return lcs_factory_options_position;
   }
 
- private:
-  void PopulateCostMatricesFromVectors(C3Options* options) const {
+ protected:
+  virtual void PopulateCostMatricesFromVectors(C3Options* options) const {
     std::vector<double> g_vector = std::vector<double>();
     g_vector.insert(g_vector.end(), options->g_x.begin(), options->g_x.end());
     if (contact_model == "stewart_and_trinkle") {
@@ -388,8 +362,8 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     options->U = options->w_U * u.asDiagonal();
   }
 
-  void SetCommonOptions(C3Options* c3_options,
-                        LCSFactoryOptions* lcs_factory_options) const {
+  virtual void SetCommonOptions(C3Options* c3_options,
+                                LCSFactoryOptions* lcs_factory_options) const {
     c3_options->warm_start = warm_start;
     c3_options->penalize_input_change = penalize_input_change;
     c3_options->end_on_qp_step = end_on_qp_step;
@@ -422,46 +396,6 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     lcs_factory_options->planar_normal_direction = planar_normal_direction;
     lcs_factory_options->planar_normal_direction_per_contact =
         planar_normal_direction_per_contact;
-  }
-
-  void SetPositionTrackingOptions(
-      C3Options* c3_options, LCSFactoryOptions* lcs_factory_options) const {
-    lcs_factory_options->dt = planning_dt_position;
-    c3_options->w_Q = w_Q_position;
-    c3_options->w_R = w_R_position;
-    c3_options->w_G = w_G_position;
-    c3_options->w_U = w_U_position;
-    c3_options->q_vector = q_vector_position;
-    c3_options->r_vector = r_vector_position;
-
-    c3_options->g_x = g_x_position;
-    c3_options->g_gamma = g_gamma_position_list[num_contacts_index];
-    c3_options->g_lambda_n = g_lambda_n_position_list[num_contacts_index];
-    c3_options->g_lambda_t = g_lambda_t_position_list[num_contacts_index];
-    c3_options->g_lambda = g_lambda_position_list[num_contacts_index];
-    c3_options->g_u = g_u_position;
-
-    c3_options->u_x = u_x_position;
-    c3_options->u_gamma = u_gamma_position_list[num_contacts_index];
-    c3_options->u_lambda_n = u_lambda_n_position_list[num_contacts_index];
-    c3_options->u_lambda_t = u_lambda_t_position_list[num_contacts_index];
-    c3_options->u_lambda = u_lambda_position_list[num_contacts_index];
-    c3_options->u_u = u_u_position;
-
-    // Only applicable for C3+
-    if (projection_type == "C3+") {
-      c3_options->g_eta_slack = g_eta_slack_position_list[num_contacts_index];
-      c3_options->g_eta_n = g_eta_n_position_list[num_contacts_index];
-      c3_options->g_eta_t = g_eta_t_position_list[num_contacts_index];
-      c3_options->g_eta = g_eta_position_list[num_contacts_index];
-      c3_options->u_eta_slack = u_eta_slack_position_list[num_contacts_index];
-      c3_options->u_eta_n = u_eta_n_position_list[num_contacts_index];
-      c3_options->u_eta_t = u_eta_t_position_list[num_contacts_index];
-      c3_options->u_eta = u_eta_position_list[num_contacts_index];
-    }
-
-    MakePlanarLambdaCost(c3_options, lcs_factory_options);
-    PopulateCostMatricesFromVectors(c3_options);
   }
 
   void SetPoseTrackingOptions(C3Options* c3_options,
@@ -500,13 +434,53 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
       c3_options->u_eta = u_eta_list[num_contacts_index];
     }
 
-    MakePlanarLambdaCost(c3_options, lcs_factory_options);
+    MakePlanarLambdaCost(c3_options);
+    PopulateCostMatricesFromVectors(c3_options);
+  }
+
+ private:
+  void SetPositionTrackingOptions(
+      C3Options* c3_options, LCSFactoryOptions* lcs_factory_options) const {
+    lcs_factory_options->dt = planning_dt_position;
+    c3_options->w_Q = w_Q_position;
+    c3_options->w_R = w_R_position;
+    c3_options->w_G = w_G_position;
+    c3_options->w_U = w_U_position;
+    c3_options->q_vector = q_vector_position;
+    c3_options->r_vector = r_vector_position;
+
+    c3_options->g_x = g_x_position;
+    c3_options->g_gamma = g_gamma_position_list[num_contacts_index];
+    c3_options->g_lambda_n = g_lambda_n_position_list[num_contacts_index];
+    c3_options->g_lambda_t = g_lambda_t_position_list[num_contacts_index];
+    c3_options->g_lambda = g_lambda_position_list[num_contacts_index];
+    c3_options->g_u = g_u_position;
+
+    c3_options->u_x = u_x_position;
+    c3_options->u_gamma = u_gamma_position_list[num_contacts_index];
+    c3_options->u_lambda_n = u_lambda_n_position_list[num_contacts_index];
+    c3_options->u_lambda_t = u_lambda_t_position_list[num_contacts_index];
+    c3_options->u_lambda = u_lambda_position_list[num_contacts_index];
+    c3_options->u_u = u_u_position;
+
+    // Only applicable for C3+
+    if (projection_type == "C3+") {
+      c3_options->g_eta_slack = g_eta_slack_position_list[num_contacts_index];
+      c3_options->g_eta_n = g_eta_n_position_list[num_contacts_index];
+      c3_options->g_eta_t = g_eta_t_position_list[num_contacts_index];
+      c3_options->g_eta = g_eta_position_list[num_contacts_index];
+      c3_options->u_eta_slack = u_eta_slack_position_list[num_contacts_index];
+      c3_options->u_eta_n = u_eta_n_position_list[num_contacts_index];
+      c3_options->u_eta_t = u_eta_t_position_list[num_contacts_index];
+      c3_options->u_eta = u_eta_position_list[num_contacts_index];
+    }
+
+    MakePlanarLambdaCost(c3_options);
     PopulateCostMatricesFromVectors(c3_options);
   }
 
   // Convert lambda weights to the planar form:
-  void MakePlanarLambdaCost(C3Options* c3_options,
-                            LCSFactoryOptions* lcs_factory_options) const {
+  void MakePlanarLambdaCost(C3Options* c3_options) const {
     int offset = 0;
     for (size_t i = 0; i < resolve_contacts_to_lists[num_contacts_index].size();
          ++i) {

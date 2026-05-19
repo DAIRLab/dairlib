@@ -31,7 +31,9 @@ struct DeformControllerParams {
   bool include_end_effector_orientation;
   int control_loop_delay_ms;
 
-  int num_nodes;
+  //   int num_nodes;  TODO @bibit:  I think this isn't needed since it's
+  // determined by the size of the internal geometries list given to the
+  // controller
 
   /// Store sub-parameter classes internally.
   ElastoPlasticSC3Options elastoplastic_sc3_options;
@@ -39,6 +41,7 @@ struct DeformControllerParams {
   SamplingC3ProgressParams progress_params;
   SamplingParams sampling_params;
   ElastoPlasticGoalParams goal_params;
+
   // SamplingC3ControllerParams stored internally for convenience in passing to
   // EPSC3 controller, which inherits from SamplingC3Controller.
   SamplingC3ControllerParams sampling_c3_controller_params;
@@ -74,49 +77,40 @@ struct DeformControllerParams {
     goal_params =
         drake::yaml::LoadYamlFile<ElastoPlasticGoalParams>(goal_params_file);
 
-    num_nodes = 0;  // TODO
+    // num_nodes = 0;  // TODO
 
-    // TODO @bibit:  This is ugly; figure out cleaner way to handle this.
-    sampling_c3_controller_params = SamplingC3ControllerParams();
-    sampling_c3_controller_params.sampling_c3_options_file =
-        elastoplastic_sc3_options_file;
-    sampling_c3_controller_params.reposition_params_file =
-        reposition_params_file;
-    sampling_c3_controller_params.progress_params_file = progress_params_file;
-    sampling_c3_controller_params.sampling_params_file = sampling_params_file;
-    sampling_c3_controller_params.goal_params_file = goal_params_file;
-    sampling_c3_controller_params.sim_params_file = sim_params_file;
-    sampling_c3_controller_params.vis_params_file = vis_params_file;
-    sampling_c3_controller_params.osc_params_file = osc_params_file;
-    sampling_c3_controller_params.osqp_settings_file = osqp_settings_file;
-    sampling_c3_controller_params.osc_qp_settings_file = osc_qp_settings_file;
-    sampling_c3_controller_params.franka_driver_channels_file =
-        franka_driver_channels_file;
-    sampling_c3_controller_params.lcm_channels_hardware_file =
-        lcm_channels_hardware_file;
-    sampling_c3_controller_params.lcm_channels_simulation_file =
-        lcm_channels_simulation_file;
-    sampling_c3_controller_params.include_end_effector_orientation =
-        include_end_effector_orientation;
-    sampling_c3_controller_params.control_loop_delay_ms = control_loop_delay_ms;
+    SamplingC3ControllerParams sampling_c3_controller_params = {
+        .sampling_c3_options_file = elastoplastic_sc3_options_file,
+        .reposition_params_file = reposition_params_file,
+        .progress_params_file = progress_params_file,
+        .sampling_params_file = sampling_params_file,
+        .goal_params_file = goal_params_file,
+        .sim_params_file = sim_params_file,
+        .vis_params_file = vis_params_file,
+        .osc_params_file = osc_params_file,
+        .osqp_settings_file = osqp_settings_file,
+        .osc_qp_settings_file = osc_qp_settings_file,
+        .franka_driver_channels_file = franka_driver_channels_file,
+        .lcm_channels_hardware_file = lcm_channels_hardware_file,
+        .lcm_channels_simulation_file = lcm_channels_simulation_file,
+        .include_end_effector_orientation = include_end_effector_orientation,
+        .control_loop_delay_ms = control_loop_delay_ms,
+        .sampling_c3_options = drake::yaml::LoadYamlFile<SamplingC3Options>(
+            sampling_c3_controller_params.sampling_c3_options_file),
+        .reposition_params =
+            drake::yaml::LoadYamlFile<SamplingC3RepositionParams>(
+                reposition_params_file),
+        .progress_params = drake::yaml::LoadYamlFile<SamplingC3ProgressParams>(
+            progress_params_file),
+        .sampling_params =
+            drake::yaml::LoadYamlFile<SamplingParams>(sampling_params_file),
 
-    sampling_c3_controller_params.sampling_c3_options =
-        drake::yaml::LoadYamlFile<SamplingC3Options>(
-            sampling_c3_controller_params.sampling_c3_options_file);
-    sampling_c3_controller_params.reposition_params =
-        drake::yaml::LoadYamlFile<SamplingC3RepositionParams>(
-            sampling_c3_controller_params.reposition_params_file);
-    sampling_c3_controller_params.progress_params =
-        drake::yaml::LoadYamlFile<SamplingC3ProgressParams>(
-            sampling_c3_controller_params.progress_params_file);
-    sampling_c3_controller_params.sampling_params =
-        drake::yaml::LoadYamlFile<SamplingParams>(
-            sampling_c3_controller_params.sampling_params_file);
-    // NOTE: Not setting sampling_c3_controller_params.goal_params since there
-    // is a type difference.  May need to do an SC3-compatible version of the
-    // more concise EPSC3 goal params.
+        // NOTE: Not setting goal_params since there is a type difference.  May
+        // need to do an SC3-compatible version  of the more concise EPSC3 goal
+        // params.
 
-    sampling_c3_controller_params.num_objects =
-        sampling_c3_controller_params.base_names.size();
+        // TODO @bibit: unsure what to set num_object to.
+        // .num_objects = sampling_c3_controller_params.base_names.size()
+    };
   }
 };

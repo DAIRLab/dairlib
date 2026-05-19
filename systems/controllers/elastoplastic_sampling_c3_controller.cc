@@ -8,54 +8,44 @@
 namespace dairlib {
 
 using c3::LCS;
+using c3::multibody::ElastoPlasticLCSFactory;
 using c3::multibody::LCSFactory;
 using drake::SortedPair;
 using drake::geometry::GeometryId;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
-// using c3::multibody::PlasticNetworkLCSFactory;
 using std::vector;
 
 namespace systems {
 
-// TODO rework for EPSC3 (define internal_geometries_, n_lambda_internal_,
-// n_nodes_, etc.)
+// TODO @bibit:  define elastoplastic_input_port_, n_lambda_internal_, ...
 ElastoPlasticSC3Controller::ElastoPlasticSC3Controller(
     drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::Context<double>* context,
     drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
     drake::systems::Context<drake::AutoDiffXd>* context_ad,
-    const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
-    const vector<GeometryId>& internal_geometries,
+    const vector<vector<SortedPair<GeometryId>>>& external_contact_geoms,
+    const vector<GeometryId>& internal_contact_geoms,
     DeformControllerParams controller_params, bool verbose)
     : SamplingC3Controller(
-          plant, context, plant_ad, context_ad, contact_geoms,
-          std::move(controller_params.sampling_c3_controller_params), verbose) {
+          plant, context, plant_ad, context_ad, external_contact_geoms,
+          std::move(controller_params.sampling_c3_controller_params), verbose),
+      internal_geometries_(internal_contact_geoms),
+      n_nodes_(internal_contact_geoms.size()),
+      elastoplastic_sc3_options_(controller_params.elastoplastic_sc3_options) {
+  // Some extra tasks beyond the parent constructor.
+  C3Options c3_options = elastoplastic_sc3_options_.GetC3Options();
 }
 
-// TODO rework for EPSC3
+// TODO @bibit
 drake::systems::EventStatus ElastoPlasticSC3Controller::ComputePlan(
     const drake::systems::Context<double>& context,
     drake::systems::DiscreteValues<double>* discrete_state) const {
   return SamplingC3Controller::ComputePlan(context, discrete_state);
 }
 
-// TODO @bibit:  implement this on C3 side
-// LCS ElastoPlasticSC3Controller::CreatePlaceholderLCS() const {
-//   MatrixXd A = MatrixXd::Ones(n_x_, n_x_);
-//   MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
-//   VectorXd d = VectorXd::Zero(n_x_);
-//   MatrixXd D = MatrixXd::Ones(n_x_, n_lambda_ + n_lambda_internal_);
-//   MatrixXd E = MatrixXd::Zero(n_lambda_ + n_lambda_internal_, n_x_);
-//   MatrixXd F = MatrixXd::Zero(n_lambda_ + n_lambda_internal_,
-//                               n_lambda_ + n_lambda_internal_);
-//   MatrixXd H = MatrixXd::Zero(n_lambda_ + n_lambda_internal_, n_u_);
-//   VectorXd c = VectorXd::Zero(n_lambda_ + n_lambda_internal_);
-//   return LCS(A, B, D, d, E, F, H, c, elastoplastic_sc3_options_.N,
-//              elastoplastic_sc3_options_.planning_dt_position);
-// }
-
+// TODO @bibit
 std::pair<vector<LCS>, vector<LCS>>
 ElastoPlasticSC3Controller::CreateLCSObjectsForSamples(
     const vector<Eigen::VectorXd>& candidate_states,
@@ -101,8 +91,8 @@ ElastoPlasticSC3Controller::CreateLCSObjectsForSamples(
                 .value(),
             verbose_);
 
-    if (elastoplastic_sc3_options_.deformable_model_type ==
-        DeformableModelType::kPlastic) {
+    if (elastoplastic_sc3_options_.deformation_model ==
+        DeformationModel::kPlastic) {
       // TODO @bibit:  implement plastic network LCS factory in C3
       // Old implementation from dairlib:
       // LCS lcs_object_sample = PlasticNetworkLCSFactory::ToLCS(
@@ -116,11 +106,11 @@ ElastoPlasticSC3Controller::CreateLCSObjectsForSamples(
       // New C3 implementation should look more like:
       // LCS lcs_object_sample = PlasticNetworkLCSFactory::ToLCS(
       //     plant_, *context_, plant_ad_, *context_ad_, resolved_contact_pairs,
-      //     lcs_factory_options);
+      //     internal_contact_pairs, yield_forces, eplcs_factory_options);
       // lcs_candidates.push_back(lcs_object_sample);
     } else {
       throw std::runtime_error(
-          "Unimplemented or unsupported deformable model type for "
+          "Unimplemented or unsupported deformation model for "
           "ElastoPlasticSC3Controller.");
     }
 
@@ -144,8 +134,8 @@ ElastoPlasticSC3Controller::CreateLCSObjectsForSamples(
         .mu_per_contact = elastoplastic_sc3_options_.mu_for_cost,
         .planar_normal_direction =
             elastoplastic_sc3_options_.planar_normal_direction};
-    if (elastoplastic_sc3_options_.deformable_model_type ==
-        DeformableModelType::kPlastic) {
+    if (elastoplastic_sc3_options_.deformation_model ==
+        DeformationModel::kPlastic) {
       // TODO @bibit:  implement plastic network LCS factory in C3
       // Old implementation from dairlib:
       // LCS lcs_object_sample_for_cost_simulation =
@@ -166,11 +156,12 @@ ElastoPlasticSC3Controller::CreateLCSObjectsForSamples(
       //     PlasticNetworkLCSFactory(
       //         plant_, *context_, plant_ad_, *context_ad_,
       //         resolved_contact_pairs_for_cost_simulation,
+      //         internal_contact_pairs, yield_forces,
       //         lcs_factory_options_for_cost);
       // lcs_candidates_for_cost.push_back(lcs_object_sample_for_cost_simulation);
     } else {
       throw std::runtime_error(
-          "Unimplemented or unsupported deformable model type for "
+          "Unimplemented or unsupported deformation model for "
           "ElastoPlasticSC3Controller.");
     }
   }

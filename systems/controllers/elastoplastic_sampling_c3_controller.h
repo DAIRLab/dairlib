@@ -9,6 +9,9 @@ namespace systems {
 
 class ElastoPlasticSC3Controller : public SamplingC3Controller {
  public:
+  // TODO @bibit:  should internal contact geometries already come in pairs?
+  // Or should the code change to have adaptable graph structures based on the
+  // current states of the deformable?
   explicit ElastoPlasticSC3Controller(
       drake::multibody::MultibodyPlant<double>& plant,
       drake::systems::Context<double>* context,
@@ -16,8 +19,8 @@ class ElastoPlasticSC3Controller : public SamplingC3Controller {
       drake::systems::Context<drake::AutoDiffXd>* context_ad,
       const std::vector<
           std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
-          contact_geoms,
-      const std::vector<drake::geometry::GeometryId>& internal_geometries,
+          external_contact_geoms,
+      const std::vector<drake::geometry::GeometryId>& internal_contact_geoms,
       DeformControllerParams controller_params, bool verbose = false);
 
   // Additional elastoplastic input port.

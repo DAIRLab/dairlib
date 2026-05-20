@@ -201,13 +201,6 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
-  // TODO rework for EPSC3
-  virtual std::pair<std::vector<c3::LCS>, std::vector<c3::LCS>>
-  CreateLCSObjectsForSamples(
-      const std::vector<Eigen::VectorXd>& candidate_states,
-      const drake::VectorX<double>& x_lcs_curr,
-      const LCSFactoryOptions& lcs_factory_options) const;
-
   virtual void PruneOutdatedSamplesFromBuffer(
       const Eigen::VectorXd& x_lcs, int* num_in_buffer,
       Eigen::MatrixXd* sample_buffer, Eigen::VectorXd* sample_costs_buffer,
@@ -229,6 +222,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   int n_lambda_;
   int n_u_;
   int N_;
+  int n_z_;
   const bool verbose_;
   mutable double dt_ = 0.1;
   mutable double dt_cost_ = 0.02;
@@ -242,6 +236,22 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       contact_pairs_;
   c3::multibody::ContactModel contact_model_;
 
+  mutable std::vector<Eigen::MatrixXd> Q_;
+  mutable std::vector<Eigen::MatrixXd> R_;
+  mutable std::vector<Eigen::MatrixXd> G_;
+  mutable std::vector<Eigen::MatrixXd> U_;
+
+  mutable std::shared_ptr<c3::C3> c3_curr_plan_;
+  mutable std::shared_ptr<c3::C3> c3_best_plan_;
+  mutable std::shared_ptr<c3::C3> c3_buffer_plan_;
+
+  drake::solvers::SolverOptions solver_options_ =
+      drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(
+          "solvers/osqp_options_default.yaml")
+          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+
+  SamplingParams sampling_params_;
+
  private:
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
       C3CostComputationType cost_type, const c3::LCS& lcs_for_cost,
@@ -249,6 +259,13 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const std::shared_ptr<c3::C3>& c3_object,
       const bool& force_tracking_disabled, int num_objects,
       const bool& print_cost_breakdown) const;
+
+  // TODO rework for EPSC3
+  std::pair<std::vector<c3::LCS>, std::vector<c3::LCS>>
+  CreateLCSObjectsForSamples(
+      const std::vector<Eigen::VectorXd>& candidate_states,
+      const drake::VectorX<double>& x_lcs_curr,
+      const LCSFactoryOptions& lcs_factory_options) const;
 
   /// Helper functions
   // TODO hardcodes robot state size
@@ -422,17 +439,11 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex unsuccessful_sample_buffer_costs_port_;
 
   SamplingC3Options sampling_c3_options_;
-  SamplingParams sampling_params_;
   SamplingC3RepositionParams reposition_params_;
   SamplingC3ProgressParams progress_params_;
   SamplingC3GoalParams goal_params_;
-  drake::solvers::SolverOptions solver_options_ =
-      drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(
-          "solvers/osqp_options_default.yaml")
-          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   int max_num_samples_;
-  int n_z_;
 
   double solve_time_filter_constant_;
   drake::systems::DiscreteStateIndex plan_start_time_index_;
@@ -442,11 +453,6 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   /// state variables.
   Eigen::VectorXd Kp_for_cost_;
   Eigen::VectorXd Kd_for_cost_;
-
-  mutable std::vector<Eigen::MatrixXd> Q_;
-  mutable std::vector<Eigen::MatrixXd> R_;
-  mutable std::vector<Eigen::MatrixXd> G_;
-  mutable std::vector<Eigen::MatrixXd> U_;
 
   // Keep track of current C3 execution's best seen cost.
   mutable int best_progress_steps_ago_;
@@ -467,7 +473,6 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable Eigen::Vector3d ee_position_curr_;
 
   // C3 solution for current location.
-  mutable std::shared_ptr<c3::C3> c3_curr_plan_;
   // TODO: these are currently assigned values but go unused -- may be useful if
   // implementing warm start.
   mutable std::vector<Eigen::VectorXd> z_sol_curr_plan_;
@@ -475,7 +480,6 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable std::vector<Eigen::VectorXd> w_curr_plan_;
 
   // C3 solution for best sample location.
-  mutable std::shared_ptr<c3::C3> c3_best_plan_;
   // TODO: these are currently assigned values but go unused -- may be useful if
   // implementing warm start.
   mutable std::vector<Eigen::VectorXd> z_sol_best_plan_;
@@ -483,7 +487,6 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable std::vector<Eigen::VectorXd> w_best_plan_;
 
   // C3 solution for best sample in buffer.
-  mutable std::shared_ptr<c3::C3> c3_buffer_plan_;
   mutable std::vector<Eigen::VectorXd> dynamically_feasible_buffer_plan_;
 
   // LCS trajectories for C3 or repositioning modes.

@@ -30,6 +30,8 @@ struct ElastoPlasticSC3Options : SamplingC3Options {
   std::vector<std::vector<double>> u_eta_internal_slack_list;
   std::vector<std::vector<double>> u_eta_internal_sigma_list;
 
+  int num_internal_contacts;  // resolved from num_internal_contacts_index and
+                              // g_internal_slack_list.size()
   ElastoPlasticLCSFactoryOptions ep_lcs_factory_options;
 
   // Serialize.
@@ -47,6 +49,9 @@ struct ElastoPlasticSC3Options : SamplingC3Options {
     a->Visit(DRAKE_NVP(g_eta_internal_sigma_list));
     a->Visit(DRAKE_NVP(u_eta_internal_slack_list));
     a->Visit(DRAKE_NVP(u_eta_internal_sigma_list));
+
+    num_internal_contacts =
+        g_internal_slack_list[num_internal_contacts_index].size();
 
     SetCommonOptions(&c3_options_pose, &lcs_factory_options_pose);
     SetElastoPlasticLCSFactoryOptions(c3_options_pose, lcs_factory_options_pose,

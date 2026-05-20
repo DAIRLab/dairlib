@@ -174,7 +174,8 @@ SamplingC3Controller::SamplingC3Controller(
         lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_),
         x_desired_placeholder, c3_options);
   } else {
-    std::cerr << ("Unknown projection type") << std::endl;
+    std::cerr << "Unknown projection type: "
+              << sampling_c3_options_.projection_type << std::endl;
     DRAKE_THROW_UNLESS(false);
   }
   n_z_ = c3_curr_plan_->GetZSize();

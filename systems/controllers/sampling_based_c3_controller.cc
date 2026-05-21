@@ -985,8 +985,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
   }
 
-  // Add the previous best repositioning target to the candidate states at the
-  // index 1 always. (Index 0 will become the current state.)
+  // Add the previous best repositioning target to the candidate states at index
+  // 1 if in C3 mode and if the previous target is not in collision. (Index 0
+  // will become the current state.)
   if (!is_doing_c3_ && !in_collision) {
     Eigen::VectorXd repositioning_target_state = x_lcs_curr;
     repositioning_target_state.head(3) = prev_repositioning_target_;
@@ -2073,7 +2074,12 @@ void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs) const {
   // moves the lowest cost sample in the buffer to the end, so the best sample
   // is usually excluded from this cut.
   int num_to_add = all_sample_locations_.size() - 1;
-  if (!is_doing_c3_) {
+  if (!is_doing_c3_ && all_sample_locations_.size() ==
+                           sampling_params_.num_additional_samples_repos + 2) {
+    // Don't add the repositioning target since it was a past sample and should
+    // already be in the buffer.  The size check determines if the previous
+    // repositioning target was rejected due to collision (in which case sample
+    // index 1 is a new sample and should be added).
     num_to_add--;
   }
   if (retained_count + num_to_add > sampling_params_.N_sample_buffer) {
@@ -2093,9 +2099,12 @@ void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs) const {
   // to the buffer.
   int buffer_count = retained_count;
   for (int i = 0; i < all_sample_locations_.size(); i++) {
-    if ((i == 0) || (!is_doing_c3_ && i == 1)) {
+    if ((i == 0) || (!is_doing_c3_ && i == 1 &&
+                     all_sample_locations_.size() ==
+                         sampling_params_.num_additional_samples_repos + 2)) {
       // Skip the current location.
-      // Skip the repositioning target if in repositioning mode.
+      // Skip the repositioning target if in repositioning mode and if it was
+      // not rejected due to collision.
     } else {
       // First ensure there is no attempt to write beyond the end of the buffer.
       DRAKE_DEMAND(buffer_count < sampling_params_.N_sample_buffer);

@@ -975,13 +975,15 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   const auto& results = query_object.ComputeSignedDistanceToPoint(
       prev_repositioning_target_.segment(0, 3));
   bool in_collision = false;
-  for (int i = 0; i < controller_params_.num_objects; i++) {
-    for (int j = 2 + 13 * i; j < 12 + 13 * i;
-         j++) {  // Check each convex piece, assumes 10 pieces/object
-      if (results[j].distance <= sampling_params_.sample_projection_clearance) {
-        in_collision = true;
-        break;
-      }
+  // Index 0 is the robot; index 1 is the ground, indices 2+ are the object(s)
+  // and walls (if any).  It's ok to detect collision with the walls; if wanted
+  // to only check collision with the objects, would iterate up to
+  // results.size() - 3 or 4, depending on if 3 or 4 walls are included in the
+  // plant.
+  for (int i = 2; i < results.size(); i++) {
+    if (results[i].distance <= sampling_params_.sample_projection_clearance) {
+      in_collision = true;
+      break;
     }
   }
 
@@ -1261,8 +1263,17 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
   } else {  // Currently repositioning.
     // First, apply hysteresis between repositioning targets.
-    if (best_sample_index_ == SampleIndex::kCurrentReposTarget) {
+    if (best_sample_index_ == SampleIndex::kCurrentReposTarget &&
+        !in_collision) {
       pursued_target_source_ = PursuedTargetSource::kPrevious;
+    } else if (in_collision) {
+      // This means the previous repositioning target is now in penetration with
+      // the object and has been rejected.  Switch to the new lowest cost
+      // sample.
+      std::cout << "Repos -> Repos:  Previous repositioning target in "
+                   "collision; switching to new sample"
+                << std::endl;
+      pursued_target_source_ = PursuedTargetSource::kNewSample;
     } else {
       // This means there is a lower cost sample other than the current
       // repositioning target. If the lowest cost sample is not at least the

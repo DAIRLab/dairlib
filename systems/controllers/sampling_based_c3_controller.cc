@@ -975,18 +975,21 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   const auto& results = query_object.ComputeSignedDistanceToPoint(
       prev_repositioning_target_.segment(0, 3));
   bool in_collision = false;
-  for (int i = 0; i < controller_params_.num_objects; i++) {
-    for (int j = 2 + 13 * i; j < 12 + 13 * i;
-         j++) {  // Check each convex piece, assumes 10 pieces/object
-      if (results[j].distance <= sampling_params_.sample_projection_clearance) {
-        in_collision = true;
-        break;
-      }
+  // Index 0 is the robot; index 1 is the ground, indices 2+ are the object(s)
+  // and walls (if any).  It's ok to detect collision with the walls; if wanted
+  // to only check collision with the objects, would iterate up to
+  // results.size() - 3 or 4, depending on if 3 or 4 walls are included in the
+  // plant.
+  for (int i = 2; i < results.size(); i++) {
+    if (results[i].distance <= sampling_params_.sample_projection_clearance) {
+      in_collision = true;
+      break;
     }
   }
 
-  // Add the previous best repositioning target to the candidate states at the
-  // index 1 always. (Index 0 will become the current state.)
+  // Add the previous best repositioning target to the candidate states at index
+  // 1 if in C3 mode and if the previous target is not in collision. (Index 0
+  // will become the current state.)
   if (!is_doing_c3_ && !in_collision) {
     Eigen::VectorXd repositioning_target_state = x_lcs_curr;
     repositioning_target_state.head(3) = prev_repositioning_target_;
@@ -1260,8 +1263,17 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
   } else {  // Currently repositioning.
     // First, apply hysteresis between repositioning targets.
-    if (best_sample_index_ == SampleIndex::kCurrentReposTarget) {
+    if (best_sample_index_ == SampleIndex::kCurrentReposTarget &&
+        !in_collision) {
       pursued_target_source_ = PursuedTargetSource::kPrevious;
+    } else if (in_collision) {
+      // This means the previous repositioning target is now in penetration with
+      // the object and has been rejected.  Switch to the new lowest cost
+      // sample.
+      std::cout << "Repos -> Repos:  Previous repositioning target in "
+                   "collision; switching to new sample"
+                << std::endl;
+      pursued_target_source_ = PursuedTargetSource::kNewSample;
     } else {
       // This means there is a lower cost sample other than the current
       // repositioning target. If the lowest cost sample is not at least the
@@ -1332,15 +1344,15 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                 << std::endl;
     }
     // Switch to C3 if the current sample is better, with hysteresis.
-    else if ((!progress_params_.use_relative_hysteresis &&
-              best_other_cost > curr_cost + hyst_repos_to_c3) ||
-             (progress_params_.use_relative_hysteresis &&
-              best_other_cost >
-                  curr_cost + hyst_repos_to_c3_frac * best_other_cost) &&
-                 (x_lcs_curr[2] < sampling_params_.z_height +
-                                      sampling_params_.c3_min_clearance +
-                                      wall_offset ||
-                  !sampling_params_.ee_z_close)) {
+    else if (((!progress_params_.use_relative_hysteresis &&
+               best_other_cost > curr_cost + hyst_repos_to_c3) ||
+              (progress_params_.use_relative_hysteresis &&
+               best_other_cost >
+                   curr_cost + hyst_repos_to_c3_frac * best_other_cost)) &&
+             (x_lcs_curr[2] < sampling_params_.z_height +
+                                  sampling_params_.c3_min_clearance +
+                                  wall_offset ||
+              !sampling_params_.ee_z_close)) {
       is_doing_c3_ = true;
       finished_reposition_flag_ = false;
       if (repos_target_cost > progress_params_.finished_reposition_cost) {
@@ -1807,8 +1819,7 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   for (int i = 0; i < N_; i++) {
     knots(2, i) =
         sampling_params_.z_height + wall_offset;  // keep ee height constant
-    knots(5 + 7 * controller_params_.num_objects, i) =
-        0;  // keep ee z-velo constant
+    knots(n_q_ + 2, i) = 0;                       // keep ee z-velo constant
   }
 
   // Add end effector position target to LCM Trajectory.
@@ -2021,11 +2032,14 @@ void SamplingC3Controller::PruneOutdatedSamplesFromBuffer(
                                  pos_error_sample_retention);
   }
 
-  // Keep buffer if none of objects moved
+  // Keep buffer if no objects moved.
   int retained_count = 0;
   MatrixXd retained_samples = MatrixXd::Zero(n_buffer_length, n_q_);
   VectorXd retained_costs = -1 * VectorXd::Ones(n_buffer_length);
   for (int i = 0; i < *num_in_buffer; i++) {
+    if ((*sample_costs_buffer)[i] < 0) {
+      break;
+    }
     bool keep = true;
     for (int j = 0; j < controller_params_.num_objects; j++) {
       if (!(mask_satisfies_rot.at(j)[i] && mask_satisfies_pos.at(j)[i])) {
@@ -2037,9 +2051,6 @@ void SamplingC3Controller::PruneOutdatedSamplesFromBuffer(
       retained_samples.row(retained_count) = sample_buffer->row(i);
       retained_costs[retained_count] = (*sample_costs_buffer)[i];
       retained_count++;
-    }
-    if ((*sample_costs_buffer)[i] < 0) {
-      break;
     }
   }
   *num_in_buffer = retained_count;
@@ -2074,7 +2085,12 @@ void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs) const {
   // moves the lowest cost sample in the buffer to the end, so the best sample
   // is usually excluded from this cut.
   int num_to_add = all_sample_locations_.size() - 1;
-  if (!is_doing_c3_) {
+  if (!is_doing_c3_ && all_sample_locations_.size() ==
+                           sampling_params_.num_additional_samples_repos + 2) {
+    // Don't add the repositioning target since it was a past sample and should
+    // already be in the buffer.  The size check determines if the previous
+    // repositioning target was rejected due to collision (in which case sample
+    // index 1 is a new sample and should be added).
     num_to_add--;
   }
   if (retained_count + num_to_add > sampling_params_.N_sample_buffer) {
@@ -2093,25 +2109,29 @@ void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs) const {
   // repositioning target.  Remove the travel cost from the costs before adding
   // to the buffer.
   int buffer_count = retained_count;
-  for (int i = retained_count;
-       i < retained_count + all_sample_locations_.size(); i++) {
-    DRAKE_DEMAND(buffer_count < sampling_params_.N_sample_buffer);
-    if ((i == retained_count) || (!is_doing_c3_ && i == retained_count + 1)) {
+  for (int i = 0; i < all_sample_locations_.size(); i++) {
+    if ((i == 0) || (!is_doing_c3_ && i == 1 &&
+                     all_sample_locations_.size() ==
+                         sampling_params_.num_additional_samples_repos + 2)) {
       // Skip the current location.
-      // Skip the repositioning target if in repositioning mode.
+      // Skip the repositioning target if in repositioning mode and if it was
+      // not rejected due to collision.
     } else {
+      // First ensure there is no attempt to write beyond the end of the buffer.
+      DRAKE_DEMAND(buffer_count < sampling_params_.N_sample_buffer);
+
+      // Add the new sample to the buffer.
       VectorXd new_config = x_lcs.head(n_q_);
-      new_config.head(3) = all_sample_locations_[i - retained_count];
+      new_config.head(3) = all_sample_locations_[i];
       double travel_cost = progress_params_.travel_cost_per_meter *
                            (new_config.head(2) - x_lcs.head(2)).norm();
       // Ensure a normalized quaternion is written to the buffer.
-      for (int i = 0; i < controller_params_.num_objects; i++) {
-        Eigen::Vector4d object_quat = x_lcs.segment(3 + 7 * i, 4).normalized();
-        new_config.segment(3 + 7 * i, 4) = object_quat;
+      for (int j = 0; j < controller_params_.num_objects; j++) {
+        Eigen::Vector4d object_quat = x_lcs.segment(3 + 7 * j, 4).normalized();
+        new_config.segment(3 + 7 * j, 4) = object_quat;
       }
       sample_buffer_.row(buffer_count) = new_config;
-      sample_costs_buffer_[buffer_count] =
-          all_sample_costs_[i - retained_count] - travel_cost;
+      sample_costs_buffer_[buffer_count] = all_sample_costs_[i] - travel_cost;
       buffer_count++;
     }
   }

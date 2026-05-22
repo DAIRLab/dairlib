@@ -37,6 +37,7 @@ Eigen::MatrixXd Reposition(const int& n_q, const int& n_x, const int& N,
 
   // Use a straight line trajectory if close to the target.
   RepositioningTrajectoryType traj_type = reposition_params.traj_type;
+  bool allow_ground_penetration = false;
   if ((travel_distance <
            reposition_params.use_straight_line_traj_under_spline &&
        traj_type == RepositioningTrajectoryType::kSpline) ||
@@ -49,6 +50,7 @@ Eigen::MatrixXd Reposition(const int& n_q, const int& n_x, const int& N,
     RepositionStraightLine(knots, n_q, n_x, N, x_lcs, repos_target, dt,
                            is_doing_c3, finished_reposition_flag,
                            reposition_params);
+    allow_ground_penetration = true;
   } else if (traj_type == RepositioningTrajectoryType::kSpline) {
     RepositionSpline(knots, n_q, N, x_lcs, repos_target, dt, is_doing_c3,
                      finished_reposition_flag, reposition_params,
@@ -65,8 +67,11 @@ Eigen::MatrixXd Reposition(const int& n_q, const int& n_x, const int& N,
                               finished_reposition_flag, reposition_params);
   }
 
-  EnforceNoGroundPenetration(knots, sampling_c3_options.workspace_limits[2][3] +
-                                        sampling_c3_options.workspace_margins);
+  if (!allow_ground_penetration) {
+    EnforceNoGroundPenetration(knots,
+                               sampling_c3_options.workspace_limits[2][3] +
+                                   sampling_c3_options.workspace_margins);
+  }
   return knots;
 }
 

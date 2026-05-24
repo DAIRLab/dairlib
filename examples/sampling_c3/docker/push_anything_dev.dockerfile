@@ -12,6 +12,17 @@ RUN wget -q https://github.com/RobotLocomotion/drake/archive/v${DRAKE_VERSION}.t
     && ./drake-${DRAKE_VERSION}/setup/install_prereqs --developer -y --with-bazel --with-clang \
     && rm -rf v${DRAKE_VERSION}.tar.gz drake-${DRAKE_VERSION}/
 
+# Procman (libbot2 not in Drake apt for noble; build procman only from source).
+RUN apt-get update && apt-get install -y \
+    cmake build-essential liblcm-dev python3-lcm python3-setuptools \
+    libglu1-mesa-dev libgtk-3-dev \
+    && git clone --depth 1 --branch drake https://github.com/RobotLocomotion/libbot2.git /tmp/libbot2 \
+    && cmake -S /tmp/libbot2 -B /tmp/libbot2-build -DCMAKE_INSTALL_PREFIX=/opt/libbot2 \
+    && cmake --build /tmp/libbot2-build -j"$(nproc)" --target bot2-procman \
+    && cmake --install /tmp/libbot2-build \
+    && rm -rf /tmp/libbot2 /tmp/libbot2-build /var/lib/apt/lists/*
+ENV PATH="/opt/libbot2/bin:${PATH}"
+
 COPY snopt7.6.tar.gz /snopt7.6.tar.gz
 ENV SNOPT_PATH=/snopt7.6.tar.gz
 

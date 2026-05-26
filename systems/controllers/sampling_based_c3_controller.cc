@@ -42,9 +42,14 @@ using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::DiscreteValues;
 using drake::trajectories::PiecewisePolynomial;
+using Eigen::AngleAxisd;
+using Eigen::Matrix3d;
 using Eigen::MatrixXd;
 using Eigen::MatrixXf;
+using Eigen::Quaterniond;
+using Eigen::Vector2d;
 using Eigen::Vector3d;
+using Eigen::Vector4d;
 using Eigen::VectorXd;
 using Eigen::VectorXf;
 using std::vector;
@@ -72,6 +77,7 @@ SamplingC3Controller::SamplingC3Controller(
       reposition_params_(controller_params_.reposition_params),
       progress_params_(controller_params_.progress_params),
       goal_params_(controller_params_.goal_params),
+      adaptive_ee_tilt_(controller_params_.include_end_effector_orientation),
       G_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.G)),
       U_(std::vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.U)),
       N_(sampling_c3_options_.N),
@@ -1769,53 +1775,9 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   c3_execution_lcm_traj_.ClearTrajectories();
   c3_execution_lcm_traj_.AddTrajectory(ee_traj.traj_name, ee_traj);
 
-  // Add ee orientation target
-  Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_);
-
-  Eigen::Vector3d workspace_center(Eigen::Vector3d::Zero(3));
-  workspace_center[0] = (sampling_c3_options_.workspace_limits[0][3] +
-                         sampling_c3_options_.workspace_limits[0][4]) /
-                        2;
-  workspace_center[1] = (sampling_c3_options_.workspace_limits[1][3] +
-                         sampling_c3_options_.workspace_limits[1][4]) /
-                        2;
-
-  Eigen::Vector2d max_radius(
-      sampling_c3_options_.workspace_limits[0][4] - workspace_center[0],
-      sampling_c3_options_.workspace_limits[1][4] - workspace_center[1]);
-  double max_dist = max_radius.norm();
-
-  Eigen::Vector3d direction = ee_position_curr_ - workspace_center;
-  Eigen::Matrix3d rot;
-  rot << 0, 1, 0, -1, 0, 0, 0, 0, 1;
-
-  direction[2] = 0;
-  direction = rot * direction;
-
-  // If outside of radius, tilt ee so away from workspace center, otherwise set
-  // vertical Tilt depending on how far from center (for smoothness)
-  double theta = (direction.norm() / max_dist) *
-                 reposition_params_.max_tilt_angle * M_PI / 180.0;
-  direction.normalize();
-
-  Eigen::AngleAxisd angle_axis(theta, direction);
-  Eigen::Quaterniond q_rotated(angle_axis);
-  Eigen::Vector4d q_vec(q_rotated.w(), q_rotated.x(), q_rotated.y(),
-                        q_rotated.z());
-
-  for (int i = 0; i < N_; i++) {
-    ee_orientations.col(i) = q_vec;
-  }
-
-  LcmTrajectory::Trajectory ee_orientation_traj;
-  ee_orientation_traj.traj_name = "end_effector_orientation_target";
-  ee_orientation_traj.datatypes =
-      std::vector<std::string>(ee_orientations.rows(), "double");  // quaternion
-  ee_orientation_traj.datapoints = ee_orientations;
-  ee_orientation_traj.time_vector = timestamps.cast<double>();
-
-  c3_execution_lcm_traj_.AddTrajectory(ee_orientation_traj.traj_name,
-                                       ee_orientation_traj);
+  // Add end effector orientation target, if enabled.
+  IncludeEEOrientationTargetIfEnabled(&c3_execution_lcm_traj_,
+                                      ee_position_curr_, timestamps);
 
   // Add end effector force target to LCM Trajectory.
   // In c3 mode, the end effector forces should match the solved c3 inputs.
@@ -1878,53 +1840,9 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   repos_execution_lcm_traj_.ClearTrajectories();
   repos_execution_lcm_traj_.AddTrajectory(ee_traj.traj_name, ee_traj);
 
-  Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_);
-
-  Eigen::Vector3d workspace_center(Eigen::Vector3d::Zero(3));
-  workspace_center[0] = (sampling_c3_options_.workspace_limits[0][3] +
-                         sampling_c3_options_.workspace_limits[0][4]) /
-                        2;
-  workspace_center[1] = (sampling_c3_options_.workspace_limits[1][3] +
-                         sampling_c3_options_.workspace_limits[1][4]) /
-                        2;
-
-  Eigen::Vector2d max_radius(
-      sampling_c3_options_.workspace_limits[0][4] - workspace_center[0],
-      sampling_c3_options_.workspace_limits[1][4] - workspace_center[1]);
-  double max_dist = max_radius.norm();
-
-  Eigen::Vector3d direction = ee_position_curr_ - workspace_center;
-  Eigen::Matrix3d rot;
-  rot << 0, 1, 0, -1, 0, 0, 0, 0, 1;
-
-  direction[2] = 0;
-  direction = rot * direction;
-
-  // If outside of radius, tilt ee so away from workspace center, otherwise set
-  // vertical Tilt depending on how far from center (for smoothness)
-  double theta = (direction.norm() / max_dist) *
-                 reposition_params_.max_tilt_angle * M_PI / 180.0;
-
-  direction.normalize();
-
-  Eigen::AngleAxisd angle_axis(theta, direction);
-  Eigen::Quaterniond q_rotated(angle_axis);
-  Eigen::Vector4d q_vec(q_rotated.w(), q_rotated.x(), q_rotated.y(),
-                        q_rotated.z());
-
-  for (int i = 0; i < N_; i++) {
-    ee_orientations.col(i) = q_vec;
-  }
-
-  LcmTrajectory::Trajectory ee_orientation_traj;
-  ee_orientation_traj.traj_name = "end_effector_orientation_target";
-  ee_orientation_traj.datatypes =
-      std::vector<std::string>(ee_orientations.rows(), "double");  // quaternion
-  ee_orientation_traj.datapoints = ee_orientations;
-  ee_orientation_traj.time_vector = timestamps.cast<double>();
-
-  repos_execution_lcm_traj_.AddTrajectory(ee_orientation_traj.traj_name,
-                                          ee_orientation_traj);
+  // Include end effector orientation targets, if enabled.
+  IncludeEEOrientationTargetIfEnabled(&repos_execution_lcm_traj_,
+                                      ee_position_curr_, timestamps);
 
   // In repositioning mode, the end effector should not exert forces.
   MatrixXd force_samples = MatrixXd::Zero(3, N_);
@@ -2317,6 +2235,48 @@ void SamplingC3Controller::ResetProgressMetrics() const {
   }
 }
 
+void SamplingC3Controller::IncludeEEOrientationTargetIfEnabled(
+    LcmTrajectory* lcm_trajectory, const Vector3d& ee_position,
+    const VectorXd& timestamps) const {
+  // Add end effector orientation target to the provided LCM trajectory, if
+  // adaptive EE tilt is enabled.  The orientation depends on the EE position
+  // provided relative to the world center.
+  if (adaptive_ee_tilt_) {
+    MatrixXd ee_orientations = MatrixXd::Zero(4, N_);
+
+    Vector3d direction = ee_position - workspace_center_;
+    Matrix3d rot;
+    rot << 0, 1, 0, -1, 0, 0, 0, 0, 1;
+
+    direction[2] = 0;
+    direction = rot * direction;
+
+    // If outside of radius, tilt ee so away from workspace center, otherwise
+    // set vertical Tilt depending on how far from center (for smoothness)
+    double theta = (direction.norm() / max_ee_dist_from_workspace_center_) *
+                   reposition_params_.max_tilt_angle * M_PI / 180.0;
+    direction.normalize();
+
+    AngleAxisd angle_axis(theta, direction);
+    Quaterniond q_rotated(angle_axis);
+    Vector4d q_vec(q_rotated.w(), q_rotated.x(), q_rotated.y(), q_rotated.z());
+
+    for (int i = 0; i < N_; i++) {
+      ee_orientations.col(i) = q_vec;
+    }
+
+    LcmTrajectory::Trajectory ee_orientation_traj;
+    ee_orientation_traj.traj_name = "end_effector_orientation_target";
+    ee_orientation_traj.datatypes = std::vector<std::string>(
+        ee_orientations.rows(), "double");  // quaternion
+    ee_orientation_traj.datapoints = ee_orientations;
+    ee_orientation_traj.time_vector = timestamps.cast<double>();
+
+    lcm_trajectory->AddTrajectory(ee_orientation_traj.traj_name,
+                                  ee_orientation_traj);
+  }
+}
+
 // Output port handlers for current location
 void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
     const drake::systems::Context<double>& context,
@@ -2356,51 +2316,9 @@ void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
                          "end_effector_position_target",
                          "end_effector_position_target", false);
 
-  Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_);
-
-  Eigen::Vector3d workspace_center(Eigen::Vector3d::Zero(3));
-  workspace_center[0] = (sampling_c3_options_.workspace_limits[0][3] +
-                         sampling_c3_options_.workspace_limits[0][4]) /
-                        2;
-  workspace_center[1] = (sampling_c3_options_.workspace_limits[1][3] +
-                         sampling_c3_options_.workspace_limits[1][4]) /
-                        2;
-
-  Eigen::Vector2d max_radius(
-      sampling_c3_options_.workspace_limits[0][4] - workspace_center[0],
-      sampling_c3_options_.workspace_limits[1][4] - workspace_center[1]);
-  double max_dist = max_radius.norm();
-
-  Eigen::Vector3d direction = ee_position_curr_ - workspace_center;
-  Eigen::Matrix3d rot;
-  rot << 0, 1, 0, -1, 0, 0, 0, 0, 1;
-
-  direction[2] = 0;
-  direction = rot * direction;
-
-  // If outside of radius, tilt ee so away from workspace center, otherwise set
-  // vertical Tilt depending on how far from center (for smoothness)
-  double theta = (direction.norm() / max_dist) *
-                 reposition_params_.max_tilt_angle * M_PI / 180.0;
-
-  direction.normalize();
-
-  Eigen::AngleAxisd angle_axis(theta, direction);
-  Eigen::Quaterniond q_rotated(angle_axis);
-  Eigen::Vector4d q_vec(q_rotated.w(), q_rotated.x(), q_rotated.y(),
-                        q_rotated.z());
-
-  for (int i = 0; i < N_; i++) {
-    ee_orientations.col(i) = q_vec;
-  }
-
-  LcmTrajectory::Trajectory ee_orientation_traj;
-  ee_orientation_traj.traj_name = "end_effector_orientation_target";
-  ee_orientation_traj.datatypes =
-      std::vector<std::string>(ee_orientations.rows(), "double");  // quaternion
-  ee_orientation_traj.datapoints = ee_orientations;
-  ee_orientation_traj.time_vector = c3_solution->time_vector_.cast<double>();
-  lcm_traj.AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
+  // Include end effector orientation targets, if enabled.
+  IncludeEEOrientationTargetIfEnabled(&lcm_traj, ee_position_curr_,
+                                      c3_solution->time_vector_.cast<double>());
 
   MatrixXd force_samples = c3_solution->u_sol_.cast<double>();
   LcmTrajectory::Trajectory force_traj;
@@ -2601,52 +2519,11 @@ void SamplingC3Controller::OutputC3SolutionBestPlanActor(
                          "end_effector_position_target",
                          "end_effector_position_target", false);
 
-  Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_);
+  // Include end effector orientation targets, if enabled.
+  IncludeEEOrientationTargetIfEnabled(&lcm_traj, ee_position_curr_,
+                                      c3_solution->time_vector_.cast<double>());
 
-  Eigen::Vector3d workspace_center(Eigen::Vector3d::Zero(3));
-  workspace_center[0] = (sampling_c3_options_.workspace_limits[0][3] +
-                         sampling_c3_options_.workspace_limits[0][4]) /
-                        2;
-  workspace_center[1] = (sampling_c3_options_.workspace_limits[1][3] +
-                         sampling_c3_options_.workspace_limits[1][4]) /
-                        2;
-
-  Eigen::Vector2d max_radius(
-      sampling_c3_options_.workspace_limits[0][4] - workspace_center[0],
-      sampling_c3_options_.workspace_limits[1][4] - workspace_center[1]);
-  double max_dist = max_radius.norm();
-
-  Eigen::Vector3d direction = ee_position_curr_ - workspace_center;
-  Eigen::Matrix3d rot;
-  rot << 0, 1, 0, -1, 0, 0, 0, 0, 1;
-
-  direction[2] = 0;
-  direction = rot * direction;
-
-  // If outside of radius, tilt ee so away from workspace center, otherwise set
-  // vertical Tilt depending on how far from center (for smoothness)
-  double theta = (direction.norm() / max_dist) *
-                 reposition_params_.max_tilt_angle * M_PI / 180.0;
-
-  direction.normalize();
-
-  Eigen::AngleAxisd angle_axis(theta, direction);
-  Eigen::Quaterniond q_rotated(angle_axis);
-  Eigen::Vector4d q_vec(q_rotated.w(), q_rotated.x(), q_rotated.y(),
-                        q_rotated.z());
-
-  for (int i = 0; i < N_; i++) {
-    ee_orientations.col(i) = q_vec;
-  }
-
-  LcmTrajectory::Trajectory ee_orientation_traj;
-  ee_orientation_traj.traj_name = "end_effector_orientation_target";
-  ee_orientation_traj.datatypes =
-      std::vector<std::string>(ee_orientations.rows(), "double");  // quaternion
-  ee_orientation_traj.datapoints = ee_orientations;
-  ee_orientation_traj.time_vector = c3_solution->time_vector_.cast<double>();
-  lcm_traj.AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
-
+  // Include end effector force targets.
   MatrixXd force_samples = c3_solution->u_sol_.cast<double>();
   LcmTrajectory::Trajectory force_traj;
   force_traj.traj_name = "end_effector_force_target";
@@ -2807,9 +2684,11 @@ void SamplingC3Controller::OutputC3TrajExecuteActor(
                          "end_effector_position_target",
                          "end_effector_position_target", false);
 
-  LcmTrajectory::Trajectory ee_orientation_traj =
-      c3_execution_lcm_traj_.GetTrajectory("end_effector_orientation_target");
-  lcm_traj.AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
+  if (adaptive_ee_tilt_) {
+    LcmTrajectory::Trajectory ee_orientation_traj =
+        c3_execution_lcm_traj_.GetTrajectory("end_effector_orientation_target");
+    lcm_traj.AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
+  }
 
   LcmTrajectory::Trajectory force_traj =
       c3_execution_lcm_traj_.GetTrajectory("end_effector_force_target");
@@ -2831,10 +2710,12 @@ void SamplingC3Controller::OutputReposTrajExecuteActor(
                          "end_effector_position_target",
                          "end_effector_position_target", false);
 
-  LcmTrajectory::Trajectory ee_orientation_traj =
-      repos_execution_lcm_traj_.GetTrajectory(
-          "end_effector_orientation_target");
-  lcm_traj.AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
+  if (adaptive_ee_tilt_) {
+    LcmTrajectory::Trajectory ee_orientation_traj =
+        repos_execution_lcm_traj_.GetTrajectory(
+            "end_effector_orientation_target");
+    lcm_traj.AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
+  }
 
   LcmTrajectory::Trajectory force_traj =
       repos_execution_lcm_traj_.GetTrajectory("end_effector_force_target");
@@ -2863,9 +2744,11 @@ void SamplingC3Controller::OutputTrajExecuteActor(
                          "end_effector_position_target",
                          "end_effector_position_target", false);
 
-  LcmTrajectory::Trajectory ee_orientation_traj =
-      execution_lcm_traj.GetTrajectory("end_effector_orientation_target");
-  lcm_traj.AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
+  if (adaptive_ee_tilt_) {
+    LcmTrajectory::Trajectory ee_orientation_traj =
+        execution_lcm_traj.GetTrajectory("end_effector_orientation_target");
+    lcm_traj.AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
+  }
 
   MatrixXd force_samples = MatrixXd::Zero(3, N_);
   LcmTrajectory::Trajectory force_traj =
@@ -2933,51 +2816,9 @@ void SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanActor(
   LcmTrajectory ee_traj_lcm({ee_traj}, {"ee_position_target"},
                             "ee_position_target", "ee_position_target", false);
 
-  Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_);
-
-  Eigen::Vector3d workspace_center(Eigen::Vector3d::Zero(3));
-  workspace_center[0] = (sampling_c3_options_.workspace_limits[0][3] +
-                         sampling_c3_options_.workspace_limits[0][4]) /
-                        2;
-  workspace_center[1] = (sampling_c3_options_.workspace_limits[1][3] +
-                         sampling_c3_options_.workspace_limits[1][4]) /
-                        2;
-
-  Eigen::Vector2d max_radius(
-      sampling_c3_options_.workspace_limits[0][4] - workspace_center[0],
-      sampling_c3_options_.workspace_limits[1][4] - workspace_center[1]);
-  double max_dist = max_radius.norm();
-
-  Eigen::Vector3d direction = ee_position_curr_ - workspace_center;
-  Eigen::Matrix3d rot;
-  rot << 0, 1, 0, -1, 0, 0, 0, 0, 1;
-
-  direction[2] = 0;
-  direction = rot * direction;
-
-  // If outside of radius, tilt ee so away from workspace center, otherwise set
-  // vertical Tilt depending on how far from center (for smoothness)
-  double theta = (direction.norm() / max_dist) *
-                 reposition_params_.max_tilt_angle * M_PI / 180.0;
-
-  direction.normalize();
-
-  Eigen::AngleAxisd angle_axis(theta, direction);
-  Eigen::Quaterniond q_rotated(angle_axis);
-  Eigen::Vector4d q_vec(q_rotated.w(), q_rotated.x(), q_rotated.y(),
-                        q_rotated.z());
-
-  for (int i = 0; i < N_; i++) {
-    ee_orientations.col(i) = q_vec;
-  }
-
-  LcmTrajectory::Trajectory ee_orientation_traj;
-  ee_orientation_traj.traj_name = "end_effector_orientation_target";
-  ee_orientation_traj.datatypes =
-      std::vector<std::string>(ee_orientations.rows(), "double");  // quaternion
-  ee_orientation_traj.datapoints = ee_orientations;
-  ee_orientation_traj.time_vector = timestamps.cast<double>();
-  ee_traj_lcm.AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
+  // Include end effector orientation targets, if enabled.
+  IncludeEEOrientationTargetIfEnabled(&ee_traj_lcm, ee_position_curr_,
+                                      timestamps);
 
   dynamically_feasible_curr_plan_actor->saved_traj =
       ee_traj_lcm.GenerateLcmObject();
@@ -3087,53 +2928,9 @@ void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanActor(
   LcmTrajectory ee_traj_lcm({ee_traj}, {"ee_position_target"},
                             "ee_position_target", "ee_position_target", false);
 
-  Eigen::MatrixXd ee_orientations = Eigen::MatrixXd::Zero(4, N_);
-
-  Eigen::Vector3d workspace_center(Eigen::Vector3d::Zero(3));
-  workspace_center[0] = (sampling_c3_options_.workspace_limits[0][3] +
-                         sampling_c3_options_.workspace_limits[0][4]) /
-                        2;
-  workspace_center[1] = (sampling_c3_options_.workspace_limits[1][3] +
-                         sampling_c3_options_.workspace_limits[1][4]) /
-                        2;
-
-  Eigen::Vector2d max_radius(
-      sampling_c3_options_.workspace_limits[0][4] - workspace_center[0],
-      sampling_c3_options_.workspace_limits[1][4] - workspace_center[1]);
-  double max_dist = max_radius.norm();
-
-  Eigen::Vector3d direction = ee_position_curr_ - workspace_center;
-
-  Eigen::Matrix3d rot;
-  rot << 0, 1, 0, -1, 0, 0, 0, 0, 1;
-
-  direction[2] = 0;
-
-  direction = rot * direction;
-
-  // If outside of radius, tilt ee so away from workspace center, otherwise set
-  // vertical Tilt depending on how far from center (for smoothness)
-  double theta = (direction.norm() / max_dist) *
-                 reposition_params_.max_tilt_angle * M_PI / 180.0;
-
-  direction.normalize();
-
-  Eigen::AngleAxisd angle_axis(theta, direction);
-  Eigen::Quaterniond q_rotated(angle_axis);
-  Eigen::Vector4d q_vec(q_rotated.w(), q_rotated.x(), q_rotated.y(),
-                        q_rotated.z());
-
-  for (int i = 0; i < N_; i++) {
-    ee_orientations.col(i) = q_vec;
-  }
-
-  LcmTrajectory::Trajectory ee_orientation_traj;
-  ee_orientation_traj.traj_name = "end_effector_orientation_target";
-  ee_orientation_traj.datatypes =
-      std::vector<std::string>(ee_orientations.rows(), "double");  // quaternion
-  ee_orientation_traj.datapoints = ee_orientations;
-  ee_orientation_traj.time_vector = timestamps.cast<double>();
-  ee_traj_lcm.AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
+  // Include end effector orientation targets, if enabled.
+  IncludeEEOrientationTargetIfEnabled(&ee_traj_lcm, ee_position_curr_,
+                                      timestamps);
 
   dynamically_feasible_best_plan->saved_traj = ee_traj_lcm.GenerateLcmObject();
   dynamically_feasible_best_plan->utime = context.get_time() * 1e6;

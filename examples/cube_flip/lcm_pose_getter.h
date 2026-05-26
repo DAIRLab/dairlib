@@ -31,14 +31,12 @@ using dairlib::lcmt_timestamped_saved_traj;
 namespace dairlib {
 
 // Gets a pose at a specific timestep
-class PointHandPoseGetter : public drake::systems::LeafSystem<double> {
+class LcmPoseGetter : public drake::systems::LeafSystem<double> {
   public:
     // object: 0 = cube, 1 = is finger
-    explicit PointHandPoseGetter(CubeFlipVisualizerParams& vis_params, 
-        int is_finger, std::string name);
+    explicit LcmPoseGetter(CubeFlipVisualizerParams& vis_params, std::string name, int example_idx);
 
-    explicit PointHandPoseGetter(TrajectoryVideoParams& video_params, 
-        int is_finger, std::string name);
+    explicit LcmPoseGetter(TrajectoryVideoParams& video_params, std::string name, int example_idx);
 
     const InputPort<double>& get_input_port_trajectory() const {
       return this->get_input_port(trajectory_input_port_);
@@ -54,8 +52,11 @@ class PointHandPoseGetter : public drake::systems::LeafSystem<double> {
     }
 
   private: 
+    int example_idx_;
     int num_trajectories_;
     
+    int n_x_;
+
     InputPortIndex trajectory_input_port_;
     InputPortIndex timestep_input_port_;
 
@@ -63,9 +64,9 @@ class PointHandPoseGetter : public drake::systems::LeafSystem<double> {
     std::vector<OutputPortIndex> trajectory_output_port_indices_;
 
     // Parse raw iC3 output into cube position/orientation trajectories
-    void GetTrajectory(
+    void GetPose(
       const drake::systems::Context<double>& context, 
-      lcmt_timestamped_saved_traj* traj, int iter, int object) const;
+      drake::systems::BasicVector<double>* output, int iter) const;
 };
 
 } // namespace dairlib

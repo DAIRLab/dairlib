@@ -19,6 +19,7 @@
 #include "c3/multibody/multibody_utils.h"
 #include "c3/systems/c3_controller_options.h"
 #include "systems/framework/timestamped_vector.h"
+#include "examples/cube_flip/parameter_headers/iC3_options.h"
 
 using dairlib::LcmTrajectory;
 using dairlib::lcmt_timestamped_saved_traj;
@@ -41,12 +42,13 @@ class C3GoalGenerator : public drake::systems::LeafSystem<double> {
   public:
 
     // example idx 0 = plate
-    // example idx 2 = trifinger
+    // example idx 1 = trifinger
     explicit C3GoalGenerator(
         MultibodyPlant<double>& plant,
         Context<double>* context,
         MultibodyPlant<AutoDiffXd>& plant_ad,
         Context<AutoDiffXd>* context_ad,
+        iC3Options ic3_options,
         c3::systems::C3ControllerOptions c3_controller_options, 
         VectorXd x_des, int example_idx);
 
@@ -55,6 +57,12 @@ class C3GoalGenerator : public drake::systems::LeafSystem<double> {
     }
     const drake::systems::InputPort<double>& get_input_port_nominal_position() const {
       return this->get_input_port(nominal_position_port_);
+    }
+    const drake::systems::InputPort<double>& get_input_port_ic3_x() const {
+      return this->get_input_port(ic3_x_port_);
+    }
+    const drake::systems::InputPort<double>& get_input_port_timestep() const {
+      return this->get_input_port(timestep_port_);
     }
     const drake::systems::OutputPort<double>& get_output_port_target() const {
       return this->get_output_port(target_port_);
@@ -74,9 +82,12 @@ class C3GoalGenerator : public drake::systems::LeafSystem<double> {
                       TimestampedVector<double>* state_output) const;
     void OutputLCS(const Context<double>& context,
                   c3::LCS* lcs) const;
+    c3::LCS MakeTimeVaryingLCS(MatrixXd x_hat, MatrixXd u_hat) const;
 
     drake::systems::InputPortIndex state_port_;
     drake::systems::InputPortIndex nominal_position_port_;
+    drake::systems::InputPortIndex ic3_x_port_;
+    drake::systems::InputPortIndex timestep_port_;
 
     drake::systems::OutputPortIndex target_port_;
     drake::systems::OutputPortIndex lcs_port_;
@@ -88,9 +99,13 @@ class C3GoalGenerator : public drake::systems::LeafSystem<double> {
     Context<AutoDiffXd>* context_ad_;
 
     std::unique_ptr<c3::multibody::LCSFactory> lcs_factory_;
+    iC3Options ic3_options_;
+
     c3::C3Options c3_options_;
     c3::systems::C3ControllerOptions c3_controller_options_;
     VectorXd x_des_;
+
+    std::vector<int> quaternion_indices_;
 
     int N_;
 

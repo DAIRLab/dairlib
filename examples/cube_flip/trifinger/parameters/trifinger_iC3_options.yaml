@@ -6,15 +6,13 @@ num_segments: 8
 
 print_costs: true
 
-N: 160 # REMOVE after importing all options from c3 repo
-dt: 0.02 # REMOVE after importing all options from c3 repo
+N: 450 # REMOVE after importing all options from c3 repo
+dt: 0.01 # REMOVE after importing all options from c3 repo
 
-c3_dt_scaling: 1 # c3_dt / ic3_dt
-
-iter_to_use: 1
-num_timesteps_to_use: 160
+iter_to_use: 4
+num_timesteps_to_use: 450
 
 hold_last_timestep_position: true
 vertical_offset: -0.0
 
-ee_tracking_weight: 1000000
+ee_tracking_weight: 50000

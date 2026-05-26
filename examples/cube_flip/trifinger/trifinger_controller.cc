@@ -18,6 +18,7 @@
 #include "examples/cube_flip/trifinger/systems/trifinger_kinematics.h"
 #include "systems/controllers/c3/ic3_tracking_controller.h"
 #include "examples/cube_flip/systems/timed_gate.h"
+#include "examples/cube_flip/systems/iC3_timing_system.h"
 
 
 #include "multibody/multibody_utils.h"
@@ -174,10 +175,10 @@ int DoMain(int argc, char* argv[]) {
 
 	std::vector<GeometryId> cube_collision_geoms;
   for (int i = 0; i <= 8; i++) {
-		cube_collision_geoms.push_back(
-			plant_for_lcs.GetCollisionGeometriesForBody(
+      cube_collision_geoms.push_back(
+          plant_for_lcs.GetCollisionGeometriesForBody(
           plant_for_lcs.GetBodyByName("cube"))[i]);
-	}
+  }
 
   std::vector<SortedPair<GeometryId>> contact_pairs;
   // fingertip-cube contact pairs
@@ -228,12 +229,19 @@ int DoMain(int argc, char* argv[]) {
 
   auto c3_goal_generator = 
       builder.AddSystem<C3GoalGenerator>(plant_for_lcs, &plant_lcs_context, *plant_for_lcs_autodiff, 
-          plant_lcs_context_ad.get(), c3_controller_options, controller_params.x_target, 2); 
+          plant_lcs_context_ad.get(), ic3_options, c3_controller_options, controller_params.x_target, 1); 
 
   auto reduced_order_model_receiver =
     builder.AddSystem<TrifingerKinematics>(
         plant_trifinger, trifinger_context.get(), plant_object, object_context.get(),
         controller_params.end_effector_names, "cube");
+
+  auto radio_sub =
+        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
+            lcm_channel_params.radio_channel, &lcm));
+
+  auto ic3_timing_system = builder.AddSystem<iC3TimingSystem>(
+            ic3_options, controller_params);
 
   // Set nominal position of plate to init position
   VectorXd xd = controller_params.x_target;
@@ -267,8 +275,18 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(nominal_position->get_output_port(),
                   c3_goal_generator->get_input_port_nominal_position());       
   builder.Connect(reduced_order_model_receiver->get_output_port(),
-                  c3_goal_generator->get_input_port_state());      
+                  c3_goal_generator->get_input_port_state());    
+  builder.Connect(ic3_x_trajectory_sub->get_output_port(),
+                  c3_goal_generator->get_input_port_ic3_x()); 
+  builder.Connect(ic3_timing_system->get_output_port_index(),
+                  c3_goal_generator->get_input_port_timestep());                 
+                  
+  builder.Connect(radio_sub->get_output_port(),
+                  ic3_timing_system->get_input_port_radio());  
 
+
+  builder.Connect(ic3_timing_system->get_output_port_index(),
+                  controller->get_input_port_timestep());
   builder.Connect(c3_goal_generator->get_output_port_x_curr(),
                   controller->get_input_port_lcs_state());
   builder.Connect(c3_goal_generator->get_output_port_target(),

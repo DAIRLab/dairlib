@@ -20,6 +20,12 @@ def main(log_type):
 
     os.chdir(logdir)
     current_logs = sorted(glob.glob(log_type + 'log-*'))
+    current_logs = sorted(
+        f for f in glob.glob(f"{log_type}log-*")
+        if not f.endswith(".jlp")
+    )
+    
+    print(current_logs)
     try:
         last_log = int(current_logs[-1].split('-')[-1])
         log_num = f'{last_log+1:02}'

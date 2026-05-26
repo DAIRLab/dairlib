@@ -95,8 +95,10 @@ cc_binary(
         "//examples/cube_flip/systems:c3_goal_generator",
         "//examples/cube_flip/systems:c3_trajectory_generator",
         "//examples/cube_flip/systems:timed_gate",
+        "//examples/cube_flip/systems:ic3_timing_system",
         "//systems/controllers:ic3_tracking_controller",
         "//examples/cube_flip/trifinger/systems:trifinger_systems",
+
         "@gflags",
     ],
 )

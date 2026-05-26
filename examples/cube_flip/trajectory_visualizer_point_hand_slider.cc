@@ -156,28 +156,40 @@ int do_main(int argc, char* argv[]) {
 
   builder.Connect(trajectory_sub_x->get_output_port(), cube_trajectory_splitter->get_input_port_trajectory());
   builder.Connect(trajectory_sub_x->get_output_port(), hand_splitter->get_input_port_trajectory());
-  builder.Connect(trajectory_sub_c3->get_output_port(), c3_trajectory_splitter->get_input_port_trajectory());
-  builder.Connect(trajectory_sub_c3->get_output_port(), c3_hand_splitter->get_input_port_trajectory());
+
+  if (vis_params.visualize_c3_traj) {
+    builder.Connect(trajectory_sub_c3->get_output_port(), c3_trajectory_splitter->get_input_port_trajectory());
+    builder.Connect(trajectory_sub_c3->get_output_port(), c3_hand_splitter->get_input_port_trajectory());
+  }
+
 
   for (int i = 0; i < vis_params.ic3_num_iters / skip_factor; i++) {
     builder.Connect(cube_trajectory_splitter->get_output_port(i), 
         cube_trajectory_drawers.at(i)->get_input_port_trajectory());
     builder.Connect(hand_splitter->get_output_port(i), 
         hand_drawers.at(i)->get_input_port_trajectory());
-    builder.Connect(c3_trajectory_splitter->get_output_port(i), 
-        c3_trajectory_drawers.at(i)->get_input_port_trajectory());
-     builder.Connect(c3_hand_splitter->get_output_port(i), 
-        c3_hand_drawers.at(i)->get_input_port_trajectory());       
+
+    if (vis_params.visualize_c3_traj) {
+			builder.Connect(c3_trajectory_splitter->get_output_port(i), 
+					c3_trajectory_drawers.at(i)->get_input_port_trajectory());
+			builder.Connect(c3_hand_splitter->get_output_port(i), 
+					c3_hand_drawers.at(i)->get_input_port_trajectory()); 
+    }
+      
   }
 
   builder.Connect(meshcat_slider_system->get_output_port(), 
         cube_trajectory_splitter->get_input_port_timestep());   
   builder.Connect(meshcat_slider_system->get_output_port(), 
         hand_splitter->get_input_port_timestep());   
-  builder.Connect(meshcat_slider_system->get_output_port(), 
-        c3_trajectory_splitter->get_input_port_timestep());   
-  builder.Connect(meshcat_slider_system->get_output_port(), 
-        c3_hand_splitter->get_input_port_timestep());   
+	
+	if (vis_params.visualize_c3_traj) {
+		builder.Connect(meshcat_slider_system->get_output_port(), 
+					c3_trajectory_splitter->get_input_port_timestep());   
+
+		builder.Connect(meshcat_slider_system->get_output_port(), 
+					c3_hand_splitter->get_input_port_timestep());   
+	}
 
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
     &builder, scene_graph, meshcat, std::move(params));

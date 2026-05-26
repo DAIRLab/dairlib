@@ -3,19 +3,19 @@
 #include <Eigen/Dense>
 #include "drake/common/yaml/yaml_read_archive.h"
 
-struct CubeFlipVisualizerParams {
-  std::string ee_file;
+struct TrajectoryVideoParams {
+ std::string ee_file;
   std::string cube_file;
 
   double visualizer_publish_rate;
 
-  int ic3_num_iters;
+  double playback_speed;
+  double dt;
+
+  int ic3_iter;
   int trajectory_length;
 
   bool visualize_c3_traj;
-
-  int downsampling_factor;
-  int iter_downsampling_factor;
 
   std::string trajectory_lcm_channel_x;
   std::string trajectory_lcm_channel_u;
@@ -34,9 +34,9 @@ struct CubeFlipVisualizerParams {
     a->Visit(DRAKE_NVP(ee_file));
     a->Visit(DRAKE_NVP(cube_file));
     a->Visit(DRAKE_NVP(visualizer_publish_rate));
-    a->Visit(DRAKE_NVP(ic3_num_iters));
-    a->Visit(DRAKE_NVP(downsampling_factor));
-    a->Visit(DRAKE_NVP(iter_downsampling_factor));
+    a->Visit(DRAKE_NVP(ic3_iter));
+    a->Visit(DRAKE_NVP(playback_speed));
+    a->Visit(DRAKE_NVP(dt));
     a->Visit(DRAKE_NVP(visualize_c3_traj));
     a->Visit(DRAKE_NVP(trajectory_length));
     a->Visit(DRAKE_NVP(trajectory_lcm_channel_x));

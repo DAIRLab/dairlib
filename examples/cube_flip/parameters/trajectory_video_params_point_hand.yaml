@@ -4,15 +4,17 @@ cube_file: "examples/cube_flip/urdf/actual_cube.sdf"
 visualizer_publish_rate: 30
 
 # match with iC3 params
-ic3_num_iters: 16
+ic3_iter: 4
 trajectory_length: 450
-
-iter_downsampling_factor: 5
-downsampling_factor: 10
 
 visualize_c3_traj: true
 
+playback_speed: 0.5
+dt: 0.01
+
 trajectory_lcm_channel_x: "iC3_TRAJECTORY_X"
+
+# UNUSED, TODO: remove
 trajectory_lcm_channel_u: "iC3_TRAJECTORY_U"
 trajectory_lcm_channel_c3: "iC3_TRAJECTORY_C3"
 trajectory_lcm_channel_x_real: "iC3_TRAJECTORY_X_REAL"

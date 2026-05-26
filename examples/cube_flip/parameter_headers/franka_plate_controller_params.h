@@ -2,7 +2,7 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-struct FrankaPlateC3ControllerParams {
+struct FrankaPlateControllerParams {
 
   std::string franka_model;
   std::string end_effector_model;

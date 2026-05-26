@@ -79,3 +79,25 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+
+cc_library(
+    name = "ic3_timing_system",
+    srcs = [
+        "iC3_timing_system.cc",
+    ],
+    hdrs = [
+        "iC3_timing_system.h",
+    ],
+    deps = [
+        "//common:find_resource",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector",
+        "//examples/cube_flip/parameter_headers:iC3_options",
+        "//examples/cube_flip/parameter_headers:franka_plate_controller_params",
+        "//examples/cube_flip/trifinger/parameter_headers:trifinger_controller_params",
+
+        "@drake//:drake_shared_library",
+    ],
+)

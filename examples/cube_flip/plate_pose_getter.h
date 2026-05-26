@@ -31,14 +31,14 @@ using dairlib::lcmt_timestamped_saved_traj;
 namespace dairlib {
 
 // Gets a pose at a specific timestep
-class PointHandPoseGetter : public drake::systems::LeafSystem<double> {
+class PlatePoseGetter : public drake::systems::LeafSystem<double> {
   public:
     // object: 0 = cube, 1 = is finger
-    explicit PointHandPoseGetter(CubeFlipVisualizerParams& vis_params, 
-        int is_finger, std::string name);
+    explicit PlatePoseGetter(CubeFlipVisualizerParams& vis_params, 
+        int is_plate, std::string name);
 
-    explicit PointHandPoseGetter(TrajectoryVideoParams& video_params, 
-        int is_finger, std::string name);
+    explicit PlatePoseGetter(TrajectoryVideoParams& video_params, 
+        int is_plate, std::string name);
 
     const InputPort<double>& get_input_port_trajectory() const {
       return this->get_input_port(trajectory_input_port_);

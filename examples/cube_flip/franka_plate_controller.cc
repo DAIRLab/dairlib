@@ -17,6 +17,7 @@
 #include "examples/cube_flip/systems/c3_trajectory_generator.h"
 #include "systems/controllers/c3/ic3_tracking_controller.h"
 #include "examples/cube_flip/systems/timed_gate.h"
+#include "examples/cube_flip/systems/iC3_timing_system.h"
 #include "systems/franka_kinematics.h"
 
 
@@ -74,8 +75,8 @@ int DoMain(int argc, char* argv[]) {
   FrankaPlateLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<FrankaPlateLcmChannels>(FLAGS_lcm_channels);
 
-  FrankaPlateC3ControllerParams controller_params =
-      drake::yaml::LoadYamlFile<FrankaPlateC3ControllerParams>(
+  FrankaPlateControllerParams controller_params =
+      drake::yaml::LoadYamlFile<FrankaPlateControllerParams>(
           FLAGS_controller_settings);
 
   iC3Options ic3_options =
@@ -231,22 +232,25 @@ int DoMain(int argc, char* argv[]) {
             builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_lqr_output>(
                     "iC3_LQR", &lcm));
 
-  auto radio_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
-          lcm_channel_params.radio_channel, &lcm));
+    auto radio_sub =
+        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
+            lcm_channel_params.radio_channel, &lcm));
 
     auto object_state_receiver =
         builder.AddSystem<systems::ObjectStateReceiver>(plant_object);
 
     auto c3_goal_generator = 
         builder.AddSystem<C3GoalGenerator>(plant_for_lcs, &plant_lcs_context, *plant_for_lcs_autodiff, 
-          plant_lcs_context_ad.get(), c3_controller_options, controller_params.x_target, 0); 
+          plant_lcs_context_ad.get(), ic3_options, c3_controller_options, controller_params.x_target, 0); 
 
     auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_object, object_context.get(),
           controller_params.end_effector_name, "cube",
           controller_params.include_end_effector_orientation);
+
+    auto ic3_timing_system = builder.AddSystem<iC3TimingSystem>(
+            ic3_options, controller_params);
 
     // Set nominal position of plate to init position
     VectorXd xd = controller_params.x_target;
@@ -280,8 +284,16 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(nominal_position->get_output_port(),
             				c3_goal_generator->get_input_port_nominal_position());       
     builder.Connect(reduced_order_model_receiver->get_output_port(),
-            				c3_goal_generator->get_input_port_state());      
+            				c3_goal_generator->get_input_port_state());    
+    builder.Connect(ic3_x_trajectory_sub->get_output_port(),
+                    c3_goal_generator->get_input_port_ic3_x()); 
+    builder.Connect(ic3_timing_system->get_output_port_index(),
+                    c3_goal_generator->get_input_port_timestep());           
 
+    builder.Connect(radio_sub->get_output_port(),
+                    ic3_timing_system->get_input_port_radio());
+    builder.Connect(ic3_timing_system->get_output_port_index(),
+                    controller->get_input_port_timestep());
     builder.Connect(c3_goal_generator->get_output_port_x_curr(),
        							controller->get_input_port_lcs_state());
     builder.Connect(c3_goal_generator->get_output_port_target(),
@@ -294,10 +306,8 @@ int DoMain(int argc, char* argv[]) {
                     controller->get_input_port_ic3_x());
     builder.Connect(ic3_u_trajectory_sub->get_output_port(),
                     controller->get_input_port_ic3_u());
-    builder.Connect(radio_sub->get_output_port(),
-                    controller->get_input_port_radio());
 
-		builder.Connect(nominal_position->get_output_port(),
+	  builder.Connect(nominal_position->get_output_port(),
                     c3_trajectory_generator->get_input_port_nominal_position());
     builder.Connect(c3_goal_generator->get_output_port_lcs(),
                     c3_trajectory_generator->get_input_port_lcs());

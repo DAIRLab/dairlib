@@ -41,104 +41,104 @@ TrajectoryLcmParserPlate::TrajectoryLcmParserPlate(CubeFlipVisualizerParams& vis
     }
     std::cout << "num splitter ports: " << trajectory_output_ports_.size() << std::endl;
 
-  }
+}
 
-  void TrajectoryLcmParserPlate::GetTrajectory(
-    const drake::systems::Context<double>& context, 
-    lcmt_timestamped_saved_traj* traj, int i, int step, int object) const {
+void TrajectoryLcmParserPlate::GetTrajectory(
+  const drake::systems::Context<double>& context, 
+  lcmt_timestamped_saved_traj* traj, int i, int step, int object) const {
 
-    const auto* abstract_input = this->EvalAbstractInput(context, trajectory_input_port_);
-    if (abstract_input == nullptr) return;
+  const auto* abstract_input = this->EvalAbstractInput(context, trajectory_input_port_);
+  if (abstract_input == nullptr) return;
+  
+  const auto& lcm_all_trajectories = abstract_input->get_value<lcmt_timestamped_saved_traj>();
+
+  LcmTrajectory trajectory = LcmTrajectory(lcm_all_trajectories.saved_traj);
+  
+  // Pull out trajectory corresponding to ith iteration
+  const std::string trajectory_i_name = "iteration_" + std::to_string(i);
+  //std::cout << trajectory_i_name << std::endl;
+
+  if (trajectory.HasTrajectory(trajectory_i_name)) {
+    const std::string orientation_trajectory_name = "orientations_" + std::to_string(i);
+    const std::string position_trajectory_name = "positions_" + std::to_string(i);
     
-    const auto& lcm_all_trajectories = abstract_input->get_value<lcmt_timestamped_saved_traj>();
+    LcmTrajectory::Trajectory trajectory_i = trajectory.GetTrajectory(trajectory_i_name);
+    MatrixXd data = trajectory_i.datapoints;
 
-    LcmTrajectory trajectory = LcmTrajectory(lcm_all_trajectories.saved_traj);
-    
-    // Pull out trajectory corresponding to ith iteration
-    const std::string trajectory_i_name = "iteration_" + std::to_string(i);
-    //std::cout << trajectory_i_name << std::endl;
+    MatrixXd orientations = MatrixXd::Zero(4, N_);
+    MatrixXd positions = MatrixXd::Zero(3, N_);
+    if (object == 0) {
+      int cube_orientation_index = 5;
+      int cube_position_index = 9;
 
-    if (trajectory.HasTrajectory(trajectory_i_name)) {
-      const std::string orientation_trajectory_name = "orientations_" + std::to_string(i);
-      const std::string position_trajectory_name = "positions_" + std::to_string(i);
+      orientations = data.block(cube_orientation_index, 0, 4, N_);
+      positions = data.block(cube_position_index, 0, 3, N_);
       
-      LcmTrajectory::Trajectory trajectory_i = trajectory.GetTrajectory(trajectory_i_name);
-      MatrixXd data = trajectory_i.datapoints;
-
-      MatrixXd orientations = MatrixXd::Zero(4, N_);
-      MatrixXd positions = MatrixXd::Zero(3, N_);
-      if (object == 0) {
-        int cube_orientation_index = 5;
-        int cube_position_index = 9;
-
-        orientations = data.block(cube_orientation_index, 0, 4, N_);
-        positions = data.block(cube_position_index, 0, 3, N_);
-        
-      } else if (object == 1) {
-        
-        int plate_position_index = 0;
-        int plate_orientation_index = 3
-        ;
-
-        MatrixXd raw_orientations = data.block(plate_orientation_index, 0, 2, N_);
-        positions = data.block(plate_position_index, 0, 3, N_);
-
-        //std::cout << positions << std::endl;
-
-        // Convert orientations from roll, pitch, yaw to quaternions
-        for (int i = 0; i < raw_orientations.cols(); ++i) {
-            double roll = raw_orientations(0, i);
-            double pitch = raw_orientations(1, i);
-            //std::cout << "yaw " << yaw << std::endl;
-
-            AngleAxisd rollAngle(roll, Vector3d::UnitX());
-            AngleAxisd pitchAngle(pitch, Vector3d::UnitY());
-
-            Quaterniond q = rollAngle * pitchAngle; 
-            VectorXd q_vec(4); 
-            q_vec << q.w(), q.x(), q.y(), q.z();
-            orientations.col(i) = q_vec;
-        }
-      } else {
-        std::cout << "BAD OBJECT INDEX SIDOGHPOISJDGPWE" << std::endl;
-      }
-
-      int downsampled_cols =  (orientations.cols() + step - 2) / step;
-      MatrixXd orientations_downsampled(orientations.rows(), downsampled_cols);
-      MatrixXd positions_downsampled(positions.rows(), downsampled_cols);
-
-      for (int i = 0; i < downsampled_cols; i++) {
-          orientations_downsampled.col(i) = orientations.col(i * step);
-          positions_downsampled.col(i) = positions.col(i * step);
-      }
-
-      VectorXd timestamps(downsampled_cols);
-      for (int t = 0; t < downsampled_cols; t++) {
-        timestamps(t) = t;
-      }
-
-      LcmTrajectory::Trajectory orientation_traj;
-      orientation_traj.traj_name = orientation_trajectory_name;
-      orientation_traj.datatypes = std::vector<std::string>(orientations_downsampled.rows(), "double"); 
-      orientation_traj.datapoints = orientations_downsampled;
-      orientation_traj.time_vector = timestamps;
-
-      LcmTrajectory::Trajectory position_traj;
-      position_traj.traj_name = position_trajectory_name;
-      position_traj.datatypes = std::vector<std::string>(positions_downsampled.rows(), "double"); 
-      position_traj.datapoints = positions_downsampled;
-      position_traj.time_vector = timestamps;
-
-      LcmTrajectory lcm_trajectory_i({orientation_traj}, {orientation_trajectory_name},
-                                  orientation_trajectory_name, orientation_trajectory_name, false);
-      lcm_trajectory_i.AddTrajectory(position_traj.traj_name, position_traj);                    
-
-      traj->saved_traj = lcm_trajectory_i.GenerateLcmObject();
-      traj->utime = context.get_time() * 1e6;
+    } else if (object == 1) {
       
+      int plate_position_index = 0;
+      int plate_orientation_index = 3
+      ;
+
+      MatrixXd raw_orientations = data.block(plate_orientation_index, 0, 2, N_);
+      positions = data.block(plate_position_index, 0, 3, N_);
+
+      //std::cout << positions << std::endl;
+
+      // Convert orientations from roll, pitch, yaw to quaternions
+      for (int i = 0; i < raw_orientations.cols(); ++i) {
+          double roll = raw_orientations(0, i);
+          double pitch = raw_orientations(1, i);
+          //std::cout << "yaw " << yaw << std::endl;
+
+          AngleAxisd rollAngle(roll, Vector3d::UnitX());
+          AngleAxisd pitchAngle(pitch, Vector3d::UnitY());
+
+          Quaterniond q = rollAngle * pitchAngle; 
+          VectorXd q_vec(4); 
+          q_vec << q.w(), q.x(), q.y(), q.z();
+          orientations.col(i) = q_vec;
+      }
+    } else {
+      std::cout << "BAD OBJECT INDEX SIDOGHPOISJDGPWE" << std::endl;
     }
+
+    int downsampled_cols =  (orientations.cols() + step - 2) / step;
+    MatrixXd orientations_downsampled(orientations.rows(), downsampled_cols);
+    MatrixXd positions_downsampled(positions.rows(), downsampled_cols);
+
+    for (int i = 0; i < downsampled_cols; i++) {
+        orientations_downsampled.col(i) = orientations.col(i * step);
+        positions_downsampled.col(i) = positions.col(i * step);
+    }
+
+    VectorXd timestamps(downsampled_cols);
+    for (int t = 0; t < downsampled_cols; t++) {
+      timestamps(t) = t;
+    }
+
+    LcmTrajectory::Trajectory orientation_traj;
+    orientation_traj.traj_name = orientation_trajectory_name;
+    orientation_traj.datatypes = std::vector<std::string>(orientations_downsampled.rows(), "double"); 
+    orientation_traj.datapoints = orientations_downsampled;
+    orientation_traj.time_vector = timestamps;
+
+    LcmTrajectory::Trajectory position_traj;
+    position_traj.traj_name = position_trajectory_name;
+    position_traj.datatypes = std::vector<std::string>(positions_downsampled.rows(), "double"); 
+    position_traj.datapoints = positions_downsampled;
+    position_traj.time_vector = timestamps;
+
+    LcmTrajectory lcm_trajectory_i({orientation_traj}, {orientation_trajectory_name},
+                                orientation_trajectory_name, orientation_trajectory_name, false);
+    lcm_trajectory_i.AddTrajectory(position_traj.traj_name, position_traj);                    
+
+    traj->saved_traj = lcm_trajectory_i.GenerateLcmObject();
+    traj->utime = context.get_time() * 1e6;
     
   }
+  
+}
 
 
 

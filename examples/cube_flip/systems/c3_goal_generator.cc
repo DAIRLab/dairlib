@@ -24,15 +24,18 @@ C3GoalGenerator::C3GoalGenerator(
 		Context<double>* context,
 		MultibodyPlant<AutoDiffXd>& plant_ad,
 		Context<AutoDiffXd>* context_ad,
+    iC3Options ic3_options, 
 		C3ControllerOptions c3_controller_options, 
     VectorXd x_des, int example_idx)
     : plant_(plant), 
 			context_(context),
 			plant_ad_(plant_ad),
 			context_ad_(context_ad),
+      ic3_options_(ic3_options),
       c3_controller_options_(c3_controller_options),
 			c3_options_(c3_controller_options.c3_options),
 			x_des_(x_des),
+      N_(c3_controller_options.lcs_factory_options.N),
       example_idx_(example_idx)
   {
   DRAKE_DEMAND(c3_controller_options_.lcs_factory_options.contact_pair_configs.has_value());
@@ -62,17 +65,32 @@ C3GoalGenerator::C3GoalGenerator(
     DRAKE_THROW_UNLESS(false);
   }
 
+  for (const auto& body_idx : plant_.GetFloatingBaseBodies()) {
+    const auto& body = plant_.get_body(body_idx);
+    int start = body.floating_positions_start();
+    quaternion_indices_.push_back(start);
+  }
+
   lcs_factory_ = std::make_unique<LCSFactory>(plant_, *context_, plant_ad_, *context_ad_, c3_controller_options_.lcs_factory_options);
 
   state_port_ =
       this->DeclareVectorInputPort("x_input", TimestampedVector<double>(n_x_))
           .get_index();
 
+  ic3_x_port_ =
+      this->DeclareAbstractInputPort("ic3_x_port", drake::Value<lcmt_timestamped_saved_traj>())
+          .get_index();
+
+  timestep_port_ =
+      this->DeclareVectorInputPort(
+              "timestep_port", BasicVector<double>(1))
+          .get_index();
+
   // HARDCODED
   int nominal_position_size;
   if (example_idx_ == 0) {
     nominal_position_size = 3;
-  } else if (example_idx_ == 2) {
+  } else if (example_idx_ == 1) {
     nominal_position_size = 9;
   }
   
@@ -88,18 +106,10 @@ C3GoalGenerator::C3GoalGenerator(
               &C3GoalGenerator::OutputTarget)
           .get_index();
 
-  x_lcs_port_ =
-      this->DeclareVectorOutputPort(
-              "x_lcs_port",
-							TimestampedVector<double>(n_x_),
-              &C3GoalGenerator::OutputState)
-          .get_index();
-
-
 	// Make dummy LCS for port declaration
   MatrixXd A = MatrixXd::Ones(n_x_, n_x_);
   MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
-  VectorXd d = VectorXd::Zero(n_x_);
+  VectorXd d = VectorXd::Zero(n_x_); 
   MatrixXd D = MatrixXd::Ones(n_x_, n_lambda_);
   MatrixXd E = MatrixXd::Zero(n_lambda_, n_x_);
   MatrixXd F = MatrixXd::Zero(n_lambda_, n_lambda_);
@@ -114,6 +124,15 @@ C3GoalGenerator::C3GoalGenerator(
               dummy_lcs,
               &C3GoalGenerator::OutputLCS)
           .get_index();
+
+  x_lcs_port_ =
+      this->DeclareVectorOutputPort(
+              "x_lcs_port",
+							TimestampedVector<double>(n_x_),
+              &C3GoalGenerator::OutputState)
+          .get_index();
+
+    
 
 }
 
@@ -164,88 +183,100 @@ void C3GoalGenerator::OutputLCS(
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         state_port_);
+
+  const BasicVector<double>* timestep_vector =
+    (BasicVector<double>*)this->EvalVectorInput(context, timestep_port_);                                                       
+  int timestep = static_cast<int>(timestep_vector->get_value()(0));
+
+  if (timestep < 0) return;
+
+  std::string trajectory_name = "iteration_" + std::to_string(ic3_options_.iter_to_use);
+
+  const auto& lcm_all_x_trajectories = 
+    this->EvalAbstractInput(context, ic3_x_port_)->get_value<lcmt_timestamped_saved_traj>();
+
+  LcmTrajectory x_trajectory = LcmTrajectory(lcm_all_x_trajectories.saved_traj);
+  LcmTrajectory::Trajectory state_trajectory = x_trajectory.GetTrajectory(trajectory_name);
+  MatrixXd state_data = state_trajectory.datapoints;
+
   drake::VectorX<double> x_lcs = lcs_x->get_data();
 
+  MatrixXd x_hat(n_x_, N_);
+  MatrixXd u_hat(n_u_, N_);
+  double dt_scaling = c3_controller_options_.lcs_factory_options.dt / ic3_options_.dt;
 
-  if (example_idx_ == 0) {
-    // Translate xyz position to match ic3's origin
-    x_lcs.segment(0, 3) = x_lcs.segment(0, 3) - nominal_position->get_value(); 
-    x_lcs.segment(9, 3) = x_lcs.segment(9, 3) - nominal_position->get_value();
-  }
-
-   // HARDCODED
+  // HARDCODED
 	VectorXd u_nominal = VectorXd::Zero(n_u_);
   if (example_idx_ == 0) {
     DRAKE_DEMAND(n_u_ == 5);
     u_nominal(2) = 5; // Hard coded plate + object weight
-  } else if (example_idx_ == 2) {
+  } else if (example_idx_ == 1) {
     DRAKE_DEMAND(n_u_ == 9);
-    u_nominal(2) = 0.2 * 9.8;
-    u_nominal(5) = 0.2 * 9.8;
-    u_nominal(8) = 0.2 * 9.8;
+    u_nominal(2) = 0.02 * 9.8;
+    u_nominal(5) = 0.02 * 9.8;
+    u_nominal(8) = 0.02 * 9.8;
+  }
+ 
+  for (int k = 0; k < N_; k++) {
+    int idx = std::min(static_cast<int>(timestep + dt_scaling * k), ic3_options_.N);
+    x_hat.col(k) = state_data.col(idx);
+    u_hat.col(k) = u_nominal;
+
+    // Linearize about true end effector position
+    if (example_idx_ == 0) {
+      x_hat.col(k).segment(0, 5) = x_lcs.segment(0, 5);
+    } else if (example_idx_ == 1) {
+      x_hat.col(k).segment(0, 9) = x_lcs.segment(0, 9);
+    }
   }
 
-	c3::multibody::SetContext<double>(plant_, x_lcs, u_nominal,  context_);
-	drake::VectorX<double> q_v_u(n_x_ + n_u_);
-	q_v_u << x_lcs, u_nominal;
-	drake::AutoDiffVecXd q_v_u_ad = drake::math::InitializeAutoDiff(q_v_u);
-	c3::multibody::SetPositionsAndVelocitiesIfNew<AutoDiffXd>(plant_ad_, q_v_u_ad.head(n_x_),
-																						context_ad_);
-	c3::multibody::SetInputsIfNew<AutoDiffXd>(plant_ad_, q_v_u_ad.tail(n_u_), context_ad_);
+  if (example_idx_ == 0) {
+    // Translate xyz position to match ic3's origin
+    for (int k = 0; k < N_; k++) {
+      x_hat.col(k).segment(0, 3) = x_hat.col(k).segment(0, 3) - nominal_position->get_value(); 
+      x_hat.col(k).segment(9, 3) = x_hat.col(k).segment(9, 3) - nominal_position->get_value();
+    }
+  }
 
-	// Linearize
-	LCS lcs = lcs_factory_->GenerateLCS();
+  LCS lcs = MakeTimeVaryingLCS(x_hat, u_hat);
 
 	*lcs_out = lcs;
 }
 
-// LCS C3GoalGenerator::MakeTimeVaryingLCS(
-// 	MatrixXd x_hat, MatrixXd u_hat) const {
-
-// 	vector<Eigen::MatrixXd> A;
-// 	vector<Eigen::MatrixXd> B;
-// 	vector<Eigen::MatrixXd> D;
-// 	vector<Eigen::VectorXd> d;
-// 	vector<Eigen::MatrixXd> E;
-// 	vector<Eigen::MatrixXd> F;
-// 	vector<Eigen::MatrixXd> H;
-// 	vector<Eigen::VectorXd> c;
-
-// 	for (int k = 0; k < c3_options_.N; k++) {
-		
-// 		// Set plant to kth xhat, uhat
-// 		multibody::SetContext<double>(plant_, x_hat.col(k), u_hat.col(k),  context_);
-// 		drake::VectorX<double> q_v_u(n_x_ + n_u_);
-// 		q_v_u << x_hat.col(k), u_hat.col(k);
-// 		drake::AutoDiffVecXd q_v_u_ad = drake::math::InitializeAutoDiff(q_v_u);
-// 		multibody::SetPositionsAndVelocitiesIfNew<AutoDiffXd>(plant_ad_, q_v_u_ad.head(n_x_),
-// 																							context_ad_);
-// 		multibody::SetInputsIfNew<AutoDiffXd>(plant_ad_, q_v_u_ad.tail(n_u_), context_ad_);
-
-// 		// Linearize
-// 		vector<int> starting_index_per_contact_in_lambda_t_vector;
-// 		vector<int> num_friction_directions_vector;
-// 		for (int i = 0; i < c3_options_.num_contacts; i++) {
-// 			starting_index_per_contact_in_lambda_t_vector.push_back(2 * c3_options_.num_friction_directions * i);
-// 			num_friction_directions_vector.push_back(c3_options_.num_friction_directions);
-// 		}
-
-// 		LCS lcs = LCSFactory::LinearizePlantToLCS(plant_, *context_, plant_ad_, 
-// 			*context_ad_, contact_geoms_, c3_options_.mu, c3_options_.dt, 1, n_lambda_,
-// 			num_friction_directions_vector, starting_index_per_contact_in_lambda_t_vector, contact_model_);
 
 
-// 		A.push_back(lcs.A_[0]);
-// 		B.push_back(lcs.B_[0]);
-// 		D.push_back(lcs.D_[0]);
-// 		d.push_back(lcs.d_[0]);
-// 		E.push_back(lcs.E_[0]);
-// 		F.push_back(lcs.F_[0]);
-// 		H.push_back(lcs.H_[0]);
-// 		c.push_back(lcs.c_[0]);      
-// 	}
+LCS C3GoalGenerator::MakeTimeVaryingLCS(MatrixXd x_hat, MatrixXd u_hat) const {
 
-// 	return LCS(A, B, D, d, E, F, H, c, c3_options_.dt);
-// }
+  DRAKE_DEMAND(x_hat.cols() >= N_);
+  DRAKE_DEMAND(u_hat.cols() >= N_);
+
+  vector<Eigen::MatrixXd> A;
+  vector<Eigen::MatrixXd> B;
+  vector<Eigen::MatrixXd> D;
+  vector<Eigen::VectorXd> d;
+  vector<Eigen::MatrixXd> E;
+  vector<Eigen::MatrixXd> F;
+  vector<Eigen::MatrixXd> H;
+  vector<Eigen::VectorXd> c;
+
+  for (int k = 0; k < N_; k++) {
+    for (auto idx : quaternion_indices_) {
+      x_hat.col(k).segment(idx, 4) = x_hat.col(k).segment(idx, 4).normalized(); // Normalize quaternions
+    }
+
+    // Linearize about kth xhat, uhat
+    lcs_factory_->UpdateStateAndInput(x_hat.col(k), u_hat.col(k));
+    LCS lcs = lcs_factory_->GenerateLCS();
+    A.push_back(lcs.A()[0]);
+    B.push_back(lcs.B()[0]);
+    D.push_back(lcs.D()[0]);
+    d.push_back(lcs.d()[0]);
+    E.push_back(lcs.E()[0]);
+    F.push_back(lcs.F()[0]);
+    H.push_back(lcs.H()[0]);
+    c.push_back(lcs.c()[0]);      
+  }
+  return LCS(A, B, D, d, E, F, H, c, c3_controller_options_.lcs_factory_options.dt);
+}
 
 } // namespace dairlib

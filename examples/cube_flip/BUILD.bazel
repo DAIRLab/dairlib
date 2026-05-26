@@ -77,7 +77,6 @@ cc_binary(
     data = [
         ":urdfs",
         "//examples/cube_flip:parameters",
-        "@drake_models//:allegro_hand_description",
     ],
     deps = [
         "//examples/cube_flip/parameter_headers:trajectory_visualizer_params",
@@ -107,11 +106,70 @@ cc_binary(
     data = [
         ":urdfs",
         "//examples/cube_flip:parameters",
-        "@drake_models//:allegro_hand_description",
     ],
     deps = [
         "//examples/cube_flip/parameter_headers:trajectory_visualizer_params",
         "//examples/cube_flip:point_hand_pose_getter",
+        "//examples/cube_flip:meshcat_slider_system",
+        "//common",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems/senders:senders",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "//systems/visualization:lcm_visualization_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lopenblas",
+    ],
+)
+
+
+cc_binary(
+    name = "trajectory_video_plate",
+    srcs = ["trajectory_video_plate.cc"],
+    data = [
+        ":urdfs",
+        "//examples/cube_flip:parameters",
+    ],
+    deps = [
+        "//examples/cube_flip/parameter_headers:trajectory_video_params",
+        "//examples/cube_flip:lcm_pose_getter",
+        "//examples/cube_flip:meshcat_slider_system",
+        "//common",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems/senders:senders",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "//systems/visualization:lcm_visualization_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lopenblas",
+    ],
+)
+
+
+cc_binary(
+    name = "trajectory_video_point_hand",
+    srcs = ["trajectory_video_point_hand.cc"],
+    data = [
+        ":urdfs",
+        "//examples/cube_flip:parameters",
+    ],
+    deps = [
+        "//examples/cube_flip/parameter_headers:trajectory_video_params",
+        "//examples/cube_flip:lcm_pose_getter",
         "//examples/cube_flip:meshcat_slider_system",
         "//common",
         "//multibody:utils",
@@ -178,6 +236,20 @@ cc_library(
 )
 
 cc_library(
+    name = "plate_pose_getter",
+    srcs = ["plate_pose_getter.cc"],
+    hdrs = ["plate_pose_getter.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//lcm:lcm_trajectory_saver",
+        "@drake//:drake_shared_library",
+        "//examples/cube_flip/parameter_headers:trajectory_visualizer_params",
+        "//examples/cube_flip/parameter_headers:trajectory_video_params",
+
+    ],
+)
+
+cc_library(
     name = "point_hand_pose_getter",
     srcs = ["point_hand_pose_getter.cc"],
     hdrs = ["point_hand_pose_getter.h"],
@@ -186,6 +258,21 @@ cc_library(
         "//lcm:lcm_trajectory_saver",
         "@drake//:drake_shared_library",
         "//examples/cube_flip/parameter_headers:trajectory_visualizer_params",
+        "//examples/cube_flip/parameter_headers:trajectory_video_params",
+
+    ],
+)
+
+cc_library(
+    name = "lcm_pose_getter",
+    srcs = ["lcm_pose_getter.cc"],
+    hdrs = ["lcm_pose_getter.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//lcm:lcm_trajectory_saver",
+        "@drake//:drake_shared_library",
+        "//examples/cube_flip/parameter_headers:trajectory_visualizer_params",
+        "//examples/cube_flip/parameter_headers:trajectory_video_params",
     ],
 )
 
@@ -268,6 +355,7 @@ cc_binary(
         "//examples/cube_flip/systems:c3_goal_generator",
         "//examples/cube_flip/systems:c3_trajectory_generator",
         "//examples/cube_flip/systems:timed_gate",
+        "//examples/cube_flip/systems:ic3_timing_system",
         "//systems/controllers:ic3_tracking_controller",
         "@gflags",
     ],

@@ -1,12 +1,12 @@
 #include <iostream>
-#include "examples/cube_flip/point_hand_pose_getter.h"
+#include "examples/cube_flip/plate_pose_getter.h"
 
 #include "common/find_resource.h"
 
 namespace dairlib {
 
-PointHandPoseGetter::PointHandPoseGetter(CubeFlipVisualizerParams& vis_params, 
-    int is_finger, std::string name)
+PlatePoseGetter::PlatePoseGetter(CubeFlipVisualizerParams& vis_params, 
+    int is_plate, std::string name)
 : num_trajectories_(vis_params.ic3_num_iters) {
 
     this->set_name(name);
@@ -35,10 +35,10 @@ PointHandPoseGetter::PointHandPoseGetter(CubeFlipVisualizerParams& vis_params,
             return std::make_unique<drake::Value<lcmt_timestamped_saved_traj>>(lcmt_timestamped_saved_traj());
           },
           // Calculator: lambda capturing ‘this’ and ‘i’
-          [this, i, is_finger](const drake::systems::Context<double>& context,
+          [this, i, is_plate](const drake::systems::Context<double>& context,
                     drake::AbstractValue* output_abstract) {
             lcmt_timestamped_saved_traj& traj = output_abstract->get_mutable_value<lcmt_timestamped_saved_traj>();
-            this->GetTrajectory(context, &traj, i, is_finger);
+            this->GetTrajectory(context, &traj, i, is_plate);
           });
 
       trajectory_output_ports_.push_back(port);
@@ -48,8 +48,8 @@ PointHandPoseGetter::PointHandPoseGetter(CubeFlipVisualizerParams& vis_params,
 
   }
 
-PointHandPoseGetter::PointHandPoseGetter(TrajectoryVideoParams& video_params, 
-  int is_finger, std::string name)
+PlatePoseGetter::PlatePoseGetter(TrajectoryVideoParams& video_params, 
+  int is_plate, std::string name)
   : num_trajectories_(1) {
 
     this->set_name(name);
@@ -78,10 +78,10 @@ PointHandPoseGetter::PointHandPoseGetter(TrajectoryVideoParams& video_params,
           return std::make_unique<drake::Value<lcmt_timestamped_saved_traj>>(lcmt_timestamped_saved_traj());
         },
         // Calculator: lambda capturing ‘this’ and ‘i’
-        [this, i, is_finger](const drake::systems::Context<double>& context,
+        [this, i, is_plate](const drake::systems::Context<double>& context,
                   drake::AbstractValue* output_abstract) {
           lcmt_timestamped_saved_traj& traj = output_abstract->get_mutable_value<lcmt_timestamped_saved_traj>();
-          this->GetTrajectory(context, &traj, i, is_finger);
+          this->GetTrajectory(context, &traj, i, is_plate);
         });
 
     trajectory_output_ports_.push_back(port);
@@ -91,9 +91,9 @@ PointHandPoseGetter::PointHandPoseGetter(TrajectoryVideoParams& video_params,
 
   }
 
-  void PointHandPoseGetter::GetTrajectory(
+  void PlatePoseGetter::GetTrajectory(
     const drake::systems::Context<double>& context, 
-    lcmt_timestamped_saved_traj* traj, int iter, int is_finger) const {
+    lcmt_timestamped_saved_traj* traj, int iter, int is_plate) const {
         
     const BasicVector<double>* timestep_vec =
       (BasicVector<double>*)this->EvalVectorInput(context, timestep_input_port_);
@@ -124,11 +124,12 @@ PointHandPoseGetter::PointHandPoseGetter(TrajectoryVideoParams& video_params,
       orientations(0, 2) = 1;
 
       MatrixXd positions;
-      if (is_finger == 0) {
-        int cube_orientation_index = 9;
-        int cube_position_index = 13;
+      if (is_plate == 0) {
+        int cube_orientation_index = 5;
+        int cube_position_index = 9;
 
         positions = MatrixXd::Zero(3, 3);
+
         orientations.col(0) = data.col(timestep).segment(cube_orientation_index, 4);
         orientations.col(1) = data.col(timestep).segment(cube_orientation_index, 4);
         orientations.col(2) = data.col(timestep).segment(cube_orientation_index, 4);
@@ -137,12 +138,12 @@ PointHandPoseGetter::PointHandPoseGetter(TrajectoryVideoParams& video_params,
         positions.col(1) = data.col(timestep).segment(cube_position_index, 3);
         positions.col(2) = data.col(timestep).segment(cube_position_index, 3);
 
-      } else if (is_finger == 1) {
-        int finger_position_index = 0;    
+      } else if (is_plate == 1) {
+        int plate_position_index = 0;    
         positions = MatrixXd::Zero(9, 3);
-        positions.col(0) = data.col(timestep).segment(finger_position_index, 9);
-        positions.col(1) = data.col(timestep).segment(finger_position_index, 9);
-        positions.col(2) = data.col(timestep).segment(finger_position_index, 9);
+        positions.col(0) = data.col(timestep).segment(plate_position_index, 5);
+        positions.col(1) = data.col(timestep).segment(plate_position_index, 5);
+        positions.col(2) = data.col(timestep).segment(plate_position_index, 5);
 
       } else {
         std::cout << "BAD OBJECT INDEX SIDOGHPOISJDGPWE" << std::endl;

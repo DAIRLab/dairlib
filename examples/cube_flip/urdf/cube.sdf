@@ -78,8 +78,8 @@
             </cylinder>
           </geometry>
         <drake:proximity_properties>
-          <drake:mu_static>0.8</drake:mu_static>
-          <drake:mu_dynamic>0.8</drake:mu_dynamic>
+          <drake:mu_static>0.6</drake:mu_static>
+          <drake:mu_dynamic>0.5</drake:mu_dynamic>
         </drake:proximity_properties>
 
         </collision>
@@ -91,8 +91,8 @@
             </sphere>
           </geometry>
           <drake:proximity_properties>
-            <drake:mu_static>0.8</drake:mu_static>
-            <drake:mu_dynamic>0.8</drake:mu_dynamic>
+            <drake:mu_static>0.6</drake:mu_static>
+            <drake:mu_dynamic>0.5</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
         <collision name="corner_2">
@@ -103,8 +103,8 @@
             </sphere>
           </geometry>
           <drake:proximity_properties>
-            <drake:mu_static>0.8</drake:mu_static>
-            <drake:mu_dynamic>0.8</drake:mu_dynamic>
+            <drake:mu_static>0.6</drake:mu_static>
+            <drake:mu_dynamic>0.5</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
         <collision name="corner_3">
@@ -115,8 +115,8 @@
             </sphere>
           </geometry>
           <drake:proximity_properties>
-            <drake:mu_static>0.8</drake:mu_static>
-            <drake:mu_dynamic>0.8</drake:mu_dynamic>
+            <drake:mu_static>0.6</drake:mu_static>
+            <drake:mu_dynamic>0.5</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
         <collision name="corner_4">
@@ -127,8 +127,8 @@
             </sphere>
           </geometry>
           <drake:proximity_properties>
-            <drake:mu_static>0.8</drake:mu_static>
-            <drake:mu_dynamic>0.8</drake:mu_dynamic>
+            <drake:mu_static>0.6</drake:mu_static>
+            <drake:mu_dynamic>0.5</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
       </link>

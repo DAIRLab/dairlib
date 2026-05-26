@@ -15,8 +15,8 @@ filter_samples_for_safety: true
 # Number of samples.  Add 2 for repositioning (current location, previous
 # repositioning target) and 1 for C3 (current location) to get total sample
 # number solved in parallel for each control loop.
-num_additional_samples_repos: 2
-num_additional_samples_c3: 3
+num_additional_samples_repos: 1
+num_additional_samples_c3: 2
 
 # Sample buffer parameters.
 consider_best_buffer_sample_when_leaving_c3: true

@@ -259,6 +259,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   void ResetProgressMetrics() const;
 
+  void ResetSampleBuffers() const;
+
   void IncludeEEOrientationTargetIfEnabled(
       LcmTrajectory* lcm_trajectory, const Eigen::Vector3d& ee_position,
       const Eigen::VectorXd& timestamps) const;

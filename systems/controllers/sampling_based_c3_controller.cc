@@ -360,26 +360,18 @@ SamplingC3Controller::SamplingC3Controller(
                                       &SamplingC3Controller::OutputDebug)
           .get_index();
 
-  // Sample buffer related ouput ports.
-  sample_buffer_ = MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
-  sample_costs_buffer_ = -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
+  // Sample buffers.
+  ResetSampleBuffers();
   sample_buffer_configurations_port_ =
       this->DeclareAbstractOutputPort(
               "sample_buffer_configurations", sample_buffer_,
               &SamplingC3Controller::OutputSampleBufferConfigurations)
           .get_index();
-
   sample_buffer_costs_port_ =
       this->DeclareAbstractOutputPort(
               "sample_buffer_costs", sample_costs_buffer_,
               &SamplingC3Controller::OutputSampleBufferCosts)
           .get_index();
-
-  // Unsuccessful sample buffer related output ports.
-  unsuccessful_sample_buffer_ =
-      MatrixXd::Zero(sampling_params_.N_unsuccessful_sample_buffer, n_q_);
-  unsuccessful_sample_costs_buffer_ =
-      -1 * VectorXd::Ones(sampling_params_.N_unsuccessful_sample_buffer);
   unsuccessful_sample_buffer_configurations_port_ =
       this->DeclareAbstractOutputPort(
               "unsuccessful_sample_buffer_configurations",
@@ -387,7 +379,6 @@ SamplingC3Controller::SamplingC3Controller(
               &SamplingC3Controller::
                   OutputUnsuccessfulSampleBufferConfigurations)
           .get_index();
-
   unsuccessful_sample_buffer_costs_port_ =
       this->DeclareAbstractOutputPort(
               "unsuccessful_sample_buffer_costs",
@@ -812,15 +803,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     detected_goal_changes_++;
 
     // Reset the sample buffers now that the costs have changed.
-    sample_buffer_ = MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
-    sample_costs_buffer_ =
-        -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
-    num_in_buffer_ = 0;
-    unsuccessful_sample_buffer_ =
-        MatrixXd::Zero(sampling_params_.N_unsuccessful_sample_buffer, n_q_);
-    unsuccessful_sample_costs_buffer_ =
-        -1 * VectorXd::Ones(sampling_params_.N_unsuccessful_sample_buffer);
-    num_in_unsuccessful_buffer_ = 0;
+    ResetSampleBuffers();
   }
 
   // If the object is close to desired XY location, track its full pose.
@@ -839,15 +822,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       std::cout << "Crossed cost switching threshold." << std::endl;
 
       // Reset the sample buffers and metrics now that the costs have changed.
-      sample_buffer_ = MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
-      sample_costs_buffer_ =
-          -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
-      num_in_buffer_ = 0;
-      unsuccessful_sample_buffer_ =
-          MatrixXd::Zero(sampling_params_.N_unsuccessful_sample_buffer, n_q_);
-      unsuccessful_sample_costs_buffer_ =
-          -1 * VectorXd::Ones(sampling_params_.N_unsuccessful_sample_buffer);
-      num_in_unsuccessful_buffer_ = 0;
+      ResetSampleBuffers();
       if (is_doing_c3_) {
         ResetProgressMetrics();
       }
@@ -2234,6 +2209,17 @@ void SamplingC3Controller::ResetProgressMetrics() const {
   while (!object_config_cost_history_.empty()) {
     object_config_cost_history_.pop();
   }
+}
+
+void SamplingC3Controller::ResetSampleBuffers() const {
+  sample_buffer_ = MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
+  sample_costs_buffer_ = -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
+  num_in_buffer_ = 0;
+  unsuccessful_sample_buffer_ =
+      MatrixXd::Zero(sampling_params_.N_unsuccessful_sample_buffer, n_q_);
+  unsuccessful_sample_costs_buffer_ =
+      -1 * VectorXd::Ones(sampling_params_.N_unsuccessful_sample_buffer);
+  num_in_unsuccessful_buffer_ = 0;
 }
 
 void SamplingC3Controller::IncludeEEOrientationTargetIfEnabled(

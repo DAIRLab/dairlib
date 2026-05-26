@@ -1760,10 +1760,11 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
     }
   }
 
+  // TODO @bibit:  this breaks non-planar examples
   for (int i = 0; i < N_; i++) {
-    knots(2, i) =
-        sampling_params_.z_height + wall_offset;  // keep ee height constant
-    knots(n_q_ + 2, i) = 0;                       // keep ee z-velo constant
+    // knots(2, i) =
+    //     sampling_params_.z_height + wall_offset;  // keep ee height constant
+    knots(n_q_ + 2, i) = 0;  // keep ee z-velo constant
   }
 
   // Add end effector position target to LCM Trajectory.

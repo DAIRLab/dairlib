@@ -31,8 +31,8 @@ namespace dairlib {
 class TimedGate : public drake::systems::LeafSystem<double> {
  public:
   // example idx 0: plate
-  // example idx 2: trifinger
-  explicit TimedGate(double start_time, iC3Options ic3_options, int example_idx);
+  // example idx 1: trifinger
+  explicit TimedGate(iC3Options ic3_options, int example_idx);
 
   const drake::systems::InputPort<double>& get_input_port_c3_actor() const {
     return this->get_input_port(c3_actor_port_);
@@ -43,6 +43,10 @@ class TimedGate : public drake::systems::LeafSystem<double> {
 
   const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_port_);
+  }
+
+  const drake::systems::InputPort<double>& get_input_port_timestep() const {
+    return this->get_input_port(timestep_input_port_);
   }
 
   const drake::systems::InputPort<double>& get_input_port_ic3_x() const {
@@ -58,24 +62,16 @@ class TimedGate : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       dairlib::lcmt_timestamped_saved_traj* output_traj) const;
 
-  drake::systems::EventStatus SetFirstCallTime(
-    const drake::systems::Context<double>& context,
-    drake::systems::DiscreteValues<double>* discrete_state) const;
-
   drake::systems::InputPortIndex c3_actor_port_;
   drake::systems::InputPortIndex nominal_position_port_;
   drake::systems::InputPortIndex ic3_x_trajectory_port_;
   drake::systems::InputPortIndex radio_port_;
+  drake::systems::InputPortIndex timestep_input_port_;
 
   drake::systems::OutputPortIndex actor_output_port_;
 
-  double t0_idx_;
-  mutable bool called_;
-
   int example_idx_;
 
-  double start_time_;
-  double stop_time_;
   iC3Options ic3_options_;
   bool hold_final_position_;
   int N_;

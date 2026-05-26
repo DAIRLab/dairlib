@@ -227,6 +227,7 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
 
   auto start = std::chrono::high_resolution_clock::now();
 
+  std::cout << "ic3 timestep " << ic3_timestep << std::endl;
 
   const BasicVector<double>& x_des =
       *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
@@ -281,10 +282,13 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
       int idx = std::min(static_cast<int>(ic3_timestep + i * dt_scaling_), ic3_options_.N); 
       ee_x_des.push_back(state_data.col(idx).segment(ee_start_idx, ee_size));
 
-      // HARDCODED OFFSET 
-      ee_x_des.at(i)(2) = 0.07;
-      ee_x_des.at(i)(5) = 0.07;
-      ee_x_des.at(i)(8) = 0.07;
+      if (n_x_ == 31) {
+        // HARDCODED OFFSET 
+        ee_x_des.at(i)(2) = 0.07;
+        ee_x_des.at(i)(5) = 0.07;
+        ee_x_des.at(i)(8) = 0.07;
+      }
+ 
 
 
     }
@@ -328,11 +332,8 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
     vector<VectorXd> u_target;
     for (int i = 0; i < N_; i++) {
       if (ic3_timestep <= ic3_options_.N) {
-        if (i + ic3_timestep < ic3_options_.N) {
-          u_target.push_back(force_data.col(i + ic3_timestep));
-        } else {
-          u_target.push_back(force_data.col(ic3_options_.N-1));
-        }
+        int idx = std::min(i + ic3_timestep, ic3_options_.N-1);
+        u_target.push_back(force_data.col(idx)); 
       } else {
         VectorXd gravity(VectorXd::Zero(n_u_));
         // HARDCODED
@@ -346,6 +347,7 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
         u_target.push_back(gravity);
       }
     }
+
     c3_->UpdateInputTarget(u_target);
   }
 
@@ -381,7 +383,6 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
         // A(3*i+1, 3*i+1) = 1;
         // A(3*i+2, 3*i+2) = 1;
 
-        // Velocity constraints
         A(16 + 3*i, 16 + 3*i) = 1;
         A(16 + 3*i + 1, 16 + 3*i+1) = 1;
         // A(16 + 3*i + 2, 16 + 3*i+2) = 1;
@@ -390,16 +391,16 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
         // lower_bound(3*i+1) = x_des.value()(3*i+1) - 0.1;
         // lower_bound(3*i+2) = x_des.value()(3*i+2) - 0.03;
 
-        lower_bound(16 + 3*i) = -0.3;
-        lower_bound(16 + 3*i+1) = -0.3;
+        lower_bound(16 + 3*i) = -0.2;
+        lower_bound(16 + 3*i+1) = -0.2;
         // lower_bound(16 + 3*i+2) = -0.05;
 
         // upper_bound(3*i) = x_des.value()(3*i) + 0.1;
         // upper_bound(3*i+1) = x_des.value()(3*i+1) + 0.1;
         // upper_bound(3*i+2) = x_des.value()(3*i+2) + 0.03;
 
-        upper_bound(16 + 3*i) = 0.3;
-        upper_bound(16 + 3*i+1) = 0.3;
+        upper_bound(16 + 3*i) = 0.2;
+        upper_bound(16 + 3*i+1) = 0.2;
         // upper_bound(16 + 3*i+2) = 0.05;
       }
     }
@@ -429,15 +430,15 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
       for (int i = 0; i < 3; i++) {
         A_u(3*i, 3*i) = 1;
         A_u(3*i+1, 3*i+1) = 1;
-        // A_u(3*i+2, 3*i+2) = 1;
+        A_u(3*i+2, 3*i+2) = 1;
         
         lower_bound_u(3*i) = -0.5;
         lower_bound_u(3*i+1) = -0.5;
-        // lower_bound_u(3*i+2) = 0.18;
+        lower_bound_u(3*i+2) = 0.18;
 
         upper_bound_u(3*i) = 0.5;
         upper_bound_u(3*i+1) = 0.5;
-        // upper_bound_u(3*i+2) = 0.22;
+        upper_bound_u(3*i+2) = 0.22;
 
       }
     }
@@ -484,13 +485,6 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
     //std::cout << "ic3_timestep: " << ic3_timestep << ": ";
     //std::cout << c3_->GetInputSolution()[0].transpose() << std::endl;    
   }
-
-  // std::cout << "c3 sol: " << z_sol[0].transpose() << std::endl;
-  // std::cout << "c3 sol: " << z_sol[1].transpose() << std::endl;
-  // std::cout << "c3 sol: " << z_sol[2].transpose() << std::endl;
-  // std::cout << "c3 sol: " << z_sol[3].transpose() << std::endl;
-  // std::cout << "c3 sol: " << z_sol[4].transpose() << std::endl;
-
   return drake::systems::EventStatus::Succeeded();
 }
 

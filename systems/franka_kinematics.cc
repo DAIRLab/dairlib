@@ -135,7 +135,6 @@ void FrankaKinematics::ComputeLCSState(
 
 	q_object.segment(0, 4) = q_object.segment(0, 4).normalized(); // Normalize quaternions
 
-	std::cout << "q object " << q_object.transpose() << std::endl;
 
   multibody::SetPositionsIfNew<double>(franka_plant_, q_franka,
                                        franka_context_);
@@ -184,7 +183,7 @@ void FrankaKinematics::ComputeLCSState(
   lcs_state->SetObjectVelocities(v_object);
   lcs_state->set_timestamp(franka_output->get_timestamp());
 
-  std::cout << "franka kinematics computelcsstate end" << std::endl;
+  std::cout << lcs_state->GetState().transpose() << std::endl;
 }
 
 }  // namespace systems

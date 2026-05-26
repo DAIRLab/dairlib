@@ -12,7 +12,7 @@ lcs_factory_options:
   num_contacts: 7
   spring_stiffness: 0
   N: 4
-  dt: 0.02
+  dt: 0.01
   contact_pair_configs:
     - body_A: "fingertip_1"
       body_A_collision_geom_indices: [0]
@@ -49,14 +49,14 @@ c3_options:
   num_threads: 10
   delta_option: 1
 
-  admm_iter: 8
+  admm_iter: 6
 
   M: 1000
   gamma: 1.0
   rho_scale: 1.0
 
   w_Q: 5
-  w_R: 5000 #Penalty on all decision variables, assuming scalar
+  w_R: 500 #Penalty on all decision variables, assuming scalar
   w_G: 5 #Penalty on all decision variables, assuming scalar
   w_U: 1 #State Tracking Error, assuming diagonal
 

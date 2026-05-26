@@ -10,9 +10,7 @@
 
 namespace dairlib {
 
-TimedGate::TimedGate(double start_time, iC3Options ic3_options, int example_idx) : 
-  start_time_(start_time),
-  stop_time_(start_time + ic3_options.N * ic3_options.dt),
+TimedGate::TimedGate(iC3Options ic3_options, int example_idx) : 
   ic3_options_(ic3_options),
   hold_final_position_(ic3_options.hold_last_timestep_position),
   N_(ic3_options.N),
@@ -30,7 +28,7 @@ TimedGate::TimedGate(double start_time, iC3Options ic3_options, int example_idx)
   int nominal_position_size;
   if (example_idx_ == 0) {
     nominal_position_size = 3;
-  } else if (example_idx_ == 2) {
+  } else if (example_idx_ == 1) {
     nominal_position_size = 9;
   }          
   
@@ -49,6 +47,11 @@ TimedGate::TimedGate(double start_time, iC3Options ic3_options, int example_idx)
                                      drake::Value<dairlib::lcmt_radio_out>{})
           .get_index();
 
+  timestep_input_port_ =
+      this->DeclareVectorInputPort(
+              "timestep", BasicVector<double>(1))
+          .get_index();
+
   actor_output_port_ =
       this->DeclareAbstractOutputPort(
               "actor_trajectory_output",
@@ -56,11 +59,6 @@ TimedGate::TimedGate(double start_time, iC3Options ic3_options, int example_idx)
               &TimedGate::OutputActorTrajectory)
           .get_index();
 
-	this->DeclarePerStepDiscreteUpdateEvent(
-			&TimedGate::SetFirstCallTime);
-
-	t0_idx_ = this->DeclareDiscreteState(1); // first time output called
-	called_ = false;
 
 }
 
@@ -68,9 +66,14 @@ void TimedGate::OutputActorTrajectory(
     const drake::systems::Context<double>& context,
     dairlib::lcmt_timestamped_saved_traj* output_traj) const {
 
-  if (called_ == false) return;
+  const auto* radio_out =
+    this->EvalInputValue<lcmt_radio_out>(context, radio_port_);
 
-  double t0 = context.get_discrete_state(t0_idx_).GetAtIndex(0);
+  // If in teleop, don't do anything
+  if (radio_out->channel[14]) {
+    std::cout << "IN TELEOP" << std::endl;
+    return;
+  }
 
   const auto* c3_actor_input_lcm = this->EvalAbstractInput(context, c3_actor_port_);
 	const auto& c3_actor_input = c3_actor_input_lcm->get_value<lcmt_timestamped_saved_traj>();
@@ -81,7 +84,10 @@ void TimedGate::OutputActorTrajectory(
   const BasicVector<double>* nominal_position =
     (BasicVector<double>*)this->EvalVectorInput(context, nominal_position_port_);
 
-  double time = context.get_time() - t0;
+  const BasicVector<double>* timestep_vector =
+    (BasicVector<double>*)this->EvalVectorInput(context, timestep_input_port_);
+
+  int timestep = static_cast<int>(timestep_vector->get_value()(0));
 
   std::string final_trajectory_name = "iteration_" + std::to_string(ic3_options_.iter_to_use);
 	const std::string position_trajectory_name = "end_effector_position_target";
@@ -90,8 +96,7 @@ void TimedGate::OutputActorTrajectory(
   const std::string torque_trajectory_name = "end_effector_torque_target";
 
   
-  if (start_time_ <= time && time <= stop_time_) {
-    std::cout << "tracking C3, time: " << time << std::endl;
+  if (0 <= timestep && timestep < N_) {
     *output_traj = c3_actor_input;    
 
     // Debugging
@@ -99,9 +104,6 @@ void TimedGate::OutputActorTrajectory(
 
     MatrixXd c3_position_data = c3_traj.GetTrajectory("end_effector_position_target").datapoints;
     MatrixXd c3_force_data = c3_traj.GetTrajectory("end_effector_force_target").datapoints;
-
-    std::cout << "c3_position_data " << c3_position_data.rows() << ", " << c3_position_data.cols() << std::endl;
-    std::cout << "c3_force_data " << c3_force_data.rows() << ", " << c3_force_data.cols() << std::endl;
 
     MatrixXd c3_orientation_data;
     MatrixXd c3_torque_data;
@@ -118,12 +120,11 @@ void TimedGate::OutputActorTrajectory(
     std::cout << c3_force_data.col(1).transpose() << "; " << c3_torque_data.col(1).transpose() << std::endl;
 
   } else {
-    std::cout << "time: " << time << std::endl;
     // HARDCODED
     if (example_idx_ == 0) {
       int plate_position_idx = 0;
       VectorXd nominal_position_offset = nominal_position->get_value();
-      if ((context.get_time() - t0) > stop_time_) {
+      if (timestep > N_) {
         if (hold_final_position_) {
           LcmTrajectory::Trajectory trajectory = x_trajectory.GetTrajectory(final_trajectory_name);
           VectorXd last_x = trajectory.datapoints.col(trajectory.datapoints.cols() - 1);
@@ -177,7 +178,7 @@ void TimedGate::OutputActorTrajectory(
       output_traj->saved_traj = lcm_trajectory.GenerateLcmObject();
       output_traj->utime = context.get_time() * 1e6;
 
-    } else if (example_idx_ == 2) {
+    } else if (example_idx_ == 1) {
       VectorXd nominal_position_offset = nominal_position->get_value();
 
       MatrixXd positions = nominal_position_offset.replicate(1, 2);
@@ -210,32 +211,6 @@ void TimedGate::OutputActorTrajectory(
     
   }
 
-}
-
-
-drake::systems::EventStatus TimedGate::SetFirstCallTime(
-    const drake::systems::Context<double>& context,
-    drake::systems::DiscreteValues<double>* discrete_state) const {
-
-  const auto& radio_out =
-      this->EvalInputValue<lcmt_radio_out>(context, radio_port_);
-
-  bool is_teleop = false;
-  
-  // HARDCODED
-  if (example_idx_ == 0) {
-    is_teleop = radio_out->channel[14];
-  }
-
-  auto& vec = discrete_state->get_mutable_vector(t0_idx_);
-  if (!called_ && !is_teleop) {  
-    vec.SetAtIndex(0, context.get_time());
-		called_ = true;
-  }
-  if (is_teleop) {
-    called_ = false;
-  }
-  return drake::systems::EventStatus::Succeeded();
 }
 
 

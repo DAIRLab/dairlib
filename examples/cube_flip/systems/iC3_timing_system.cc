@@ -26,11 +26,11 @@ iC3TimingSystem::iC3TimingSystem(iC3Options ic3_options, FrankaPlateControllerPa
         .get_index();
           
 
-  index_output_port_ =
+  timestep_output_port_ =
     this->DeclareVectorOutputPort(
             "target_port",
             BasicVector<double>(1),
-            &iC3TimingSystem::OutputIndex)
+            &iC3TimingSystem::OutputTimestep)
         .get_index();
 
   t0_idx_ = this->DeclareDiscreteState(1); 
@@ -54,23 +54,23 @@ iC3TimingSystem::iC3TimingSystem(iC3Options ic3_options, TrifingerControllerPara
         .get_index();
           
 
-  index_output_port_ =
+  timestep_output_port_ =
     this->DeclareVectorOutputPort(
-            "target_port",
+            "timestep_port",
             BasicVector<double>(1),
-            &iC3TimingSystem::OutputIndex)
+            &iC3TimingSystem::OutputTimestep)
         .get_index();
 
   t0_idx_ = this->DeclareDiscreteState(1); 
 	called_ = false;    
-  
+
   this->DeclarePerStepDiscreteUpdateEvent(
     &iC3TimingSystem::SetFirstCallTime);
 }
 
 
-void iC3TimingSystem::OutputIndex(
-  const Context<double>& context, BasicVector<double>* index) const {
+void iC3TimingSystem::OutputTimestep(
+  const Context<double>& context, BasicVector<double>* timestep) const {
 
   double delay;
   if (example_idx_ == 0) {
@@ -84,16 +84,16 @@ void iC3TimingSystem::OutputIndex(
   double ic3_dt = ic3_options_.dt;
   int ic3_timestep = (curr_time - delay) / ic3_dt;
 
-  VectorXd index_vector(1);
+  VectorXd timestep_vector(1);
   
   // Set negative time if in teleop
   if (!called_) {
-    index_vector(0) = -999;
+    timestep_vector(0) = -999;
   } else {
-    index_vector(0) = ic3_timestep;
+    timestep_vector(0) = ic3_timestep;
   }
 
-  index->get_mutable_value() = index_vector;
+  timestep->get_mutable_value() = timestep_vector;
 }
 
 

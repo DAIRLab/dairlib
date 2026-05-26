@@ -230,8 +230,17 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
       positions.col(i)(6) = std::min(std::max(positions.col(i)(6), -0.13), -0.01);
       positions.col(i)(7) = std::min(std::max(positions.col(i)(7), -0.005), 0.115);
       positions.col(i)(8) = std::min(std::max(positions.col(i)(8), 0.06), 0.08);
-
     }
+
+    // HARDCODED THRESHOLD INPUTS TO INPUT LIMITS
+    for (int i = 0; i < forces.cols(); i++) {
+      for (int j = 0; j < 3; j++) {
+        forces.col(i)(3*j) = std::min(std::max(forces.col(i)(3*j), -0.5), 0.5);
+        forces.col(i)(3*j+1) = std::min(std::max(forces.col(i)(3*j+1), -0.5), 0.5);
+        forces.col(i)(3*j+2) = std::min(std::max(forces.col(i)(3*j+2), -0.02), 0.02);
+      }
+    }
+
   }
 	
 

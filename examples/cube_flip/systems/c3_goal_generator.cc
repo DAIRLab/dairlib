@@ -219,6 +219,7 @@ void C3GoalGenerator::OutputLCS(
  
   for (int k = 0; k < N_; k++) {
     int idx = std::min(static_cast<int>(timestep + dt_scaling * k), ic3_options_.N);
+    std::cout << "idx " << idx << std::endl;
     x_hat.col(k) = state_data.col(idx);
     u_hat.col(k) = u_nominal;
 

@@ -1,11 +1,6 @@
 
-admm_iter: 4
-rho: 0 # unused
-rho_scale: 1.1
-num_threads: 10
-delta_option: 1
-projection_type: "C3+"
 
+projection_type: "C3+"
 solve_time_filter_alpha: 0.0
 publish_frequency: 0
 state_prediction_joints: []
@@ -36,43 +31,43 @@ c3_options:
   num_threads: 10
   delta_option: 1
 
-  admm_iter: 3
-
+  admm_iter: 4
   gamma: 1.0
   rho_scale: 1.0
 
   w_Q: 5
-  w_R: 40 #Penalty on all decision variables, assuming scalar
-  w_G: 35 #Penalty on all decision variables, assuming scalar
-  w_U: 10 #State Tracking Error, assuming diagonal
+  w_R: 50 #Penalty on all decision variables, assuming scalar
+  w_G: 80 #Penalty on all decision variables, assuming scalar
+  w_U: 5 #State Tracking Error, assuming diagonal
 
-  q_vector: [500, 500, 400,                # plate pos
-              500, 500,                    # plate rot
-              1, 1, 1, 1,              # cube rot
-              500, 500, 50,           # cube pos              
-              1, 1, 1,                # plate velo
-              10, 10,                    # plate ang velo
-              1, 1, 1,             # cube ang velo
-              1, 1, 1]                # cube velo
+  q_vector: [5000, 5000, 50000,                # plate pos
+             200, 200,                    # plate rot
+             1, 1, 1, 1,              # cube rot
+             1000, 1000, 50,           # cube pos              
+             1, 1, 1,                # plate velo
+             10, 10,                    # plate ang velo
+             1, 1, 1,             # cube ang velo
+             1, 1, 1]                # cube velo
 
 
-  r_vector: [40, 40, 80, 40, 40]  
-
+  r_vector: [10, 10, 50, 1, 1]  
+  
   #Penalty on matching projected variables
-  g_x: [50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 10, 1 , 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  g_x: [50, 50, 100, 100, 100, 50, 50, 50, 50, 50, 50, 10, 1 , 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
   g_gamma: [1, 1, 1, 1]
   g_lambda_n: [1, 1, 1, 1]
   g_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
   g_lambda: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
-  g_u: [0, 0, 0, 0, 0] 
-
+  g_u: [1, 1, 1, 1, 1] 
+  
   g_eta_slack: [1, 1, 1, 1]
-  g_eta_n: [1, 1, 1,1 ]
+  g_eta_n: [1, 1, 1, 1]
   g_eta_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
   g_eta: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 
+
   #Penalty on matching the QP variables
-  u_x: [100, 100, 100, 100, 100, 100, 100, 100, 100, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+  u_x: [50, 50, 100, 100, 100, 50, 50, 50, 50, 50, 50, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
   u_gamma: [1, 1, 1, 1]
   u_lambda_n: [1, 1, 1, 1]
   u_lambda_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]

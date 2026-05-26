@@ -36,22 +36,22 @@ class iC3TimingSystem : public drake::systems::LeafSystem<double> {
     const drake::systems::InputPort<double>& get_input_port_radio() const {
       return this->get_input_port(radio_port_);
     }
-    const drake::systems::OutputPort<double>& get_output_port_index() const {
-      return this->get_output_port(index_output_port_);
+    const drake::systems::OutputPort<double>& get_output_port_timestep() const {
+      return this->get_output_port(timestep_output_port_);
     }
 
 
 
   private:
-    void OutputIndex(const Context<double>& context,
-                  BasicVector<double>* index) const;
+    void OutputTimestep(const Context<double>& context,
+                  BasicVector<double>* timestep) const;
 
     drake::systems::EventStatus SetFirstCallTime(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
     drake::systems::InputPortIndex radio_port_;
-    drake::systems::OutputPortIndex index_output_port_;
+    drake::systems::OutputPortIndex timestep_output_port_;
 
     double t0_idx_;
     mutable bool called_;

@@ -261,7 +261,7 @@ int DoMain(int argc, char* argv[]) {
   
 
   auto timed_gate =
-      builder.AddSystem<TimedGate>(controller_params.time_to_wait, ic3_options, 2);    
+      builder.AddSystem<TimedGate>(ic3_options, 1);    
 
   builder.Connect(object_state_sub->get_output_port(),
                   object_state_receiver->get_input_port());
@@ -278,14 +278,14 @@ int DoMain(int argc, char* argv[]) {
                   c3_goal_generator->get_input_port_state());    
   builder.Connect(ic3_x_trajectory_sub->get_output_port(),
                   c3_goal_generator->get_input_port_ic3_x()); 
-  builder.Connect(ic3_timing_system->get_output_port_index(),
+  builder.Connect(ic3_timing_system->get_output_port_timestep(),
                   c3_goal_generator->get_input_port_timestep());                 
                   
   builder.Connect(radio_sub->get_output_port(),
                   ic3_timing_system->get_input_port_radio());  
 
 
-  builder.Connect(ic3_timing_system->get_output_port_index(),
+  builder.Connect(ic3_timing_system->get_output_port_timestep(),
                   controller->get_input_port_timestep());
   builder.Connect(c3_goal_generator->get_output_port_x_curr(),
                   controller->get_input_port_lcs_state());
@@ -314,10 +314,13 @@ int DoMain(int argc, char* argv[]) {
                   timed_gate->get_input_port_nominal_position());
   builder.Connect(ic3_x_trajectory_sub->get_output_port(),
                   timed_gate->get_input_port_ic3_x());
+  builder.Connect(ic3_timing_system->get_output_port_timestep(),
+                  timed_gate->get_input_port_timestep());
+  builder.Connect(radio_sub->get_output_port(),
+                  timed_gate->get_input_port_radio());
+
   builder.Connect(timed_gate->get_output_port_actor(),
                   c3_actor_trajectory_sender->get_input_port());
-
-  
 
 
   auto owned_diagram = builder.Build();

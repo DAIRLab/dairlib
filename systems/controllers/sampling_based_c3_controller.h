@@ -393,12 +393,12 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       contact_pairs_;
   c3::multibody::ContactModel contact_model_;
 
-  SamplingC3ControllerParams controller_params_;
-  SamplingC3Options sampling_c3_options_;
-  SamplingParams sampling_params_;
-  SamplingC3RepositionParams reposition_params_;
-  SamplingC3ProgressParams progress_params_;
-  SamplingC3GoalParams goal_params_;
+  const SamplingC3ControllerParams controller_params_;
+  const SamplingC3Options sampling_c3_options_;
+  const SamplingParams sampling_params_;
+  const SamplingC3RepositionParams reposition_params_;
+  const SamplingC3ProgressParams progress_params_;
+  const SamplingC3GoalParams goal_params_;
   drake::solvers::SolverOptions solver_options_ =
       drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(
           "solvers/osqp_options_default.yaml")

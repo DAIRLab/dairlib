@@ -259,6 +259,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   void ResetProgressMetrics() const;
 
+  void IncludeEEOrientationTargetIfEnabled(
+      LcmTrajectory* lcm_trajectory, const Eigen::Vector3d& ee_position,
+      const Eigen::VectorXd& timestamps) const;
+
   /// Output port functions
   void OutputC3SolutionCurrPlan(
       const drake::systems::Context<double>& context,
@@ -412,6 +416,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   double solve_time_filter_constant_;
   drake::systems::DiscreteStateIndex plan_start_time_index_;
+
+  const bool adaptive_ee_tilt_;
+  double max_ee_dist_from_workspace_center_;
+  Eigen::Vector3d workspace_center_;
 
   /// TODO:  There are many mutable class variables, which is not best practice
   /// in the Drake systems framework.  These could be converted to discrete

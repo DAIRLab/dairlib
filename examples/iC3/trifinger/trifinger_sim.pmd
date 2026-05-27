@@ -1,0 +1,41 @@
+group "controllers" {
+    cmd "trifinger_controller" {
+        exec = "bazel-bin/examples/iC3/trifinger/trifinger_controller";
+        host = "localhost";
+    }
+    cmd "trifinger_osc" {
+        exec = "bazel-bin/examples/iC3/trifinger/trifinger_osc_controller";
+        host = "localhost";
+    }
+}
+
+group "debug" {
+    cmd "lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}
+
+group "operator" {
+    cmd "visualizer" {
+        exec = "bazel-bin/examples/iC3/trifinger/trifinger_visualizer";
+        host = "localhost";
+    }
+    cmd "xbox" {
+        exec = "bazel-bin/examples/iC3/xbox_script";
+        host = "localhost";
+    }
+}
+
+group "simulations" {
+    cmd "trifinger_sim" {
+        exec = "bazel-bin/examples/iC3/trifinger/trifinger_sim";
+        host = "localhost";
+    }
+}
+
+
+script "setup"{
+    restart cmd "trifinger_sim";
+    restart cmd "trifinger_osc";
+}

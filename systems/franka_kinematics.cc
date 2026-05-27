@@ -182,8 +182,6 @@ void FrankaKinematics::ComputeLCSState(
   lcs_state->SetEndEffectorVelocities(end_effector_velocities);
   lcs_state->SetObjectVelocities(v_object);
   lcs_state->set_timestamp(franka_output->get_timestamp());
-
-  std::cout << lcs_state->GetState().transpose() << std::endl;
 }
 
 }  // namespace systems

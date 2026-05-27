@@ -1,0 +1,34 @@
+trifinger_model: examples/iC3/trifinger/robot_properties_fingers/urdf/trifinger.urdf
+end_effector_model: examples/iC3/urdf/fingertips.sdf
+object_model: examples/iC3/urdf/actual_cube.sdf
+ground_model: examples/iC3/urdf/ground.urdf
+
+trifinger_publish_rate: 1000
+object_publish_rate: 1000
+visualizer_publish_rate: 32
+actuator_delay: 0.000
+
+visualize_drake_sim: false
+publish_efforts: true
+publish_object_velocities: true
+
+# Workspace Limits
+world_x_limits: [-1, 1]
+world_y_limits: [-1, 1]
+world_z_limits: [-10, 10]
+
+external_force_scaling: [10.0, 10.0, 10.0]
+
+dt: 0.0001
+realtime_rate: 1.0
+q_init_trifinger: [0, -1, -1.5, 0, -1, -1.5, 0, -1, -1.5]       
+        
+q_init_object: [1, 0, 0, 0, 0, 0, 0.05]
+               
+# All probably broken               
+visualize_workspace: false  
+visualize_pose_trace: false 
+visualize_center_of_mass_plan: false
+visualize_c3_forces: false 
+visualize_c3_object_state: false
+visualize_c3_end_effector_state: false

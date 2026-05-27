@@ -1,0 +1,113 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "trifinger_parameters",
+    data = glob([
+        "parameters/*.yaml",
+    ]),
+)
+
+
+cc_binary(
+    name = "trifinger_sim",
+    srcs = ["trifinger_sim.cc"],
+    data = [
+        "//examples/iC3:urdfs",
+    ],
+    deps = [
+        "//common",
+        "//examples/iC3/trifinger/parameter_headers:trifinger_lcm_channels",
+        "//examples/iC3/trifinger/parameter_headers:trifinger_sim_params",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:radio_parser",
+        "//multibody/kinematic",
+        "@drake//:drake_shared_library",
+        "@gflags",
+
+    ],
+)
+
+
+cc_binary(
+    name = "trifinger_osc_controller",
+    srcs = ["trifinger_osc_controller.cc"],
+    data = [
+        "//examples/iC3:urdfs",
+    ],
+    deps = [
+         ":trifinger_parameters",
+        "//examples/iC3/trifinger/parameter_headers:trifinger_osc_controller_params",
+        "//examples/iC3/trifinger/parameter_headers:trifinger_lcm_channels",
+        "//examples/iC3/trifinger/systems:trifinger_systems",
+        "//common",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:radio_parser",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "trifinger_visualizer",
+    srcs = ["trifinger_visualizer.cc"],
+    data = [
+        "//examples/iC3:urdfs",
+    ],
+    deps = [
+        "//examples/iC3/trifinger/parameter_headers:trifinger_lcm_channels",
+        "//examples/iC3/trifinger/parameter_headers:trifinger_sim_params",
+        "//common",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "//systems/visualization:lcm_visualization_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "trifinger_controller",
+    srcs = ["trifinger_controller.cc"],
+    data = [
+        "//examples/iC3:urdfs",
+    ],
+    deps = [
+        "//common",
+        "//systems/senders:c3_state_sender",
+        "//lcm:lcm_trajectory_saver",
+        "@c3//:libc3",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:radio_parser",
+        "//systems/trajectory_optimization:c3_output_systems",
+        "@drake//:drake_shared_library",
+        "//examples/iC3/trifinger/parameter_headers:trifinger_controller_params",
+        "//examples/iC3/trifinger/parameter_headers:trifinger_lcm_channels",
+        "//examples/iC3:iC3_options",
+        "//examples/iC3/systems:iC3_trajectory_generator",
+        "//examples/iC3/systems:c3_goal_generator",
+        "//examples/iC3/systems:c3_trajectory_generator",
+        "//examples/iC3/systems:timed_gate",
+        "//examples/iC3/systems:ic3_timing_system",
+        "//systems/controllers:ic3_tracking_controller",
+        "//examples/iC3/trifinger/systems:trifinger_systems",
+
+        "@gflags",
+    ],
+)

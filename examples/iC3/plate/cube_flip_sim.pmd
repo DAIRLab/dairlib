@@ -1,0 +1,42 @@
+group "controllers" {
+    cmd "plate_controller" {
+        exec = "bazel-bin/examples/iC3/plate/franka_plate_controller";
+        host = "localhost";
+    }
+    cmd "franka_osc" {
+        exec = "bazel-bin/examples/iC3/plate/franka_plate_osc_controller";
+        host = "localhost";
+    }
+}
+
+group "debug" {
+    cmd "lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}
+
+group "operator" {    
+    cmd "visualizer" {
+        exec = "bazel-bin/examples/iC3/plate/franka_plate_visualizer";
+        host = "localhost";
+    }
+
+    cmd "xbox" {
+        exec = "bazel-bin/examples/iC3/plate/xbox_script";
+        host = "localhost";
+    }
+}
+
+group "simulations" {
+    cmd "franka_sim" {
+        exec = "bazel-bin/examples/iC3/plate/franka_plate_sim";
+        host = "localhost";
+    }
+}
+
+
+script "setup"{
+    restart cmd "franka_sim";
+    restart cmd "franka_osc";
+}

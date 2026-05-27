@@ -1,0 +1,119 @@
+
+package(default_visibility = ["//visibility:public"])
+
+
+cc_library(
+    name = "plate_parameters",
+    data = glob([
+        "parameters/*.yaml",
+    ]),
+)
+
+cc_binary(
+    name = "franka_plate_sim",
+    srcs = ["franka_plate_sim.cc"],
+    data = [
+        "//examples/iC3:urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":plate_parameters",
+        "//common",
+        "//examples/franka/systems:franka_systems",
+        "//examples/iC3/plate/parameter_headers:franka_plate_lcm_channels",
+        "//examples/iC3/plate/parameter_headers:franka_plate_sim_params",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:radio_parser",
+        "@drake//:drake_shared_library",
+        "@gflags",
+
+    ],
+)
+
+cc_binary(
+    name = "franka_plate_osc_controller",
+    srcs = ["franka_plate_osc_controller.cc"],
+    data = [
+        "//examples/iC3:urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":plate_parameters",
+        "//examples/iC3/plate/parameter_headers:franka_plate_osc_controller_params",
+        "//examples/iC3/plate/parameter_headers:franka_plate_lcm_channels",
+        "//common",
+        "//examples/franka/systems:franka_systems",
+        "//lcm:lcm_trajectory_saver",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:radio_parser",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_plate_controller",
+    srcs = ["franka_plate_controller.cc"],
+    data = [
+        "//examples/iC3:urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":plate_parameters",
+        "//common",
+        "//systems/senders:c3_state_sender",
+        "//lcm:lcm_trajectory_saver",
+        "@c3//:libc3",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems:franka_kinematics",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:radio_parser",
+        "//systems/trajectory_optimization:c3_output_systems",
+        "@drake//:drake_shared_library",
+        "//examples/iC3/plate/parameter_headers:franka_plate_controller_params",
+        "//examples/iC3/plate/parameter_headers:franka_plate_lcm_channels",
+        "//examples/iC3:iC3_options",
+        "//examples/iC3/systems:iC3_trajectory_generator",
+        "//examples/iC3/systems:c3_goal_generator",
+        "//examples/iC3/systems:c3_trajectory_generator",
+        "//examples/iC3/systems:timed_gate",
+        "//examples/iC3/systems:ic3_timing_system",
+        "//systems/controllers:ic3_tracking_controller",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "franka_plate_visualizer",
+    srcs = ["franka_plate_visualizer.cc"],
+    data = [
+        "//examples/iC3:urdfs",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":plate_parameters",
+        "//examples/iC3/plate/parameter_headers:franka_plate_lcm_channels",
+        "//examples/iC3/plate/parameter_headers:franka_plate_sim_params",
+        "//common",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "//systems/visualization:lcm_visualization_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

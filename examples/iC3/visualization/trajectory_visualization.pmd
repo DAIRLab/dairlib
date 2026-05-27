@@ -1,0 +1,55 @@
+group "debug" {
+    cmd "lcm-spy" {
+        exec = "bazel-bin/lcmtypes/dair-lcm-spy";
+        host = "localhost";
+    }
+}
+
+group "visualization" {
+    cmd "plate_trajectory_visualizer" {
+        exec = "bazel-bin/examples/iC3/visualization/trajectory_visualizer_plate";
+        host = "localhost";
+    }
+
+    cmd "hand_trajectory_visualizer" {
+        exec = "bazel-bin/examples/iC3/visualization/trajectory_visualizer_hand";
+        host = "localhost";
+    }
+
+    cmd "point_hand_trajectory_visualizer" {
+        exec = "bazel-bin/examples/iC3/visualization/trajectory_visualizer_point_hand";
+        host = "localhost";
+    }
+
+    cmd "point_hand_trajectory_slider" {
+        exec = "bazel-bin/examples/iC3/visualization/trajectory_visualizer_point_hand_slider";
+        host = "localhost";
+    }
+}
+
+group "video" {
+    cmd "plate_video" {
+        exec = "bazel-bin/examples/iC3/visualization/trajectory_video_plate";
+        host = "localhost";
+    }
+    
+
+    cmd "point_hand_video" {
+        exec = "bazel-bin/examples/iC3/visualization/trajectory_video_point_hand";
+        host = "localhost";
+    }
+}
+
+group "logging" {
+	cmd "start_logging" {
+			exec = "python3 examples/iC3/start_logging.py sim /home/ericcui/logs";
+			host = "localhost";
+	}
+
+
+	cmd "view_logs" {
+			exec = "/opt/lcm/1.4.0/bin/lcm-logplayer-gui -f PMD.*";
+			host = "localhost";
+	}
+}
+

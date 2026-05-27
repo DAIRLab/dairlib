@@ -288,8 +288,6 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
         ee_x_des.at(i)(5) = 0.07;
         ee_x_des.at(i)(8) = 0.07;
       }
- 
-
 
     }
     c3_->UpdateEETrackingTargetAndCost(ee_x_des, ic3_options_.ee_tracking_weight, ee_start_idx, ee_size);

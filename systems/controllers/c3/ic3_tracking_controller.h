@@ -18,7 +18,7 @@
 #include <c3/systems/framework/c3_output.h>
 #include <c3/systems/c3_controller_options.h>
 
-#include "examples/cube_flip/parameter_headers/iC3_options.h"
+#include "examples/iC3/iC3_options.h"
 
 #include "systems/framework/timestamped_vector.h"
 

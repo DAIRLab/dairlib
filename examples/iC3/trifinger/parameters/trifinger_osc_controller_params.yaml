@@ -1,0 +1,63 @@
+controller_frequency: 1000
+
+trifinger_model: examples/iC3/trifinger/robot_properties_fingers/urdf/trifinger.urdf
+end_effector_model: examples/iC3/urdf/fingertips.sdf
+end_effector_names: ["fingertip_1", "fingertip_2", "fingertip_3"]
+
+neutral_position: [[0, 0.07, 0.07],  # finger 0
+                   [ 0.07, -0.055, 0.07],  # finger 120
+                   [-0.07, -0.055, 0.07]]  # finger 240
+
+x_scale: 0.1
+y_scale: 0.1
+z_scale: 0.1
+
+w_input: 0.0001
+w_input_reg: 0.0001
+w_accel: 0.0001
+w_soft_constraint: 0.0001
+w_lambda: 0.0001
+impact_threshold: 0.0001
+impact_tau: 0.0001
+mu: 1.0 # unused
+end_effector_acceleration: 50
+track_end_effector_orientation: false
+cancel_gravity_compensation: false
+enforce_acceleration_constraints: true # TODO: figure out why making this true breaks stuff (hardcoded rn)
+publish_debug_info: true
+
+w_joint_limit: 10000.0
+joint_limit_buffer: 0.1
+
+W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01 ]
+W_input_reg: [ 1, 1, 1, 1, 1, 1, 1, 1, 1 ]
+W_lambda_c_reg: [ 0.0001, 0.0001, 0.0001,
+                  0.0001, 0.0001, 0.0001,
+                  0.0001, 0.0001, 0.0001,
+                  0.0001, 0.0001, 0.0001 ]
+W_lambda_h_reg: [ 0.0001, 0.0001, 0.0001,
+                  0.0001, 0.0001, 0.0001 ]
+
+EndEffectorW:
+  [200, 0, 0,
+   0, 200, 0,
+   0, 0, 200]
+EndEffectorKp:
+  [ 160, 0, 0,
+    0, 160, 0,
+    0, 0, 160 ]
+EndEffectorKd:
+  [ 10, 0, 0,
+    0, 10, 0,
+    0, 0, 10 ]
+LambdaEndEffectorW:
+  [ 100, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 100, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 10, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 10, 0, 0, 0, 0, 0, 
+    0, 0, 0, 0, 100, 0, 0, 0, 0, 
+    0, 0, 0, 0, 0, 10, 0, 0, 0, 
+    0, 0, 0, 0, 0, 0, 100, 0, 0, 
+    0, 0, 0, 0, 0, 0, 0, 100, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 10 ]
+

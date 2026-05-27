@@ -1,0 +1,38 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "urdfs",
+    data = glob([
+        "urdf/**",
+    ]),
+)
+
+cc_library(
+    name = "parameters",
+    data = [
+        "//examples/iC3/plate:plate_parameters",
+        "//examples/iC3/toy_system:toy_parameters",
+        "//examples/iC3/trifinger:trifinger_parameters",
+        "//examples/iC3/visualization:visualization_parameters"
+    ],
+)
+
+cc_library(
+    name = "iC3_options",
+    hdrs = ["iC3_options.h"],
+    visibility = ["//visibility:public"],
+)
+
+
+
+py_binary(
+    name = "xbox_script",
+    srcs = ["xbox_script.py"],
+    data = [
+        "@lcm//:lcm-python",
+    ],
+    main = "xbox_script.py",
+    deps = [
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)

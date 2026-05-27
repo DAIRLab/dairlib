@@ -1,0 +1,14 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "trajectory_visualizer_params",
+    hdrs = ["trajectory_visualizer_params.h"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "trajectory_video_params",
+    hdrs = ["trajectory_video_params.h"],
+    visibility = ["//visibility:public"],
+)
+

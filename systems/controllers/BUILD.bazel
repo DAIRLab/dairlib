@@ -101,7 +101,7 @@ cc_library(
         "//solvers:parameters",
         "//systems/framework:vector",
         "//common:quaternion_error_hessian",
-        "//examples/cube_flip/parameter_headers:iC3_options",
+        "//examples/iC3:iC3_options",
         "@drake//:drake_shared_library",
     ],
 )

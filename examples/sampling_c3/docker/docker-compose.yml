@@ -1,0 +1,24 @@
+# run (first time):  xhost +local:docker && docker compose -f examples/sampling_c3/docker/docker-compose.yml run --name push-anything-container push-anything-container-launch-service
+# run (reattach):    xhost +local:docker && docker start -ai push-anything-container-launch-service
+# If bazel fails on permissions (after a host build): sudo chown -R $USER:$USER ~/git/dairlib && rm -f bazel-*
+
+services:
+  push-anything-container-launch-service:
+    image: xuanhien070594/push-anything-env:latest
+    user: pushanything
+    network_mode: host
+    stdin_open: true
+    tty: true
+    working_dir: /home/pushanything/dairlib
+    environment:
+      DISPLAY: ${DISPLAY:-:0}
+      QT_X11_NO_MITSHM: "1"
+      XAUTHORITY: /tmp/.Xauthority
+      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+      GUROBI_HOME: /opt/gurobi/gurobi1003/linux64
+      BAZEL_OUTPUT_USER_ROOT: /home/pushanything/.bazel-output
+    volumes:
+      - ${DAIRLIB_HOST_PATH:-../../../}:/home/pushanything/dairlib:rw
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${XAUTHORITY:-${HOME}/.Xauthority}:/tmp/.Xauthority:ro
+    command: bash

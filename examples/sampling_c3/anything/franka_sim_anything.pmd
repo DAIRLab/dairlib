@@ -88,8 +88,11 @@ group "debug" {
 
 script "start_experiment_no_logs"{
     stop cmd "start_logging";
+    start cmd "multi_rewrite";
+    wait ms 1000;
     restart cmd "franka_sim";
     restart cmd "franka_osc";
+    restart cmd "visualizer";
     wait ms 50;
     restart cmd "sampling_c3";
 }
@@ -98,6 +101,7 @@ script "start_experiment_with_logs"{
     restart cmd "start_logging";
     restart cmd "franka_sim";
     restart cmd "franka_osc";
+    restart cmd "visualizer";
     wait ms 50;
     restart cmd "sampling_c3";
 }

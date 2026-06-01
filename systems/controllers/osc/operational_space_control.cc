@@ -66,17 +66,17 @@ OperationalSpaceControl::OperationalSpaceControl(
   n_v_ = plant_wo_spr.num_velocities();
   n_u_ = plant_wo_spr.num_actuators();
 
-  std::cout << "n_q_: " << n_q_ << std::endl;
-  std::cout << "n_v_: " <<  n_v_ << std::endl;
-  std::cout << "n_u_: " <<  n_u_ << std::endl;
+  // std::cout << "n_q_: " << n_q_ << std::endl;
+  // std::cout << "n_v_: " <<  n_v_ << std::endl;
+  // std::cout << "n_u_: " <<  n_u_ << std::endl;
 
   int n_q_w_spr = plant_w_spr.num_positions();
   int n_v_w_spr = plant_w_spr.num_velocities();
   int n_u_w_spr = plant_w_spr.num_actuators();
 
-  std::cout << "n_q_w_spr: " << n_q_w_spr << std::endl;
-  std::cout << "n_v_w_spr: " <<  n_v_w_spr << std::endl;
-  std::cout << "n_u_w_spr: " <<  n_u_w_spr << std::endl;
+  // std::cout << "n_q_w_spr: " << n_q_w_spr << std::endl;
+  // std::cout << "n_v_w_spr: " <<  n_v_w_spr << std::endl;
+  // std::cout << "n_u_w_spr: " <<  n_u_w_spr << std::endl;
 
   // Input/Output Setup
   state_port_ =
@@ -130,8 +130,8 @@ OperationalSpaceControl::OperationalSpaceControl(
     u_min[i] = -plant_wo_spr_.get_joint_actuator(i).effort_limit();
     u_max[i] = plant_wo_spr_.get_joint_actuator(i).effort_limit();
   }
-  std::cout << "u min: " << u_min.transpose() << std::endl;
-  std::cout << "u max: " << u_max.transpose() << std::endl;  
+  // std::cout << "u min: " << u_min.transpose() << std::endl;
+  // std::cout << "u max: " << u_max.transpose() << std::endl;  
   u_min_ = u_min;
   u_max_ = u_max;
 
@@ -143,8 +143,8 @@ OperationalSpaceControl::OperationalSpaceControl(
       ddq_max[i] = plant_wo_spr_.get_joint(i).acceleration_upper_limits()[0];
     }
   }
-  std::cout << "ddq min: " << ddq_min.transpose() << std::endl;
-  std::cout << "ddq max: " << ddq_max.transpose() << std::endl;
+  // std::cout << "ddq min: " << ddq_min.transpose() << std::endl;
+  // std::cout << "ddq max: " << ddq_max.transpose() << std::endl;
   ddq_min_ = ddq_min;
   ddq_max_ = ddq_max;
 
@@ -183,8 +183,8 @@ OperationalSpaceControl::OperationalSpaceControl(
   q_min_ = q_min;
   q_max_ = q_max;
 
-  std::cout << "q_min: " << q_min_.transpose() << std::endl;
-  std::cout << "q_max: " << q_max_.transpose() << std::endl;
+  // std::cout << "q_min: " << q_min_.transpose() << std::endl;
+  // std::cout << "q_max: " << q_max_.transpose() << std::endl;
 
   // Check if the model is floating based
   is_quaternion_ = multibody::HasQuaternion(plant_w_spr);
@@ -623,10 +623,6 @@ drake::systems::EventStatus OperationalSpaceControl::DiscreteVariableUpdate(
   VectorXd fsm_state = fsm_output->get_value();
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  
-  std::cout << "fsm " << fsm_state.transpose() << std::endl;
-  std::cout << "robot " << robot_output->value().transpose() << std::endl;
-
 
   double timestamp = robot_output->get_timestamp();
 
@@ -717,7 +713,6 @@ VectorXd OperationalSpaceControl::SolveQp(
   // Get J for external forces in equations of motion
   MatrixXd J_c = MatrixXd::Zero(n_c_, n_v_);
   for (unsigned int i = 0; i < all_contacts_.size(); i++) {
-    std::cout << "Get J for external forces in equations of motion" << std::endl;
     if (active_contact_set.find(i) != active_contact_set.end()) {
       J_c.block(kSpaceDim * i, 0, kSpaceDim, n_v_) =
           all_contacts_[i]->EvalFullJacobian(*context_wo_spr_);
@@ -729,7 +724,6 @@ VectorXd OperationalSpaceControl::SolveQp(
   VectorXd JdotV_c_active = VectorXd::Zero(n_c_active_);
   int row_idx = 0;
   for (unsigned int i = 0; i < all_contacts_.size(); i++) {
-    std::cout << "J and JdotV for contact constraint" << std::endl;
     auto contact_i = all_contacts_[i];
     if (active_contact_set.find(i) != active_contact_set.end()) {
       // We don't call EvalActiveJacobian() because it'll repeat the computation
@@ -771,24 +765,15 @@ VectorXd OperationalSpaceControl::SolveQp(
     }
   }
 
-  if (!A_dyn.allFinite()) {
-    std::cout << "A_dyn contains NaN or Inf!" << std::endl;
-  }
-  if (!bias.allFinite()) {
-    std::cout << "bias contains NaN or Inf!" << std::endl;
-  }
-
   dynamics_constraint_->UpdateCoefficients(A_dyn, -bias);
   // 2. Holonomic constraint
   ///    JdotV_h + J_h*dv == 0
   /// -> J_h*dv == -JdotV_h
   if (n_h_ > 0) {
-    std::cout << "holonomic constraint" << std::endl;
     holonomic_constraint_->UpdateCoefficients(J_h, -JdotV_h);
   }
   // 3. Contact constraint
   if (!all_contacts_.empty()) {
-    std::cout << "contact constraint" << std::endl;
     if (w_soft_constraint_ <= 0) {
       ///    JdotV_c_active + J_c_active*dv == 0
       /// -> J_c_active*dv == -JdotV_c_active
@@ -819,7 +804,6 @@ VectorXd OperationalSpaceControl::SolveQp(
   ///     mu_*lambda_c(3*i+2) + lambda_c(3*i+1) >= 0
   ///                           lambda_c(3*i+2) >= 0
   if (!all_contacts_.empty()) {
-    std::cout << "friction constraint" << std::endl;
     for (unsigned int i = 0; i < all_contacts_.size(); i++) {
       if (active_contact_set.find(i) != active_contact_set.end()) {
         friction_constraints_.at(i)->UpdateLowerBound(VectorXd::Zero(5));
@@ -882,7 +866,6 @@ VectorXd OperationalSpaceControl::SolveQp(
           constant_term.transpose() * W * constant_term, true);
 
     } else {
-      std::cout << "WARNING: ZERO TRACKING COST" << std::endl;
       tracking_costs_.at(i)->UpdateCoefficients(MatrixXd::Zero(n_v_, n_v_),
                                                 VectorXd::Zero(n_v_));
     }
@@ -896,19 +879,11 @@ VectorXd OperationalSpaceControl::SolveQp(
     DRAKE_DEMAND(input_traj != nullptr);
     const auto& traj =
         input_traj->get_value<drake::trajectories::Trajectory<double>>();
-    std::cout << "force tracking traj value " << traj.value(0.0).transpose() << std::endl;
 
     force_tracking_data->Update(x_w_spr, *context_w_spr_, x_wo_spr,
                                 *context_wo_spr_, traj, t);
     const MatrixXd W = force_tracking_data->GetWeight();
     const VectorXd lambda_des = force_tracking_data->GetLambdaDes();
-
-    if (!W.allFinite()) {
-        std::cout << "force W contains NaN or Inf!" << std::endl;
-    }
-    if (!lambda_des.allFinite()) {
-        std::cout << "force lambda_des contains NaN or Inf!" << std::endl;
-    }
 
     lambda_ext_cost_->UpdateCoefficients(
         2 * W, -2 * W * lambda_des, lambda_des.transpose() * W * lambda_des);
@@ -928,12 +903,6 @@ VectorXd OperationalSpaceControl::SolveQp(
     const MatrixXd W = torque_tracking_data->GetWeight();
     const VectorXd lambda_des = torque_tracking_data->GetLambdaDes();
 
-    if (!W.allFinite()) {
-        std::cout << "torque W contains NaN or Inf!" << std::endl;
-    }
-    if (!lambda_des.allFinite()) {
-        std::cout << "torque lambda_des contains NaN or Inf!" << std::endl;
-    }
     lambda_ext_tau_cost_->UpdateCoefficients(
         2 * W, -2 * W * lambda_des, lambda_des.transpose() * W * lambda_des);
   }
@@ -959,7 +928,6 @@ VectorXd OperationalSpaceControl::SolveQp(
 
   // (Testing) 6. blend contact forces during double support phase
   if (ds_duration_ > 0) {
-    std::cout << "6. blend contact forces" << std::endl;
 
     MatrixXd A = MatrixXd::Zero(1, 2 * n_c_ / kSpaceDim);
     if (std::find(ds_states_.begin(), ds_states_.end(), fsm_state) !=
@@ -1021,15 +989,8 @@ VectorXd OperationalSpaceControl::SolveQp(
   }
 
   for (const auto& binding : prog_->GetAllConstraints()) {
-
       Eigen::VectorXd y = prog_->EvalBindingAtInitialGuess(binding);
       y = Eigen::VectorXd::Zero(y.size());
-
-      if (!y.allFinite()) {
-          std::cout << "NaN in constraint "
-                    << binding.evaluator()->get_description()
-                    << std::endl;
-      }
   }
 
   // Solve the QP
@@ -1048,13 +1009,13 @@ VectorXd OperationalSpaceControl::SolveQp(
     *lambda_ext_sol_ = result.GetSolution(lambda_ext_);
     *lambda_ext_tau_sol_ = result.GetSolution(lambda_ext_tau_);
 
-    std::cout << "dv: " << dv_sol_->transpose() << std::endl;
-    std::cout << "u: " << u_sol_->transpose() << std::endl;
+    // std::cout << "dv: " << dv_sol_->transpose() << std::endl;
+    // std::cout << "u: " << u_sol_->transpose() << std::endl;
     // std::cout << "lambda c: " << lambda_c_sol_->transpose() << std::endl;
     // std::cout << "lambda h: " << lambda_h_sol_->transpose() << std::endl;
     // std::cout << "epsilon: " << epsilon_sol_->transpose() << std::endl;
-    std::cout << "lambda ext: " << lambda_ext_sol_->transpose() << std::endl;
-    std::cout << "tau ext: " << lambda_ext_tau_sol_->transpose() << std::endl;
+    // std::cout << "lambda ext: " << lambda_ext_sol_->transpose() << std::endl;
+    // std::cout << "tau ext: " << lambda_ext_tau_sol_->transpose() << std::endl;
 
     if (!u_sol_->allFinite()) {
       std::cerr << "u_sol contains NaN or Inf!" << std::endl;

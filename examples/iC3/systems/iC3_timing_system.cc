@@ -47,7 +47,6 @@ iC3TimingSystem::iC3TimingSystem(iC3Options ic3_options, TrifingerControllerPara
   {
 		
   this->set_name("ic3_timing_system");
-
   radio_port_ =
     this->DeclareAbstractInputPort("lcmt_radio_out",
                                     drake::Value<lcmt_radio_out>{})
@@ -94,8 +93,8 @@ void iC3TimingSystem::OutputTimestep(
   }
 
   timestep->get_mutable_value() = timestep_vector;
-}
 
+}
 
 drake::systems::EventStatus iC3TimingSystem::SetFirstCallTime(
     const drake::systems::Context<double>& context,

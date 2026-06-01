@@ -1,18 +1,31 @@
-num_iters: 5
+num_iters: 3
 add_position_constraints: true
 add_input_constraints: true
 
-num_segments: 8
+num_segments: 2
 
 print_costs: true
 
-N: 60 # REMOVE after importing all options from c3 repo
+N: 48 # REMOVE after importing all options from c3 repo
 dt: 0.01 # REMOVE after importing all options from c3 repo
 
-iter_to_use: 5
-num_timesteps_to_use: 60
+iter_to_use: 3
+num_timesteps_to_use: 48
+
+rollout_dt_scaling: 10
 
 hold_last_timestep_position: true
 vertical_offset: -0.0
 
-ee_tracking_weight: 000
+use_time_varying_lcs: false
+
+value_function_ee_cost: [10, 10, 10, 1, 1]
+value_function_object_orientation_cost: 1 # radians
+value_function_object_position_cost: [10, 10, 10]
+value_function_velocity_cost: [0.1, 0.1, 0.1, 0.1, 0.1,
+                               0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+
+# Number of timesteps about current timestep to search for closest (to both left and right) 
+value_function_search_size: 3
+
+ee_tracking_weight: 0

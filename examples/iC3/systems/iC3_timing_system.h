@@ -40,8 +40,6 @@ class iC3TimingSystem : public drake::systems::LeafSystem<double> {
       return this->get_output_port(timestep_output_port_);
     }
 
-
-
   private:
     void OutputTimestep(const Context<double>& context,
                   BasicVector<double>* timestep) const;

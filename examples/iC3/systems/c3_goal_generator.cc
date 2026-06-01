@@ -21,16 +21,12 @@ using c3::multibody::LCSFactory;
 
 C3GoalGenerator::C3GoalGenerator(
 		MultibodyPlant<double>& plant, 
-		Context<double>* context,
-		MultibodyPlant<AutoDiffXd>& plant_ad,
-		Context<AutoDiffXd>* context_ad,
+		LCSFactory lcs_factory,
     iC3Options ic3_options, 
 		C3ControllerOptions c3_controller_options, 
     VectorXd x_des, int example_idx)
     : plant_(plant), 
-			context_(context),
-			plant_ad_(plant_ad),
-			context_ad_(context_ad),
+			lcs_factory_(lcs_factory),
       ic3_options_(ic3_options),
       c3_controller_options_(c3_controller_options),
 			c3_options_(c3_controller_options.c3_options),
@@ -70,8 +66,6 @@ C3GoalGenerator::C3GoalGenerator(
     int start = body.floating_positions_start();
     quaternion_indices_.push_back(start);
   }
-
-  lcs_factory_ = std::make_unique<LCSFactory>(plant_, *context_, plant_ad_, *context_ad_, c3_controller_options_.lcs_factory_options);
 
   state_port_ =
       this->DeclareVectorInputPort("x_input", TimestampedVector<double>(n_x_))
@@ -201,45 +195,62 @@ void C3GoalGenerator::OutputLCS(
 
   drake::VectorX<double> x_lcs = lcs_x->get_data();
 
-  MatrixXd x_hat(n_x_, N_);
-  MatrixXd u_hat(n_u_, N_);
-  double dt_scaling = c3_controller_options_.lcs_factory_options.dt / ic3_options_.dt;
-
   // HARDCODED
-	VectorXd u_nominal = VectorXd::Zero(n_u_);
+  VectorXd u_nominal = VectorXd::Zero(n_u_);
   if (example_idx_ == 0) {
     DRAKE_DEMAND(n_u_ == 5);
-    u_nominal(2) = 5; // Hard coded plate + object weight
+    u_nominal(2) = 8.33; // Hard coded plate + object weight
   } else if (example_idx_ == 1) {
     DRAKE_DEMAND(n_u_ == 9);
     u_nominal(2) = 0.02 * 9.8;
     u_nominal(5) = 0.02 * 9.8;
     u_nominal(8) = 0.02 * 9.8;
   }
- 
-  for (int k = 0; k < N_; k++) {
-    int idx = std::min(static_cast<int>(timestep + dt_scaling * k), ic3_options_.N);
-    std::cout << "idx " << idx << std::endl;
-    x_hat.col(k) = state_data.col(idx);
-    u_hat.col(k) = u_nominal;
+  
+  LCS lcs;
+  if (ic3_options_.use_time_varying_lcs) {
 
-    // Linearize about true end effector position
-    if (example_idx_ == 0) {
-      x_hat.col(k).segment(0, 5) = x_lcs.segment(0, 5);
-    } else if (example_idx_ == 1) {
-      x_hat.col(k).segment(0, 9) = x_lcs.segment(0, 9);
-    }
-  }
+    MatrixXd x_hat(n_x_, N_);
+    MatrixXd u_hat(n_u_, N_);
+    double dt_scaling = c3_controller_options_.lcs_factory_options.dt / ic3_options_.dt;
 
-  if (example_idx_ == 0) {
-    // Translate xyz position to match ic3's origin
     for (int k = 0; k < N_; k++) {
-      x_hat.col(k).segment(0, 3) = x_hat.col(k).segment(0, 3) - nominal_position->get_value(); 
-      x_hat.col(k).segment(9, 3) = x_hat.col(k).segment(9, 3) - nominal_position->get_value();
-    }
-  }
+      int idx = std::min(static_cast<int>(timestep + dt_scaling * k), ic3_options_.N);
+      std::cout << "idx " << idx << std::endl;
+      x_hat.col(k) = state_data.col(idx);
+      u_hat.col(k) = u_nominal;
 
-  LCS lcs = MakeTimeVaryingLCS(x_hat, u_hat);
+      // Linearize about true end effector position
+      if (example_idx_ == 0) {
+        x_hat.col(k).segment(0, 5) = x_lcs.segment(0, 5);
+      } else if (example_idx_ == 1) {
+        x_hat.col(k).segment(0, 9) = x_lcs.segment(0, 9);
+      }
+    }
+
+    if (example_idx_ == 0) {
+      // Translate xyz position to match ic3's origin
+      for (int k = 0; k < N_; k++) {
+        x_hat.col(k).segment(0, 3) = x_hat.col(k).segment(0, 3) - nominal_position->get_value(); 
+        x_hat.col(k).segment(9, 3) = x_hat.col(k).segment(9, 3) - nominal_position->get_value();
+      }
+    }
+    lcs = MakeTimeVaryingLCS(x_hat, u_hat);
+
+  } else {
+    if (example_idx_ == 0) {
+      // Translate xyz position to match ic3's origin
+      x_lcs.segment(0, 3) = x_lcs.segment(0, 3) - nominal_position->get_value(); 
+      x_lcs.segment(9, 3) = x_lcs.segment(9, 3) - nominal_position->get_value();
+    }
+
+    if (!x_lcs.allFinite()) {
+      std::cout << "c3 goal gen x_lcs not all finite " << x_lcs.transpose() << std::endl;
+    }
+
+    lcs_factory_.UpdateStateAndInput(x_lcs, u_nominal);
+    lcs = lcs_factory_.GenerateLCS();
+  }
 
 	*lcs_out = lcs;
 }
@@ -266,8 +277,8 @@ LCS C3GoalGenerator::MakeTimeVaryingLCS(MatrixXd x_hat, MatrixXd u_hat) const {
     }
 
     // Linearize about kth xhat, uhat
-    lcs_factory_->UpdateStateAndInput(x_hat.col(k), u_hat.col(k));
-    LCS lcs = lcs_factory_->GenerateLCS();
+    lcs_factory_.UpdateStateAndInput(x_hat.col(k), u_hat.col(k));
+    LCS lcs = lcs_factory_.GenerateLCS();
     A.push_back(lcs.A()[0]);
     B.push_back(lcs.B()[0]);
     D.push_back(lcs.D()[0]);

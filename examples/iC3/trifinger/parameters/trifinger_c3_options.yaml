@@ -11,32 +11,32 @@ lcs_factory_options:
   contact_model: "anitescu"
   num_contacts: 7
   spring_stiffness: 0
-  N: 4
-  dt: 0.01
+  N: 1
+  dt: 0.02
   contact_pair_configs:
     - body_A: "fingertip_1"
       body_A_collision_geom_indices: [0]
       body_B: "cube"
       body_B_collision_geom_indices: [0]
-      mu: 0.6
+      mu: 0.4
       num_friction_directions: 2
     - body_A: "fingertip_2"
       body_A_collision_geom_indices: [0]
       body_B: "cube"
       body_B_collision_geom_indices: [0]
-      mu: 0.6
+      mu: 0.4
       num_friction_directions: 2
     - body_A: "fingertip_3"
       body_A_collision_geom_indices: [0]
       body_B: "cube"
       body_B_collision_geom_indices: [0]
-      mu: 0.6
+      mu: 0.4
       num_friction_directions: 2
     - body_A: "cube"
       body_A_collision_geom_indices: [1, 2, 3, 4]
       body_B: "ground"
       body_B_collision_geom_indices: [0]
-      mu: 0.6
+      mu: 0.4
       num_friction_directions: 2
 
 
@@ -49,21 +49,21 @@ c3_options:
   num_threads: 10
   delta_option: 1
 
-  admm_iter: 6
+  admm_iter: 3
 
   M: 1000
   gamma: 1.0
   rho_scale: 1.0
 
   w_Q: 5
-  w_R: 500 #Penalty on all decision variables, assuming scalar
-  w_G: 5 #Penalty on all decision variables, assuming scalar
+  w_R: 1000 #Penalty on all decision variables, assuming scalar
+  w_G: 20  #Penalty on all decision variables, assuming scalar
   w_U: 1 #State Tracking Error, assuming diagonal
 
 
-  q_vector: [140000, 140000, 140000,    # finger 1
-             140000, 140000, 140000,    # finger 2
-             140000, 140000, 140000,    # finger 3
+  q_vector: [130000, 130000, 130000,    # finger 1
+             130000, 130000, 130000,    # finger 2
+             130000, 130000, 130000,    # finger 3
              1, 1, 1, 1,
              300000, 300000, 80000,
              1, 1, 1,          # finger 1 velo
@@ -82,14 +82,13 @@ c3_options:
         1, 1, 1, 1, 1, 1]                                 # cube velo
 
 
-  g_lambda: [74, 74, 74, 74, 74, 74, 74, 74, 74, 74, 74, 74, 74, 74, 74, 74, 74, 74, 74, 74, 74, 74, 74, 74, 74, 74, 74, 74]
+  g_lambda: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
   
-  g_eta_slack: [16, 16, 16, 16, 16, 16, 16] 
-  g_eta_n: [16, 16, 16, 16, 16, 16, 16] 
-  g_eta_t: [16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16] 
-  g_eta: [16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16] 
+  g_eta_slack: [8, 8, 8, 8, 8, 8, 8] 
+  g_eta_n: [8, 8, 8, 8, 8, 8, 8] 
+  g_eta_t: [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8] 
+  g_eta: [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8] 
   g_u: [45, 45, 45, 45, 45, 45, 45, 45, 45] 
-
 
 
   u_x: [50, 50, 50, 50, 50, 50, 50, 50, 50,   # hand pos
@@ -100,10 +99,10 @@ c3_options:
   u_lambda: [90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90] 
   u_u: [45, 45, 45, 45, 45, 45, 45, 45, 45]
 
-  u_eta_slack: [8, 8, 8, 8, 8, 8, 8] 
-  u_eta_n: [8, 8, 8, 8, 8, 8, 8] 
-  u_eta_t: [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8] 
-  u_eta: [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8]
+  u_eta_slack: [16, 16, 16, 16, 16, 16, 16] 
+  u_eta_n: [16, 16, 16, 16, 16, 16, 16] 
+  u_eta_t: [16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16] 
+  u_eta: [16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16]
 
   g_gamma: []
   g_lambda_n: []

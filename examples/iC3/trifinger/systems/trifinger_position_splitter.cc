@@ -66,30 +66,33 @@ void TrifingerPositionSplitter::OutputTrajectory(
     const auto& trajectory_block = lcm_traj.GetTrajectory(trajectory_name_);
       
     MatrixXd data = trajectory_block.datapoints.middleRows(3*finger_idx, 3);
+    std::cout << data << std::endl;
 
     *casted_traj = PiecewisePolynomial<double>::FirstOrderHold(
         trajectory_block.time_vector, data);
+
+    std::cout << "casted traj value " << casted_traj->value(0).transpose() << std::endl;
   } else {
     *casted_traj = PiecewisePolynomial<double>(Vector3d::Zero());
   }
 }
 
-  void TrifingerPositionSplitter::OutputTrajectory0(
+void TrifingerPositionSplitter::OutputTrajectory0(
+  const drake::systems::Context<double>& context,
+  drake::trajectories::Trajectory<double>* traj) const {
+  OutputTrajectory(context, traj, 0);
+}
+
+void TrifingerPositionSplitter::OutputTrajectory120(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
-    OutputTrajectory(context, traj, 0);
-  }
+  OutputTrajectory(context, traj, 1);
+}
 
-  void TrifingerPositionSplitter::OutputTrajectory120(
-      const drake::systems::Context<double>& context,
-      drake::trajectories::Trajectory<double>* traj) const {
-    OutputTrajectory(context, traj, 1);
-  }
-
-  void TrifingerPositionSplitter::OutputTrajectory240(
-    const drake::systems::Context<double>& context,
-    drake::trajectories::Trajectory<double>* traj) const {
-    OutputTrajectory(context, traj, 2);
-  }                          
+void TrifingerPositionSplitter::OutputTrajectory240(
+  const drake::systems::Context<double>& context,
+  drake::trajectories::Trajectory<double>* traj) const {
+  OutputTrajectory(context, traj, 2);
+}                          
 
 }  // namespace dairlib

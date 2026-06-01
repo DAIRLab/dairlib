@@ -113,11 +113,11 @@ void TimedGate::OutputActorTrajectory(
       c3_torque_data = c3_traj.GetTrajectory("end_effector_torque_target").datapoints;
     }
 
-    std::cout << c3_orientation_data.col(0).transpose() << "; " << c3_position_data.col(0).transpose() << std::endl;
-    std::cout << c3_orientation_data.col(1).transpose() << "; " << c3_position_data.col(1).transpose() << std::endl;
+    std::cout << "timed gate x " << c3_orientation_data.col(0).transpose() << "; " << c3_position_data.col(0).transpose() << std::endl;
+    std::cout << "timed gate x " << c3_orientation_data.col(1).transpose() << "; " << c3_position_data.col(1).transpose() << std::endl;
 
-    std::cout << c3_force_data.col(0).transpose() << "; " << c3_torque_data.col(0).transpose() << std::endl;
-    std::cout << c3_force_data.col(1).transpose() << "; " << c3_torque_data.col(1).transpose() << std::endl;
+    std::cout << "timed gate u " << c3_force_data.col(0).transpose() << "; " << c3_torque_data.col(0).transpose() << std::endl;
+    std::cout << "timed gate u " << c3_force_data.col(1).transpose() << "; " << c3_torque_data.col(1).transpose() << std::endl;
 
   } else {
     // HARDCODED

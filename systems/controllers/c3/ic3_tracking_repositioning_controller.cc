@@ -34,10 +34,10 @@ using systems::TimestampedVector;
 
 namespace systems {
 
-iC3TrackingController::iC3TrackingController(
+iC3TrackingRepositioningController::iC3TrackingRepositioningController(
     const drake::multibody::MultibodyPlant<double>& plant, C3ControllerOptions controller_options, 
-      iC3Options ic3_options, double time_to_wait, MatrixXd A_x, VectorXd lb_x, VectorXd ub_x, 
-      MatrixXd A_u, VectorXd lb_u, VectorXd ub_u)
+      iC3Options ic3_options, LCSFactory lcs_factory, double time_to_wait, MatrixXd A_x, VectorXd lb_x, VectorXd ub_x, 
+      MatrixXd A_u, VectorXd lb_u, VectorXd ub_u, int example_idx,)
     : plant_(plant),
       controller_options_(controller_options),
       c3_options_(controller_options.c3_options),
@@ -46,14 +46,16 @@ iC3TrackingController::iC3TrackingController(
       N_(lcs_factory_options_.N), 
       dt_(lcs_factory_options_.dt),
       dt_scaling_(lcs_factory_options_.dt / ic3_options_.dt),
+      lcs_factory_(lcs_factory),
       time_to_wait_(time_to_wait),
       A_x_(A_x),
       lb_x_(lb_x),
       ub_x_(ub_x), 
       A_u_(A_u),
       lb_u_(lb_u),
-      ub_u_(ub_u) {
-  this->set_name("ic3_tracking_controller");
+      ub_u_(ub_u),
+      example_idx(example_idx_) {
+  this->set_name("ic3_tracking_repositioning_controller");
 
 
   double discount_factor = 1;
@@ -182,19 +184,6 @@ iC3TrackingController::iC3TrackingController(
   c3_solution.lambda_sol_ = MatrixXf::Zero(n_lambda_, N_);
   c3_solution.u_sol_ = MatrixXf::Zero(n_u_, N_);
   c3_solution.time_vector_ = VectorXf::Zero(N_);
-  auto c3_intermediates = c3::systems::C3Output::C3Intermediates();
-  c3_intermediates.z_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
-  c3_intermediates.delta_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
-  c3_intermediates.w_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
-  c3_intermediates.time_vector_ = VectorXf::Zero(N_);
-  c3_solution_port_ =
-      this->DeclareAbstractOutputPort("c3_solution", c3_solution,
-                                      &iC3TrackingController::OutputC3Solution)
-          .get_index();
-  c3_intermediates_port_ =
-      this->DeclareAbstractOutputPort("c3_intermediates", c3_intermediates,
-                                      &iC3TrackingController::OutputC3Intermediates)
-          .get_index();
 
   plan_start_time_index_ = DeclareDiscreteState(1);
   x_pred_index_ = DeclareDiscreteState(n_x_);
@@ -202,14 +191,14 @@ iC3TrackingController::iC3TrackingController(
 
   if (controller_options_.publish_frequency > 0) {
     DeclarePeriodicDiscreteUpdateEvent(1 / controller_options_.publish_frequency, 0.0,
-                                       &iC3TrackingController::ComputePlan);
+                                       &iC3TrackingRepositioningController::ComputePlan);
   } else {
-    DeclareForcedDiscreteUpdateEvent(&iC3TrackingController::ComputePlan);
+    DeclareForcedDiscreteUpdateEvent(&iC3TrackingRepositioningController::ComputePlan);
   }
 
 }
 
-LCS iC3TrackingController::CreatePlaceholderLCS() const {
+LCS iC3TrackingRepositioningController::CreatePlaceholderLCS() const {
   MatrixXd A = MatrixXd::Ones(n_x_, n_x_);
   MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
   VectorXd d = VectorXd::Zero(n_x_);
@@ -221,7 +210,7 @@ LCS iC3TrackingController::CreatePlaceholderLCS() const {
   return LCS(A, B, D, d, E, F, H, c, N_, dt_);
 }
 
-drake::systems::EventStatus iC3TrackingController::ComputePlan(
+drake::systems::EventStatus iC3TrackingRepositioningController::ComputePlan(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
 
@@ -430,7 +419,7 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
   return drake::systems::EventStatus::Succeeded();
 }
 
-void iC3TrackingController::UpdateQuaternionCosts(
+void iC3TrackingRepositioningController::UpdateQuaternionCosts(
     const Eigen::VectorXd& x_curr, const Eigen::VectorXd& x_des) const {
     
   // Early return if no quaternions or cost parameters not set
@@ -474,7 +463,7 @@ void iC3TrackingController::UpdateQuaternionCosts(
   }
 }
 
-int iC3TrackingController::GetNearestXForValueFunction(
+int iC3TrackingRepositioningController::GetNearestXForValueFunction(
     VectorXd x_curr, MatrixXd x_hat_slice) const {
   DRAKE_DEMAND(x_hat_slice.cols() > 0);
 
@@ -524,7 +513,7 @@ int iC3TrackingController::GetNearestXForValueFunction(
 
 }
 
-void iC3TrackingController::OutputC3Solution(
+void iC3TrackingRepositioningController::OutputC3Solution(
     const drake::systems::Context<double>& context,
     C3Output::C3Solution* c3_solution) const {
   double t = context.get_discrete_state(plan_start_time_index_)[0];
@@ -540,23 +529,6 @@ void iC3TrackingController::OutputC3Solution(
         z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
 
   } 
-}
-
-void iC3TrackingController::OutputC3Intermediates(
-    const drake::systems::Context<double>& context,
-    c3::systems::C3Output::C3Intermediates* c3_intermediates) const {
-  double solve_time = context.get_discrete_state(filtered_solve_time_index_)[0];
-  double t = context.get_discrete_state(plan_start_time_index_)[0] + solve_time;
-  auto z = c3_->GetFullSolution();
-  auto delta = c3_->GetDualDeltaSolution();
-  auto w = c3_->GetDualWSolution();
-
-  for (int i = 0; i < N_; i++) {
-    c3_intermediates->time_vector_(i) = solve_time + t + i * dt_;
-    c3_intermediates->z_.col(i) = z[i].cast<float>();
-    c3_intermediates->delta_.col(i) = delta[i].cast<float>();
-    c3_intermediates->w_.col(i) = w[i].cast<float>();
-  }
 }
 
 

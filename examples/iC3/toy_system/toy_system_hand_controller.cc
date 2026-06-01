@@ -308,12 +308,23 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
                     u_passthrough->get_input_port()); 
                                        
   } else if (toy_params.input_type == "c3") {
+    int n_x = plant_for_lcs.num_positions() + plant_for_lcs.num_velocities();
+    int n_u = plant_for_lcs.num_actuators();
+
+    MatrixXd A_x(MatrixXd::Zero(n_x, n_x));
+    VectorXd lb_x(VectorXd::Zero(n_x));
+    VectorXd ub_x(VectorXd::Zero(n_x));
+
+    MatrixXd A_u(MatrixXd::Zero(n_u, n_u));
+    VectorXd lb_u(VectorXd::Zero(n_u));
+    VectorXd ub_u(VectorXd::Zero(n_u));
 
     auto lqr_sub =
           builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_lqr_output>(
               "iC3_LQR", &lcm));
     auto controller =
-        builder.AddSystem<systems::iC3TrackingController>(plant_for_lcs, c3_controller_options, ic3_options, toy_params.time_to_wait);
+        builder.AddSystem<systems::iC3TrackingController>(plant_for_lcs, c3_controller_options, ic3_options, toy_params.time_to_wait,
+          A_x, lb_x, ub_x, A_u, lb_u, ub_u);
     // controller->SetOsqpSolverOptions(solver_options);
     
     auto vector_to_timestamped_vector =

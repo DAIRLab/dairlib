@@ -20,10 +20,10 @@ w_lambda: 0.0001
 impact_threshold: 0.0001
 impact_tau: 0.0001
 mu: 1.0 # unused
-end_effector_acceleration: 50
+end_effector_acceleration: 10
 track_end_effector_orientation: false
 cancel_gravity_compensation: false
-enforce_acceleration_constraints: true # TODO: figure out why making this true breaks stuff (hardcoded rn)
+enforce_acceleration_constraints: true # Currently hardcoded, trifinger sdf doesn't have accleration limits
 publish_debug_info: true
 
 w_joint_limit: 10000.0
@@ -41,23 +41,23 @@ W_lambda_h_reg: [ 0.0001, 0.0001, 0.0001,
 EndEffectorW:
   [200, 0, 0,
    0, 200, 0,
-   0, 0, 200]
+   0, 0, 20]
 EndEffectorKp:
-  [ 160, 0, 0,
-    0, 160, 0,
-    0, 0, 160 ]
+  [ 200, 0, 0,
+    0, 200, 0,  
+    0, 0, 200 ]
 EndEffectorKd:
-  [ 10, 0, 0,
-    0, 10, 0,
-    0, 0, 10 ]
+  [ 20, 0, 0,
+    0, 20, 0,
+    0, 0, 20 ]
 LambdaEndEffectorW:
-  [ 100, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 100, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 10, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 10, 0, 0, 0, 0, 0, 
-    0, 0, 0, 0, 100, 0, 0, 0, 0, 
-    0, 0, 0, 0, 0, 10, 0, 0, 0, 
-    0, 0, 0, 0, 0, 0, 100, 0, 0, 
-    0, 0, 0, 0, 0, 0, 0, 100, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 10 ]
+  [ 200, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 200, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 200, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 200, 0, 0, 0, 0, 0, 
+    0, 0, 0, 0, 200, 0, 0, 0, 0, 
+    0, 0, 0, 0, 0, 200, 0, 0, 0, 
+    0, 0, 0, 0, 0, 0, 200, 0, 0, 
+    0, 0, 0, 0, 0, 0, 0, 200, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 200 ]
 

@@ -2,6 +2,7 @@
 
 #include <utility>
 #include <iostream>
+#include <chrono>
 
 #include "common/find_resource.h"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
@@ -24,19 +25,27 @@ using c3::systems::C3ControllerOptions;
 using c3::LCSFactoryOptions;
 using c3::LCS;
 using c3::ContactPairConfig;
+using c3::multibody::LCSFactory;
 
 C3TrajectoryGenerator::C3TrajectoryGenerator(
-    const drake::multibody::MultibodyPlant<double>& plant, 
-      C3ControllerOptions c3_controller_options, bool track_dynamically_feasible, int example_idx)
+    const drake::multibody::MultibodyPlant<double>& plant, LCSFactory lcs_factory, iC3Options ic3_options,
+      C3ControllerOptions c3_controller_options, bool track_dynamically_feasible, int example_idx,
+      MatrixXd A_x, VectorXd lb_x, VectorXd ub_x, MatrixXd A_u, VectorXd lb_u, VectorXd ub_u)
     : plant_(plant), 
-    c3_controller_options_(c3_controller_options),
-    lcs_factory_options_(c3_controller_options.lcs_factory_options),
-    N_(lcs_factory_options_.N), 
-    track_dynamically_feasible_(track_dynamically_feasible),
-    example_idx_(example_idx) {
+      lcs_factory_(lcs_factory),
+      ic3_options_(ic3_options),
+      c3_controller_options_(c3_controller_options),
+      lcs_factory_options_(c3_controller_options.lcs_factory_options),
+      N_(lcs_factory_options_.N), 
+      track_dynamically_feasible_(track_dynamically_feasible),
+      example_idx_(example_idx),
+      A_x_(A_x),
+      lb_x_(lb_x),
+      ub_x_(ub_x), 
+      A_u_(A_u),
+      lb_u_(lb_u),
+      ub_u_(ub_u) {
   this->set_name("c3_trajectory_generator");
-
-  std::cout << "HELLO INIT" << std::endl;
 
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
@@ -93,9 +102,7 @@ C3TrajectoryGenerator::C3TrajectoryGenerator(
           .get_index();
 
   auto lcs_placeholder = CreatePlaceholderLCS();
-  lcs_port_ =
-      this->DeclareAbstractInputPort("lcs", drake::Value<LCS>(lcs_placeholder))
-          .get_index();
+
 }
 
 // HARDCODED FOR PLATE EXAMPLE
@@ -107,18 +114,28 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
   DRAKE_DEMAND(c3_solution->x_sol_.rows() == n_q_ + n_v_);
   const BasicVector<double>* nominal_position =
     (BasicVector<double>*)this->EvalVectorInput(context, nominal_position_port_);
-  auto& lcs =
-    this->EvalAbstractInput(context, lcs_port_)->get_value<LCS>();
 
 
   MatrixXd x_hat = c3_solution->x_sol_.cast<double>();
   MatrixXd u_hat = c3_solution->u_sol_.cast<double>();
 
-  std::cout << "u hat size " << u_hat.rows() << " x " << u_hat.cols() << std::endl;
-  std::cout << "c3 u sol " << u_hat.col(0).transpose() << std::endl;
+
+  // std::cout << "c3 x sol " << x_hat.col(0).transpose() << std::endl;
+  // std::cout << "c3 x sol " << x_hat.col(1).transpose() << std::endl;
+
+  // std::cout << "c3 u sol " << u_hat.col(0).transpose() << std::endl;
+  // std::cout << "c3 u sol " << u_hat.col(1).transpose() << std::endl;
 
   if (track_dynamically_feasible_) {
-    x_hat = SimulateLCS(x_hat.col(0), u_hat, lcs);
+    auto simulate_start = std::chrono::high_resolution_clock::now();
+    x_hat = SimulateLCS(x_hat.col(0), u_hat);
+    auto simulate_end = std::chrono::high_resolution_clock::now();
+    auto elapsed = simulate_end - simulate_start;
+    double solve_time =
+        std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count() /
+        1e6;
+    std::cout << "rollout time " << solve_time << std::endl;
+
   } else {
     MatrixXd temp(x_hat.rows(), x_hat.cols() + 1);
     temp << x_hat, x_hat.col(x_hat.cols()-1);
@@ -154,6 +171,8 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
 
   VectorXd time_vector;
 
+  VectorXd nom_pos = nominal_position->get_value();
+  
   // HARDCODED
   if (example_idx_ == 0) {
     int ee_pos_idx = 0;
@@ -163,8 +182,8 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
 
     if (N_ == 1) {
       positions = MatrixXd::Zero(3, 2);
-      positions.col(0) = x_hat.middleRows(ee_pos_idx, 3).col(0) + nominal_position->get_value();
-      positions.col(1) = x_hat.middleRows(ee_pos_idx, 3).col(1) + nominal_position->get_value();
+      positions.col(0) = x_hat.middleRows(ee_pos_idx, 3).col(0) + nom_pos;
+      positions.col(1) = x_hat.middleRows(ee_pos_idx, 3).col(1) + nom_pos;
 
       raw_orientations = MatrixXd::Zero(2, 2);
       raw_orientations.col(0) = x_hat.middleRows(ee_rot_idx, 2).col(0);
@@ -188,7 +207,7 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
       // Reapply offset
       positions = x_hat.middleRows(ee_pos_idx, 3);
       for (int i = 0; i < positions.cols(); i++) {
-        positions.col(i) + nominal_position->get_value();
+        positions.col(i) = positions.col(i) + nom_pos;
       }
       raw_orientations = x_hat.middleRows(ee_rot_idx, 2);
 
@@ -197,6 +216,14 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
       torques.topRows(2) = u_hat.bottomRows(2);
       time_vector = c3_solution->time_vector_.cast<double>();
     }
+
+    // Threshold plate positions for safety
+    for (int k = 0; k < positions.cols(); k++) {
+      positions.col(k)(0) = std::min(std::max(positions.col(k)(0), nom_pos(0) - 0.15), nom_pos(0) + 0.15);
+      positions.col(k)(1) = std::min(std::max(positions.col(k)(1), nom_pos(1) - 0.15), nom_pos(1) + 0.15);
+      positions.col(k)(2) = std::min(std::max(positions.col(k)(2), nom_pos(2) - 0.15), nom_pos(2) + 0.15);
+    }
+
   } else if (example_idx_ == 1) {
     int ee_pos_idx = 0;
     int force_idx = 0;
@@ -222,27 +249,32 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
       time_vector = c3_solution->time_vector_.cast<double>();
     }
 
-    // HARDCODED THRESHOLD POSITIONS TO JOINT LIMITS
-    for (int i = 0; i < positions.cols(); i++) {
-      positions.col(i)(0) = std::min(std::max(positions.col(i)(0), -0.06), 0.06);
-      positions.col(i)(1) = std::min(std::max(positions.col(i)(1), -0.01), 0.13);
-      positions.col(i)(2) = std::min(std::max(positions.col(i)(2), 0.06), 0.08);
-      positions.col(i)(3) = std::min(std::max(positions.col(i)(3), 0.01), 0.13);
-      positions.col(i)(4) = std::min(std::max(positions.col(i)(4), -0.005), 0.115);
-      positions.col(i)(5) = std::min(std::max(positions.col(i)(5), 0.06), 0.08);
-      positions.col(i)(6) = std::min(std::max(positions.col(i)(6), -0.13), -0.01);
-      positions.col(i)(7) = std::min(std::max(positions.col(i)(7), -0.005), 0.115);
-      positions.col(i)(8) = std::min(std::max(positions.col(i)(8), 0.06), 0.08);
-    }
+    // // HARDCODED THRESHOLD POSITIONS TO JOINT LIMITS
+    // for (int i = 0; i < positions.cols(); i++) {
+    //   positions.col(i)(0) = std::min(std::max(positions.col(i)(0), -0.06), 0.06);
+    //   positions.col(i)(1) = std::min(std::max(positions.col(i)(1), -0.01), 0.13);
+    //   positions.col(i)(2) = std::min(std::max(positions.col(i)(2), 0.045), 0.055);
+    //   positions.col(i)(3) = std::min(std::max(positions.col(i)(3), 0.01), 0.13);
+    //   positions.col(i)(4) = std::min(std::max(positions.col(i)(4), -0.005), 0.115);
+    //   positions.col(i)(5) = std::min(std::max(positions.col(i)(5), 0.045), 0.055);
+    //   positions.col(i)(6) = std::min(std::max(positions.col(i)(6), -0.13), -0.01);
+    //   positions.col(i)(7) = std::min(std::max(positions.col(i)(7), -0.005), 0.115);
+    //   positions.col(i)(8) = std::min(std::max(positions.col(i)(8), 0.045), 0.055);
 
-    // HARDCODED THRESHOLD INPUTS TO INPUT LIMITS
-    for (int i = 0; i < forces.cols(); i++) {
-      for (int j = 0; j < 3; j++) {
-        forces.col(i)(3*j) = std::min(std::max(forces.col(i)(3*j), -0.5), 0.5);
-        forces.col(i)(3*j+1) = std::min(std::max(forces.col(i)(3*j+1), -0.5), 0.5);
-        forces.col(i)(3*j+2) = std::min(std::max(forces.col(i)(3*j+2), -0.02), 0.02);
-      }
-    }
+    //   for (int j = 0; j < 3; j++) {
+    //     positions.col(i)(16 + 3*j) = std::min(std::max(positions.col(i)(16 + 3*j), -0.3), 0.3);
+    //     positions.col(i)(16 + 3*j + 1) = std::min(std::max(positions.col(i)(16 + 3*j + 1), -0.3), 0.3);
+    //   }
+    // }
+
+    // // HARDCODED THRESHOLD INPUTS TO INPUT LIMITS
+    // for (int i = 0; i < forces.cols(); i++) {
+    //   for (int j = 0; j < 3; j++) {
+    //     forces.col(i)(3*j) = std::min(std::max(forces.col(i)(3*j), -0.5), 0.5);
+    //     forces.col(i)(3*j+1) = std::min(std::max(forces.col(i)(3*j+1), -0.5), 0.5);
+    //     forces.col(i)(3*j+2) = std::min(std::max(forces.col(i)(3*j+2), -0.02), 0.02);
+    //   }
+    // }
 
   }
 	
@@ -292,12 +324,14 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
 		for (int i = 0; i < raw_orientations.cols(); i++) {
 			  double roll = raw_orientations(0, i);
         double pitch = raw_orientations(1, i);
+
 				Eigen::AngleAxisd rollAngle(roll, Vector3d::UnitX());
         Eigen::AngleAxisd pitchAngle(pitch, Vector3d::UnitY());
 
         Eigen::Quaterniond q = rollAngle * pitchAngle; 
         VectorXd q_vec(4); 
         q_vec << q.w(), q.x(), q.y(), q.z();
+
         orientations.col(i) = q_vec.normalized();
 		}
 
@@ -363,17 +397,58 @@ void C3TrajectoryGenerator::OutputObjectTrajectory(
   output_traj->utime = context.get_time() * 1e6;
 }
 
-MatrixXd C3TrajectoryGenerator::SimulateLCS(VectorXd x0, MatrixXd u_hat, LCS lcs) const {
+MatrixXd C3TrajectoryGenerator::SimulateLCS(VectorXd x0, MatrixXd u_hat) const {
 
-  MatrixXd x_hat(MatrixXd::Zero(x0.size(), lcs.N() + 1));
+  int N = lcs_factory_options_.N;
+
+  // std::cout << "x0 " << x0.transpose() << std::endl;
+  // First C3 solve not done yet
+  if (x0.isZero()) {
+    MatrixXd x_hat_fallback(MatrixXd::Zero(n_x_, N + 1));
+    return x_hat_fallback;
+  }
+    
+  double dt = lcs_factory_options_.dt / ic3_options_.rollout_dt_scaling;
+  lcs_factory_.SetNewDt(dt);
+
+
+  MatrixXd x_hat(MatrixXd::Zero(n_x_, ic3_options_.rollout_dt_scaling * N + 1));
   x_hat.col(0) = x0;
 
-  for (int i = 0; i < lcs.N(); i++) {
-    Eigen::VectorXd x = x_hat.col(i);
-    Eigen::VectorXd u = u_hat.col(i);
-    x_hat.col(i+1) = lcs.Simulate(x, u);
+  VectorXd x_curr = x0;
+  for (int i = 0; i < ic3_options_.rollout_dt_scaling * N; i++) {
+    
+    VectorXd u = u_hat.col(i / ic3_options_.rollout_dt_scaling);
+
+    if (!x_curr.allFinite()) {
+      std::cout << "c3 traj gen x_curr not all finite " << x_curr.transpose() << std::endl;
+    }
+
+    lcs_factory_.UpdateStateAndInput(x_curr, u);
+    LCS lcs = lcs_factory_.GenerateLCS();
+    
+    // Threshold positions and inputs, assume A_x, A_u are diagonal 0/1 matrices
+    for (int j = 0; j < A_x_.rows(); j++) {
+      if (A_x_(j, j) == 1) {
+          x_curr(j) = std::min(std::max(x_curr(j), lb_x_(j)), ub_x_(j));
+      }
+    }
+    for (int j = 0; j < A_u_.rows(); j++) {
+      if (A_u_(j, j) == 1) {
+          u(j) = std::min(std::max(u(j), lb_u_(j)), ub_u_(j));
+      }
+    }
+
+    x_hat.col(i+1) = lcs.Simulate(x_curr, u);
+    x_curr = x_hat.col(i+1);
   }
-  return x_hat;
+
+  MatrixXd x_hat_downsampled(MatrixXd::Zero(n_x_, N + 1));
+  for (int i = 0; i < N + 1; i++) {
+    x_hat_downsampled.col(i) = x_hat.col(i * ic3_options_.rollout_dt_scaling);
+  }
+
+  return x_hat_downsampled;
 }
 
 LCS C3TrajectoryGenerator::CreatePlaceholderLCS() const {

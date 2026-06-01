@@ -15,6 +15,7 @@
 #include <c3/core/c3_options.h>
 #include <c3/core/lcs.h>
 #include <c3/core/solver_options_io.h>
+#include <c3/multibody/lcs_factory.h>
 #include <c3/systems/framework/c3_output.h>
 #include <c3/systems/c3_controller_options.h>
 
@@ -31,11 +32,11 @@ using dairlib::lcmt_radio_out;
 namespace dairlib {
 namespace systems {
 
-class iC3TrackingController : public drake::systems::LeafSystem<double> {
+class iC3TrackingRepositioningController : public drake::systems::LeafSystem<double> {
  public:
-  explicit iC3TrackingController(const drake::multibody::MultibodyPlant<double>& plant,
-                        c3::systems::C3ControllerOptions controller_options, iC3Options ic3_options, double time_to_wait,
-                        MatrixXd A_x, VectorXd lb_x, VectorXd ub_x, MatrixXd A_u, VectorXd lb_u, VectorXd ub_u);
+  explicit iC3TrackingRepositioningController(const drake::multibody::MultibodyPlant<double>& plant,
+                        c3::systems::C3ControllerOptions controller_options, iC3Options ic3_options, LCSFactory lcs_factory,
+                        double time_to_wait, int example_idx, MatrixXd A_x, VectorXd lb_x, VectorXd ub_x, MatrixXd A_u, VectorXd lb_u, VectorXd ub_u);
 
   const drake::systems::InputPort<double>& get_input_port_target() const {
     return this->get_input_port(target_input_port_);
@@ -61,17 +62,9 @@ class iC3TrackingController : public drake::systems::LeafSystem<double> {
     return this->get_input_port(lcs_input_port_);
   }
 
-  const drake::systems::InputPort<double>& get_input_port_timestep() const {
-    return this->get_input_port(timestep_port_);
-  }
-
   const drake::systems::OutputPort<double>& get_output_port_c3_solution()
       const {
     return this->get_output_port(c3_solution_port_);
-  }
-  const drake::systems::OutputPort<double>& get_output_port_c3_intermediates()
-      const {
-    return this->get_output_port(c3_intermediates_port_);
   }
 
   // void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
@@ -89,9 +82,6 @@ class iC3TrackingController : public drake::systems::LeafSystem<double> {
   void OutputC3Solution(const drake::systems::Context<double>& context,
                         c3::systems::C3Output::C3Solution* c3_solution) const;
 
-  void OutputC3Intermediates(const drake::systems::Context<double>& context,
-                             c3::systems::C3Output::C3Intermediates* c3_intermediates) const;
-
   void UpdateQuaternionCosts(
       const VectorXd& x_curr, const Eigen::VectorXd& x_des) const;
       
@@ -106,13 +96,13 @@ class iC3TrackingController : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex ic3_u_port_;
   drake::systems::InputPortIndex timestep_port_;
   drake::systems::OutputPortIndex c3_solution_port_;
-  drake::systems::OutputPortIndex c3_intermediates_port_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
 
   c3::systems::C3ControllerOptions controller_options_;
   c3::C3Options c3_options_;
   c3::LCSFactoryOptions lcs_factory_options_;
+  c3::multibody::LCSFactory lcs_factory_;
 
   iC3Options ic3_options_;
   drake::solvers::SolverOptions solver_options_;
@@ -136,7 +126,9 @@ class iC3TrackingController : public drake::systems::LeafSystem<double> {
   VectorXd ub_u_;
 
   double time_to_wait_;
+  int example_idx_;
 
+  
   mutable std::unique_ptr<c3::C3> c3_;
   
   std::vector<int> quaternion_indices_;  // indices for quaternion-valued joints

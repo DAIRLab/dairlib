@@ -50,6 +50,7 @@ using Eigen::MatrixXd;
 
 using c3::C3Options;
 using c3::systems::C3ControllerOptions;
+using c3::multibody::LCSFactory;
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -182,6 +183,58 @@ int DoMain(int argc, char* argv[]) {
     contact_pairs.emplace_back(geom_id, contact_geoms["PLATE"][0]);
   }
 
+  LCSFactory lcs_factory = LCSFactory(plant_for_lcs, plant_lcs_context, *plant_for_lcs_autodiff, 
+                                    *plant_lcs_context_ad, c3_controller_options.lcs_factory_options);
+
+  int n_x = plant_for_lcs.num_positions() + plant_for_lcs.num_velocities();
+  int n_u = plant_for_lcs.num_actuators();
+
+  MatrixXd A_x(MatrixXd::Zero(n_x, n_x));
+  VectorXd lb_x(VectorXd::Zero(n_x));
+  VectorXd ub_x(VectorXd::Zero(n_x));
+
+  MatrixXd A_u(MatrixXd::Zero(n_u, n_u));
+  VectorXd lb_u(VectorXd::Zero(n_u));
+  VectorXd ub_u(VectorXd::Zero(n_u));
+
+  A_x(0, 0) = 1;
+  A_x(1, 1) = 1;
+  A_x(2, 2) = 1;
+  A_x(3, 3) = 1;
+  A_x(4, 4) = 1;
+
+  // Plate position constraints
+  lb_x(0) = -0.1;
+  lb_x(1) = -0.1;
+  lb_x(2) = -0.3; 
+  lb_x(3) = -0.4;
+  lb_x(4) = -0.4;
+
+  // Plate rotation constraints
+  ub_x(0) = 0.1;
+  ub_x(1) = 0.1;
+  ub_x(2) = 0.3;
+  ub_x(3) = 0.4;
+  ub_x(4) = 0.4;
+
+  A_u(0, 0) = 1;
+  A_u(1, 1) = 1;
+  A_u(2, 2) = 1;
+  A_u(3, 3) = 1;
+  A_u(4, 4) = 1;
+
+  lb_u(0) = -1;
+  lb_u(0) = -1;
+  lb_u(0) = 0;
+  lb_u(0) = -1;
+  lb_u(0) = -1;
+
+  ub_u(0) = 1;
+  ub_u(0) = 1;
+  ub_u(0) = 15;
+  ub_u(0) = 1;
+  ub_u(0) = 1;
+
   DiagramBuilder<double> builder;
   auto franka_state_receiver =
     builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
@@ -240,8 +293,7 @@ int DoMain(int argc, char* argv[]) {
         builder.AddSystem<systems::ObjectStateReceiver>(plant_object);
 
     auto c3_goal_generator = 
-        builder.AddSystem<C3GoalGenerator>(plant_for_lcs, &plant_lcs_context, *plant_for_lcs_autodiff, 
-          plant_lcs_context_ad.get(), ic3_options, c3_controller_options, controller_params.x_target, 0); 
+        builder.AddSystem<C3GoalGenerator>(plant_for_lcs, lcs_factory, ic3_options, c3_controller_options, controller_params.x_target, 0); 
 
     auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
@@ -261,12 +313,13 @@ int DoMain(int argc, char* argv[]) {
 
     auto controller =
         builder.AddSystem<systems::iC3TrackingController>
-            (plant_for_lcs, c3_controller_options, ic3_options, 
-							controller_params.time_to_wait);
+            (plant_for_lcs, c3_controller_options, ic3_options, controller_params.time_to_wait,
+            A_x, lb_x, ub_x, A_u, lb_u, ub_u);
 
     auto c3_trajectory_generator =
-        builder.AddSystem<C3TrajectoryGenerator>(plant_for_lcs, c3_controller_options, 
-            controller_params.track_dynamically_feasible, 0); 
+        builder.AddSystem<C3TrajectoryGenerator>(plant_for_lcs, lcs_factory, ic3_options,
+            c3_controller_options,controller_params.track_dynamically_feasible, 0,
+            A_x, lb_x, ub_x, A_u, lb_u, ub_u); 
     c3_trajectory_generator->SetPublishEndEffectorOrientation(true);
     
 
@@ -309,8 +362,6 @@ int DoMain(int argc, char* argv[]) {
 
 	  builder.Connect(nominal_position->get_output_port(),
                     c3_trajectory_generator->get_input_port_nominal_position());
-    builder.Connect(c3_goal_generator->get_output_port_lcs(),
-                    c3_trajectory_generator->get_input_port_lcs());
     builder.Connect(controller->get_output_port_c3_solution(),
                     c3_trajectory_generator->get_input_port_c3_solution());
 

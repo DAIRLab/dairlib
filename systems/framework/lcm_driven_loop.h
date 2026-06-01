@@ -310,6 +310,7 @@ class LcmDrivenLoop {
               &(diagram_ptr_->GetMutableSubsystemContext(*lcm_parser_,
                                                          &diagram_context)),
               name_to_input_sub_map_.at(active_channel_).message());
+
         }
 
         // Get message time from the active channel to advance

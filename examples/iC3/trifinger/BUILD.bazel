@@ -111,3 +111,21 @@ cc_binary(
         "@gflags",
     ],
 )
+
+
+cc_binary(
+    name = "trifinger_test_traj_controller",
+    srcs = ["trifinger_test_traj_controller.cc"],
+
+    deps = [
+        ":trifinger_parameters",
+        "//common",
+        "//lcm:lcm_trajectory_saver",
+        "@drake//:drake_shared_library",
+        "//examples/iC3/trifinger/parameter_headers:trifinger_osc_controller_params",
+        "//examples/iC3/trifinger/parameter_headers:trifinger_lcm_channels",
+        "//systems/controllers/osc:osc_gains",
+        "//lcmtypes:lcmt_robot",
+        "@gflags",
+    ],
+)

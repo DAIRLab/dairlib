@@ -45,9 +45,7 @@ class C3GoalGenerator : public drake::systems::LeafSystem<double> {
     // example idx 1 = trifinger
     explicit C3GoalGenerator(
         MultibodyPlant<double>& plant,
-        Context<double>* context,
-        MultibodyPlant<AutoDiffXd>& plant_ad,
-        Context<AutoDiffXd>* context_ad,
+        c3::multibody::LCSFactory lcs_factory,
         iC3Options ic3_options,
         c3::systems::C3ControllerOptions c3_controller_options, 
         VectorXd x_des, int example_idx);
@@ -94,11 +92,8 @@ class C3GoalGenerator : public drake::systems::LeafSystem<double> {
     drake::systems::OutputPortIndex x_lcs_port_;
 
     const drake::multibody::MultibodyPlant<double>& plant_;
-    Context<double>* context_;
-    const MultibodyPlant<AutoDiffXd>& plant_ad_;
-    Context<AutoDiffXd>* context_ad_;
 
-    std::unique_ptr<c3::multibody::LCSFactory> lcs_factory_;
+    mutable c3::multibody::LCSFactory lcs_factory_;
     iC3Options ic3_options_;
 
     c3::C3Options c3_options_;

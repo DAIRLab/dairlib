@@ -52,6 +52,7 @@ using Eigen::MatrixXd;
 
 using c3::C3Options;
 using c3::systems::C3ControllerOptions;
+using c3::multibody::LCSFactory;
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
@@ -108,6 +109,8 @@ int DoMain(int argc, char* argv[]) {
   // HARDECODED tip names
   vector<std::string> trifinger_tip_names = {
     "finger_tip_link_0", "finger_tip_link_120", "finger_tip_link_240"};
+
+  VectorXd xd = controller_params.x_target;
 
   for (int i = 0; i < 3; i++) {
     const auto& trifinger_tip_frame = plant_trifinger.GetFrameByName(trifinger_tip_names[i], trifinger_index);
@@ -194,6 +197,85 @@ int DoMain(int argc, char* argv[]) {
 		contact_pairs.emplace_back(cube_collision_geoms[i], ground_collision_geom);
   }
 
+  LCSFactory lcs_factory = LCSFactory(plant_for_lcs, plant_lcs_context, *plant_for_lcs_autodiff, 
+                                    *plant_lcs_context_ad, c3_controller_options.lcs_factory_options);
+
+  int n_x = plant_for_lcs.num_positions() + plant_for_lcs.num_velocities();
+  int n_u = plant_for_lcs.num_actuators();
+
+  MatrixXd A_x_c3(MatrixXd::Zero(n_x, n_x));
+  VectorXd lb_x_c3(VectorXd::Zero(n_x));
+  VectorXd ub_x_c3(VectorXd::Zero(n_x));
+
+  MatrixXd A_x(MatrixXd::Zero(n_x, n_x));
+  VectorXd lb_x(VectorXd::Zero(n_x));
+  VectorXd ub_x(VectorXd::Zero(n_x));
+
+  MatrixXd A_u(MatrixXd::Zero(n_u, n_u));
+  VectorXd lb_u(VectorXd::Zero(n_u));
+  VectorXd ub_u(VectorXd::Zero(n_u));
+
+  for (int i = 0; i < 3; i++) {
+    // A_x_c3(3*i, 3*i) = 1;
+    // A_x_c3(3*i+1, 3*i+1) = 1;
+
+    A_x_c3(16 + 3*i, 16 + 3*i) = 1;
+    A_x_c3(16 + 3*i + 1, 16 + 3*i+1) = 1;
+
+    lb_x_c3(3*i) = xd(3*i) - 0.07;
+    lb_x_c3(3*i+1) = xd(3*i+1) - 0.07;
+    lb_x_c3(16 + 3*i) = -0.15;
+    lb_x_c3(16 + 3*i+1) = -0.15;
+
+    ub_x_c3(3*i) = xd(3*i) + 0.07;
+    ub_x_c3(3*i+1) = xd(3*i+1) + 0.07;
+    ub_x_c3(16 + 3*i) = 0.15;
+    ub_x_c3(16 + 3*i+1) = 0.15;
+
+
+    A_x(3*i, 3*i) = 1;
+    A_x(3*i+1, 3*i+1) = 1;
+    A_x(3*i+2, 3*i+2) = 1;
+
+    A_x(16 + 3*i, 16 + 3*i) = 1;
+    A_x(16 + 3*i + 1, 16 + 3*i+1) = 1;
+    A_x(16 + 3*i + 2, 16 + 3*i+2) = 1;
+
+    lb_x(3*i) = xd(3*i) - 0.06;
+    lb_x(3*i+1) = xd(3*i+1) - 0.06;
+    lb_x(3*i+2) = xd(3*i+2) - 0.03;
+
+    lb_x(16 + 3*i) = -0.15;
+    lb_x(16 + 3*i+1) = -0.15;
+    lb_x(16 + 3*i+2) = -0.05;
+
+    ub_x(3*i) = xd(3*i) + 0.06;
+    ub_x(3*i+1) = xd(3*i+1) + 0.06;
+    ub_x(3*i+2) = xd(3*i+2) + 0.03;
+
+    ub_x(16 + 3*i) = 0.15;
+    ub_x(16 + 3*i+1) = 0.15;
+    ub_x(16 + 3*i+2) = 0.05;
+  }
+
+  std::cout << lb_x_c3.transpose() << std::endl;
+  std::cout << ub_x_c3.transpose() << std::endl;
+
+
+  for (int i = 0; i < 3; i++) {
+    A_u(3*i, 3*i) = 1;
+    A_u(3*i+1, 3*i+1) = 1;
+    A_u(3*i+2, 3*i+2) = 1;
+    
+    lb_u(3*i) = -0.5;
+    lb_u(3*i+1) = -0.5;
+    lb_u(3*i+2) = 0.18;
+
+    ub_u(3*i) = 0.5;
+    ub_u(3*i+1) = 0.5;
+    ub_u(3*i+2) = 0.22;
+
+  }
 
   DiagramBuilder<double> builder;
   auto trifinger_state_receiver =
@@ -228,8 +310,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::ObjectStateReceiver>(plant_object);
 
   auto c3_goal_generator = 
-      builder.AddSystem<C3GoalGenerator>(plant_for_lcs, &plant_lcs_context, *plant_for_lcs_autodiff, 
-          plant_lcs_context_ad.get(), ic3_options, c3_controller_options, controller_params.x_target, 1); 
+      builder.AddSystem<C3GoalGenerator>(plant_for_lcs, lcs_factory, ic3_options, c3_controller_options, controller_params.x_target, 1); 
 
   auto reduced_order_model_receiver =
     builder.AddSystem<TrifingerKinematics>(
@@ -243,20 +324,19 @@ int DoMain(int argc, char* argv[]) {
   auto ic3_timing_system = builder.AddSystem<iC3TimingSystem>(
             ic3_options, controller_params);
 
-  // Set nominal position of plate to init position
-  VectorXd xd = controller_params.x_target;
 
   auto x_desired_source =
     builder.AddSystem<drake::systems::ConstantVectorSource<double>>(xd);    
 
   auto controller =
       builder.AddSystem<systems::iC3TrackingController>
-          (plant_for_lcs, c3_controller_options, ic3_options, 
-            controller_params.time_to_wait);
+          (plant_for_lcs, c3_controller_options, ic3_options, controller_params.time_to_wait,
+           A_x_c3, lb_x_c3, ub_x_c3, A_u, lb_u, ub_u);
 
   auto c3_trajectory_generator =
-      builder.AddSystem<C3TrajectoryGenerator>(plant_for_lcs, c3_controller_options, 
-          controller_params.track_dynamically_feasible, 1); 
+      builder.AddSystem<C3TrajectoryGenerator>(plant_for_lcs, lcs_factory, ic3_options, 
+        c3_controller_options, controller_params.track_dynamically_feasible, 1,
+        A_x, lb_x, ub_x, A_u, lb_u, ub_u); 
   c3_trajectory_generator->SetPublishEndEffectorOrientation(false);
   
 
@@ -303,8 +383,6 @@ int DoMain(int argc, char* argv[]) {
   // Note: nominal position unused here
   builder.Connect(nominal_position->get_output_port(),
                   c3_trajectory_generator->get_input_port_nominal_position());
-  builder.Connect(c3_goal_generator->get_output_port_lcs(),
-                  c3_trajectory_generator->get_input_port_lcs());
   builder.Connect(controller->get_output_port_c3_solution(),
                   c3_trajectory_generator->get_input_port_c3_solution());
 

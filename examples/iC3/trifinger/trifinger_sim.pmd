@@ -7,6 +7,10 @@ group "controllers" {
         exec = "bazel-bin/examples/iC3/trifinger/trifinger_osc_controller";
         host = "localhost";
     }
+    cmd "test_controller" {
+        exec = "bazel-bin/examples/iC3/trifinger/trifinger_test_traj_controller";
+        host = "localhost";
+    }
 }
 
 group "debug" {

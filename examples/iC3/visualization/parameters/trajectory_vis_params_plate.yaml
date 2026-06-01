@@ -5,7 +5,7 @@ visualizer_publish_rate: 30
 
 # match with iC3 params
 ic3_num_iters: 10
-trajectory_length: 48
+trajectory_length: 60
 
 iter_downsampling_factor: 2
 downsampling_factor: 4

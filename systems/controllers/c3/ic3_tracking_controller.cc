@@ -141,13 +141,11 @@ iC3TrackingController::iC3TrackingController(
 
   // HARDCODED
   int ee_start_idx;
-  int ee_size;
+  int ee_size = ic3_options_.ee_tracking_vector.size();
   if (n_x_ == 23) {
     ee_start_idx = 0;
-    ee_size = 5;
   } else if (n_x_ == 31) {
     ee_start_idx = 0;
-    ee_size = 9;
   }
   c3_->AddEETrackingCost(ee_start_idx, ee_size);
 
@@ -313,8 +311,8 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
       }
 
     }
-    c3_->UpdateEETrackingTargetAndCost(ee_x_des, ic3_options_.ee_tracking_weight, ee_start_idx, ee_size);
-
+    MatrixXd Q_ee = ic3_options_.ee_tracking_weight * ic3_options_.ee_tracking_vector.asDiagonal();
+    c3_->UpdateEETrackingTargetAndCost(ee_x_des, Q_ee);
   }
 
    
@@ -354,7 +352,7 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
 
     int idx = best_idx + N_ * dt_scaling_; // Want H[k + N]
 
-    // c3_->UpdateFinalCost(H[idx], g[idx]);
+     c3_->UpdateFinalCost(H[idx], g[idx]);
 
 
     vector<VectorXd> u_target;

@@ -32,6 +32,7 @@ struct iC3Options {
   int value_function_search_size;
 
   double ee_tracking_weight;
+  Eigen::VectorXd ee_tracking_vector;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -48,6 +49,7 @@ struct iC3Options {
     a->Visit(DRAKE_NVP(N)); 
     a->Visit(DRAKE_NVP(dt)); 
     a->Visit(DRAKE_NVP(ee_tracking_weight)); 
+    a->Visit(DRAKE_NVP(ee_tracking_vector)); 
     a->Visit(DRAKE_NVP(use_time_varying_lcs)); 
     a->Visit(DRAKE_NVP(value_function_ee_cost)); 
     a->Visit(DRAKE_NVP(value_function_object_orientation_cost)); 

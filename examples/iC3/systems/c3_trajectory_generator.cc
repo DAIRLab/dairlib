@@ -128,13 +128,16 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
 
   if (track_dynamically_feasible_) {
     auto simulate_start = std::chrono::high_resolution_clock::now();
-    x_hat = SimulateLCS(x_hat.col(0), u_hat);
+    auto [x_hat_out, u_hat_out] = SimulateLCS(x_hat.col(0), u_hat);
     auto simulate_end = std::chrono::high_resolution_clock::now();
     auto elapsed = simulate_end - simulate_start;
     double solve_time =
         std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count() /
         1e6;
     std::cout << "rollout time " << solve_time << std::endl;
+
+    x_hat = x_hat_out;
+    u_hat = u_hat_out;
 
   } else {
     MatrixXd temp(x_hat.rows(), x_hat.cols() + 1);
@@ -218,11 +221,11 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
     }
 
     // Threshold plate positions for safety
-    for (int k = 0; k < positions.cols(); k++) {
-      positions.col(k)(0) = std::min(std::max(positions.col(k)(0), nom_pos(0) - 0.15), nom_pos(0) + 0.15);
-      positions.col(k)(1) = std::min(std::max(positions.col(k)(1), nom_pos(1) - 0.15), nom_pos(1) + 0.15);
-      positions.col(k)(2) = std::min(std::max(positions.col(k)(2), nom_pos(2) - 0.15), nom_pos(2) + 0.15);
-    }
+    // for (int k = 0; k < positions.cols(); k++) {
+    //   positions.col(k)(0) = std::min(std::max(positions.col(k)(0), nom_pos(0) - 0.15), nom_pos(0) + 0.15);
+    //   positions.col(k)(1) = std::min(std::max(positions.col(k)(1), nom_pos(1) - 0.15), nom_pos(1) + 0.15);
+    //   positions.col(k)(2) = std::min(std::max(positions.col(k)(2), nom_pos(2) - 0.15), nom_pos(2) + 0.15);
+    // }
 
   } else if (example_idx_ == 1) {
     int ee_pos_idx = 0;
@@ -397,7 +400,7 @@ void C3TrajectoryGenerator::OutputObjectTrajectory(
   output_traj->utime = context.get_time() * 1e6;
 }
 
-MatrixXd C3TrajectoryGenerator::SimulateLCS(VectorXd x0, MatrixXd u_hat) const {
+std::tuple<MatrixXd, MatrixXd> C3TrajectoryGenerator::SimulateLCS(VectorXd x0, MatrixXd u_hat) const {
 
   int N = lcs_factory_options_.N;
 
@@ -405,7 +408,9 @@ MatrixXd C3TrajectoryGenerator::SimulateLCS(VectorXd x0, MatrixXd u_hat) const {
   // First C3 solve not done yet
   if (x0.isZero()) {
     MatrixXd x_hat_fallback(MatrixXd::Zero(n_x_, N + 1));
-    return x_hat_fallback;
+    MatrixXd u_hat_fallback(MatrixXd::Zero(n_u_, N));
+
+    return std::make_tuple(x_hat_fallback, u_hat_fallback);
   }
     
   double dt = lcs_factory_options_.dt / ic3_options_.rollout_dt_scaling;
@@ -413,6 +418,8 @@ MatrixXd C3TrajectoryGenerator::SimulateLCS(VectorXd x0, MatrixXd u_hat) const {
 
 
   MatrixXd x_hat(MatrixXd::Zero(n_x_, ic3_options_.rollout_dt_scaling * N + 1));
+  MatrixXd u_hat_thresholded(MatrixXd::Zero(n_u_, ic3_options_.rollout_dt_scaling * N));
+
   x_hat.col(0) = x0;
 
   VectorXd x_curr = x0;
@@ -441,14 +448,21 @@ MatrixXd C3TrajectoryGenerator::SimulateLCS(VectorXd x0, MatrixXd u_hat) const {
 
     x_hat.col(i+1) = lcs.Simulate(x_curr, u);
     x_curr = x_hat.col(i+1);
+
+    u_hat_thresholded.col(i) = u;
   }
 
   MatrixXd x_hat_downsampled(MatrixXd::Zero(n_x_, N + 1));
+  MatrixXd u_hat_downsampled(MatrixXd::Zero(n_u_, N));
   for (int i = 0; i < N + 1; i++) {
     x_hat_downsampled.col(i) = x_hat.col(i * ic3_options_.rollout_dt_scaling);
+
+    if (i < N) {
+      u_hat_downsampled.col(i) = u_hat_thresholded.col(i * ic3_options_.rollout_dt_scaling);
+    }
   }
 
-  return x_hat_downsampled;
+  return std::make_tuple(x_hat_downsampled, u_hat_downsampled);
 }
 
 LCS C3TrajectoryGenerator::CreatePlaceholderLCS() const {

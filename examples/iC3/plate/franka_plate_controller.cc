@@ -189,13 +189,25 @@ int DoMain(int argc, char* argv[]) {
   int n_x = plant_for_lcs.num_positions() + plant_for_lcs.num_velocities();
   int n_u = plant_for_lcs.num_actuators();
 
+  MatrixXd A_x_c3(MatrixXd::Zero(n_x, n_x));
+  VectorXd lb_x_c3(VectorXd::Zero(n_x));
+  VectorXd ub_x_c3(VectorXd::Zero(n_x));
+
   MatrixXd A_x(MatrixXd::Zero(n_x, n_x));
   VectorXd lb_x(VectorXd::Zero(n_x));
   VectorXd ub_x(VectorXd::Zero(n_x));
 
+  MatrixXd A_u_c3(MatrixXd::Zero(n_u, n_u));
+  VectorXd lb_u_c3(VectorXd::Zero(n_u));
+  VectorXd ub_u_c3(VectorXd::Zero(n_u));
+
   MatrixXd A_u(MatrixXd::Zero(n_u, n_u));
   VectorXd lb_u(VectorXd::Zero(n_u));
   VectorXd ub_u(VectorXd::Zero(n_u));
+
+  A_x_c3(2, 2) = 1;
+  A_x_c3(3, 3) = 1;
+  A_x_c3(4, 4) = 1;
 
   A_x(0, 0) = 1;
   A_x(1, 1) = 1;
@@ -203,18 +215,25 @@ int DoMain(int argc, char* argv[]) {
   A_x(3, 3) = 1;
   A_x(4, 4) = 1;
 
-  // Plate position constraints
+  lb_x_c3(2) = -0.2; 
+  lb_x_c3(3) = -0.1;
+  lb_x_c3(4) = -0.4;
+
+  ub_x_c3(2) = 0.05;
+  ub_x_c3(3) = 0.1;
+  ub_x_c3(4) = 0.4;
+
   lb_x(0) = -0.1;
   lb_x(1) = -0.1;
-  lb_x(2) = -0.3; 
-  lb_x(3) = -0.4;
+  lb_x(2) = -0.2; 
+  lb_x(3) = -0.1;
   lb_x(4) = -0.4;
 
-  // Plate rotation constraints
+
   ub_x(0) = 0.1;
   ub_x(1) = 0.1;
-  ub_x(2) = 0.3;
-  ub_x(3) = 0.4;
+  ub_x(2) = 0.1;
+  ub_x(3) = 0.1;
   ub_x(4) = 0.4;
 
   A_u(0, 0) = 1;
@@ -223,17 +242,26 @@ int DoMain(int argc, char* argv[]) {
   A_u(3, 3) = 1;
   A_u(4, 4) = 1;
 
-  lb_u(0) = -1;
-  lb_u(0) = -1;
-  lb_u(0) = 0;
-  lb_u(0) = -1;
-  lb_u(0) = -1;
+  A_u_c3(3, 3) = 1;
+  A_u_c3(4, 4) = 1;
 
-  ub_u(0) = 1;
-  ub_u(0) = 1;
-  ub_u(0) = 15;
-  ub_u(0) = 1;
-  ub_u(0) = 1;
+  lb_u_c3(3) = -0.5;
+  lb_u_c3(4) = -1.8;
+  
+  lb_u(0) = -1.5;
+  lb_u(1) = -1.5;
+  lb_u(2) = 0;
+  lb_u(3) = -0.5;
+  lb_u(4) = -1.8;
+
+  ub_u_c3(3) = 0.5;
+  ub_u_c3(4) = 1.8;
+
+  ub_u(0) = 1.5;
+  ub_u(1) = 1.5;
+  ub_u(2) = 15;
+  ub_u(3) = 0.5;
+  ub_u(4) = 1.8;
 
   DiagramBuilder<double> builder;
   auto franka_state_receiver =
@@ -314,7 +342,7 @@ int DoMain(int argc, char* argv[]) {
     auto controller =
         builder.AddSystem<systems::iC3TrackingController>
             (plant_for_lcs, c3_controller_options, ic3_options, controller_params.time_to_wait,
-            A_x, lb_x, ub_x, A_u, lb_u, ub_u);
+            A_x_c3, lb_x_c3, ub_x_c3, A_u_c3, lb_u_c3, ub_u_c3);
 
     auto c3_trajectory_generator =
         builder.AddSystem<C3TrajectoryGenerator>(plant_for_lcs, lcs_factory, ic3_options,

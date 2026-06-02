@@ -27,4 +27,5 @@ value_function_velocity_cost: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0
 # Number of timesteps about current timestep to search for closest (to both left and right) 
 value_function_search_size: 50
 
-ee_tracking_weight: 100000000000
+ee_tracking_weight: 1000000
+ee_tracking_vector: [1, 1, 0, 1, 1, 0, 1, 1, 0]

@@ -36,42 +36,42 @@ W_lambda_c_reg: [ 0.0001, 0.0001, 0.0001,
 W_lambda_h_reg: [ 0.0001, 0.0001, 0.0001,
                   0.0001, 0.0001, 0.0001 ]
 
-w_elbow: 20
-elbow_kp: 50
-elbow_kd: 10
-mid_link_target: 1.6
+w_elbow: 50
+elbow_kp: 100
+elbow_kd: 20
+mid_link_target: 1.75
 
 w_joint_limit: 10000.0
 joint_limit_buffer: 0.2
 
 EndEffectorW:
-  [300, 0, 0,
-   0, 300, 0,
-   0, 0, 300]
+  [400, 0, 0,
+   0, 400, 0,
+   0, 0, 800]
 EndEffectorKp:
-  [ 300, 0, 0,
-    0, 300, 0,
+  [ 600, 0, 0,
+    0, 600, 0,
     0, 0, 600 ]
 EndEffectorKd:
-  [ 150, 0, 0,
-    0, 150, 0,
-    0, 0, 50 ]
+  [ 90, 0, 0,
+    0, 90, 0,
+    0, 0, 100 ]
 EndEffectorRotW:
   [ 300, 0, 0,
     0, 300, 0,
     0, 0, 300 ]
 EndEffectorRotKp:
-  [ 600, 0, 0,
-    0, 600, 0,
-    0, 0, 600 ]
+  [ 150, 0, 0,
+    0, 150, 0,
+    0, 0, 150 ]
 EndEffectorRotKd:
-  [ 20, 0, 0,
-    0, 20, 0,
-    0, 0, 20 ]
+  [ 15, 0, 0,
+    0, 15, 0,
+    0, 0, 15 ]
 LambdaEndEffectorW:
   [ 400, 0, 0,
     0, 400, 0,
-    0, 0, 400 ]
+    0, 0, 1000 ]
 LambdaEndEffectorTauW:
   [ 800, 0, 0,
     0, 800, 0,

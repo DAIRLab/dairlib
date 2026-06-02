@@ -60,7 +60,8 @@ class C3TrajectoryGenerator : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       dairlib::lcmt_timestamped_saved_traj* output_traj) const;
 
-  MatrixXd SimulateLCS(VectorXd x0, MatrixXd u_hat) const;
+  // Returns xhat, uhat
+  std::tuple<MatrixXd, MatrixXd> SimulateLCS(VectorXd x0, MatrixXd u_hat) const;
 
   c3::LCS CreatePlaceholderLCS() const;
 

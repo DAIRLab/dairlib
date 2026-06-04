@@ -19,6 +19,7 @@ struct TrifingerLcmChannels {
 
   std::string ic3_positions_channel;
   std::string ic3_inputs_channel;
+  std::string ic3_forces_channel;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -36,6 +37,6 @@ struct TrifingerLcmChannels {
     a->Visit(DRAKE_NVP(radio_channel));
     a->Visit(DRAKE_NVP(ic3_positions_channel));
     a->Visit(DRAKE_NVP(ic3_inputs_channel));
-
+    a->Visit(DRAKE_NVP(ic3_forces_channel));
   }
 };

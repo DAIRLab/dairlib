@@ -341,8 +341,8 @@ int DoMain(int argc, char* argv[]) {
 
     auto controller =
         builder.AddSystem<systems::iC3TrackingController>
-            (plant_for_lcs, c3_controller_options, ic3_options, controller_params.time_to_wait,
-            A_x_c3, lb_x_c3, ub_x_c3, A_u_c3, lb_u_c3, ub_u_c3);
+            (plant_for_lcs, c3_controller_options, ic3_options,
+            0, A_x_c3, lb_x_c3, ub_x_c3, A_u_c3, lb_u_c3, ub_u_c3, plant_lcs_context, contact_pairs);
 
     auto c3_trajectory_generator =
         builder.AddSystem<C3TrajectoryGenerator>(plant_for_lcs, lcs_factory, ic3_options,
@@ -376,9 +376,9 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(ic3_timing_system->get_output_port_timestep(),
                     controller->get_input_port_timestep());
     builder.Connect(c3_goal_generator->get_output_port_x_curr(),
-       							controller->get_input_port_lcs_state());
+       				controller->get_input_port_lcs_state());
     builder.Connect(c3_goal_generator->get_output_port_target(),
-        						controller->get_input_port_target());
+        			controller->get_input_port_target());
     builder.Connect(c3_goal_generator->get_output_port_lcs(),
                     controller->get_input_port_lcs());
     builder.Connect(lqr_sub->get_output_port(),
@@ -388,10 +388,12 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(ic3_u_trajectory_sub->get_output_port(),
                     controller->get_input_port_ic3_u());
 
-	  builder.Connect(nominal_position->get_output_port(),
+	builder.Connect(nominal_position->get_output_port(),
                     c3_trajectory_generator->get_input_port_nominal_position());
     builder.Connect(controller->get_output_port_c3_solution(),
                     c3_trajectory_generator->get_input_port_c3_solution());
+    builder.Connect(controller->get_output_port_tracking_target(),
+                  c3_trajectory_generator->get_input_port_tracking_target());
 
     builder.Connect(c3_trajectory_generator->get_output_port_actor_trajectory(),
                     timed_gate->get_input_port_c3_actor());

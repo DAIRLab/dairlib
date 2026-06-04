@@ -12,19 +12,17 @@
 #include "examples/iC3/trifinger/parameter_headers/trifinger_controller_params.h"
 #include "examples/iC3/trifinger/parameter_headers/trifinger_lcm_channels.h"
 #include "examples/iC3/iC3_options.h"
+#include "examples/iC3/systems/lqr_trajectory_generator.h"
 #include "examples/iC3/systems/c3_goal_generator.h"
-#include "examples/iC3/systems/c3_trajectory_generator.h"
 #include "examples/iC3/trifinger/systems/trifinger_kinematics.h"
-#include "systems/controllers/c3/ic3_tracking_controller.h"
+#include "systems/controllers/c3/ic3_lqr_tracking_controller.h"
 #include "examples/iC3/systems/timed_gate.h"
 #include "examples/iC3/systems/iC3_timing_system.h"
 
 
 #include "multibody/multibody_utils.h"
 #include "c3/multibody/lcs_factory.h"
-#include "c3/core/c3_options.h"
 #include "c3/systems/c3_controller_options.h"
-#include "c3/core/solver_options_io.h"
 
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/primitives/radio_parser.h"
@@ -81,18 +79,14 @@ int DoMain(int argc, char* argv[]) {
       drake::yaml::LoadYamlFile<TrifingerControllerParams>(
           FLAGS_controller_settings);
 
-  iC3Options ic3_options =
-      drake::yaml::LoadYamlFile<iC3Options>(
-          controller_params.ic3_options_file);
-
   C3ControllerOptions c3_controller_options =
       drake::yaml::LoadYamlFile<C3ControllerOptions>(
           controller_params.c3_controller_options_file);
 
-  drake::solvers::SolverOptions solver_options =
-      drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(
-          FindResourceOrThrow(controller_params.osqp_settings_file))
-          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+  iC3Options ic3_options =
+      drake::yaml::LoadYamlFile<iC3Options>(
+          controller_params.ic3_options_file);
+
 
 
   MultibodyPlant<double> plant_trifinger(0.0);
@@ -133,7 +127,7 @@ int DoMain(int argc, char* argv[]) {
   auto object_context = plant_object.CreateDefaultContext();
 
 
-  // Plant for c3 mpc
+  // Plant for lcs
   DiagramBuilder<double> plant_builder;
   auto [plant_for_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
@@ -163,48 +157,11 @@ int DoMain(int argc, char* argv[]) {
       plant_for_lcs, diagram_context.get());
   auto plant_lcs_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
 
-
-  GeometryId ground_collision_geom = 
-    plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("ground"))[0];
-
-  std::vector<GeometryId> end_effector_collision_geoms;
-  for (auto fingertip_name : controller_params.end_effector_names) {
-    end_effector_collision_geoms.push_back(
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName(fingertip_name))[0]);
-  }
-
-	std::vector<GeometryId> cube_collision_geoms;
-  for (int i = 0; i <= 8; i++) {
-      cube_collision_geoms.push_back(
-          plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("cube"))[i]);
-  }
-
-  std::vector<SortedPair<GeometryId>> contact_pairs;
-  // fingertip-cube contact pairs
-	for (auto geom_id : end_effector_collision_geoms) {
-		contact_pairs.emplace_back(cube_collision_geoms[0], geom_id);
-  }
-  // fingertip-ground contact pairs
-  for (auto geom_id : end_effector_collision_geoms) {
-		contact_pairs.emplace_back(geom_id, ground_collision_geom);
-  }
-  // cube-ground contact pairs
-  for (int i = 1; i < cube_collision_geoms.size(); i++) {
-		contact_pairs.emplace_back(cube_collision_geoms[i], ground_collision_geom);
-  }
-
   LCSFactory lcs_factory = LCSFactory(plant_for_lcs, plant_lcs_context, *plant_for_lcs_autodiff, 
                                     *plant_lcs_context_ad, c3_controller_options.lcs_factory_options);
 
   int n_x = plant_for_lcs.num_positions() + plant_for_lcs.num_velocities();
   int n_u = plant_for_lcs.num_actuators();
-
-  MatrixXd A_x_c3(MatrixXd::Zero(n_x, n_x));
-  VectorXd lb_x_c3(VectorXd::Zero(n_x));
-  VectorXd ub_x_c3(VectorXd::Zero(n_x));
 
   MatrixXd A_x(MatrixXd::Zero(n_x, n_x));
   VectorXd lb_x(VectorXd::Zero(n_x));
@@ -215,22 +172,6 @@ int DoMain(int argc, char* argv[]) {
   VectorXd ub_u(VectorXd::Zero(n_u));
 
   for (int i = 0; i < 3; i++) {
-    // A_x_c3(3*i, 3*i) = 1;
-    // A_x_c3(3*i+1, 3*i+1) = 1;
-
-    A_x_c3(16 + 3*i, 16 + 3*i) = 1;
-    A_x_c3(16 + 3*i + 1, 16 + 3*i+1) = 1;
-
-    // lb_x_c3(3*i) = xd(3*i) - 0.08;
-    // lb_x_c3(3*i+1) = xd(3*i+1) - 0.08;
-    lb_x_c3(16 + 3*i) = -0.25;
-    lb_x_c3(16 + 3*i+1) = -0.25;
-
-    // ub_x_c3(3*i) = xd(3*i) + 0.08;
-    // ub_x_c3(3*i+1) = xd(3*i+1) + 0.08;
-    ub_x_c3(16 + 3*i) = 0.25;
-    ub_x_c3(16 + 3*i+1) = 0.25;
-
 
     A_x(3*i, 3*i) = 1;
     A_x(3*i+1, 3*i+1) = 1;
@@ -244,16 +185,16 @@ int DoMain(int argc, char* argv[]) {
     lb_x(3*i+1) = xd(3*i+1) - 0.06;
     lb_x(3*i+2) = xd(3*i+2) - 0.01;
 
-    lb_x(16 + 3*i) = -0.25;
-    lb_x(16 + 3*i+1) = -0.25;
+    lb_x(16 + 3*i) = -0.15;
+    lb_x(16 + 3*i+1) = -0.15;
     lb_x(16 + 3*i+2) = -0.05;
 
     ub_x(3*i) = xd(3*i) + 0.06;
     ub_x(3*i+1) = xd(3*i+1) + 0.06;
     ub_x(3*i+2) = xd(3*i+2) + 0.01;
 
-    ub_x(16 + 3*i) = 0.25;
-    ub_x(16 + 3*i+1) = 0.25;
+    ub_x(16 + 3*i) = 0.15;
+    ub_x(16 + 3*i+1) = 0.15;
     ub_x(16 + 3*i+2) = 0.05;
   }
 
@@ -269,9 +210,9 @@ int DoMain(int argc, char* argv[]) {
     ub_u(3*i) = 0.5;
     ub_u(3*i+1) = 0.5;
     ub_u(3*i+2) = 0.22;
-
   }
 
+  std::cout << "Before builder " << std::endl;
   DiagramBuilder<double> builder;
   auto trifinger_state_receiver =
     builder.AddSystem<systems::RobotOutputReceiver>(plant_trifinger);
@@ -287,6 +228,11 @@ int DoMain(int argc, char* argv[]) {
   auto ic3_u_trajectory_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.ic3_inputs_channel, &lcm));
+
+  auto ic3_lambda_trajectory_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+          lcm_channel_params.ic3_forces_channel, &lcm));
+
 
   auto c3_actor_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
@@ -323,18 +269,18 @@ int DoMain(int argc, char* argv[]) {
   auto x_desired_source =
     builder.AddSystem<drake::systems::ConstantVectorSource<double>>(xd);    
 
+  std::cout << "1 " << std::endl;
+
   auto controller =
-      builder.AddSystem<systems::iC3TrackingController>
-          (plant_for_lcs, c3_controller_options, ic3_options, 
-           1, A_x_c3, lb_x_c3, ub_x_c3, A_u, lb_u, ub_u, plant_lcs_context, contact_pairs);
+      builder.AddSystem<systems::iC3LqrTrackingController>
+          (plant_for_lcs, ic3_options, c3_controller_options.c3_options.R, 
+            c3_controller_options.lcs_factory_options.N, 1);
 
-  auto c3_trajectory_generator =
-      builder.AddSystem<C3TrajectoryGenerator>(plant_for_lcs, lcs_factory, ic3_options, 
-        c3_controller_options, controller_params.track_dynamically_feasible, 1,
+  auto lqr_trajectory_generator =
+      builder.AddSystem<LqrTrajectoryGenerator>(plant_for_lcs, lcs_factory, ic3_options, 1,
         A_x, lb_x, ub_x, A_u, lb_u, ub_u); 
-  c3_trajectory_generator->SetPublishEndEffectorOrientation(false);
+  lqr_trajectory_generator->SetPublishEndEffectorOrientation(false);
   
-
   auto timed_gate =
       builder.AddSystem<TimedGate>(ic3_options, 1);    
 
@@ -374,16 +320,20 @@ int DoMain(int argc, char* argv[]) {
                   controller->get_input_port_ic3_x());
   builder.Connect(ic3_u_trajectory_sub->get_output_port(),
                   controller->get_input_port_ic3_u());
+  builder.Connect(ic3_lambda_trajectory_sub->get_output_port(),
+                  controller->get_input_port_ic3_lambda());
 
   // Note: nominal position unused here
   builder.Connect(nominal_position->get_output_port(),
-                  c3_trajectory_generator->get_input_port_nominal_position());
-  builder.Connect(controller->get_output_port_c3_solution(),
-                  c3_trajectory_generator->get_input_port_c3_solution());
+                  lqr_trajectory_generator->get_input_port_nominal_position());
+  builder.Connect(controller->get_output_port_actor_input(),
+                  lqr_trajectory_generator->get_input_port_actor_input());
   builder.Connect(controller->get_output_port_tracking_target(),
-                  c3_trajectory_generator->get_input_port_tracking_target());
+                  lqr_trajectory_generator->get_input_port_tracking_target());
+  builder.Connect(reduced_order_model_receiver->get_output_port(),
+                  lqr_trajectory_generator->get_input_port_x_curr());   
 
-  builder.Connect(c3_trajectory_generator->get_output_port_actor_trajectory(),
+  builder.Connect(lqr_trajectory_generator->get_output_port_actor_trajectory(),
                   timed_gate->get_input_port_c3_actor());
   builder.Connect(nominal_position->get_output_port(),
                   timed_gate->get_input_port_nominal_position());
@@ -397,10 +347,9 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(timed_gate->get_output_port_actor(),
                   c3_actor_trajectory_sender->get_input_port());
 
-
   auto owned_diagram = builder.Build();
   std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
-  shared_diagram->set_name(("trifinger_controller"));
+  shared_diagram->set_name(("trifinger_lqr_controller"));
   DrawAndSaveDiagramGraph(*shared_diagram);
 
   std::cout << "Before lcm driven loop" << std::endl;

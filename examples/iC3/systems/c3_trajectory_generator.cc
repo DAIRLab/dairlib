@@ -27,6 +27,9 @@ using c3::LCS;
 using c3::ContactPairConfig;
 using c3::multibody::LCSFactory;
 
+using std::vector;
+using drake::systems::BasicVector;
+
 C3TrajectoryGenerator::C3TrajectoryGenerator(
     const drake::multibody::MultibodyPlant<double>& plant, LCSFactory lcs_factory, iC3Options ic3_options,
       C3ControllerOptions c3_controller_options, bool track_dynamically_feasible, int example_idx,
@@ -83,6 +86,10 @@ C3TrajectoryGenerator::C3TrajectoryGenerator(
     nominal_position_size = 9;
   }
 
+  tracking_target_port_ =
+      this->DeclareVectorInputPort("tracking target", BasicVector<double>(n_u_))
+          .get_index();
+
   nominal_position_port_ =
       this->DeclareVectorInputPort(
               "nominal_position", BasicVector<double>(nominal_position_size))
@@ -128,7 +135,7 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
 
   if (track_dynamically_feasible_) {
     auto simulate_start = std::chrono::high_resolution_clock::now();
-    auto [x_hat_out, u_hat_out] = SimulateLCS(x_hat.col(0), u_hat);
+    auto [x_hat_out, u_hat_out] = SimulateLCS(x_hat.col(0), u_hat, context);
     auto simulate_end = std::chrono::high_resolution_clock::now();
     auto elapsed = simulate_end - simulate_start;
     double solve_time =
@@ -252,33 +259,6 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
       time_vector = c3_solution->time_vector_.cast<double>();
     }
 
-    // // HARDCODED THRESHOLD POSITIONS TO JOINT LIMITS
-    // for (int i = 0; i < positions.cols(); i++) {
-    //   positions.col(i)(0) = std::min(std::max(positions.col(i)(0), -0.06), 0.06);
-    //   positions.col(i)(1) = std::min(std::max(positions.col(i)(1), -0.01), 0.13);
-    //   positions.col(i)(2) = std::min(std::max(positions.col(i)(2), 0.045), 0.055);
-    //   positions.col(i)(3) = std::min(std::max(positions.col(i)(3), 0.01), 0.13);
-    //   positions.col(i)(4) = std::min(std::max(positions.col(i)(4), -0.005), 0.115);
-    //   positions.col(i)(5) = std::min(std::max(positions.col(i)(5), 0.045), 0.055);
-    //   positions.col(i)(6) = std::min(std::max(positions.col(i)(6), -0.13), -0.01);
-    //   positions.col(i)(7) = std::min(std::max(positions.col(i)(7), -0.005), 0.115);
-    //   positions.col(i)(8) = std::min(std::max(positions.col(i)(8), 0.045), 0.055);
-
-    //   for (int j = 0; j < 3; j++) {
-    //     positions.col(i)(16 + 3*j) = std::min(std::max(positions.col(i)(16 + 3*j), -0.3), 0.3);
-    //     positions.col(i)(16 + 3*j + 1) = std::min(std::max(positions.col(i)(16 + 3*j + 1), -0.3), 0.3);
-    //   }
-    // }
-
-    // // HARDCODED THRESHOLD INPUTS TO INPUT LIMITS
-    // for (int i = 0; i < forces.cols(); i++) {
-    //   for (int j = 0; j < 3; j++) {
-    //     forces.col(i)(3*j) = std::min(std::max(forces.col(i)(3*j), -0.5), 0.5);
-    //     forces.col(i)(3*j+1) = std::min(std::max(forces.col(i)(3*j+1), -0.5), 0.5);
-    //     forces.col(i)(3*j+2) = std::min(std::max(forces.col(i)(3*j+2), -0.02), 0.02);
-    //   }
-    // }
-
   }
 	
 
@@ -400,7 +380,8 @@ void C3TrajectoryGenerator::OutputObjectTrajectory(
   output_traj->utime = context.get_time() * 1e6;
 }
 
-std::tuple<MatrixXd, MatrixXd> C3TrajectoryGenerator::SimulateLCS(VectorXd x0, MatrixXd u_hat) const {
+std::tuple<MatrixXd, MatrixXd> C3TrajectoryGenerator::SimulateLCS(VectorXd x0, MatrixXd u_hat,
+                                    const drake::systems::Context<double>& context) const {
 
   int N = lcs_factory_options_.N;
 
@@ -434,7 +415,24 @@ std::tuple<MatrixXd, MatrixXd> C3TrajectoryGenerator::SimulateLCS(VectorXd x0, M
     lcs_factory_.UpdateStateAndInput(x_curr, u);
     LCS lcs = lcs_factory_.GenerateLCS();
     
+    // TODO: make this if statement less hardcoded
     // Threshold positions and inputs, assume A_x, A_u are diagonal 0/1 matrices
+    if (example_idx_ == 1 && ic3_options_.add_constraints_follow_plan) {
+
+      const BasicVector<double>* tracking_target =
+        (BasicVector<double>*)this->EvalVectorInput(context, tracking_target_port_);
+                                        // Hardcoded indices
+      for (int f = 0; f < 3; f++) {
+        A_x_(3*f, 3*f) = 1;
+        A_x_(3*f+1, 3*f+1) = 1;
+
+        lb_x_(3*f) = tracking_target->get_value()(3*f) - 0.02;
+        lb_x_(3*f+1) = tracking_target->get_value()(3*f+1) - 0.02;
+        ub_x_(3*f) = tracking_target->get_value()(3*f) + 0.02;
+        ub_x_(3*f+1) = tracking_target->get_value()(3*f+1) + 0.02;
+      }
+    } 
+
     for (int j = 0; j < A_x_.rows(); j++) {
       if (A_x_(j, j) == 1) {
           x_curr(j) = std::min(std::max(x_curr(j), lb_x_(j)), ub_x_(j));
@@ -445,6 +443,8 @@ std::tuple<MatrixXd, MatrixXd> C3TrajectoryGenerator::SimulateLCS(VectorXd x0, M
           u(j) = std::min(std::max(u(j), lb_u_(j)), ub_u_(j));
       }
     }
+    
+
 
     x_hat.col(i+1) = lcs.Simulate(x_curr, u);
     x_curr = x_hat.col(i+1);

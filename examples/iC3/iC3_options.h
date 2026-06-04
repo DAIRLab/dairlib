@@ -17,7 +17,8 @@ struct iC3Options {
 
   bool use_time_varying_lcs;
 
-  bool reset_if_too_far;
+  bool track_ic3_inputs;
+  bool add_constraints_follow_plan;
 
   int N;
   double dt; // REMOVE after importing all options from c3 repo
@@ -48,6 +49,9 @@ struct iC3Options {
     a->Visit(DRAKE_NVP(rollout_dt_scaling));
     a->Visit(DRAKE_NVP(N)); 
     a->Visit(DRAKE_NVP(dt)); 
+    a->Visit(DRAKE_NVP(track_ic3_inputs));
+    a->Visit(DRAKE_NVP(add_constraints_follow_plan));
+    a->Visit(DRAKE_NVP(rollout_dt_scaling));
     a->Visit(DRAKE_NVP(ee_tracking_weight)); 
     a->Visit(DRAKE_NVP(ee_tracking_vector)); 
     a->Visit(DRAKE_NVP(use_time_varying_lcs)); 

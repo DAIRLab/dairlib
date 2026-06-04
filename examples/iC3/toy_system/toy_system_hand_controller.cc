@@ -323,8 +323,8 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
           builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_lqr_output>(
               "iC3_LQR", &lcm));
     auto controller =
-        builder.AddSystem<systems::iC3TrackingController>(plant_for_lcs, c3_controller_options, ic3_options, toy_params.time_to_wait,
-          A_x, lb_x, ub_x, A_u, lb_u, ub_u);
+        builder.AddSystem<systems::iC3TrackingController>(plant_for_lcs, c3_controller_options, ic3_options, 
+          1, A_x, lb_x, ub_x, A_u, lb_u, ub_u, plant_for_lcs_context, contact_pairs);
     // controller->SetOsqpSolverOptions(solver_options);
     
     auto vector_to_timestamped_vector =

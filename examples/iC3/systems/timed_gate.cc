@@ -181,6 +181,14 @@ void TimedGate::OutputActorTrajectory(
     } else if (example_idx_ == 1) {
       VectorXd nominal_position_offset = nominal_position->get_value();
 
+      if (timestep > N_) {
+        if (hold_final_position_) {
+          LcmTrajectory::Trajectory trajectory = x_trajectory.GetTrajectory(final_trajectory_name);
+          VectorXd last_x = trajectory.datapoints.col(trajectory.datapoints.cols() - 1);
+          nominal_position_offset = last_x.segment(0, 9);
+        } 
+      }
+
       MatrixXd positions = nominal_position_offset.replicate(1, 2);
       MatrixXd forces = MatrixXd::Zero(9, 2);
 
@@ -209,8 +217,7 @@ void TimedGate::OutputActorTrajectory(
       output_traj->utime = context.get_time() * 1e6;
     }
     
-  }
-
+  } 
 }
 
 

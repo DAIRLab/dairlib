@@ -14,6 +14,9 @@ num_timesteps_to_use: 50
 
 rollout_dt_scaling: 2
 
+track_ic3_inputs: true
+add_constraints_follow_plan: false
+
 hold_last_timestep_position: true
 vertical_offset: -0.0
 

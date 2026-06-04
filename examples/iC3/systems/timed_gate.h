@@ -52,6 +52,7 @@ class TimedGate : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_ic3_x() const {
     return this->get_input_port(ic3_x_trajectory_port_);
   }
+
   const drake::systems::OutputPort<double>& get_output_port_actor() const {
     return this->get_output_port(actor_output_port_);
   }

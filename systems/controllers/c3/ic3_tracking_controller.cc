@@ -7,6 +7,9 @@
 #include "c3/systems/common/quaternion_error_hessian.h"
 #include <iostream>
 
+#include <c3/multibody/geom_geom_collider.h>
+#include <c3/core/lcs.h>
+
 namespace dairlib {
 
 using drake::multibody::ModelInstanceIndex;
@@ -14,9 +17,8 @@ using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::DiscreteValues;
 using Eigen::MatrixXd;
-using Eigen::MatrixXf;
 using Eigen::VectorXd;
-using Eigen::VectorXf;
+using Eigen::Quaterniond;
 using c3::C3;
 using c3::C3MIQP;
 using c3::C3QP;
@@ -36,8 +38,9 @@ namespace systems {
 
 iC3TrackingController::iC3TrackingController(
     const drake::multibody::MultibodyPlant<double>& plant, C3ControllerOptions controller_options, 
-      iC3Options ic3_options, double time_to_wait, MatrixXd A_x, VectorXd lb_x, VectorXd ub_x, 
-      MatrixXd A_u, VectorXd lb_u, VectorXd ub_u)
+      iC3Options ic3_options, int example_idx, 
+      MatrixXd A_x, VectorXd lb_x, VectorXd ub_x, MatrixXd A_u, VectorXd lb_u, VectorXd ub_u, 
+      drake::systems::Context<double>& plant_context, vector<SortedPair<GeometryId>> contact_geoms)
     : plant_(plant),
       controller_options_(controller_options),
       c3_options_(controller_options.c3_options),
@@ -46,13 +49,15 @@ iC3TrackingController::iC3TrackingController(
       N_(lcs_factory_options_.N), 
       dt_(lcs_factory_options_.dt),
       dt_scaling_(lcs_factory_options_.dt / ic3_options_.dt),
-      time_to_wait_(time_to_wait),
+      example_idx_(example_idx),
       A_x_(A_x),
       lb_x_(lb_x),
       ub_x_(ub_x), 
       A_u_(A_u),
       lb_u_(lb_u),
-      ub_u_(ub_u) {
+      ub_u_(ub_u),
+      contact_geoms_(contact_geoms),
+      plant_context_(plant_context) { // Only used for debugging
   this->set_name("ic3_tracking_controller");
 
 
@@ -138,13 +143,14 @@ iC3TrackingController::iC3TrackingController(
   }
 
   // c3_->SetOsqpSolverOptions(solver_options_);
+  tracking_target_ = VectorXd::Zero(n_u_);
 
   // HARDCODED
   int ee_start_idx;
   int ee_size = ic3_options_.ee_tracking_vector.size();
-  if (n_x_ == 23) {
+  if (example_idx_ == 0) {
     ee_start_idx = 0;
-  } else if (n_x_ == 31) {
+  } else if (example_idx_ == 1 || example_idx_ == 2) {
     ee_start_idx = 0;
   }
   c3_->AddEETrackingCost(ee_start_idx, ee_size);
@@ -180,18 +186,16 @@ iC3TrackingController::iC3TrackingController(
   c3_solution.lambda_sol_ = MatrixXf::Zero(n_lambda_, N_);
   c3_solution.u_sol_ = MatrixXf::Zero(n_u_, N_);
   c3_solution.time_vector_ = VectorXf::Zero(N_);
-  auto c3_intermediates = c3::systems::C3Output::C3Intermediates();
-  c3_intermediates.z_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
-  c3_intermediates.delta_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
-  c3_intermediates.w_ = MatrixXf::Zero(n_x_ + n_lambda_ + n_u_, N_);
-  c3_intermediates.time_vector_ = VectorXf::Zero(N_);
   c3_solution_port_ =
       this->DeclareAbstractOutputPort("c3_solution", c3_solution,
                                       &iC3TrackingController::OutputC3Solution)
           .get_index();
-  c3_intermediates_port_ =
-      this->DeclareAbstractOutputPort("c3_intermediates", c3_intermediates,
-                                      &iC3TrackingController::OutputC3Intermediates)
+
+  tracking_target_port_ =
+      this->DeclareVectorOutputPort(
+              "tracking_target_port",
+							BasicVector<double>(n_u_),
+              &iC3TrackingController::OutputTrackingTarget)
           .get_index();
 
   plan_start_time_index_ = DeclareDiscreteState(1);
@@ -267,55 +271,29 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
   std::vector<VectorXd> x_desired =
       std::vector<VectorXd>(N_ + 1, x_des.value());
 
-  
-  // Set x_des of ee to match ic3 plan
-  if (0 <= ic3_timestep) {
-    int ee_start_idx;
-    int ee_size;
 
-    // HARDCODED
-    if (n_x_ == 23) {
-      ee_start_idx = 0;
-      ee_size = 5;
-    } else if (n_x_ == 31) {
-      ee_start_idx = 0;
-      ee_size = 9;
-    }
+  // Penetration testing code
+  // if (n_u_ == 9) {
+  //   VectorXd x_plan = state_data.col(ic3_timestep);
+  //   c3::LCSSimulateConfig config; 
+  //   config.regularized = true;
+  //   config.max_exp = -6;
+    
+  //   VectorXd u_test(VectorXd::Zero(n_u_));
+  //   u_test(2) = 0.196;
+  //   u_test(5) = 0.196;
+  //   u_test(8) = 0.196;
+  //   auto [x_out, force] = lcs.SimulateAndReturnForce(x_plan, u_test, config);
 
-    vector<VectorXd> ee_x_des;
-    for (int i = 0; i < N_+1; i++) {
-      int idx = std::min(static_cast<int>(ic3_timestep + i * dt_scaling_), ic3_options_.N); 
+  //   for (int f = 0; f < 3; f++) {
+  //     plant_.SetPositionsAndVelocities(&plant_context_, x_plan);
+  //     c3::multibody::GeomGeomCollider collider(plant_, contact_geoms_[f]);
+  //     auto [phi, J] = collider.EvalPolytope(plant_context_, 2);
+  //     std::cout << "phi " << f << " " << phi << std::endl;
+  //     std::cout << "simulated lambda " << force.segment(4*f, 4).transpose() << std::endl << std::endl;
+  //   }
+  // }
 
-      if (n_x_ == 23) {
-        ee_x_des.push_back(state_data.col(idx).segment(ee_start_idx, ee_size));
-      } else if (n_x_ == 31) {
-        VectorXd x_curr = state_data.col(idx);
-
-        // HARDCODED indices, compute ee_des w.r.t. cube rather than w.r.t. world
-        VectorXd offset_finger_0 = x_curr.segment(0, 3) - x_curr.segment(13, 3);
-        VectorXd offset_finger_120 = x_curr.segment(3, 3) - x_curr.segment(13, 3);
-        VectorXd offset_finger_240 = x_curr.segment(6, 3) - x_curr.segment(13, 3);
-
-        VectorXd ee_x_des_curr(ee_size);
-
-        ee_x_des_curr.segment(0, 3) = x_lcs.segment(13, 3) + offset_finger_0;
-        ee_x_des_curr.segment(3, 3) = x_lcs.segment(13, 3) + offset_finger_120;
-        ee_x_des_curr.segment(6, 3) = x_lcs.segment(13, 3) + offset_finger_240;
-
-        // HARDCODED OFFSET 
-        ee_x_des_curr(2) = 0.07;
-        ee_x_des_curr(5) = 0.07;
-        ee_x_des_curr(8) = 0.07;
-
-        ee_x_des.push_back(ee_x_des_curr);
-      }
-
-    }
-    MatrixXd Q_ee = ic3_options_.ee_tracking_weight * ic3_options_.ee_tracking_vector.asDiagonal();
-    c3_->UpdateEETrackingTargetAndCost(ee_x_des, Q_ee);
-  }
-
-   
 
   UpdateQuaternionCosts(x_lcs, x_des.value());
   C3::CostMatrices new_costs(Q_, R_, G_, U_);
@@ -348,16 +326,87 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
     int lower_idx = std::max(0, ic3_timestep - ic3_options_.value_function_search_size);
     int upper_idx = std::min(ic3_options_.N, ic3_timestep + ic3_options_.value_function_search_size);
 
+    
     int best_idx = GetNearestXForValueFunction(x_lcs, state_data.middleCols(lower_idx, upper_idx-lower_idx+1));
-
     int idx = best_idx + N_ * dt_scaling_; // Want H[k + N]
+    c3_->UpdateFinalCost(H[idx], g[idx]);
 
-     c3_->UpdateFinalCost(H[idx], g[idx]);
+    // Set x_des of ee to match ic3 plan
+    if (0 <= ic3_timestep) {
+      int ee_start_idx;
+      int ee_size;
 
+      // HARDCODED
+      if (example_idx_ == 0) {
+        ee_start_idx = 0;
+        ee_size = 5;
+      } else if (example_idx_ == 1 || example_idx_ == 2) {
+        ee_start_idx = 0;
+        ee_size = 9;
+      }
+
+      vector<VectorXd> ee_x_des;
+      for (int i = 0; i < N_+1; i++) {
+        int idx = std::min(static_cast<int>(best_idx + i * dt_scaling_), ic3_options_.N); 
+
+        if (n_x_ == 23) {
+          ee_x_des.push_back(state_data.col(idx).segment(ee_start_idx, ee_size));
+        } else if (n_x_ == 31) {
+          // HARDCODED indices, compute rigid body transform between cube and ee in plan
+          VectorXd x_plan = state_data.col(idx);
+          VectorXd ee_x_des_curr(ee_size);
+            
+          Eigen::Quaterniond q_world_body(x_plan(9), x_plan(10), x_plan(11), x_plan(12)); 
+          Eigen::Vector3d p_world_body(x_plan(13), x_plan(14), x_plan(15));    
+
+          for (int f = 0; f < 3; f++) {
+            Eigen::Vector3d p_world_point(x_plan(3*f), x_plan(3*f+1), x_plan(3*f+2));   
+
+            // Get relative transform of finger in cube frame
+            drake::math::RigidTransform<double> X_WB(drake::math::RotationMatrix<double>(q_world_body), p_world_body);
+            drake::math::RigidTransform<double> X_BW = X_WB.inverse();
+            Eigen::Vector3d p_body_point = X_BW * p_world_point;
+                  
+            // Get corresponding point in world for current cube pose
+            Eigen::Quaterniond q_world_body_curr(x_lcs(9), x_lcs(10), x_lcs(11), x_lcs(12));
+            Eigen::Vector3d p_world_body_curr(x_lcs(13), x_lcs(14), x_lcs(15));
+            drake::math::RigidTransform<double> X_WB_curr(
+                drake::math::RotationMatrix<double>(q_world_body_curr), 
+                p_world_body_curr
+            );
+
+            ee_x_des_curr.segment(3*f, 3) = X_WB_curr * p_body_point;
+
+            // HARDCODED OFFSET 
+            ee_x_des_curr(3*f+2) = 0.07;
+          }
+
+          ee_x_des.push_back(ee_x_des_curr);
+        }
+      }
+
+      MatrixXd Q_ee = ic3_options_.ee_tracking_weight * ic3_options_.ee_tracking_vector.asDiagonal();
+      c3_->UpdateEETrackingTargetAndCost(ee_x_des, Q_ee);
+
+      // Add constraint to stay near ee of plan
+      if (example_idx_ == 1 && ic3_options_.add_constraints_follow_plan) {
+        for (int f = 0; f < 3; f++) {
+          // A_x_(3*f, 3*f) = 1;
+          // A_x_(3*f+1, 3*f+1) = 1;
+
+          // lb_x_(3*f) = ee_x_des.at(0)(3*f) - 0.03;
+          // lb_x_(3*f+1) = ee_x_des.at(0)(3*f+1) - 0.03;
+          // ub_x_(3*f) = ee_x_des.at(0)(3*f) + 0.03;
+          // ub_x_(3*f+1) = ee_x_des.at(0)(3*f+1) + 0.03;
+        }
+      }
+      tracking_target_ = ee_x_des.at(0);
+
+    }
 
     vector<VectorXd> u_target;
     for (int i = 0; i < N_; i++) {
-      if (best_idx <= ic3_options_.N) {
+      if (ic3_options_.track_ic3_inputs) {
         int idx = std::min(i + best_idx, ic3_options_.N-1);
         u_target.push_back(force_data.col(idx)); 
 
@@ -365,9 +414,9 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
       } else {
         VectorXd gravity(VectorXd::Zero(n_u_));
         // HARDCODED
-        if (n_u_ == 5) {
+        if (example_idx_ == 0) {
           gravity[2] = 8.33;
-        } else if (n_u_ == 9) {
+        } else if (example_idx_ == 1 || example_idx_ == 2) {
           gravity[2] = 0.196;
           gravity[5] = 0.196;
           gravity[8] = 0.196;
@@ -378,6 +427,7 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
 
     c3_->UpdateInputTarget(u_target);
   }
+
 
   if (ic3_options_.add_position_constraints) {  
     c3_->AddLinearConstraint(A_x_, lb_x_, ub_x_, c3::ConstraintVariable::STATE);
@@ -485,11 +535,11 @@ int iC3TrackingController::GetNearestXForValueFunction(
   int object_idx;
   int object_size = 7;
 
-  if (n_x_ == 23) {
+  if (example_idx_ == 0) {
     ee_idx = 0;
     ee_size = 5;
     object_idx = 5;
-  } else if (n_x_ == 31) {
+  } else if (example_idx_ == 1 || example_idx_ == 2) {
     ee_idx = 0;
     ee_size = 9;
     object_idx = 9;
@@ -540,23 +590,11 @@ void iC3TrackingController::OutputC3Solution(
   } 
 }
 
-void iC3TrackingController::OutputC3Intermediates(
-    const drake::systems::Context<double>& context,
-    c3::systems::C3Output::C3Intermediates* c3_intermediates) const {
-  double solve_time = context.get_discrete_state(filtered_solve_time_index_)[0];
-  double t = context.get_discrete_state(plan_start_time_index_)[0] + solve_time;
-  auto z = c3_->GetFullSolution();
-  auto delta = c3_->GetDualDeltaSolution();
-  auto w = c3_->GetDualWSolution();
 
-  for (int i = 0; i < N_; i++) {
-    c3_intermediates->time_vector_(i) = solve_time + t + i * dt_;
-    c3_intermediates->z_.col(i) = z[i].cast<float>();
-    c3_intermediates->delta_.col(i) = delta[i].cast<float>();
-    c3_intermediates->w_.col(i) = w[i].cast<float>();
-  }
+void iC3TrackingController::OutputTrackingTarget(const drake::systems::Context<double>& context,
+                        drake::systems::BasicVector<double>* tracking_target) const {
+	tracking_target->get_mutable_value() = tracking_target_;
 }
-
 
 
 }  // namespace systems

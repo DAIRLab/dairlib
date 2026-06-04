@@ -20,6 +20,26 @@ cc_library(
     ],
 )
 
+
+cc_library(
+    name = "lqr_trajectory_generator",
+    srcs = [
+        "lqr_trajectory_generator.cc",
+    ],
+    hdrs = [
+        "lqr_trajectory_generator.h",
+    ],
+    deps = 
+    [
+        "//common:find_resource",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "@c3//:libc3",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "//examples/iC3:iC3_options",
+    ],
+)
 cc_library(
     name = "timed_gate",
     srcs = [

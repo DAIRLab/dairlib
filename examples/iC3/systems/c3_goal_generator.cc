@@ -156,7 +156,7 @@ void C3GoalGenerator::OutputState(
 	const BasicVector<double>* nominal_position =
     (BasicVector<double>*)this->EvalVectorInput(context, nominal_position_port_);
 
-	VectorXd x_out = lcs_x->get_value();
+	drake::VectorX<double> x_out = lcs_x->CopyVectorNoTimestamp();
   if (example_idx_ == 0) {
     DRAKE_DEMAND(nominal_position->get_value().size() == 3);
     x_out.segment(0, 3) = x_out.segment(0, 3) - nominal_position->get_value();
@@ -248,6 +248,7 @@ void C3GoalGenerator::OutputLCS(
       std::cout << "c3 goal gen x_lcs not all finite " << x_lcs.transpose() << std::endl;
     }
 
+    lcs_factory_.SetNewDt(c3_controller_options_.lcs_factory_options.dt);
     lcs_factory_.UpdateStateAndInput(x_lcs, u_nominal);
     lcs = lcs_factory_.GenerateLCS();
   }

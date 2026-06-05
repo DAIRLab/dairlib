@@ -185,16 +185,16 @@ int DoMain(int argc, char* argv[]) {
     lb_x(3*i+1) = xd(3*i+1) - 0.06;
     lb_x(3*i+2) = xd(3*i+2) - 0.01;
 
-    lb_x(16 + 3*i) = -0.15;
-    lb_x(16 + 3*i+1) = -0.15;
+    lb_x(16 + 3*i) = -0.2;
+    lb_x(16 + 3*i+1) = -0.2;
     lb_x(16 + 3*i+2) = -0.05;
 
     ub_x(3*i) = xd(3*i) + 0.06;
     ub_x(3*i+1) = xd(3*i+1) + 0.06;
     ub_x(3*i+2) = xd(3*i+2) + 0.01;
 
-    ub_x(16 + 3*i) = 0.15;
-    ub_x(16 + 3*i+1) = 0.15;
+    ub_x(16 + 3*i) = 0.2;
+    ub_x(16 + 3*i+1) = 0.2;
     ub_x(16 + 3*i+2) = 0.05;
   }
 
@@ -268,8 +268,6 @@ int DoMain(int argc, char* argv[]) {
 
   auto x_desired_source =
     builder.AddSystem<drake::systems::ConstantVectorSource<double>>(xd);    
-
-  std::cout << "1 " << std::endl;
 
   auto controller =
       builder.AddSystem<systems::iC3LqrTrackingController>

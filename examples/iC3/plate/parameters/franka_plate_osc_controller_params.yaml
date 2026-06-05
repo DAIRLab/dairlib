@@ -7,7 +7,7 @@ end_effector_name: plate
 tool_attachment_frame: [0, 0, 0.107]
 #tool_attachment_frame: [0, 0, 0.307]
 
-neutral_position: [0.4, -0.35, 0.5]
+neutral_position: [0.4, -0.4, 0.45]
 
 x_scale: 0.1
 y_scale: 0.1
@@ -45,33 +45,33 @@ w_joint_limit: 10000.0
 joint_limit_buffer: 0.2
 
 EndEffectorW:
-  [400, 0, 0,
-   0, 400, 0,
-   0, 0, 800]
+  [500, 0, 0,
+   0, 500, 0,
+   0, 0, 500]
 EndEffectorKp:
-  [ 600, 0, 0,
-    0, 600, 0,
-    0, 0, 600 ]
+  [ 200, 0, 0,
+    0, 200, 0,
+    0, 0, 500 ]
 EndEffectorKd:
-  [ 90, 0, 0,
-    0, 90, 0,
+  [ 100, 0, 0,
+    0, 100, 0,
     0, 0, 100 ]
 EndEffectorRotW:
   [ 300, 0, 0,
     0, 300, 0,
     0, 0, 300 ]
 EndEffectorRotKp:
-  [ 150, 0, 0,
-    0, 150, 0,
-    0, 0, 150 ]
+  [ 200, 0, 0,
+    0, 200, 0,
+    0, 0, 200 ]
 EndEffectorRotKd:
-  [ 15, 0, 0,
-    0, 15, 0,
-    0, 0, 15 ]
+  [ 26, 0, 0,
+    0, 26, 0,
+    0, 0, 26 ]
 LambdaEndEffectorW:
-  [ 400, 0, 0,
-    0, 400, 0,
-    0, 0, 1000 ]
+  [ 200, 0, 0,
+    0, 200, 0,
+    0, 0, 200 ]
 LambdaEndEffectorTauW:
   [ 800, 0, 0,
     0, 800, 0,

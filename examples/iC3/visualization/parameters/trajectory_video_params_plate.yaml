@@ -5,7 +5,7 @@ visualizer_publish_rate: 30
 
 # match with iC3 params
 ic3_iter: 3
-trajectory_length: 40
+trajectory_length: 50
 
 visualize_c3_traj: true
 

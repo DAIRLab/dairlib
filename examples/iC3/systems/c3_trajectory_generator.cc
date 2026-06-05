@@ -261,7 +261,6 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
 
   }
 	
-
   LcmTrajectory::Trajectory end_effector_traj;
   end_effector_traj.traj_name = "end_effector_position_target";
   end_effector_traj.datatypes =
@@ -433,22 +432,22 @@ std::tuple<MatrixXd, MatrixXd> C3TrajectoryGenerator::SimulateLCS(VectorXd x0, M
       }
     } 
 
-    for (int j = 0; j < A_x_.rows(); j++) {
-      if (A_x_(j, j) == 1) {
-          x_curr(j) = std::min(std::max(x_curr(j), lb_x_(j)), ub_x_(j));
-      }
-    }
     for (int j = 0; j < A_u_.rows(); j++) {
       if (A_u_(j, j) == 1) {
           u(j) = std::min(std::max(u(j), lb_u_(j)), ub_u_(j));
       }
     }
+    VectorXd x_next = lcs.Simulate(x_curr, u);
+
+    for (int j = 0; j < A_x_.rows(); j++) {
+      if (A_x_(j, j) == 1) {
+        x_next(j) = std::min(std::max(x_next(j), lb_x_(j)), ub_x_(j));
+      }
+    }
+
+    x_hat.col(i+1) = x_next;
+    x_curr = x_next;
     
-
-
-    x_hat.col(i+1) = lcs.Simulate(x_curr, u);
-    x_curr = x_hat.col(i+1);
-
     u_hat_thresholded.col(i) = u;
   }
 

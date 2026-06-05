@@ -24,12 +24,12 @@ use_time_varying_lcs: false
 
 value_function_ee_cost: [1, 1, 1, 1, 1]
 value_function_object_orientation_cost: 10 # radians
-value_function_object_position_cost: [10, 10, 10]
+value_function_object_position_cost: [100, 100, 100]
 value_function_velocity_cost: [0.1, 0.1, 0.1, 0.1, 0.1,
                                0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
 
 # Number of timesteps about current timestep to search for closest (to both left and right) 
-value_function_search_size: 4
+value_function_search_size: 1
 
 ee_tracking_weight: 0
 ee_tracking_vector: [10, 10, 100, 10, 10]

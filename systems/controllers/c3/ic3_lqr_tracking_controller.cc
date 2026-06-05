@@ -122,7 +122,7 @@ drake::systems::EventStatus iC3LqrTrackingController::ComputePlan(
   int ic3_timestep = static_cast<int>(timestep_vector.get_value()(0));
 
   // If in teleop or waiting, don't solve
-  if (ic3_timestep < 0) return drake::systems::EventStatus::Succeeded();
+  if (ic3_timestep < 0 || ic3_timestep >= ic3_options_.N) return drake::systems::EventStatus::Succeeded();
 
   auto start = std::chrono::high_resolution_clock::now();
 
@@ -130,13 +130,15 @@ drake::systems::EventStatus iC3LqrTrackingController::ComputePlan(
 
   const BasicVector<double>& x_des =
       *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
+
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
-  auto& lcs =
-      this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
   drake::VectorX<double> x_lcs = lcs_x->get_data();
 
+  auto& lcs =
+      this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
+  
   // Get iC3 plan
   const std::string trajectory_name = "iteration_" + std::to_string(ic3_options_.iter_to_use);
   const auto& lcm_all_x_trajectories = 
@@ -156,58 +158,66 @@ drake::systems::EventStatus iC3LqrTrackingController::ComputePlan(
   MatrixXd input_data = input_trajectory.datapoints;
   MatrixXd force_data = force_trajectory.datapoints;
 
+  // std::cout << "x hat " << state_data.rows() << " x " << state_data.cols() << std::endl;
+  // std::cout << "u hat " << input_data.rows() << " x " << input_data.cols() << std::endl;
+  // std::cout << "lambda hat " << force_data.rows() << " x " << force_data.cols() << std::endl;
+
   // Get H, K, k_ff
   vector<Eigen::MatrixXd> H;
   vector<Eigen::MatrixXd> K_hat;
   vector<Eigen::VectorXd> k_ff_hat;
 
   const auto* lqr_input = this->EvalAbstractInput(context, lqr_input_port_);
-  const auto& lqr_all_inputs = lqr_input->get_value<dairlib::lcmt_lqr_output>();
-  const std::vector<std::vector<std::vector<double>>>& source_H = lqr_all_inputs.H[ic3_options_.iter_to_use];
-  const std::vector<std::vector<std::vector<double>>>& source_K = lqr_all_inputs.H[ic3_options_.iter_to_use];
-  const std::vector<std::vector<double>>& source_k_ff = lqr_all_inputs.g[ic3_options_.iter_to_use];
-  for (int i = 0; i < source_H.size(); i++) {
-    Eigen::MatrixXd mat(MatrixXd::Zero(source_H[i].size(), source_H[i][0].size()));
-    for (int j = 0; j < source_H[i].size(); j++) {
-        mat.row(j) = Eigen::Map<const Eigen::VectorXd>(source_H[i][j].data(), source_H[i][j].size());
+
+  if (lqr_input != nullptr) {
+    const auto& lqr_all_inputs = lqr_input->get_value<dairlib::lcmt_lqr_output>();
+    const std::vector<std::vector<std::vector<double>>>& source_H = lqr_all_inputs.H[ic3_options_.iter_to_use];
+    const std::vector<std::vector<std::vector<double>>>& source_K = lqr_all_inputs.K[ic3_options_.iter_to_use];
+    const std::vector<std::vector<double>>& source_k_ff = lqr_all_inputs.k_ff[ic3_options_.iter_to_use];
+    for (int i = 0; i < source_H.size(); i++) {
+      Eigen::MatrixXd mat(MatrixXd::Zero(source_H[i].size(), source_H[i][0].size()));
+      for (int j = 0; j < source_H[i].size(); j++) {
+          mat.row(j) = Eigen::Map<const Eigen::VectorXd>(source_H[i][j].data(), source_H[i][j].size());
+      }
+      H.push_back(std::move(mat));
     }
-    H.push_back(std::move(mat));
-  }
-  for (int i = 0; i < source_K.size(); i++) {
-    Eigen::MatrixXd mat(MatrixXd::Zero(source_K[i].size(), source_K[i][0].size()));
-    for (int j = 0; j < source_K[i].size(); j++) {
-        mat.row(j) = Eigen::Map<const Eigen::VectorXd>(source_K[i][j].data(), source_K[i][j].size());
+    for (int i = 0; i < source_K.size(); i++) {
+      Eigen::MatrixXd mat(MatrixXd::Zero(source_K[i].size(), source_K[i][0].size()));
+      for (int j = 0; j < source_K[i].size(); j++) {
+          mat.row(j) = Eigen::Map<const Eigen::VectorXd>(source_K[i][j].data(), source_K[i][j].size());
+      }
+      K_hat.push_back(std::move(mat));
+      k_ff_hat.push_back(Eigen::VectorXd::Map(source_k_ff[i].data(), source_k_ff[i].size()));
     }
-    K_hat.push_back(std::move(mat));
-    k_ff_hat.push_back(Eigen::VectorXd::Map(source_k_ff[i].data(), source_k_ff[i].size()));
+
+    int idx = std::min(ic3_options_.N-1, ic3_timestep);
+
+    // Simulate to get lambda
+    VectorXd u_nominal = input_data.col(idx);
+    c3::LCSSimulateConfig config; 
+    config.regularized = true;
+    config.max_exp = -6;
+    auto [x_out, lambda] = lcs.SimulateAndReturnForce(x_lcs, u_nominal, config);
+    
+    // Update feedforward gain
+    MatrixXd B = lcs.B()[0];
+    MatrixXd D = lcs.D()[0];
+    VectorXd lambda_nominal = force_data.col(idx);
+    VectorXd x_nominal = state_data.col(idx);
+
+    VectorXd rhs = B.transpose() * H[idx+1] * D * (lambda_nominal - lambda);
+    MatrixXd Q_uu = R_ + B.transpose() * H[idx+1] * B;
+    Eigen::LDLT<Eigen::MatrixXd> solver(Q_uu);  
+
+    VectorXd k_ff = k_ff_hat[idx] + solver.solve(rhs);
+    MatrixXd K = K_hat[idx];
+
+    double alpha = 1;
+    u_out_ = u_nominal + K * (x_lcs - x_nominal) + alpha * k_ff;
+
+  } else {
+    std::cout << "iC3 lqr value function lcm NULL" << std::endl;
   }
-
-  int idx = std::min(ic3_options_.N-1, ic3_timestep);
-
-  // Simulate to get lambda
-  VectorXd u_nominal = input_data.col(idx);
-  c3::LCSSimulateConfig config; 
-  config.regularized = true;
-  config.max_exp = -6;
-  auto [x_out, lambda] = lcs.SimulateAndReturnForce(x_lcs, u_nominal, config);
-  
-  // Update feedforward gain
-  MatrixXd B = lcs.B()[0];
-  MatrixXd D = lcs.D()[0];
-  VectorXd lambda_nominal = force_data.col(idx);
-  VectorXd x_nominal = state_data.col(idx);
-
-  VectorXd rhs = B.transpose() * H[idx+1] * D * (lambda_nominal - lambda);
-  MatrixXd Q_uu = R_ + B.transpose() * H[idx+1] * B.transpose();
-  Eigen::LDLT<Eigen::MatrixXd> solver(Q_uu);  
-
-  VectorXd k_ff = k_ff_hat[idx] + solver.solve(rhs);
-  MatrixXd K = K_hat[idx];
-
-  double alpha = 1;
-  u_out_ = u_nominal + K * (x_lcs - x_nominal) + alpha * k_ff;
-
-  
 
 
   return drake::systems::EventStatus::Succeeded();
@@ -267,6 +277,7 @@ int iC3LqrTrackingController::GetNearestXForValueFunction(
 void iC3LqrTrackingController::OutputActorInput(
     const drake::systems::Context<double>& context,
     drake::systems::BasicVector<double>* actor_input) const {
+  std::cout << "u_out output port " << u_out_.transpose() << std::endl;
 	actor_input->get_mutable_value() = u_out_;
 }
 

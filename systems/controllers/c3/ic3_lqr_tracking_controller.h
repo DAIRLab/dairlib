@@ -101,6 +101,7 @@ class iC3LqrTrackingController : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex ic3_u_port_;
   drake::systems::InputPortIndex ic3_lambda_port_;
   drake::systems::InputPortIndex timestep_port_;
+  
   drake::systems::OutputPortIndex actor_port_;
   drake::systems::OutputPortIndex tracking_target_port_;
 

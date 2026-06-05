@@ -92,7 +92,6 @@ void LqrTrajectoryGenerator::OutputActorTrajectory(
   const BasicVector<double>& actor_input =
       *this->template EvalVectorInput<BasicVector>(context, actor_input_port_);
 
-
   const BasicVector<double>& nominal_position =
       *this->template EvalVectorInput<BasicVector>(context, nominal_position_port_);
 
@@ -108,7 +107,7 @@ void LqrTrajectoryGenerator::OutputActorTrajectory(
   
   auto [x_hat, u_hat] = SimulateLCS(x_curr, u_hat_input, context);
   x_hat = x_hat.rightCols(x_hat.cols() - 1); // Remove x0 for size consistency
-
+  
   MatrixXd forces;
   MatrixXd torques;
   MatrixXd positions;

@@ -9,7 +9,7 @@ print_costs: true
 N: 600 # REMOVE after importing all options from c3 repo
 dt: 0.01 # REMOVE after importing all options from c3 repo
 
-iter_to_use: 2
+iter_to_use: 3
 num_timesteps_to_use: 600
 
 hold_last_timestep_position: true
@@ -28,7 +28,7 @@ value_function_velocity_cost: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0
                                0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
 
 # Number of timesteps about current timestep to search for closest (to both left and right) 
-value_function_search_size: 0
+value_function_search_size: 10
 
 ee_tracking_weight: 00
 ee_tracking_vector: [1, 1, 0, 1, 1, 0, 1, 1, 0]

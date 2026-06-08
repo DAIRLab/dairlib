@@ -36,7 +36,7 @@ c3_options:
   rho_scale: 1.0
 
   w_Q: 5
-  w_R: 10 #Penalty on all decision variables, assuming scalar
+  w_R: 15 #Penalty on all decision variables, assuming scalar
   w_G: 80 #Penalty on all decision variables, assuming scalar
   w_U: 5 #State Tracking Error, assuming diagonal
 
@@ -50,7 +50,7 @@ c3_options:
              1, 1, 1]                # cube velo
 
 
-  r_vector: [50, 50, 50, 80, 80]  
+  r_vector: [50, 50, 50, 120, 120]  
   
   #Penalty on matching projected variables
   g_x: [50, 50, 50, 100, 100, 50, 50, 50, 50, 50, 50, 50, 1 , 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]

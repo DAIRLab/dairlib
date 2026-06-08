@@ -126,6 +126,10 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
   MatrixXd x_hat = c3_solution->x_sol_.cast<double>();
   MatrixXd u_hat = c3_solution->u_sol_.cast<double>();
 
+  if (x_hat.array().isNaN().any()) {
+    std::cout << "x_hat HAS NAN " << std::endl;
+    std::cout << x_hat.rows() << " x " << x_hat.cols() << std::endl;
+  }
 
   // std::cout << "c3 x sol " << x_hat.col(0).transpose() << std::endl;
   // std::cout << "c3 x sol " << x_hat.col(1).transpose() << std::endl;

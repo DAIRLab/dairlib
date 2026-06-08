@@ -326,10 +326,16 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
     int lower_idx = std::max(0, ic3_timestep - ic3_options_.value_function_search_size);
     int upper_idx = std::min(ic3_options_.N, ic3_timestep + ic3_options_.value_function_search_size);
 
-    
-    int best_idx = GetNearestXForValueFunction(x_lcs, state_data.middleCols(lower_idx, upper_idx-lower_idx+1));
-    int idx = best_idx + N_ * dt_scaling_; // Want H[k + N]
+    // std::cout << "l idx " << lower_idx << " u idx " << upper_idx << std::endl;
+
+    int best_idx = GetNearestXForValueFunction(x_lcs, state_data.middleCols(lower_idx, upper_idx-lower_idx+1)) + lower_idx;
+    int idx = std::min(ic3_options_.N, best_idx + static_cast<int>(N_ * dt_scaling_)); // Want H[k + N]
     c3_->UpdateFinalCost(H[idx], g[idx]);
+
+    // std::cout << "idx " << idx << std::endl;
+    // std::cout << "Q norm " << Q_[0].norm() << std::endl;
+    // std::cout << "H norm " << H[idx].norm() << std::endl;
+    // std::cout << "g norm " << g[idx].norm() << std::endl;
 
     // Set x_des of ee to match ic3 plan
     if (0 <= ic3_timestep) {

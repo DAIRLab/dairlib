@@ -2052,10 +2052,10 @@ void SamplingC3Controller::AugmentSamplesWithBuffer(
       (sampling_params_.consider_best_buffer_sample_when_leaving_c3)) {
     // Get the lowest cost sample from the buffer, and incorporate travel cost.
     double lowest_buffer_cost = sample_costs_buffer_[num_in_buffer_ - 1];
-    double travel_cost = progress_params_.travel_cost_per_meter *
-                         (sample_buffer_.row(num_in_buffer_ - 1).head(2) -
-                          all_sample_locations_[0].head(2))
-                             .norm();
+    Vector2d best_buffer_xy = sample_buffer_.row(num_in_buffer_ - 1).head(2);
+    double travel_cost =
+        progress_params_.travel_cost_per_meter *
+        (best_buffer_xy - all_sample_locations_[0].head(2)).norm();
     lowest_buffer_cost += travel_cost;
     Vector3d best_buffer_ee_sample =
         sample_buffer_.row(num_in_buffer_ - 1).head(3);

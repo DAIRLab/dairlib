@@ -48,6 +48,7 @@ class RobotOutputReceiver : public drake::systems::LeafSystem<double> {
   void CopyOutput(const drake::systems::Context<double>& context,
                   OutputVector<double>* output) const;
   drake::multibody::ModelInstanceIndex model_instance_;
+  bool has_model_instance_{false};
   int positions_start_idx_;
   int velocities_start_idx_;
   int num_positions_;
@@ -133,6 +134,7 @@ class ObjectStateReceiver : public drake::systems::LeafSystem<double> {
   void CopyOutput(const drake::systems::Context<double>& context,
                   StateVector<double>* output) const;
   drake::multibody::ModelInstanceIndex model_instance_;
+  bool has_model_instance_{false};
   int positions_start_idx_;
   int velocities_start_idx_;
   int num_positions_;
@@ -145,9 +147,10 @@ class ObjectStateReceiver : public drake::systems::LeafSystem<double> {
 class ObjectStateSender : public drake::systems::LeafSystem<double> {
  public:
   explicit ObjectStateSender(
-      const drake::multibody::MultibodyPlant<double>& plant, bool publish_velocities = true,
+      const drake::multibody::MultibodyPlant<double>& plant,
+      bool publish_velocities = true,
       drake::multibody::ModelInstanceIndex model_instance_index =
-      drake::multibody::default_model_instance());
+          drake::multibody::default_model_instance());
 
   explicit ObjectStateSender(
       const drake::multibody::MultibodyPlant<double>& plant);

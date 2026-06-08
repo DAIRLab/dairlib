@@ -1,4 +1,5 @@
 #include "robot_lcm_systems.h"
+
 #include <iostream>
 
 #include "dairlib/lcmt_robot_input.hpp"
@@ -29,12 +30,13 @@ using systems::OutputVector;
 
 RobotOutputReceiver::RobotOutputReceiver(
     const drake::multibody::MultibodyPlant<double>& plant) {
+  has_model_instance_ = false;
+  model_instance_ = drake::multibody::default_model_instance();
   num_positions_ = plant.num_positions();
   num_velocities_ = plant.num_velocities();
   num_efforts_ = plant.num_actuators();
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
-  model_instance_ = drake::multibody::ModelInstanceIndex(-1); // CHANGE BACK AFTER DEBUG
 
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
@@ -51,6 +53,7 @@ RobotOutputReceiver::RobotOutputReceiver(
 RobotOutputReceiver::RobotOutputReceiver(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::multibody::ModelInstanceIndex model_instance) {
+  has_model_instance_ = true;
   model_instance_ = model_instance;
   num_positions_ = plant.num_positions(model_instance);
   num_velocities_ = plant.num_velocities(model_instance);
@@ -142,7 +145,7 @@ void RobotOutputReceiver::InitializeSubscriberPositions(
   }
 
   // Set quaternion w = 1, assumes drake quaternion ordering of wxyz
-  if (model_instance_ != drake::multibody::ModelInstanceIndex(-1)) {
+  if (has_model_instance_) {
     if (plant.HasUniqueFreeBaseBody(model_instance_)) {
       state_msg.position.at(0) = 1;
     }
@@ -303,11 +306,12 @@ void RobotOutputSender::Output(const Context<double>& context,
 
 ObjectStateReceiver::ObjectStateReceiver(
     const drake::multibody::MultibodyPlant<double>& plant) {
+  has_model_instance_ = false;
+  model_instance_ = drake::multibody::default_model_instance();
   num_positions_ = plant.num_positions();
   num_velocities_ = plant.num_velocities();
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
-  model_instance_ = drake::multibody::ModelInstanceIndex(-1); // CHANGE BACK AFTER DEBUG
 
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
@@ -322,6 +326,7 @@ ObjectStateReceiver::ObjectStateReceiver(
 ObjectStateReceiver::ObjectStateReceiver(
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::multibody::ModelInstanceIndex model_instance) {
+  has_model_instance_ = true;
   model_instance_ = model_instance;
   num_positions_ = plant.num_positions(model_instance);
   num_velocities_ = plant.num_velocities(model_instance);
@@ -330,10 +335,10 @@ ObjectStateReceiver::ObjectStateReceiver(
   velocity_index_map_ =
       multibody::MakeNameToVelocitiesMap(plant, model_instance);
 
-  for (const auto& entry : plant.GetJointIndices(model_instance)){
-    // If joint.num_positions() == 0, then it is a fixed joint. 
+  for (const auto& entry : plant.GetJointIndices(model_instance)) {
+    // If joint.num_positions() == 0, then it is a fixed joint.
     // Skip it and fix positions_start_idx_ to be the non fixed joint.
-    if (plant.get_joint(entry).num_positions() != 0){
+    if (plant.get_joint(entry).num_positions() != 0) {
       positions_start_idx_ = plant.get_joint(entry).position_start();
       velocities_start_idx_ = plant.get_joint(entry).velocity_start();
       break;
@@ -364,7 +369,6 @@ void ObjectStateReceiver::CopyOutput(const Context<double>& context,
     int j = velocity_index_map_.at(state_msg.velocity_names[i]);
     velocities(j - velocities_start_idx_) = state_msg.velocity[i];
   }
-
 
   output->SetPositions(positions);
   output->SetVelocities(velocities);
@@ -399,7 +403,7 @@ void ObjectStateReceiver::InitializeSubscriberPositions(
   }
 
   // Set quaternion w = 1, assumes drake quaternion ordering of wxyz
-  if (model_instance_ != drake::multibody::ModelInstanceIndex(-1)) {
+  if (has_model_instance_) {
     if (plant.HasUniqueFreeBaseBody(model_instance_)) {
       state_msg.position.at(0) = 1;
     }
@@ -428,7 +432,7 @@ ObjectStateSender::ObjectStateSender(
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
 
-  model_instance_ = drake::multibody::ModelInstanceIndex(-1); // CHANGE BACK AFTER DEBUG
+  model_instance_ = drake::multibody::default_model_instance();
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
 
@@ -459,10 +463,10 @@ ObjectStateSender::ObjectStateSender(
   velocity_index_map_ =
       multibody::MakeNameToVelocitiesMap(plant, model_instance);
 
-  for (const auto& entry : plant.GetJointIndices(model_instance)){
-    // If joint.num_positions() == 0, then it is a fixed joint. 
+  for (const auto& entry : plant.GetJointIndices(model_instance)) {
+    // If joint.num_positions() == 0, then it is a fixed joint.
     // Skip it and fix positions_start_idx_ to be the non fixed joint.
-    if (plant.get_joint(entry).num_positions() != 0){
+    if (plant.get_joint(entry).num_positions() != 0) {
       positions_start_idx_ = plant.get_joint(entry).position_start();
       velocities_start_idx_ = plant.get_joint(entry).velocity_start();
       break;

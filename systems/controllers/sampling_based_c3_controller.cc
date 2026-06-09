@@ -950,8 +950,17 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   auto c3_start = std::chrono::high_resolution_clock::now();
 #pragma omp parallel for num_threads(num_threads_to_use_)
   for (int i = 0; i < num_total_samples; i++) {
+    auto parallel_start = std::chrono::high_resolution_clock::now();
     bool print_cost_breakdown =
         radio_out->channel[7] && (i == SampleIndex::kCurrentLocation);
+
+    auto after_radio = std::chrono::high_resolution_clock::now();
+    double elapsed_ms = std::chrono::duration_cast<std::chrono::microseconds>(
+                            after_radio - parallel_start)
+                            .count() /
+                        1e3;
+    std::cout << "  " << i << ": Radio read: " << elapsed_ms << " ms"
+              << std::endl;
 
     // Get the candidate state and its LCS representation.
     VectorXd test_state = candidate_states.at(i);
@@ -972,6 +981,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       test_c3_object = std::make_shared<C3Plus>(test_system, c3_costmat,
                                                 x_desired, c3_options);
     }  // Unknown projection types are rejected in the initialization.
+
+    auto after_c3_build = std::chrono::high_resolution_clock::now();
+    elapsed_ms = std::chrono::duration_cast<std::chrono::microseconds>(
+                     after_c3_build - after_radio)
+                     .count() /
+                 1e3;
+    std::cout << "  " << i << ": C3 build: " << elapsed_ms << " ms"
+              << std::endl;
 
     if (!sampling_c3_options_.include_walls) {
       // Set actor bounds.
@@ -1032,13 +1049,39 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
           c3::ConstraintVariable::INPUT);
     }
 
+    auto after_limits = std::chrono::high_resolution_clock::now();
+    elapsed_ms = std::chrono::duration_cast<std::chrono::microseconds>(
+                     after_limits - after_c3_build)
+                     .count() /
+                 1e3;
+    std::cout << "  " << i << ": C3 limits: " << elapsed_ms << " ms"
+              << std::endl;
+
     // Solve C3, store resulting object and cost.
     test_c3_object->SetSolverOptions(solver_options_);
     test_c3_object->Solve(test_state);
+
+    auto after_c3_solve = std::chrono::high_resolution_clock::now();
+    elapsed_ms = std::chrono::duration_cast<std::chrono::microseconds>(
+                     after_c3_solve - after_limits)
+                     .count() /
+                 1e3;
+    std::cout << "  " << i << ": C3 solve: " << elapsed_ms << " ms"
+              << std::endl;
+
     std::pair<double, vector<VectorXd>> cost_trajectory_pair = CalcCost(
         cost_type, lcs_candidates_for_cost.at(i), c3_costmat, test_c3_object,
         force_tracking_disabled, controller_params_.num_objects,
         print_cost_breakdown || verbose_);
+
+    auto after_calc_cost = std::chrono::high_resolution_clock::now();
+    elapsed_ms = std::chrono::duration_cast<std::chrono::microseconds>(
+                     after_calc_cost - after_c3_solve)
+                     .count() /
+                 1e3;
+    std::cout << "  " << i << ": C3 calc cost: " << elapsed_ms << " ms"
+              << std::endl;
+
     double c3_cost = cost_trajectory_pair.first;
     all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;
 
@@ -1057,6 +1100,20 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       all_sample_costs_[i] += progress_params_.finished_reposition_cost;
       finished_reposition_flag_ = false;
     }
+
+    auto after_everything = std::chrono::high_resolution_clock::now();
+    elapsed_ms = std::chrono::duration_cast<std::chrono::microseconds>(
+                     after_everything - after_calc_cost)
+                     .count() /
+                 1e3;
+    std::cout << "  " << i << ": travel and finish: " << elapsed_ms << " ms"
+              << std::endl;
+    elapsed_ms = std::chrono::duration_cast<std::chrono::microseconds>(
+                     after_everything - parallel_start)
+                     .count() /
+                 1e3;
+    std::cout << "  " << i << ": Total time: " << elapsed_ms << " ms"
+              << std::endl;
   }
   auto c3_end = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double, std::milli> duration_ms = c3_end - c3_start;

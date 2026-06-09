@@ -39,6 +39,10 @@ cc_binary(
         "@drake//:drake_shared_library",
         "@gflags",
     ],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lopenblas",
+    ],
 )
 
 cc_binary(
@@ -64,6 +68,10 @@ cc_binary(
         "//systems/trajectory_optimization:lcm_trajectory_systems",
         "@drake//:drake_shared_library",
         "@gflags",
+    ],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lopenblas",
     ],
 )
 
@@ -131,6 +139,10 @@ cc_binary(
         "//systems/visualization:lcm_visualization_systems",
         "@drake//:drake_shared_library",
         "@gflags",
+    ],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lopenblas",
     ],
 )
 
@@ -211,6 +223,10 @@ cc_binary(
         "//systems/trajectory_optimization:c3_output_systems",
         "@drake//:drake_shared_library",
         "@gflags",
+    ],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lopenblas",
     ],
 )
 

@@ -795,6 +795,17 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   auto start = std::chrono::high_resolution_clock::now();
+  auto section_start = start;
+  std::vector<std::pair<std::string, double>> timing_breakdown_ms;
+  auto record_timing = [&](const std::string& section_name) {
+    auto now = std::chrono::high_resolution_clock::now();
+    double elapsed_ms = std::chrono::duration_cast<std::chrono::microseconds>(
+                            now - section_start)
+                            .count() /
+                        1e3;
+    timing_breakdown_ms.emplace_back(section_name, elapsed_ms);
+    section_start = now;
+  };
 
   // Evaluate input ports.
   const auto& radio_out =
@@ -811,6 +822,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                                                         lcs_state_input_port_);
   // Store the current LCS state.
   drake::VectorX<double> x_lcs_curr = lcs_x_curr->get_data();
+
+  record_timing("Input evaluation");
   ee_position_curr_ = x_lcs_curr.segment(0, 3);
   if (verbose_) {
     std::cout << "x_lcs_curr: " << x_lcs_curr.transpose() << std::endl;
@@ -904,6 +917,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
   }
 
+  record_timing("State prep, safety checks, and goal/mode-threshold updates");
+
   // Build C3Options from SamplingC3Options based on the
   // crossed_cost_switching_threshold_ flag.
   C3Options c3_options =
@@ -914,6 +929,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Update the cost matrices:  Q_, R_, G_, and U_.
   UpdateCostMatrices(x_lcs_curr, x_lcs_des, c3_options);
+
+  record_timing("Options and cost matrix update");
 
   // Detect if all goals have been reached.
   vector<bool> object_on_target;
@@ -936,6 +953,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
          (object_position_error < goal_params_.position_success_threshold)));
     all_reached = all_reached && object_on_target[i];
   }
+
+  record_timing("Goal achievement detection");
 
   // Generate states, differing from the current state only by EE sample
   // locations.
@@ -1009,6 +1028,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       candidate_states, x_lcs_curr, lcs_factory_options);
   vector<LCS> lcs_candidates = lcs_pair.first;
   vector<LCS> lcs_candidates_for_cost = lcs_pair.second;
+
+  record_timing("Sample generation and LCS construction");
 
   // Prepare variables that will get used or filled in by parallelization.
   all_sample_costs_ = vector<double>(num_total_samples, -1);
@@ -1194,6 +1215,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   std::chrono::duration<double, std::milli> duration_ms = c3_end - c3_start;
   // End of parallelization
 
+  record_timing("Parallel C3 solve and cost evaluation");
+
   // Update the sample buffer.  Do this before switching modes since 1) if in
   // repositioning mode, don't add the repositioning target over and over again,
   // and 2) since the best sample in the buffer may be the best sample overall
@@ -1202,6 +1225,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Augment the considered samples with the best from the buffer, if eligible.
   AugmentSamplesWithBuffer(c3_objects);
+
+  record_timing("Sample buffer maintenance and augmentation");
 
   // Set up hysteresis values based on if the cost switching threshold has been
   // crossed.
@@ -1239,6 +1264,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   } else {
     force_c3_mode = true;
   }
+
+  record_timing("Hysteresis setup and best-sample selection");
 
   if (verbose_) {
     std::cout << "All sample costs before hystereses: " << std::endl;
@@ -1416,6 +1443,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
   }
 
+  record_timing("Mode-switch decision logic");
+
   if (verbose_) {
     std::cout << "All sample costs before hystereses: " << std::endl;
     for (int i = 0; i < num_total_samples; i++) {
@@ -1435,6 +1464,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   double t = context.get_discrete_state(plan_start_time_index_)[0];
   UpdateC3ExecutionTrajectory(x_lcs_curr, t);
   UpdateRepositioningExecutionTrajectory(x_lcs_curr, t);
+
+  record_timing("Execution trajectory updates");
 
   if (verbose_) {
     std::cout << "x_pred_curr_plan_ after updating: "
@@ -1484,9 +1515,13 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
   }
 
+  record_timing("Verbose diagnostics");
+
   // Add delay.
   std::this_thread::sleep_for(
       std::chrono::milliseconds(controller_params_.control_loop_delay_ms));
+
+  record_timing("Injected control-loop delay");
 
   // End of control loop cleanup.
   auto finish = std::chrono::high_resolution_clock::now();
@@ -1496,6 +1531,15 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       1e6;
   filtered_solve_time_ = (1 - solve_time_filter_constant_) * solve_time +
                          (solve_time_filter_constant_)*filtered_solve_time_;
+
+  record_timing("End-of-loop cleanup");
+
+  std::cout << "ComputePlan timing breakdown [ms]:" << std::endl;
+  for (const auto& timing_entry : timing_breakdown_ms) {
+    std::cout << "  " << timing_entry.first << ": " << timing_entry.second
+              << std::endl;
+  }
+  std::cout << "  Overall ComputePlan: " << solve_time * 1e3 << std::endl;
 
   if (verbose_) {
     std::cout << "At end of loop solve_time: " << solve_time << std::endl;

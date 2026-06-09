@@ -43,9 +43,11 @@ iC3LqrTrackingController::iC3LqrTrackingController(
 
   // TODO: make this not bad
   if (example_idx_ == 0) {
-    n_lambda_ = 4;
+    n_lambda_ = 4 * 4;
   } else if (example_idx_ == 1) {
-    n_lambda_ = 7;
+    n_lambda_ = 7 * 4;
+  } else if (example_idx_ == 2) {
+    n_lambda_ = 11 * 4;
   }
 
   auto lcs_placeholder = CreatePlaceholderLCS();

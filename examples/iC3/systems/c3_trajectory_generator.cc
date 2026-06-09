@@ -8,6 +8,7 @@
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "multibody/multibody_utils.h"
 #include "c3/systems/framework/c3_output.h"
+#include "systems/framework/timestamped_vector.h"
 
 namespace dairlib {
 
@@ -19,6 +20,7 @@ using Eigen::MatrixXd;
 using Eigen::MatrixXf;
 using Eigen::VectorXd;
 using Eigen::Vector3d;
+using systems::TimestampedVector;
 
 using c3::systems::C3Output;
 using c3::systems::C3ControllerOptions;
@@ -26,16 +28,23 @@ using c3::LCSFactoryOptions;
 using c3::LCS;
 using c3::ContactPairConfig;
 using c3::multibody::LCSFactory;
+using c3::multibody::GeomGeomCollider;
 
+using drake::geometry::GeometryId;
+using drake::geometry::SceneGraph;
+using drake::SortedPair;
+using drake::geometry::SceneGraph;
 using std::vector;
 using drake::systems::BasicVector;
 
 C3TrajectoryGenerator::C3TrajectoryGenerator(
-    const drake::multibody::MultibodyPlant<double>& plant, LCSFactory lcs_factory, iC3Options ic3_options,
-      C3ControllerOptions c3_controller_options, bool track_dynamically_feasible, int example_idx,
-      MatrixXd A_x, VectorXd lb_x, VectorXd ub_x, MatrixXd A_u, VectorXd lb_u, VectorXd ub_u)
+    const drake::multibody::MultibodyPlant<double>& plant, drake::systems::Context<double>* plant_context,
+    LCSFactory lcs_factory, vector<SortedPair<GeometryId>> contact_pairs, iC3Options ic3_options, C3ControllerOptions c3_controller_options, 
+      bool track_dynamically_feasible, int example_idx, MatrixXd A_x, VectorXd lb_x, VectorXd ub_x, MatrixXd A_u, VectorXd lb_u, VectorXd ub_u)
     : plant_(plant), 
+      plant_context_(plant_context),
       lcs_factory_(lcs_factory),
+      contact_pairs_(contact_pairs),
       ic3_options_(ic3_options),
       c3_controller_options_(c3_controller_options),
       lcs_factory_options_(c3_controller_options.lcs_factory_options),
@@ -82,9 +91,13 @@ C3TrajectoryGenerator::C3TrajectoryGenerator(
   int nominal_position_size;
   if (example_idx_ == 0) {
     nominal_position_size = 3;
-  } else if (example_idx_ == 1) {
+  } else if (example_idx_ == 1 || example_idx_ == 2) {
     nominal_position_size = 9;
   }
+
+  x_lcs_port_ =
+      this->DeclareVectorInputPort("x_lcs", TimestampedVector<double>(n_x_))
+          .get_index();
 
   tracking_target_port_ =
       this->DeclareVectorInputPort("tracking target", BasicVector<double>(n_u_))
@@ -122,9 +135,13 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
   const BasicVector<double>* nominal_position =
     (BasicVector<double>*)this->EvalVectorInput(context, nominal_position_port_);
 
+  const TimestampedVector<double>* x_lcs_vector =
+    (TimestampedVector<double>*)this->EvalVectorInput(context, x_lcs_port_);
 
   MatrixXd x_hat = c3_solution->x_sol_.cast<double>();
   MatrixXd u_hat = c3_solution->u_sol_.cast<double>();
+
+  if (x_hat.isZero()) return;
 
   if (x_hat.array().isNaN().any()) {
     std::cout << "x_hat HAS NAN " << std::endl;
@@ -157,8 +174,7 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
   }
 
 
-  auto plant_context = plant_.CreateDefaultContext();		
-  VectorXd tau_g = plant_.CalcGravityGeneralizedForces(*plant_context);
+  VectorXd tau_g = plant_.CalcGravityGeneralizedForces(*plant_context_);
   if (example_idx_ == 0) {
     double gravity = tau_g(2); 
 
@@ -167,7 +183,7 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
       u_hat.col(i)(2) += gravity;
     }
 
-  } else if (example_idx_ == 1) {
+  } else if (example_idx_ == 1 || example_idx_ == 2) {
 
     for (int i = 0; i < u_hat.cols(); i++) {
       u_hat.col(i)(2) += (tau_g(2));
@@ -176,6 +192,50 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
     }
 
   }
+
+  // HARDCODED INDICES
+  // Zero out forces (excluding gravity) if object and ee not in contact
+  // Otherwise osc force tracking will compensate for a non-existent contact force
+  // if (example_idx_ == 0) {
+  //   for (auto pair : contact_pairs_) {
+  //     plant_.SetPositionsAndVelocities(plant_context_, x_lcs_vector->get_data());
+
+  //     const auto& query_port = plant_.get_geometry_query_input_port();
+  //       const auto& query_object =
+  //         query_port.template Eval<drake::geometry::QueryObject<double>>(*plant_context_);
+
+  //     drake::geometry::SignedDistancePair<double> result =
+  //         query_object.ComputeSignedDistancePairClosestPoints(pair.first(), pair.second());
+  //     double phi = result.distance;
+
+  //     if (phi > 1e-6) {
+  //       for (int i = 0; i < u_hat.cols(); i++) {
+  //         u_hat.col(i) = VectorXd::Zero(n_u_);
+  //         u_hat.col(i)(2) = -tau_g(2); // gravity comp
+  //       }
+  //       break;
+  //     }
+  //   }
+  // } else if (example_idx_ == 1 || example_idx_ == 2) {
+  //   for (int p = 0; p < 3; p++) {
+  //     plant_.SetPositionsAndVelocities(plant_context_, x_lcs_vector->get_data());
+
+  //     const auto& query_port = plant_.get_geometry_query_input_port();
+  //       const auto& query_object =
+  //         query_port.template Eval<drake::geometry::QueryObject<double>>(*plant_context_);
+
+  //     drake::geometry::SignedDistancePair<double> result =
+  //         query_object.ComputeSignedDistancePairClosestPoints(contact_pairs_[p].first(), contact_pairs_[p].second());
+  //     double phi = result.distance;
+
+  //     if (phi > 1e-6) {
+  //       for (int i = 0; i < u_hat.cols(); i++) {
+  //         u_hat.col(i).segment(3*p, 3) = VectorXd::Zero(3);
+  //         u_hat.col(i)(3*p+2) = -tau_g(3*p+2); // gravity comp
+  //       }
+  //     }
+  //   }
+  // }
 
 	// Make non-degenerate trajectory for N = 1
   MatrixXd positions;
@@ -238,7 +298,7 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
     //   positions.col(k)(2) = std::min(std::max(positions.col(k)(2), nom_pos(2) - 0.15), nom_pos(2) + 0.15);
     // }
 
-  } else if (example_idx_ == 1) {
+  } else if (example_idx_ == 1 || example_idx_ == 2) {
     int ee_pos_idx = 0;
     int force_idx = 0;
 
@@ -420,22 +480,26 @@ std::tuple<MatrixXd, MatrixXd> C3TrajectoryGenerator::SimulateLCS(VectorXd x0, M
     
     // TODO: make this if statement less hardcoded
     // Threshold positions and inputs, assume A_x, A_u are diagonal 0/1 matrices
-    if (example_idx_ == 1 && ic3_options_.add_constraints_follow_plan) {
+    if ((example_idx_ == 1 || example_idx_ == 2) && ic3_options_.add_constraints_follow_plan) {
 
       const BasicVector<double>* tracking_target =
         (BasicVector<double>*)this->EvalVectorInput(context, tracking_target_port_);
-                                        // Hardcoded indices
+      
+      // std::cout << tracking_target->get_value().transpose() << std::endl;
+
+      // Hardcoded indices
       for (int f = 0; f < 3; f++) {
         A_x_(3*f, 3*f) = 1;
         A_x_(3*f+1, 3*f+1) = 1;
 
-        lb_x_(3*f) = tracking_target->get_value()(3*f) - 0.02;
-        lb_x_(3*f+1) = tracking_target->get_value()(3*f+1) - 0.02;
-        ub_x_(3*f) = tracking_target->get_value()(3*f) + 0.02;
-        ub_x_(3*f+1) = tracking_target->get_value()(3*f+1) + 0.02;
+        lb_x_(3*f) = tracking_target->get_value()(3*f) - 0.01;
+        lb_x_(3*f+1) = tracking_target->get_value()(3*f+1) - 0.01;
+        ub_x_(3*f) = tracking_target->get_value()(3*f) + 0.01;
+        ub_x_(3*f+1) = tracking_target->get_value()(3*f+1) + 0.01;
       }
     } 
 
+    // Threshold inputs
     for (int j = 0; j < A_u_.rows(); j++) {
       if (A_u_(j, j) == 1) {
           u(j) = std::min(std::max(u(j), lb_u_(j)), ub_u_(j));
@@ -443,6 +507,7 @@ std::tuple<MatrixXd, MatrixXd> C3TrajectoryGenerator::SimulateLCS(VectorXd x0, M
     }
     VectorXd x_next = lcs.Simulate(x_curr, u);
 
+    // Threshold states
     for (int j = 0; j < A_x_.rows(); j++) {
       if (A_x_(j, j) == 1) {
         x_next(j) = std::min(std::max(x_next(j), lb_x_(j)), ub_x_(j));

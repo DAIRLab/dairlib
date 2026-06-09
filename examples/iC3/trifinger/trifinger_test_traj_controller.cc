@@ -46,7 +46,7 @@ int DoMain(int argc, char* argv[]) {
   init_pose.segment(6, 3) = controller_params.neutral_position.at(2);
 
   int num_knots = 120;
-  double dt = 0.024;
+  double dt = 0.05;
 
   VectorXd point_1(9);
   VectorXd point_2(9);

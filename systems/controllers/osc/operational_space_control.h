@@ -226,6 +226,13 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void SetJointLimitWeight(const double w) { w_joint_limit_ = w; }
   void SetJointLimitBuffer(const double size) { joint_limit_buffer_ = size; }
 
+  void SetVelocityDamping(double tau) { v_damping_ = tau; }
+  void SetVelocityLimits(std::vector<Eigen::VectorXd> lb, std::vector<Eigen::VectorXd> ub) {
+    DRAKE_DEMAND(lb.size() == ub.size());
+    v_min_ = lb;
+    v_max_ = ub;
+  }
+
   void DisableGravityCompensation() { with_gravity_compensation_ = false; }
 
   bool HasGravityCompensation() { return with_gravity_compensation_; }
@@ -405,6 +412,12 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   Eigen::VectorXd q_min_;
   Eigen::VectorXd q_max_;
 
+  // robot joint velocity limits
+  // one for each position tracking data
+  double v_damping_ = 0.001;
+  std::vector<Eigen::VectorXd> v_min_;
+  std::vector<Eigen::VectorXd> v_max_;
+
   // robot joint limits gains
   Eigen::MatrixXd K_joint_pos_;
   Eigen::MatrixXd K_joint_vel_;
@@ -444,6 +457,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   drake::solvers::LinearEqualityConstraint* holonomic_constraint_;
   drake::solvers::LinearEqualityConstraint* contact_constraints_;
   std::vector<drake::solvers::LinearConstraint*> friction_constraints_;
+  std::vector<drake::solvers::LinearConstraint*> velocity_constraints_;
 
   std::vector<drake::solvers::QuadraticCost*> tracking_costs_;
   drake::solvers::QuadraticCost* accel_cost_ = nullptr;

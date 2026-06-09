@@ -242,9 +242,9 @@ int DoMain(int argc, char* argv[]) {
           "end_effector_force", controller_params.W_ee_lambda, plant, plant,
           controller_params.end_effector_names, pts_to_track);
 
-  VectorXd ddq_min(-50 * VectorXd::Ones(9));
-  VectorXd ddq_max(50 * VectorXd::Ones(9));
-  
+  VectorXd ddq_min(-100 * VectorXd::Ones(9));
+  VectorXd ddq_max(100 * VectorXd::Ones(9));
+
   osc->AddTrackingData(std::move(ee_position_tracking_data_0));
   osc->AddTrackingData(std::move(ee_position_tracking_data_120));
   osc->AddTrackingData(std::move(ee_position_tracking_data_240));
@@ -258,7 +258,8 @@ int DoMain(int argc, char* argv[]) {
   osc->SetJointLimitWeight(controller_params.w_joint_limit);
   osc->SetJointLimitBuffer(controller_params.joint_limit_buffer);
   osc->SetOsqpSolverOptions(solver_options);
-
+  osc->SetVelocityLimits(controller_params.velocity_lower_bound, controller_params.velocity_upper_bound);
+  osc->SetVelocityDamping(controller_params.velocity_damping / controller_params.controller_frequency);
   osc->Build();
 
   if (controller_params.cancel_gravity_compensation) {

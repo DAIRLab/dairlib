@@ -74,7 +74,7 @@ void iC3TimingSystem::OutputTimestep(
   double delay;
   if (example_idx_ == 0) {
     delay = franka_controller_params_.time_to_wait;
-  } else if (example_idx_ == 1) {
+  } else if (example_idx_ == 1 || example_idx_ == 2) {
     delay = trifinger_controller_params_.time_to_wait;
   }
 

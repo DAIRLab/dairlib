@@ -14,7 +14,7 @@ LcmPoseGetter::LcmPoseGetter(CubeFlipVisualizerParams& vis_params, std::string n
     // size hardcoded
     if (example_idx_ == 0) {
       n_x_ = 23;
-    } else if (example_idx_ == 1) {
+    } else if (example_idx_ == 1 || example_idx_ == 2) {
       n_x_ = 31;
     }
 
@@ -59,7 +59,7 @@ LcmPoseGetter::LcmPoseGetter(TrajectoryVideoParams& video_params, std::string na
     // size hardcoded
     if (example_idx_ == 0) {
       n_x_ = 23;
-    } else if (example_idx_ == 1) {
+    } else if (example_idx_ == 1 || example_idx_ == 2) {
       n_x_ = 31;
     }
 

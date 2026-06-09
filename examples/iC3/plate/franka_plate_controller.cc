@@ -345,8 +345,8 @@ int DoMain(int argc, char* argv[]) {
             0, A_x_c3, lb_x_c3, ub_x_c3, A_u_c3, lb_u_c3, ub_u_c3, plant_lcs_context, contact_pairs);
 
     auto c3_trajectory_generator =
-        builder.AddSystem<C3TrajectoryGenerator>(plant_for_lcs, lcs_factory, ic3_options,
-            c3_controller_options,controller_params.track_dynamically_feasible, 0,
+        builder.AddSystem<C3TrajectoryGenerator>(plant_for_lcs, &plant_lcs_context, lcs_factory, 
+            contact_pairs, ic3_options, c3_controller_options,controller_params.track_dynamically_feasible, 0,
             A_x, lb_x, ub_x, A_u, lb_u, ub_u); 
     c3_trajectory_generator->SetPublishEndEffectorOrientation(true);
     
@@ -388,7 +388,9 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(ic3_u_trajectory_sub->get_output_port(),
                     controller->get_input_port_ic3_u());
 
-	builder.Connect(nominal_position->get_output_port(),
+    builder.Connect(reduced_order_model_receiver->get_output_port(),
+                  c3_trajectory_generator->get_input_port_x_lcs());
+		builder.Connect(nominal_position->get_output_port(),
                     c3_trajectory_generator->get_input_port_nominal_position());
     builder.Connect(controller->get_output_port_c3_solution(),
                     c3_trajectory_generator->get_input_port_c3_solution());

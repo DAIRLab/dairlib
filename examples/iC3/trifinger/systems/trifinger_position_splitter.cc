@@ -71,7 +71,6 @@ void TrifingerPositionSplitter::OutputTrajectory(
     *casted_traj = PiecewisePolynomial<double>::FirstOrderHold(
         trajectory_block.time_vector, data);
 
-    std::cout << "casted traj value " << casted_traj->value(0).transpose() << std::endl;
   } else {
     *casted_traj = PiecewisePolynomial<double>(Vector3d::Zero());
   }

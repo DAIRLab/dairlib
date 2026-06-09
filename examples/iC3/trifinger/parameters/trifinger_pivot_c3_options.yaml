@@ -11,7 +11,7 @@ lcs_factory_options:
   contact_model: "anitescu"
   num_contacts: 7
   spring_stiffness: 0
-  N: 5
+  N: 6
   dt: 0.01
   contact_pair_configs:
     - body_A: "fingertip_1"
@@ -33,7 +33,7 @@ lcs_factory_options:
       mu: 0.6
       num_friction_directions: 2
     - body_A: "cube"
-      body_A_collision_geom_indices: [1, 2, 3, 4]
+      body_A_collision_geom_indices: [1, 2, 3, 4, 5, 6, 7, 8]
       body_B: "ground"
       body_B_collision_geom_indices: [0]
       mu: 0.6
@@ -49,7 +49,7 @@ c3_options:
   num_threads: 10
   delta_option: 1
 
-  admm_iter: 5
+  admm_iter: 7
 
   M: 1000
   gamma: 1.0
@@ -57,13 +57,13 @@ c3_options:
 
   w_Q: 5
   w_R: 500 #Penalty on all decision variables, assuming scalar
-  w_G: 21  #Penalty on all decision variables, assuming scalar
+  w_G: 20  #Penalty on all decision variables, assuming scalar
   w_U: 1 #State Tracking Error, assuming diagonal
 
 
-  q_vector: [110000, 110000, 110000,    # finger 1
-             110000, 110000, 110000,    # finger 2
-             110000, 110000, 110000,    # finger 3
+  q_vector: [200000, 200000, 200000,    # finger 1
+             200000, 200000, 200000,    # finger 2
+             200000, 200000, 100000,    # finger 3
              1, 1, 1, 1,
              300000, 300000, 80000,
              1, 1, 1,          # finger 1 velo
@@ -81,29 +81,34 @@ c3_options:
         50, 50, 50, 50, 50, 50, 50,                      	# cube pos
         10, 10, 10, 10, 10, 10, 10, 10, 10,  						  # hand velo
         1, 1, 1, 1, 1, 1]                                 # cube velo
+
+
+  g_lambda: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  
+  g_eta_slack: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] 
+  g_eta_n: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] 
+  g_eta_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] 
+  g_eta: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] 
   g_u: [45, 45, 45, 45, 45, 45, 45, 45, 45] 
-  g_lambda: [32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32]
-  g_eta: [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8] 
+
 
 
   u_x: [50, 50, 50, 50, 50, 50, 50, 50, 50,   # hand pos
         50, 50, 50, 50, 50, 50, 50,                       # cube pos
         10, 10, 10, 10, 10, 10, 10, 10, 10,   # hand velo
         1, 1, 1, 1, 1, 1]                           # cube velo
+
+  u_lambda: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] 
   u_u: [45, 45, 45, 45, 45, 45, 45, 45, 45]
-  u_lambda: [84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84, 84] 
-  u_eta: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]
+
+  u_eta_slack: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] 
+  u_eta_n: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] 
+  u_eta_t: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] 
+  u_eta: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 
   g_gamma: []
   g_lambda_n: []
   g_lambda_t: []
-  g_eta_slack: [] 
-  g_eta_n: [] 
-  g_eta_t: [] 
-
   u_gamma: [] 
   u_lambda_n: [] 
   u_lambda_t: []
-  u_eta_slack: [] 
-  u_eta_n: [] 
-  u_eta_t: [] 

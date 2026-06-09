@@ -8,6 +8,15 @@ neutral_position: [[0, 0.07, 0.07],  # finger 0
                    [ 0.07, -0.055, 0.07],  # finger 120
                    [-0.07, -0.055, 0.07]]  # finger 240
 
+# task space velocity constraints
+velocity_lower_bound: [[-0.15, -0.15, -0.05],  # finger 0
+                       [-0.15, -0.15, -0.05],  # finger 120
+                       [-0.15, -0.15, -0.05]]  # finger 240
+velocity_upper_bound: [[0.15, 0.15, 0.05],  # finger 0
+                       [0.15, 0.15, 0.05],  # finger 120
+                       [0.15, 0.15, 0.05]]  # finger 240
+velocity_damping: 1.0  
+                    
 x_scale: 0.1
 y_scale: 0.1
 z_scale: 0.1
@@ -41,7 +50,7 @@ W_lambda_h_reg: [ 0.0001, 0.0001, 0.0001,
 EndEffectorW:
   [200, 0, 0,
    0, 200, 0,
-   0, 0, 20]
+   0, 0, 200]
 EndEffectorKp:
   [ 200, 0, 0,
     0, 200, 0,  

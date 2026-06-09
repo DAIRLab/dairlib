@@ -230,6 +230,8 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
   const BasicVector<double>& timestep_vector =
       *this->template EvalVectorInput<BasicVector>(context, timestep_port_);
   int ic3_timestep = static_cast<int>(timestep_vector.get_value()(0));
+  
+  std::cout << "context time " << context.get_time() << std::endl;
 
   // If in teleop or waiting, don't solve
   if (ic3_timestep < 0) return drake::systems::EventStatus::Succeeded();
@@ -384,7 +386,9 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
             ee_x_des_curr.segment(3*f, 3) = X_WB_curr * p_body_point;
 
             // HARDCODED OFFSET 
-            ee_x_des_curr(3*f+2) = 0.07;
+            if (example_idx_ == 1){
+              ee_x_des_curr(3*f+2) = 0.07;
+            }
           }
 
           ee_x_des.push_back(ee_x_des_curr);

@@ -28,7 +28,7 @@ TimedGate::TimedGate(iC3Options ic3_options, int example_idx) :
   int nominal_position_size;
   if (example_idx_ == 0) {
     nominal_position_size = 3;
-  } else if (example_idx_ == 1) {
+  } else if (example_idx_ == 1 || example_idx_ == 2) {
     nominal_position_size = 9;
   }          
   
@@ -117,12 +117,13 @@ void TimedGate::OutputActorTrajectory(
 
       std::cout << "timed gate u " << c3_force_data.col(0).transpose() << "; " << c3_torque_data.col(0).transpose() << std::endl;
       std::cout << "timed gate u " << c3_force_data.col(1).transpose() << "; " << c3_torque_data.col(1).transpose() << std::endl;
-    } else if (example_idx_ == 1) {
-      std::cout << "timed gate x " << c3_position_data.col(0).transpose() << std::endl;
-      std::cout << "timed gate x " << c3_position_data.col(1).transpose() << std::endl;
-
-      std::cout << "timed gate u " << c3_force_data.col(0).transpose() << std::endl;
-      std::cout << "timed gate u " << c3_force_data.col(1).transpose() << std::endl;
+    } else if (example_idx_ == 1 || example_idx_ == 2) {
+      for (int i = 0; i < c3_position_data.cols(); i++) {
+        std::cout << "timed gate x " << c3_position_data.col(i).transpose() << std::endl;
+      }
+      for (int i = 0; i < c3_force_data.cols(); i++) {
+        std::cout << "timed gate u " << c3_force_data.col(i).transpose() << std::endl;
+      }
     }
 
 
@@ -186,7 +187,7 @@ void TimedGate::OutputActorTrajectory(
       output_traj->saved_traj = lcm_trajectory.GenerateLcmObject();
       output_traj->utime = context.get_time() * 1e6;
 
-    } else if (example_idx_ == 1) {
+    } else if (example_idx_ == 1 || example_idx_ == 2) {
       VectorXd nominal_position_offset = nominal_position->get_value();
 
       if (timestep > N_) {

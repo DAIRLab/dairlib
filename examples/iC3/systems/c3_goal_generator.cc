@@ -84,7 +84,7 @@ C3GoalGenerator::C3GoalGenerator(
   int nominal_position_size;
   if (example_idx_ == 0) {
     nominal_position_size = 3;
-  } else if (example_idx_ == 1) {
+  } else if (example_idx_ == 1 || example_idx_ == 2) {
     nominal_position_size = 9;
   }
   
@@ -200,7 +200,7 @@ void C3GoalGenerator::OutputLCS(
   if (example_idx_ == 0) {
     DRAKE_DEMAND(n_u_ == 5);
     u_nominal(2) = 8.33; // Hard coded plate + object weight
-  } else if (example_idx_ == 1) {
+  } else if (example_idx_ == 1 || example_idx_ == 2) {
     DRAKE_DEMAND(n_u_ == 9);
     u_nominal(2) = 0.02 * 9.8;
     u_nominal(5) = 0.02 * 9.8;
@@ -223,7 +223,7 @@ void C3GoalGenerator::OutputLCS(
       // Linearize about true end effector position
       if (example_idx_ == 0) {
         x_hat.col(k).segment(0, 5) = x_lcs.segment(0, 5);
-      } else if (example_idx_ == 1) {
+      } else if (example_idx_ == 1 || example_idx_ == 2) {
         x_hat.col(k).segment(0, 9) = x_lcs.segment(0, 9);
       }
     }

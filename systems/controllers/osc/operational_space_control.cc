@@ -490,6 +490,17 @@ void OperationalSpaceControl::Build() {
                                ddq_max_, dv_);
     binding.evaluator()->set_description("acceleration_constraints");
   }
+
+  // Add velocity constraints (TODO: is it safe to assume that each tracking data is size 3?)
+  for (auto& tracking_data : *tracking_data_vec_) {
+    if (v_min_.size() == tracking_data_vec_->size() && 
+          v_max_.size() == tracking_data_vec_->size()) {
+      velocity_constraints_.push_back( 
+          prog_->AddLinearConstraint(MatrixXd::Zero(3, n_v_), VectorXd::Zero(3), VectorXd::Zero(3), dv_)
+              .evaluator()
+              .get());
+    } 
+  }
   // No joint position constraint in this implementation
 
   // Add costs
@@ -865,6 +876,22 @@ VectorXd OperationalSpaceControl::SolveQp(
           2 * J_t.transpose() * W * (JdotV_t - ddy_t),
           constant_term.transpose() * W * constant_term, true);
 
+
+      // Update velocity constraints
+      if (v_min_.size() == tracking_data_vec_->size() && 
+          v_max_.size() == tracking_data_vec_->size()) {
+        VectorXd qdot = J_t * x_wo_spr.tail(plant_wo_spr_.num_velocities())
+                                .tail(n_revolute_joints_);
+        std::cout << "qdot " << qdot.transpose() << std::endl;
+
+        VectorXd lower_bound = (v_min_[i] - qdot) / v_damping_- JdotV_t;
+        VectorXd upper_bound = (v_max_[i] - qdot) / v_damping_- JdotV_t;
+
+        std::cout << "lb " << lower_bound.transpose() << std::endl;
+        std::cout << "ub " << upper_bound.transpose() << std::endl;
+
+        velocity_constraints_[i]->UpdateCoefficients(J_t, lower_bound, upper_bound);
+      }
     } else {
       tracking_costs_.at(i)->UpdateCoefficients(MatrixXd::Zero(n_v_, n_v_),
                                                 VectorXd::Zero(n_v_));
@@ -925,6 +952,7 @@ VectorXd OperationalSpaceControl::SolveQp(
     joint_limit_cost_->UpdateCoefficients(w_joint_limit, 0);
 
   }
+
 
   // (Testing) 6. blend contact forces during double support phase
   if (ds_duration_ > 0) {

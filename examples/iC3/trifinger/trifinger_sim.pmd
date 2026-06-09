@@ -1,6 +1,10 @@
 group "controllers" {
-    cmd "trifinger_controller" {
-        exec = "bazel-bin/examples/iC3/trifinger/trifinger_controller";
+    cmd "trifinger_180_controller" {
+        exec = "bazel-bin/examples/iC3/trifinger/trifinger_controller --example=180";
+        host = "localhost";
+    }
+    cmd "trifinger_pivot_controller" {
+        exec = "bazel-bin/examples/iC3/trifinger/trifinger_controller --example=pivot";
         host = "localhost";
     }
     cmd "trifinger_lqr_controller" {

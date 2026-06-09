@@ -67,7 +67,7 @@ LqrTrajectoryGenerator::LqrTrajectoryGenerator(
   int nominal_position_size;
   if (example_idx_ == 0) {
     nominal_position_size = 3;
-  } else if (example_idx_ == 1) {
+  } else if (example_idx_ == 1 || example_idx_ == 2) {
     nominal_position_size = 9;
   }
 
@@ -137,7 +137,7 @@ void LqrTrajectoryGenerator::OutputActorTrajectory(
       q_vec << q.w(), q.x(), q.y(), q.z();
       orientations.col(i) = q_vec.normalized();
     }
-  } else if (example_idx_ == 1) {
+  } else if (example_idx_ == 1 || example_idx_ == 2) {
     forces = u_hat;
     positions = x_hat.topRows(9);
   } 
@@ -223,7 +223,7 @@ std::tuple<MatrixXd, MatrixXd> LqrTrajectoryGenerator::SimulateLCS(VectorXd x0, 
     LCS lcs = lcs_factory_.GenerateLCS();
     
     // TODO: make this if statement less hardcoded
-    if (example_idx_ == 1 && ic3_options_.add_constraints_follow_plan) {
+    if ((example_idx_ == 1 || example_idx_ == 2) && ic3_options_.add_constraints_follow_plan) {
 
       const BasicVector<double>* tracking_target =
         (BasicVector<double>*)this->EvalVectorInput(context, tracking_target_port_);

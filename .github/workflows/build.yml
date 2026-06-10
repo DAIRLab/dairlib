@@ -1,0 +1,157 @@
+name: Build and Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build_jammy:
+    name: Build and Test (Jammy)
+    runs-on: ubuntu-latest
+    concurrency:
+      group: jammy-${{ github.ref }}
+      cancel-in-progress: true
+    container:
+      image: ghcr.io/dairlab/docker-dair/jammy-dair-base:v1.42.0-2
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore Bazel cache
+        id: cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cache/bazel
+          key: dairlib-bazel-jammy-${{ hashFiles('MODULE.bazel', '**/BUILD.bazel') }}
+          restore-keys: |
+            dairlib-bazel-jammy-
+
+      - name: Check clang format
+        run: |
+          apt-get update -qq && apt-get install -y clang-format
+          ./tools/scripts/check_format.sh
+
+      - name: Build
+        run: |
+          bazel build \
+            --local_resources=ram=14000 \
+            --local_resources=cpu=4 \
+            --jobs=4 \
+            //...
+
+      - name: Test
+        run: |
+          bazel test \
+            --local_resources=ram=14000 \
+            --local_resources=cpu=4 \
+            --jobs=4 \
+            --test_output=all \
+            //...
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jammy-test-results
+          path: bazel-testlogs/**/test.xml
+
+      - name: Save Bazel cache
+        if: always() && !cancelled() && steps.cache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.cache-restore.outputs.cache-primary-key }}
+          path: ~/.cache/bazel
+
+  build_noble:
+    name: Build and Test (Noble)
+    runs-on: ubuntu-latest
+    concurrency:
+      group: noble-${{ github.ref }}
+      cancel-in-progress: true
+    container:
+      image: ghcr.io/dairlab/docker-dair/noble-dair-base:v1.42.0-2
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore Bazel cache
+        id: cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cache/bazel
+          key: dairlib-bazel-noble-${{ hashFiles('MODULE.bazel', '**/BUILD.bazel') }}
+          restore-keys: |
+            dairlib-bazel-noble-
+
+      - name: Check clang format
+        run: |
+          apt-get update -qq && apt-get install -y clang-format
+          ./tools/scripts/check_format.sh
+
+      - name: Build
+        run: |
+          bazel build \
+            --local_resources=ram=14000 \
+            --local_resources=cpu=4 \
+            --jobs=4 \
+            //...
+
+      - name: Test
+        run: |
+          bazel test \
+            --local_resources=ram=14000 \
+            --local_resources=cpu=4 \
+            --jobs=4 \
+            --test_output=all \
+            //...
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: noble-test-results
+          path: bazel-testlogs/**/test.xml
+
+      - name: Save Bazel cache
+        if: always() && !cancelled() && steps.cache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.cache-restore.outputs.cache-primary-key }}
+          path: ~/.cache/bazel
+
+  drake_master_build:
+    name: Build against Drake master
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    container:
+      image: ghcr.io/dairlab/docker-dair/jammy-dair-base:v1.42.0-2
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clone Drake master
+        run: git clone https://github.com/RobotLocomotion/drake.git ../drake
+
+      - name: Build
+        run: |
+          bazel build \
+            --override_module=drake=$PWD/../drake \
+            --local_resources=ram=14000 \
+            --local_resources=cpu=4 \
+            --jobs=4 \
+            //...
+
+      - name: Test
+        run: |
+          bazel test \
+            --override_module=drake=$PWD/../drake \
+            --local_resources=ram=14000 \
+            --local_resources=cpu=4 \
+            --jobs=4 \
+            //...

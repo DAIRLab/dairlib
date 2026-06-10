@@ -1,6 +1,16 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "inverse_dynamics_qp",
+    srcs = ["inverse_dynamics_qp.cc"],
+    hdrs = ["inverse_dynamics_qp.h"],
+    deps = [
+        "//multibody/kinematic",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "operational_space_control",
     srcs = [
         "operational_space_control.cc",
@@ -9,6 +19,7 @@ cc_library(
         "operational_space_control.h",
     ],
     deps = [
+        ":inverse_dynamics_qp",
         ":osc_gains",
         ":osc_tracking_datas",
         "//common:eigen_utils",

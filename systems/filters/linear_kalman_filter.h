@@ -29,18 +29,17 @@ class LinearKalmanFilter {
   /// filter is assumed wrong and should be reinitialized. Used in conjunction
   /// with rate
   LinearKalmanFilter(const KalmanFilterData& sys, double rate = .001,
-      int missed_dts_before_reset = 100);
+                     int missed_dts_before_reset = 100);
 
   void Initialize(double t, Eigen::VectorXd x, Eigen::MatrixXd P);
-  Eigen::VectorXd Update(const KalmanFilterData& sys,
-                         const Eigen::VectorXd& u,
+  Eigen::VectorXd Update(const KalmanFilterData& sys, const Eigen::VectorXd& u,
                          const Eigen::VectorXd& y, double t);
   [[nodiscard]] Eigen::VectorXd x() const { return x_; };
 
  protected:
   void Predict(const KalmanFilterData& sys, const Eigen::VectorXd& u, double t);
   void Correct(const KalmanFilterData& sys, const Eigen::VectorXd& y);
-  void Rollover(double t){t_ = t;};
+  void Rollover(double t) { t_ = t; };
 
   int nx_;
   int nu_;
@@ -50,6 +49,5 @@ class LinearKalmanFilter {
   Eigen::VectorXd x_;
   double rate_;
   int missed_dts_before_reset_;
-
 };
-}
+}  // namespace dairlib::systems

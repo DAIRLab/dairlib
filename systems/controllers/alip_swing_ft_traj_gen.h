@@ -52,7 +52,7 @@ class AlipSwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
       std::vector<double> left_right_support_durations,
       std::vector<std::pair<const Eigen::Vector3d,
                             const drake::multibody::Frame<double>&>>
-      left_right_foot,
+          left_right_foot,
       std::string floating_base_body_name, double double_support_duration,
       double mid_foot_height, double desired_final_foot_height,
       double desired_final_vertical_foot_velocity,
@@ -66,7 +66,7 @@ class AlipSwingFootTrajGenerator : public drake::systems::LeafSystem<double> {
     return this->get_input_port(fsm_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_fsm_switch_time()
-  const {
+      const {
     return this->get_input_port(liftoff_time_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_alip_state() const {

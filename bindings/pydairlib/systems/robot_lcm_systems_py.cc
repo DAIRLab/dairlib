@@ -31,8 +31,7 @@ PYBIND11_MODULE(robot_lcm_systems, m) {
       m, "RobotOutputSender")
       .def(py::init<const MultibodyPlant<double>&, bool, bool>())
       .def(py::init<const MultibodyPlant<double>&,
-                    drake::multibody::ModelInstanceIndex,
-                    bool, bool>())
+                    drake::multibody::ModelInstanceIndex, bool, bool>())
       .def("get_input_port_state", &RobotOutputSender::get_input_port_state,
            py_rvp::reference_internal)
       .def("get_input_port_effort", &RobotOutputSender::get_input_port_effort,
@@ -43,7 +42,8 @@ PYBIND11_MODULE(robot_lcm_systems, m) {
       m, "ObjectStateSender")
       .def(py::init<const MultibodyPlant<double>&,
                     drake::multibody::ModelInstanceIndex>())
-      .def("get_input_port_state", &systems::ObjectStateSender::get_input_port_state,
+      .def("get_input_port_state",
+           &systems::ObjectStateSender::get_input_port_state,
            py_rvp::reference_internal);
   py::class_<systems::ObjectStateReceiver, drake::systems::LeafSystem<double>>(
       m, "ObjectStateReceiver")
@@ -65,7 +65,6 @@ PYBIND11_MODULE(robot_lcm_systems, m) {
         py::arg("actuator_channel"), py::arg("state_channel"),
         py::arg("publish_rate"), py::arg("model_instance"),
         py::arg("publish_efforts"), py::arg("actuator_delay"));
-
 }
 
 }  // namespace pydairlib

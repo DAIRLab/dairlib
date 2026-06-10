@@ -1107,9 +1107,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;
 
 #pragma omp critical
-    {
-      c3_objects.at(i) = test_c3_object;
-    }
+    { c3_objects.at(i) = test_c3_object; }
     // Add travel cost (just looking at xy displacement, not also z).
     double xy_travel_distance =
         (test_state.head(2) - x_lcs_curr.head(2)).norm();

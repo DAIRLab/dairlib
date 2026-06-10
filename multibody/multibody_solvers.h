@@ -3,6 +3,7 @@
 #include "multibody/kinematic/kinematic_constraints.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "solvers/nonlinear_constraint.h"
+
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/solvers/mathematical_program.h"
 
@@ -13,7 +14,7 @@ namespace multibody {
 /// calculations. Currently supports easy addition of q, u, force variables
 /// and the addition of kinematic and fixed point constraints. Other features,
 /// including those that use velocity, could be added at a future point.
-/// For ease of use, this class also maintains a Context object that can be 
+/// For ease of use, this class also maintains a Context object that can be
 /// shared with constraints to leverage constraint caching. However, methods
 /// allow the user to provide their own Context when instantiating a constraint.
 /// This is to support use cases where multiple state variables might be
@@ -31,8 +32,7 @@ namespace multibody {
 template <typename T>
 class MultibodyProgram : public drake::solvers::MathematicalProgram {
  public:
-  MultibodyProgram(
-      const drake::multibody::MultibodyPlant<T>& plant);
+  MultibodyProgram(const drake::multibody::MultibodyPlant<T>& plant);
 
   /// Adds and returns position decision variables.
   drake::solvers::VectorXDecisionVariable AddPositionVariables();
@@ -46,7 +46,7 @@ class MultibodyProgram : public drake::solvers::MathematicalProgram {
   /// Adds and returns constraint force decision variables associated with
   /// the given evaluators (full)
   drake::solvers::VectorXDecisionVariable AddConstraintForceVariables(
-            const KinematicEvaluatorSet<T>& evaluators);
+      const KinematicEvaluatorSet<T>& evaluators);
 
   void AddJointLimitConstraints(drake::solvers::VectorXDecisionVariable q);
 
@@ -139,7 +139,7 @@ class MultibodyProgram : public drake::solvers::MathematicalProgram {
       const drake::solvers::VectorXDecisionVariable& u,
       const drake::solvers::VectorXDecisionVariable& lambda);
 
-  drake::systems::Context<T>* get_context() {return context_.get();};
+  drake::systems::Context<T>* get_context() { return context_.get(); };
 
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;
@@ -152,14 +152,13 @@ class FixedPointConstraint : public solvers::NonlinearConstraint<T> {
   /// This constructor takes a shared_ptr<Context> as an argument to share
   /// cached kinematic/dynamic computation within the context
   /// If a context pointer is not provided, will create a new context.
-  FixedPointConstraint(
-      const drake::multibody::MultibodyPlant<T>& plant,
-      const KinematicEvaluatorSet<T>& evaluators,
-      drake::systems::Context<T>* context = nullptr,
-      const std::string& description = "fixed point");
+  FixedPointConstraint(const drake::multibody::MultibodyPlant<T>& plant,
+                       const KinematicEvaluatorSet<T>& evaluators,
+                       drake::systems::Context<T>* context = nullptr,
+                       const std::string& description = "fixed point");
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
-                                  drake::VectorX<T>* y) const;
+                          drake::VectorX<T>* y) const;
 
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;

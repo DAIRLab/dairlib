@@ -3,9 +3,9 @@
 namespace dairlib {
 namespace systems {
 
-using Eigen::VectorXd;
-using Eigen::MatrixXd;
 using drake::systems::Context;
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
 
 AffineController::AffineController(int num_positions, int num_velocities,
                                    int num_efforts)

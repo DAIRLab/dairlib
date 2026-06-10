@@ -32,7 +32,7 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
     PiecewisePolynomial<double>& crouch_traj,
     const std::vector<std::pair<const Eigen::Vector3d,
                                 const drake::multibody::Frame<double>&>>&
-    feet_contact_points,
+        feet_contact_points,
     double time_offset, JUMPING_FSM_STATE init_fsm_state)
     : plant_(plant),
       context_(context),
@@ -43,10 +43,10 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
   this->set_name("com_traj");
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
-          "x, u, t", OutputVector<double>(plant_.num_positions(),
-                                          plant_.num_velocities(),
-                                          plant_.num_actuators()))
-      .get_index();
+                        "x, u, t", OutputVector<double>(plant_.num_positions(),
+                                                        plant_.num_velocities(),
+                                                        plant_.num_actuators()))
+                    .get_index();
   fsm_port_ =
       this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
 
@@ -187,7 +187,7 @@ PelvisTransTrajGenerator::GenerateLandingTraj(
     contact_pos_sum += position;
   }
 
-  contact_pos_sum *= (1.0/feet_contact_points_.size());
+  contact_pos_sum *= (1.0 / feet_contact_points_.size());
 
   const auto& x_offset =
       context.get_discrete_state().get_vector(pelvis_x_offset_idx_);

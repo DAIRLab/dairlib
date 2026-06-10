@@ -72,7 +72,6 @@ struct OSCStandingGains : OSCGains {
     K_d_hip_yaw = HipYawKd * MatrixXd::Identity(1, 1);
     W_hip_yaw = HipYawW * MatrixXd::Identity(1, 1);
 
-
     w_accel *= weight_scaling;
     w_input *= weight_scaling;
     w_input_reg *= weight_scaling;

@@ -13,8 +13,8 @@
 #include <lcm/lcm-cpp.hpp>
 
 #include "c3/core/c3_options.h"
-#include "c3/multibody/lcs_factory_options.h"
 #include "c3/lcmt_output.hpp"
+#include "c3/multibody/lcs_factory_options.h"
 #include "dairlib/lcmt_c3_state.hpp"
 #include "dairlib/lcmt_object_state.hpp"
 #include "dairlib/lcmt_radio_out.hpp"
@@ -319,8 +319,8 @@ int DoMain(int argc, char* argv[]) {
         if (message.decode(event->data, 0, event->datalen) > 0) {
           std::cout << "Received DYNAMICALLY_FEASIBLE_CURR_PLAN message in "
                     << "seconds utime: " << (message.utime) / 1e6
-                    << " and event " << "timestamp "
-                    << adjusted_utimestamp / 1e6 << std::endl;
+                    << " and event "
+                    << "timestamp " << adjusted_utimestamp / 1e6 << std::endl;
           for (int i = 0; i < 4; i++) {
             for (int j = 0; j < N + 1; j++) {
               dyn_feas_curr_plan_obj_orientation(i, j) =
@@ -410,14 +410,12 @@ int DoMain(int argc, char* argv[]) {
                     << adjusted_utimestamp / 1e6 << std::endl;
           for (int i = 0; i < 3; i++) {
             for (int j = 0; j < N; j++) {
-              u_sol(i, j) =
-                  static_cast<double>(message.solution.u_sol[i][j]);
+              u_sol(i, j) = static_cast<double>(message.solution.u_sol[i][j]);
             }
           }
           for (int i = 0; i < 19; i++) {
             for (int j = 0; j < N; j++) {
-              x_sol(i, j) =
-                  static_cast<double>(message.solution.x_sol[i][j]);
+              x_sol(i, j) = static_cast<double>(message.solution.x_sol[i][j]);
             }
           }
           for (int i = 0; i < 16; i++) {
@@ -448,8 +446,8 @@ int DoMain(int argc, char* argv[]) {
         if (message.decode(event->data, 0, event->datalen) > 0) {
           std::cout << "Received IS_C3_MODE message in "
                     << "seconds utime: " << (message.utime) / 1e6
-                    << " and event " << "timestamp "
-                    << adjusted_utimestamp / 1e6 << std::endl;
+                    << " and event "
+                    << "timestamp " << adjusted_utimestamp / 1e6 << std::endl;
           is_c3_mode = message.saved_traj.trajectories[0].datapoints[0][0];
           is_c3_mode_set = true;
         } else {
@@ -462,8 +460,8 @@ int DoMain(int argc, char* argv[]) {
         if (message.decode(event->data, 0, event->datalen) > 0) {
           std::cout << "Received SAMPLE_LOCATIONS message in "
                     << "seconds utime: " << (message.utime) / 1e6
-                    << " and event " << "timestamp "
-                    << adjusted_utimestamp / 1e6 << std::endl;
+                    << " and event "
+                    << "timestamp " << adjusted_utimestamp / 1e6 << std::endl;
           for (size_t i = 0;
                i < message.saved_traj.trajectories[0].datapoints[0].size();
                i++) {
@@ -484,8 +482,8 @@ int DoMain(int argc, char* argv[]) {
         if (message.decode(event->data, 0, event->datalen) > 0) {
           std::cout << "Received SAMPLE_COSTS message in "
                     << "seconds utime: " << (message.utime) / 1e6
-                    << " and event " << "timestamp "
-                    << adjusted_utimestamp / 1e6 << std::endl;
+                    << " and event "
+                    << "timestamp " << adjusted_utimestamp / 1e6 << std::endl;
           for (size_t i = 0;
                i < message.saved_traj.trajectories[0].datapoints[0].size();
                i++) {

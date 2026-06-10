@@ -5,10 +5,10 @@
 namespace dairlib {
 namespace systems {
 
-/// TimestampedVector wraps a drake::systems::BasicVector along with a timestamp field
-/// The primary purpose of this is to pass-through a message (e.g. LCM)
-/// timestamp Uses a length N+1 drake::systems::BasicVector to store a vector of length N and a
-/// timestamp The timestamp is stored as the final element (Nth)
+/// TimestampedVector wraps a drake::systems::BasicVector along with a timestamp
+/// field The primary purpose of this is to pass-through a message (e.g. LCM)
+/// timestamp Uses a length N+1 drake::systems::BasicVector to store a vector of
+/// length N and a timestamp The timestamp is stored as the final element (Nth)
 template <typename T>
 class TimestampedVector : public drake::systems::BasicVector<T> {
  public:

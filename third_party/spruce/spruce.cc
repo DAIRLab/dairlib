@@ -9,11 +9,11 @@
 ---------------------------------------------------------*/
 #include "spruce.hh"
 
-#include <utility>
 #include <algorithm>
+#include <cstdio>
 #include <fstream>
 #include <sstream>
-#include <cstdio>
+#include <utility>
 extern "C" {
 #include <sys/stat.h>
 }

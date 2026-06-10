@@ -3,6 +3,7 @@
 #include "common/find_resource.h"
 #include "multibody/com_pose_system.h"
 #include "systems/primitives/subvector_pass_through.h"
+
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/primitives/trajectory_source.h"
 
@@ -79,7 +80,6 @@ void ConnectTrajectoryVisualizerWithCoM(
         ball_to_pose->get_output_port(),
         scene_graph->get_source_pose_port(ball_plant.get_source_id().value()));
   }
-
 }
 
 }  // namespace multibody

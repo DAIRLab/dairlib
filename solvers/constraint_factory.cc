@@ -3,15 +3,15 @@
 namespace dairlib {
 namespace solvers {
 
-using drake::solvers::LorentzConeConstraint;
 using drake::solvers::LinearConstraint;
+using drake::solvers::LorentzConeConstraint;
 using Eigen::Matrix3d;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-std::shared_ptr<LorentzConeConstraint> CreateConicFrictionConstraint(double mu,
-    int normal_index) {
+std::shared_ptr<LorentzConeConstraint> CreateConicFrictionConstraint(
+    double mu, int normal_index) {
   DRAKE_DEMAND(normal_index <= 2);
   DRAKE_DEMAND(normal_index >= 0);
   Matrix3d A = Matrix3d::Zero();
@@ -22,13 +22,13 @@ std::shared_ptr<LorentzConeConstraint> CreateConicFrictionConstraint(double mu,
   return std::make_shared<LorentzConeConstraint>(A, b);
 }
 
-std::shared_ptr<LinearConstraint> CreateLinearFrictionConstraint(double mu,
-    int num_faces, int normal_index, bool inscribed) {
+std::shared_ptr<LinearConstraint> CreateLinearFrictionConstraint(
+    double mu, int num_faces, int normal_index, bool inscribed) {
   DRAKE_DEMAND(normal_index <= 2);
   DRAKE_DEMAND(normal_index >= 0);
   DRAKE_DEMAND(num_faces >= 3);
 
-  double mu_lin = inscribed ? (mu * cos(M_PI/num_faces)) : mu;
+  double mu_lin = inscribed ? (mu * cos(M_PI / num_faces)) : mu;
 
   // Each face is fx cos(theta) + fy sin(theta) <= mu_lin * fz
   MatrixXd A(num_faces, 3);
@@ -39,8 +39,8 @@ std::shared_ptr<LinearConstraint> CreateLinearFrictionConstraint(double mu,
     A(i, (normal_index + 2) % 3) = -sin(theta);
   }
   VectorXd lb = VectorXd::Zero(num_faces);
-  VectorXd ub = VectorXd::Constant(num_faces, 
-      std::numeric_limits<double>::infinity());
+  VectorXd ub =
+      VectorXd::Constant(num_faces, std::numeric_limits<double>::infinity());
   return std::make_shared<LinearConstraint>(A, lb, ub);
 }
 

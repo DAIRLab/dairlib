@@ -1,9 +1,8 @@
 #pragma once
 
-#include "drake/common/yaml/yaml_read_archive.h"
-
 #include "common/file_utils.h"
 
+#include "drake/common/yaml/yaml_read_archive.h"
 
 /* Repositioning trajectory type options:
   0. kSpline:           move from current to target with spline that distorts
@@ -46,7 +45,7 @@ struct SamplingC3RepositionParams {
   /// Piecewise-linear-specific parameters.
   double pwl_waypoint_height;
 
-  double max_tilt_angle; // angle of ee tilt in degrees
+  double max_tilt_angle;  // angle of ee tilt in degrees
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -60,6 +59,6 @@ struct SamplingC3RepositionParams {
     a->Visit(DRAKE_NVP(circle_radius));
     a->Visit(DRAKE_NVP(circle_height));
     a->Visit(DRAKE_NVP(pwl_waypoint_height));
-    a->Visit(DRAKE_NVP(max_tilt_angle));    
+    a->Visit(DRAKE_NVP(max_tilt_angle));
   }
 };

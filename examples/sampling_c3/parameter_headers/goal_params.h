@@ -3,8 +3,8 @@
 #include <numeric>
 
 #include "common/file_utils.h"
-#include "drake/common/yaml/yaml_read_archive.h"
 
+#include "drake/common/yaml/yaml_read_archive.h"
 
 /* Goal mode options:
   0. kRandom:               randomly generate a new goal.
@@ -12,11 +12,7 @@
                             sequence of orientations.
   2. kFixedGoal:            keep the same goal.
 */
-enum GoalMode {
-  kRandom,
-  kOrientationSequence,
-  kFixedGoal
-};
+enum GoalMode { kRandom, kOrientationSequence, kFixedGoal };
 
 struct SamplingC3GoalParams {
   GoalMode goal_mode;
@@ -27,9 +23,9 @@ struct SamplingC3GoalParams {
   double orientation_success_threshold;
   bool only_use_xy_position;
 
-  double resting_object_height;             // in world frame
+  double resting_object_height;  // in world frame
   std::vector<double> resting_object_heights;
-  double ee_target_z_offset_above_object;   // defines EE goal wrt object height
+  double ee_target_z_offset_above_object;  // defines EE goal wrt object height
 
   /// Lookahead parameters to define a sub-goal for C3.
   double lookahead_step_size;
@@ -90,26 +86,25 @@ struct SamplingC3GoalParams {
     SetDefaultObjectIndexToSamplingAreaIndexMap();
   }
 
-  private:
-    // Compute y limits for each sampling area of each object
-    // Note: all sampling areas have the same x limits
-    void ComputeSamplingAreaYLimits() {
-      int num_objects = fixed_target_positions.size();
-      double step = (random_goal_y_limits[1] - random_goal_y_limits[0]) / num_objects;
-      for (int i = 0; i < num_objects; ++i) {
-          sampling_area_y_limits.push_back(
-            std::make_pair(random_goal_y_limits[0] + i * step,
-            random_goal_y_limits[0] + (i + 1) * step));
-      }
+ private:
+  // Compute y limits for each sampling area of each object
+  // Note: all sampling areas have the same x limits
+  void ComputeSamplingAreaYLimits() {
+    int num_objects = fixed_target_positions.size();
+    double step =
+        (random_goal_y_limits[1] - random_goal_y_limits[0]) / num_objects;
+    for (int i = 0; i < num_objects; ++i) {
+      sampling_area_y_limits.push_back(
+          std::make_pair(random_goal_y_limits[0] + i * step,
+                         random_goal_y_limits[0] + (i + 1) * step));
     }
+  }
 
-    // By default, object index ith will be in sampling area ith
-    void SetDefaultObjectIndexToSamplingAreaIndexMap() {
-      int num_objects = fixed_target_positions.size();
-      default_object_index_to_sampling_area_index_map.resize(num_objects);
-      std::iota(
-        default_object_index_to_sampling_area_index_map.begin(),
-        default_object_index_to_sampling_area_index_map.end(), 0
-      );
+  // By default, object index ith will be in sampling area ith
+  void SetDefaultObjectIndexToSamplingAreaIndexMap() {
+    int num_objects = fixed_target_positions.size();
+    default_object_index_to_sampling_area_index_map.resize(num_objects);
+    std::iota(default_object_index_to_sampling_area_index_map.begin(),
+              default_object_index_to_sampling_area_index_map.end(), 0);
   }
 };

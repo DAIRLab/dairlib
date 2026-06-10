@@ -1,5 +1,4 @@
 load("@drake//doc:defs.bzl", "enumerate_filegroup")
-#load("//tools/skylark:drake_py.bzl", "drake_py_unittest")
 
 enumerate_filegroup(
     name = "inventory.txt",

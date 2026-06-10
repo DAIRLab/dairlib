@@ -9,7 +9,6 @@ using Eigen::MatrixXd;
 namespace dairlib {
 
 struct KinodynamicSettings {
-
   int N;
   int N_per_mode;
   std::vector<double> q_q;
@@ -17,7 +16,6 @@ struct KinodynamicSettings {
 
   MatrixXd Q_q;
   MatrixXd Q_v;
-
 
   template <typename Archive>
   void Serialize(Archive* a) {

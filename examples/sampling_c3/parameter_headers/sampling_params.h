@@ -1,8 +1,8 @@
 #pragma once
 
 #include "common/file_utils.h"
-#include "drake/common/yaml/yaml_read_archive.h"
 
+#include "drake/common/yaml/yaml_read_archive.h"
 
 /* Sample generation options:
   0. kRadiallySymmetric:  radially distributed samples on a planar circle.
@@ -53,16 +53,17 @@ struct SamplingParams {
   double unsuccessful_radius;
 
   /// Shared across multiple sampling strategies.
-  double sampling_radius;               // kRadiallySymmetric, kRandomOnCircle,
-                                        // kRandomOnSphere
-  double sampling_height;               // kRadiallySymmetric, kRandomOnCircle
-                                        // kRandomOnPerimeter
-  double sample_projection_clearance;   // kRandomOnPerimeter, kRandomOnShell, kMeshNormal
-  double min_angle_from_vertical;       // kRandomOnSphere, kRandomOnShell
-  double max_angle_from_vertical;       // kRandomOnSphere, kRandomOnShell
+  double sampling_radius;              // kRadiallySymmetric, kRandomOnCircle,
+                                       // kRandomOnSphere
+  double sampling_height;              // kRadiallySymmetric, kRandomOnCircle
+                                       // kRandomOnPerimeter
+  double sample_projection_clearance;  // kRandomOnPerimeter, kRandomOnShell,
+                                       // kMeshNormal
+  double min_angle_from_vertical;      // kRandomOnSphere, kRandomOnShell
+  double max_angle_from_vertical;      // kRandomOnSphere, kRandomOnShell
 
   /// kFixed parameters.
-  Eigen::MatrixXd fixed_sample_locations;   // n_samples rows, 3 columns
+  Eigen::MatrixXd fixed_sample_locations;  // n_samples rows, 3 columns
 
   /// kRandomOnPerimeter parameters.
   std::vector<double> grid_x_limits;
@@ -74,7 +75,7 @@ struct SamplingParams {
 
   // kMeshNormal parameters
   double buffer_distance;
-  int max_attempts; 
+  int max_attempts;
   double barycentric_bias;
 
   double z_height;
@@ -82,7 +83,6 @@ struct SamplingParams {
   bool gen_planar_samples;
   double c3_min_clearance;
   bool sample_on_wall;
-
 
   template <typename Archive>
   void Serialize(Archive* a) {

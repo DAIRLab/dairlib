@@ -1,9 +1,10 @@
 
 #include "cassie_sim_diagram.h"
 
+#include <iostream>
+
 #include <drake/systems/primitives/constant_vector_source.h>
 #include <drake/systems/primitives/zero_order_hold.h>
-#include <iostream>
 
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_fixed_point_solver.h"
@@ -105,11 +106,14 @@ CassieSimDiagram::CassieSimDiagram(
   builder.Connect(radio_parser->get_output_port(),
                   sensor_aggregator_->get_input_port_radio());
 
-  actuation_port_ = builder.ExportInput(input_receiver->get_input_port(), "lcmt_robot_input");
-  radio_port_ = builder.ExportInput(radio_parser->get_input_port(), "raw_radio");
-  state_port_ = builder.ExportOutput(state_sender->get_output_port(0), "lcmt_robot_output");
-  cassie_out_port_ = builder.ExportOutput(sensor_aggregator_->get_output_port(0),
-                       "lcmt_cassie_out");
+  actuation_port_ =
+      builder.ExportInput(input_receiver->get_input_port(), "lcmt_robot_input");
+  radio_port_ =
+      builder.ExportInput(radio_parser->get_input_port(), "raw_radio");
+  state_port_ = builder.ExportOutput(state_sender->get_output_port(0),
+                                     "lcmt_robot_output");
+  cassie_out_port_ = builder.ExportOutput(
+      sensor_aggregator_->get_output_port(0), "lcmt_cassie_out");
   if (visualize) {
     DrakeVisualizer<double>::AddToBuilder(&builder, *scene_graph_);
   }

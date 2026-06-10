@@ -4,12 +4,12 @@
 #include <string>
 #include <vector>
 
-#include "drake/systems/framework/leaf_system.h"
 #include "systems/framework/output_vector.h"
+
 #include "drake/multibody/parsing/parser.h"
+#include "drake/systems/framework/leaf_system.h"
 
-
-/// SimulatorDrift emulates drift in the position data by executing a 
+/// SimulatorDrift emulates drift in the position data by executing a
 /// random walk governed by the drift rate mean/covariance in m/s
 /// mean/covariance must be of the same size as the number of n_positions/
 /// n_positions x n_positions.

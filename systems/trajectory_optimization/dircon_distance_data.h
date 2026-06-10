@@ -2,9 +2,10 @@
 
 #include <memory>
 
-#include "drake/solvers/constraint.h"
-#include "drake/multibody/plant/multibody_plant.h"
 #include "systems/trajectory_optimization/dircon_kinematic_data.h"
+
+#include "drake/multibody/plant/multibody_plant.h"
+#include "drake/solvers/constraint.h"
 
 namespace dairlib {
 
@@ -15,21 +16,21 @@ template <typename T>
 class DirconDistanceData : public DirconKinematicData<T> {
  public:
   DirconDistanceData(const drake::multibody::MultibodyPlant<T>& plant,
-      const drake::multibody::Body<T>& body1, const Eigen::Vector3d pt1,
-      const drake::multibody::Body<T>& body2, const Eigen::Vector3d pt2,
-      const double distance);
+                     const drake::multibody::Body<T>& body1,
+                     const Eigen::Vector3d pt1,
+                     const drake::multibody::Body<T>& body2,
+                     const Eigen::Vector3d pt2, const double distance);
   ~DirconDistanceData();
 
   // The workhorse function, updates and caches everything needed by the
   // outside world
   void updateConstraint(const drake::systems::Context<T>& context);
 
-
  private:
-    const drake::multibody::Body<T>& body1_;
-    const drake::multibody::Body<T>& body2_;
-    const Eigen::Vector3d pt1_;
-    const Eigen::Vector3d pt2_;
-    const double distance_;
+  const drake::multibody::Body<T>& body1_;
+  const drake::multibody::Body<T>& body2_;
+  const Eigen::Vector3d pt1_;
+  const Eigen::Vector3d pt2_;
+  const double distance_;
 };
 }  // namespace dairlib

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <string>
 #include <map>
+#include <string>
 #include <vector>
 
 #include "drake/multibody/plant/multibody_plant.h"
@@ -31,9 +31,9 @@ class ComPoseSystem : public drake::systems::LeafSystem<double> {
 
  private:
   void OutputCom(const drake::systems::Context<double>& context,
-                    drake::systems::BasicVector<double>* output) const;
+                 drake::systems::BasicVector<double>* output) const;
   void OutputXyCom(const drake::systems::Context<double>& context,
-                    drake::systems::BasicVector<double>* output) const;
+                   drake::systems::BasicVector<double>* output) const;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
   int com_output_port_;

@@ -10,15 +10,14 @@
 
 #include "examples/Cassie/contact_scheduler/kinodynamic_settings.h"
 #include "lcm/lcm_trajectory.h"
-
 #include "multibody/multibody_utils.h"
 #include "solvers/constraint_factory.h"
 #include "solvers/fast_osqp_solver.h"
 #include "systems/framework/output_vector.h"
-#include "drake/common/trajectories/piecewise_polynomial.h"
 
+#include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/optimization/centroidal_momentum_constraint.h"
-//#include "drake/solvers/gurobi_solver.h"
+// #include "drake/solvers/gurobi_solver.h"
 #include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/osqp_solver.h"
 #include "drake/solvers/solve.h"
@@ -47,10 +46,11 @@ typedef struct LinearSrbdDynamics {
 
 class KinodynamicPlanner : public drake::systems::LeafSystem<double> {
  public:
-  KinodynamicPlanner(const drake::multibody::MultibodyPlant<double>& plant,
-                     drake::systems::Context<double>& context,
-                     const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-                     drake::systems::Context<drake::AutoDiffXd>& context_ad);
+  KinodynamicPlanner(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::systems::Context<double>& context,
+      const drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
+      drake::systems::Context<drake::AutoDiffXd>& context_ad);
 
   void SetMPCSettings(KinodynamicSettings& settings);
   void SetTerminalCost(const Eigen::MatrixXd& Qf);
@@ -125,11 +125,11 @@ class KinodynamicPlanner : public drake::systems::LeafSystem<double> {
       const Eigen::VectorXd& up_next_stance_target,
       const Eigen::VectorXd& on_deck_stance_target,
       const drake::trajectories::Trajectory<double>& srb_traj) const;
-//  void CopyDiscreteDynamicsConstraint(
-//      const SrbdMode& mode, bool current_stance,
-//      const Eigen::Vector3d& foot_pos,
-//      const drake::EigenPtr<Eigen::MatrixXd>& A,
-//      const drake::EigenPtr<Eigen::VectorXd>& b) const;
+  //  void CopyDiscreteDynamicsConstraint(
+  //      const SrbdMode& mode, bool current_stance,
+  //      const Eigen::Vector3d& foot_pos,
+  //      const drake::EigenPtr<Eigen::MatrixXd>& A,
+  //      const drake::EigenPtr<Eigen::VectorXd>& b) const;
   void CopyCollocationDynamicsConstraint(
       const LinearSrbdDynamics& dyn, bool current_stance,
       const Eigen::Vector3d& foot_pos,
@@ -145,14 +145,12 @@ class KinodynamicPlanner : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
-
   void AddCentroidalMomentumConstraint();
   void AddAngularMomentumDynamicsConstraint();
   void AddCoMDynamicsConstraint();
   void AddDynamicsConstraint();
   void AddIntegrationConstraints();
   void AddKinematicConstraints();
-
 
   // plant
   const drake::multibody::MultibodyPlant<double>& plant_;
@@ -173,8 +171,6 @@ class KinodynamicPlanner : public drake::systems::LeafSystem<double> {
 
   // mpc parameters
   int n_knot_points_ = 4;
-
-
 
   static constexpr int kLinearDim_ = 3;
   static constexpr int kAngularDim_ = 3;
@@ -223,10 +219,9 @@ class KinodynamicPlanner : public drake::systems::LeafSystem<double> {
   mutable std::vector<drake::solvers::Binding<drake::solvers::LinearConstraint>>
       kinematic_constraint_;
 
-
   // Constraints
-  std::vector<std::shared_ptr<drake::multibody::CentroidalMomentumConstraint>> centroidal_momentum_constraints_;
-
+  std::vector<std::shared_ptr<drake::multibody::CentroidalMomentumConstraint>>
+      centroidal_momentum_constraints_;
 
   // Decision Variables
   std::vector<drake::solvers::VectorXDecisionVariable> q_;

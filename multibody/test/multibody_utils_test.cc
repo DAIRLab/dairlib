@@ -1,11 +1,14 @@
-#include <gtest/gtest.h>
+#include "multibody/multibody_utils.h"
+
 #include <memory>
 #include <utility>
 
+#include <gtest/gtest.h>
+
+#include "common/find_resource.h"
+
 #include "drake/geometry/scene_graph.h"
 #include "drake/multibody/parsing/parser.h"
-#include "multibody/multibody_utils.h"
-#include "common/find_resource.h"
 
 namespace dairlib {
 namespace multibody {
@@ -20,8 +23,8 @@ class MultibodyUtilsTest : public ::testing::Test {
   void SetUp() override {
     // Building a floating-base plant
     drake::geometry::SceneGraph<double> scene_graph;
-    std::string full_name = FindResourceOrThrow(
-        "examples/Cassie/urdf/cassie_v2.urdf");
+    std::string full_name =
+        FindResourceOrThrow("examples/Cassie/urdf/cassie_v2.urdf");
     Parser parser(&plant_, &scene_graph);
     parser.AddModels(full_name);
     plant_.Finalize();
@@ -62,8 +65,7 @@ TEST_F(MultibodyUtilsTest, ContextTest) {
 }  // namespace multibody
 }  // namespace dairlib
 
-
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

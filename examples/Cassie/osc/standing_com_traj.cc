@@ -1,7 +1,8 @@
 #include "examples/Cassie/osc/standing_com_traj.h"
 
-#include <algorithm>
 #include <math.h>
+
+#include <algorithm>
 
 #include <dairlib/lcmt_cassie_out.hpp>
 

@@ -17,10 +17,10 @@ MeshcatDynamicCamera::MeshcatDynamicCamera(
       body_frame_to_track_(body_frame_to_track),
       meshcat_(meshcat) {
   state_port_ = this->DeclareVectorInputPort(
-          "x, u, t", OutputVector<double>(plant.num_positions(),
-                                          plant.num_velocities(),
-                                          plant.num_actuators()))
-      .get_index();
+                        "x, u, t", OutputVector<double>(plant.num_positions(),
+                                                        plant.num_velocities(),
+                                                        plant.num_actuators()))
+                    .get_index();
   DeclarePerStepDiscreteUpdateEvent(&MeshcatDynamicCamera::UpdateMeshcat);
 }
 
@@ -38,7 +38,8 @@ drake::systems::EventStatus MeshcatDynamicCamera::UpdateMeshcat(
   body_pos_in_world[2] = 0.8;
   Eigen::VectorXd camera_pos_offset = Eigen::VectorXd::Zero(3);
   camera_pos_offset << 0.1, 3.0, 0.5;
-  meshcat_->SetCameraPose(body_pos_in_world + camera_pos_offset, body_pos_in_world);
+  meshcat_->SetCameraPose(body_pos_in_world + camera_pos_offset,
+                          body_pos_in_world);
   return drake::systems::EventStatus::Succeeded();
 }
 

@@ -1,9 +1,8 @@
 #pragma once
 
-#include "drake/common/yaml/yaml_read_archive.h"
-
 #include "common/file_utils.h"
 
+#include "drake/common/yaml/yaml_read_archive.h"
 
 /* C3 progress metric options, all phrased as improvement requirements over a
    number of control loops:
@@ -14,12 +13,7 @@
                         kConfigCost if the required drop is 0; a more aggressive
                         drop cuts C3 off earlier).
 */
-enum ProgressMetric {
-  kC3Cost,
-  kConfigCost,
-  kPosOrRotCost,
-  kConfigCostDrop
-};
+enum ProgressMetric { kC3Cost, kConfigCost, kPosOrRotCost, kConfigCostDrop };
 
 /* Ways of computing C3 costs after solving the MPC problem:
   0. kSimLCS:                       Simulate the LCS dynamics from the planned

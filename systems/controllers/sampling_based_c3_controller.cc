@@ -580,8 +580,35 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // equality constraint. This would require two different sets of workspace
       // limits:  one for the C3 solve, and one for the controller for safety
       // checks.
-      test_c3_object->AddLinearConstraint(A, c3_options.workspace_limits[i][3],
-                                          c3_options.workspace_limits[i][4], 1);
+      test_c3_object->AddLinearConstraint(
+          A,
+          c3_options.workspace_limits[i][3] -
+              sampling_c3_options_.workspace_margins,
+          c3_options.workspace_limits[i][4] +
+              sampling_c3_options_.workspace_margins,
+          1);
+    }
+    // Object bounds.
+    for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
+      Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
+      A.segment(7, 3) = sampling_c3_options_.workspace_limits[i].segment(0, 3);
+      test_c3_object->AddLinearConstraint(
+          A,
+          c3_options.workspace_limits[i][3] -
+              sampling_c3_options_.workspace_margins,
+          c3_options.workspace_limits[i][4] +
+              sampling_c3_options_.workspace_margins,
+          1);
+    }
+    // EE velocities.
+    // TODO @bibit:  these EE velocity limit parameters do not exist, so hard
+    // code.
+    for (int i : vector<int>({0, 1, 2})) {
+      Eigen::RowVectorXd A = VectorXd::Zero(n_x_);
+      A(n_q_ + i) = 1.0;
+      test_c3_object->AddLinearConstraint(A, -0.14, 0.14, 1);
+      // sampling_c3_options_.ee_velocity_limits[0],
+      // sampling_c3_options_.ee_velocity_limits[1], 1);
     }
     // Input limits.
     for (int i : vector<int>({0, 1})) {

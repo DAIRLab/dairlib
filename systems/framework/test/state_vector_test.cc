@@ -1,9 +1,9 @@
-#include "systems/framework/output_vector.h"
-
 #include <memory>
 #include <utility>
 
 #include <gtest/gtest.h>
+
+#include "systems/framework/output_vector.h"
 
 namespace dairlib {
 namespace systems {
@@ -22,7 +22,7 @@ class OutputVectorTest : public ::testing::Test {
     q_ << 2.0, -1.5, 1.0, 3.14, 2.18;
     v_.resize(nv);
     v_ << -.7, 10.6, 0.0, -1.0;
-    x_.resize(nq+nv);
+    x_.resize(nq + nv);
     x_ << q_, v_;
     effort_.resize(nu);
     effort_ << -2.5, 3.7;
@@ -75,14 +75,11 @@ TEST_F(OutputVectorTest, MutableCheck) {
   data3(2) = v_(2);
 }
 
-
-
 }  // namespace
 }  // namespace systems
 }  // namespace dairlib
 
-
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

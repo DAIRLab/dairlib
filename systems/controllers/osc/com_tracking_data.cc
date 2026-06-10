@@ -18,8 +18,7 @@ ComTrackingData::ComTrackingData(const string& name, const MatrixXd& K_p,
                                  const MultibodyPlant<double>& plant_w_spr,
                                  const MultibodyPlant<double>& plant_wo_spr)
     : OptionsTrackingData(name, kSpaceDim, kSpaceDim, K_p, K_d, W, plant_w_spr,
-                      plant_wo_spr) {
-}
+                          plant_wo_spr) {}
 
 void ComTrackingData::UpdateY(const VectorXd& x_w_spr,
                               const Context<double>& context_w_spr) {
@@ -28,8 +27,8 @@ void ComTrackingData::UpdateY(const VectorXd& x_w_spr,
 
 void ComTrackingData::UpdateYdot(const VectorXd& x_w_spr,
                                  const Context<double>& context_w_spr) {
-  ydot_ = plant_w_spr_.CalcCenterOfMassTranslationalVelocityInWorld(
-      context_w_spr);
+  ydot_ =
+      plant_w_spr_.CalcCenterOfMassTranslationalVelocityInWorld(context_w_spr);
 }
 
 void ComTrackingData::UpdateJ(const VectorXd& x_wo_spr,
@@ -45,4 +44,4 @@ void ComTrackingData::UpdateJdotV(const VectorXd& x_wo_spr,
       context_wo_spr, JacobianWrtVariable::kV, world_wo_spr_, world_wo_spr_);
 }
 
-}
+}  // namespace dairlib::systems::controllers

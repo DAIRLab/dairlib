@@ -10,9 +10,9 @@ namespace dairlib {
 
 /// Updates the context of a MultibodyPlant with the given state vector.
 ///
-/// This function updates both the double and AutoDiff contexts of a MultibodyPlant
-/// using the provided state vector. It is useful for setting the state of the
-/// plant in simulation or optimization tasks.
+/// This function updates both the double and AutoDiff contexts of a
+/// MultibodyPlant using the provided state vector. It is useful for setting the
+/// state of the plant in simulation or optimization tasks.
 ///
 /// @param n_q Number of generalized positions (q).
 /// @param n_v Number of generalized velocities (v).

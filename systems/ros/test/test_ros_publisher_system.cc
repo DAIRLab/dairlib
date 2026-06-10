@@ -1,12 +1,14 @@
-#include <memory>
 #include <signal.h>
+
+#include <memory>
+
+#include "ros/ros.h"
+#include "std_msgs/String.h"
+#include "systems/ros/ros_publisher_system.h"
+
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/constant_value_source.h"
-#include "ros/ros.h"
-#include "std_msgs/String.h"
-
-#include "systems/ros/ros_publisher_system.h"
 
 using drake::Value;
 using drake::systems::ConstantValueSource;

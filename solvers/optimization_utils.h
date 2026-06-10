@@ -1,10 +1,10 @@
 #pragma once
 
-#include "drake/solvers/mathematical_program.h"
-#include "drake/solvers/mathematical_program_result.h"
-#include "drake/solvers/decision_variable.h"
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
+#include "drake/solvers/decision_variable.h"
+#include "drake/solvers/mathematical_program.h"
+#include "drake/solvers/mathematical_program_result.h"
 
 namespace dairlib {
 namespace solvers {
@@ -13,9 +13,9 @@ namespace solvers {
 /// specified tolerance.
 /// Prints out any violating constraints
 /// @return True if all generic constraints are satisfied
-bool CheckGenericConstraints(const drake::solvers::MathematicalProgram& prog,
-    const drake::solvers::MathematicalProgramResult& result,
-    double tol = 1e-6);
+bool CheckGenericConstraints(
+    const drake::solvers::MathematicalProgram& prog,
+    const drake::solvers::MathematicalProgramResult& result, double tol = 1e-6);
 
 /// Given a MathematicalProgram and associated constraint Binding, returns
 /// the vector of row indices associated with that constraint.
@@ -52,8 +52,8 @@ void LinearizeConstraints(const drake::solvers::MathematicalProgram& prog,
 /// @param eps The epsilon to use for numerical differencing
 /// @return Returns the constant part of the cost
 double SecondOrderCost(const drake::solvers::MathematicalProgram& prog,
-    const Eigen::VectorXd& x_nom, Eigen::MatrixXd* Q, Eigen::VectorXd* w,
-    double eps = 1e-8);
+                       const Eigen::VectorXd& x_nom, Eigen::MatrixXd* Q,
+                       Eigen::VectorXd* w, double eps = 1e-8);
 
 /// Count the total number of constraint rows, if lb <= f(x) <= ub, this is
 /// the dimension of f(x)

@@ -1,13 +1,14 @@
 #include "multibody/kinematic/kinematic_constraints.h"
+
 #include "multibody/multibody_utils.h"
 
 namespace dairlib {
 namespace multibody {
 
-using Eigen::VectorXd;
+using drake::VectorX;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
-using drake::VectorX;
+using Eigen::VectorXd;
 using solvers::NonlinearConstraint;
 
 ///
@@ -15,25 +16,24 @@ using solvers::NonlinearConstraint;
 ///
 template <typename T>
 KinematicPositionConstraint<T>::KinematicPositionConstraint(
-    const MultibodyPlant<T>& plant,
-    const KinematicEvaluatorSet<T>& evaluators,
+    const MultibodyPlant<T>& plant, const KinematicEvaluatorSet<T>& evaluators,
     Context<T>* context, const std::string& description)
     : KinematicPositionConstraint<T>(plant, evaluators,
-          VectorXd::Zero(evaluators.count_active()),
-          VectorXd::Zero(evaluators.count_active()),
-          std::set<int>(), context, description) {}
+                                     VectorXd::Zero(evaluators.count_active()),
+                                     VectorXd::Zero(evaluators.count_active()),
+                                     std::set<int>(), context, description) {}
 
 template <typename T>
 KinematicPositionConstraint<T>::KinematicPositionConstraint(
-    const MultibodyPlant<T>& plant,
-    const KinematicEvaluatorSet<T>& evaluators,
+    const MultibodyPlant<T>& plant, const KinematicEvaluatorSet<T>& evaluators,
     const VectorXd& lb, const VectorXd& ub,
-    const std::set<int>& full_constraint_relative,
-    Context<T>* context, const std::string& description)
-    : NonlinearConstraint<T>(evaluators.count_active(),
-          plant.num_positions() + full_constraint_relative.size(),
-          lb, ub, description),
-      plant_(plant), 
+    const std::set<int>& full_constraint_relative, Context<T>* context,
+    const std::string& description)
+    : NonlinearConstraint<T>(
+          evaluators.count_active(),
+          plant.num_positions() + full_constraint_relative.size(), lb, ub,
+          description),
+      plant_(plant),
       evaluators_(evaluators),
       full_constraint_relative_(full_constraint_relative) {
   // Create a new context if one was not provided
@@ -68,24 +68,21 @@ void KinematicPositionConstraint<T>::EvaluateConstraint(
 ///
 template <typename T>
 KinematicVelocityConstraint<T>::KinematicVelocityConstraint(
-    const MultibodyPlant<T>& plant,
-    const KinematicEvaluatorSet<T>& evaluators,
+    const MultibodyPlant<T>& plant, const KinematicEvaluatorSet<T>& evaluators,
     Context<T>* context, const std::string& description)
-    : KinematicVelocityConstraint<T>(plant, evaluators,
-          VectorXd::Zero(evaluators.count_active()),
-          VectorXd::Zero(evaluators.count_active()),
-          context, description) {}
+    : KinematicVelocityConstraint<T>(
+          plant, evaluators, VectorXd::Zero(evaluators.count_active()),
+          VectorXd::Zero(evaluators.count_active()), context, description) {}
 
 template <typename T>
 KinematicVelocityConstraint<T>::KinematicVelocityConstraint(
-    const MultibodyPlant<T>& plant,
-    const KinematicEvaluatorSet<T>& evaluators,
-    const VectorXd& lb, const VectorXd& ub,
-    Context<T>* context, const std::string& description)
+    const MultibodyPlant<T>& plant, const KinematicEvaluatorSet<T>& evaluators,
+    const VectorXd& lb, const VectorXd& ub, Context<T>* context,
+    const std::string& description)
     : NonlinearConstraint<T>(evaluators.count_active(),
-          plant.num_positions() + plant.num_velocities(),
-          lb, ub, description),
-      plant_(plant), 
+                             plant.num_positions() + plant.num_velocities(), lb,
+                             ub, description),
+      plant_(plant),
       evaluators_(evaluators) {
   // Create a new context if one was not provided
   if (context == nullptr) {
@@ -109,25 +106,23 @@ void KinematicVelocityConstraint<T>::EvaluateConstraint(
 ///
 template <typename T>
 KinematicAccelerationConstraint<T>::KinematicAccelerationConstraint(
-    const MultibodyPlant<T>& plant,
-    const KinematicEvaluatorSet<T>& evaluators,
+    const MultibodyPlant<T>& plant, const KinematicEvaluatorSet<T>& evaluators,
     Context<T>* context, const std::string& description)
-    : KinematicAccelerationConstraint<T>(plant, evaluators,
-          VectorXd::Zero(evaluators.count_active()),
-          VectorXd::Zero(evaluators.count_active()),
-          context, description) {}
+    : KinematicAccelerationConstraint<T>(
+          plant, evaluators, VectorXd::Zero(evaluators.count_active()),
+          VectorXd::Zero(evaluators.count_active()), context, description) {}
 
 template <typename T>
 KinematicAccelerationConstraint<T>::KinematicAccelerationConstraint(
-    const MultibodyPlant<T>& plant,
-    const KinematicEvaluatorSet<T>& evaluators,
-    const VectorXd& lb, const VectorXd& ub,
-    Context<T>* context, const std::string& description)
+    const MultibodyPlant<T>& plant, const KinematicEvaluatorSet<T>& evaluators,
+    const VectorXd& lb, const VectorXd& ub, Context<T>* context,
+    const std::string& description)
     : NonlinearConstraint<T>(evaluators.count_active(),
-          plant.num_positions() + plant.num_velocities() + plant.num_actuators()
-              + evaluators.count_full(),
-          lb, ub, description),
-      plant_(plant), 
+                             plant.num_positions() + plant.num_velocities() +
+                                 plant.num_actuators() +
+                                 evaluators.count_full(),
+                             lb, ub, description),
+      plant_(plant),
       evaluators_(evaluators) {
   // Create a new context if one was not provided
   if (context == nullptr) {
@@ -143,7 +138,7 @@ void KinematicAccelerationConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const VectorX<T>>& vars, VectorX<T>* y) const {
   const auto& x = vars.head(plant_.num_positions() + plant_.num_velocities());
   const auto& u = vars.segment(plant_.num_positions() + plant_.num_velocities(),
-      plant_.num_actuators());
+                               plant_.num_actuators());
   const auto& lambda = vars.tail(evaluators_.count_full());
   multibody::SetContext<T>(plant_, x, u, context_);
 

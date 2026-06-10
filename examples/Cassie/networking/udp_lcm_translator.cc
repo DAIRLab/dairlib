@@ -4,7 +4,8 @@ namespace dairlib {
 
 void copy_elmo(const elmo_out_t& input, lcmt_elmo_out* output);
 void copy_leg(const cassie_leg_out_t& input, lcmt_cassie_leg_out* output);
-template <typename T> void copy_vector(const T* input, T* output, int size);
+template <typename T>
+void copy_vector(const T* input, T* output, int size);
 
 // Utility methods for copying data
 void copy_elmo(const lcmt_elmo_out& input, elmo_out_t* output) {
@@ -28,7 +29,6 @@ void copy_elmo(const elmo_out_t& input, lcmt_elmo_out* output) {
   output->torqueLimit = input.torqueLimit;
   output->gearRatio = input.gearRatio;
 }
-
 
 void copy_leg(const lcmt_cassie_leg_out& input, cassie_leg_out_t* output) {
   copy_elmo(input.hipRollDrive, &output->hipRollDrive);
@@ -87,12 +87,10 @@ void CassieOutFromLcm(const lcmt_cassie_out& message,
   cassie_out->pelvis.targetPc.cpuTemperature =
       message.pelvis.targetPc.cpuTemperature;
 
-  cassie_out->pelvis.battery.dataGood =
-      message.pelvis.battery.dataGood;
+  cassie_out->pelvis.battery.dataGood = message.pelvis.battery.dataGood;
   cassie_out->pelvis.battery.stateOfCharge =
       message.pelvis.battery.stateOfCharge;
-  cassie_out->pelvis.battery.current =
-      message.pelvis.battery.current;
+  cassie_out->pelvis.battery.current = message.pelvis.battery.current;
   copy_vector(message.pelvis.battery.voltage,
               cassie_out->pelvis.battery.voltage, 12);
   copy_vector(message.pelvis.battery.temperature,
@@ -102,15 +100,12 @@ void CassieOutFromLcm(const lcmt_cassie_out& message,
       message.pelvis.radio.radioReceiverSignalGood;
   cassie_out->pelvis.radio.receiverMedullaSignalGood =
       message.pelvis.radio.receiverMedullaSignalGood;
-  copy_vector(message.pelvis.radio.channel,
-              cassie_out->pelvis.radio.channel, 16);
+  copy_vector(message.pelvis.radio.channel, cassie_out->pelvis.radio.channel,
+              16);
 
-  cassie_out->pelvis.vectorNav.dataGood =
-      message.pelvis.vectorNav.dataGood;
-  cassie_out->pelvis.vectorNav.vpeStatus =
-      message.pelvis.vectorNav.vpeStatus;
-  cassie_out->pelvis.vectorNav.pressure =
-      message.pelvis.vectorNav.pressure;
+  cassie_out->pelvis.vectorNav.dataGood = message.pelvis.vectorNav.dataGood;
+  cassie_out->pelvis.vectorNav.vpeStatus = message.pelvis.vectorNav.vpeStatus;
+  cassie_out->pelvis.vectorNav.pressure = message.pelvis.vectorNav.pressure;
   cassie_out->pelvis.vectorNav.temperature =
       message.pelvis.vectorNav.temperature;
   copy_vector(message.pelvis.vectorNav.magneticField,
@@ -131,8 +126,7 @@ void CassieOutFromLcm(const lcmt_cassie_out& message,
   copy_leg(message.leftLeg, &cassie_out->leftLeg);
   copy_leg(message.rightLeg, &cassie_out->rightLeg);
 
-  copy_vector(message.messages,
-              cassie_out->messages, 4);
+  copy_vector(message.messages, cassie_out->messages, 4);
   cassie_out->isCalibrated = message.isCalibrated;
 }
 
@@ -154,12 +148,10 @@ void CassieOutToLcm(const cassie_out_t& cassie_out, double time_seconds,
   message->pelvis.targetPc.cpuTemperature =
       cassie_out.pelvis.targetPc.cpuTemperature;
 
-  message->pelvis.battery.dataGood =
-      cassie_out.pelvis.battery.dataGood;
+  message->pelvis.battery.dataGood = cassie_out.pelvis.battery.dataGood;
   message->pelvis.battery.stateOfCharge =
       cassie_out.pelvis.battery.stateOfCharge;
-  message->pelvis.battery.current =
-      cassie_out.pelvis.battery.current;
+  message->pelvis.battery.current = cassie_out.pelvis.battery.current;
   copy_vector(cassie_out.pelvis.battery.voltage,
               message->pelvis.battery.voltage, 12);
   copy_vector(cassie_out.pelvis.battery.temperature,
@@ -169,15 +161,12 @@ void CassieOutToLcm(const cassie_out_t& cassie_out, double time_seconds,
       cassie_out.pelvis.radio.radioReceiverSignalGood;
   message->pelvis.radio.receiverMedullaSignalGood =
       cassie_out.pelvis.radio.receiverMedullaSignalGood;
-  copy_vector(cassie_out.pelvis.radio.channel,
-              message->pelvis.radio.channel, 16);
+  copy_vector(cassie_out.pelvis.radio.channel, message->pelvis.radio.channel,
+              16);
 
-  message->pelvis.vectorNav.dataGood =
-      cassie_out.pelvis.vectorNav.dataGood;
-  message->pelvis.vectorNav.vpeStatus =
-      cassie_out.pelvis.vectorNav.vpeStatus;
-  message->pelvis.vectorNav.pressure =
-      cassie_out.pelvis.vectorNav.pressure;
+  message->pelvis.vectorNav.dataGood = cassie_out.pelvis.vectorNav.dataGood;
+  message->pelvis.vectorNav.vpeStatus = cassie_out.pelvis.vectorNav.vpeStatus;
+  message->pelvis.vectorNav.pressure = cassie_out.pelvis.vectorNav.pressure;
   message->pelvis.vectorNav.temperature =
       cassie_out.pelvis.vectorNav.temperature;
   copy_vector(cassie_out.pelvis.vectorNav.magneticField,
@@ -198,12 +187,10 @@ void CassieOutToLcm(const cassie_out_t& cassie_out, double time_seconds,
   copy_leg(cassie_out.leftLeg, &message->leftLeg);
   copy_leg(cassie_out.rightLeg, &message->rightLeg);
 
-  copy_vector(cassie_out.messages,
-              message->messages, 4);
+  copy_vector(cassie_out.messages, message->messages, 4);
 
   message->isCalibrated = cassie_out.isCalibrated;
 }
-
 
 void CassieInToLcm(const cassie_user_in_t& cassie_in, double time_seconds,
                    lcmt_cassie_in* message) {
@@ -214,10 +201,9 @@ void CassieInToLcm(const cassie_user_in_t& cassie_in, double time_seconds,
 }
 
 void cassieInFromLcm(const lcmt_cassie_in& message,
-    cassie_user_in_t* cassie_in) {
+                     cassie_user_in_t* cassie_in) {
   copy_vector(message.torque, cassie_in->torque, 10);
   copy_vector(message.telemetry, cassie_in->telemetry, 9);
 }
-
 
 }  // namespace dairlib

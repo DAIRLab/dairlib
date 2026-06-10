@@ -2,11 +2,11 @@
 
 #include <drake/multibody/plant/multibody_plant.h>
 
+#include "common/discrete_time_filter.h"
 #include "systems/framework/output_vector.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/systems/framework/leaf_system.h"
-#include "common/discrete_time_filter.h"
 
 namespace dairlib::examples::osc_run {
 
@@ -32,17 +32,19 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_port_);
   }
-  const drake::systems::InputPort<double>& get_input_port_contact_scheduler() const {
+  const drake::systems::InputPort<double>& get_input_port_contact_scheduler()
+      const {
     return this->get_input_port(contact_scheduler_port_);
   }
 
-  void SetCommandFilter(double alpha){
+  void SetCommandFilter(double alpha) {
     target_vel_filter_->UpdateParameters(alpha);
   }
 
   void SetFootstepGains(const Eigen::MatrixXd& Kd) { Kd_ = Kd; };
 
-  void SetFootPlacementOffsets(double rest_length, double rest_length_offset, double center_line_offset,
+  void SetFootPlacementOffsets(double rest_length, double rest_length_offset,
+                               double center_line_offset,
                                double footstep_offset, double mid_foot_height) {
     rest_length_ = rest_length;
     rest_length_offset_ = rest_length_offset;
@@ -95,7 +97,6 @@ class FootTrajGenerator : public drake::systems::LeafSystem<double> {
   drake::systems::DiscreteStateIndex last_stance_timestamp_idx_;
 
   std::unique_ptr<FirstOrderLowPassFilter> target_vel_filter_;
-
 };
 
 }  // namespace dairlib::examples::osc_run

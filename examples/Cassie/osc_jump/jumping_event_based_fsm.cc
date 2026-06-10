@@ -1,11 +1,12 @@
 #include "examples/Cassie/osc_jump/jumping_event_based_fsm.h"
 
-#include <dairlib/lcmt_controller_switch.hpp>
 #include <iostream>
+
+#include <dairlib/lcmt_controller_switch.hpp>
 #include <drake/lcmt_contact_results_for_viz.hpp>
 
-using dairlib::systems::OutputVector;
 using dairlib::systems::ImpactInfoVector;
+using dairlib::systems::OutputVector;
 using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::Context;
@@ -23,23 +24,24 @@ namespace osc_jump {
 JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
                                  const vector<double>& transition_times,
                                  bool contact_based, double impact_threshold,
-                                 JUMPING_FSM_STATE init_state, BLEND_FUNC blend_func)
+                                 JUMPING_FSM_STATE init_state,
+                                 BLEND_FUNC blend_func)
     : transition_times_(transition_times),
       contact_based_(contact_based),
       impact_threshold_(impact_threshold),
       init_state_(init_state),
       blend_func_(blend_func) {
-  state_port_ =
-      this->DeclareVectorInputPort("x, u, t", OutputVector<double>(plant.num_positions(),
-                                                                   plant.num_velocities(),
-                                                                   plant.num_actuators()))
-          .get_index();
+  state_port_ = this->DeclareVectorInputPort(
+                        "x, u, t", OutputVector<double>(plant.num_positions(),
+                                                        plant.num_velocities(),
+                                                        plant.num_actuators()))
+                    .get_index();
 
   // Configure the contact info port for the particular simulator
   contact_port_ = this->DeclareAbstractInputPort(
-          "lcmt_contact_results_for_viz",
-          drake::Value<drake::lcmt_contact_results_for_viz>{})
-      .get_index();
+                          "lcmt_contact_results_for_viz",
+                          drake::Value<drake::lcmt_contact_results_for_viz>{})
+                      .get_index();
   fsm_output_port_ =
       this->DeclareVectorOutputPort("fsm", BasicVector<double>(1),
                                     &JumpingEventFsm::CalcFiniteState)
@@ -49,7 +51,8 @@ JumpingEventFsm::JumpingEventFsm(const MultibodyPlant<double>& plant,
                                     &JumpingEventFsm::CalcClock)
           .get_index();
   near_impact_output_port =
-      this->DeclareVectorOutputPort("impact_info", ImpactInfoVector<double>(0, 0, 3),
+      this->DeclareVectorOutputPort("impact_info",
+                                    ImpactInfoVector<double>(0, 0, 3),
                                     &JumpingEventFsm::CalcNearImpact)
           .get_index();
   DeclarePerStepDiscreteUpdateEvent(&JumpingEventFsm::DiscreteVariableUpdate);
@@ -95,7 +98,7 @@ EventStatus JumpingEventFsm::DiscreteVariableUpdate(
   prev_time << timestamp;
 
   if (abs(transition_times_[BALANCE] - timestamp -
-      round(transition_times_[BALANCE] - timestamp)) < 1e-3) {
+          round(transition_times_[BALANCE] - timestamp)) < 1e-3) {
     std::cout << "Time until crouch: "
               << round(transition_times_[BALANCE] - timestamp) << std::endl;
   }
@@ -153,8 +156,9 @@ double alpha_exp(double t, double tau, double near_impact_threshold) {
   return 1 - exp(-(t + near_impact_threshold) / tau);
 }
 
-void JumpingEventFsm::CalcNearImpact(const Context<double>& context,
-                                     ImpactInfoVector<double>* near_impact) const {
+void JumpingEventFsm::CalcNearImpact(
+    const Context<double>& context,
+    ImpactInfoVector<double>* near_impact) const {
   VectorXd fsm_state = context.get_discrete_state(fsm_idx_).get_value();
   // Read in lcm message time
   const OutputVector<double>* robot_output =

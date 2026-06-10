@@ -2,10 +2,10 @@
 
 #include <cstdlib>
 #include <iostream>
-#include <variant>
 #include <vector>
 
 #include <osqp.h>
+#include <variant>
 
 #include "drake/common/text_logging.h"
 #include "drake/math/eigen_sparse_triplet.h"
@@ -89,8 +89,8 @@ void ParseQuadraticCosts(const MathematicalProgram& prog,
   P->setFromTriplets(P_triplets.begin(), P_triplets.end());
 }
 
-void ParseLinearCosts(const MathematicalProgram& prog, std::vector<OSQPFloat>* q,
-                      double* constant_cost_term) {
+void ParseLinearCosts(const MathematicalProgram& prog,
+                      std::vector<OSQPFloat>* q, double* constant_cost_term) {
   // Add the linear costs to the osqp cost.
   DRAKE_ASSERT(static_cast<int>(q->size()) == prog.num_vars());
 
@@ -134,8 +134,8 @@ template <typename C>
 void ParseLinearConstraints(
     const MathematicalProgram& prog,
     const std::vector<Binding<C>>& linear_constraints,
-    std::vector<Eigen::Triplet<OSQPFloat>>* A_triplets, std::vector<OSQPFloat>* l,
-    std::vector<OSQPFloat>* u, int* num_A_rows,
+    std::vector<Eigen::Triplet<OSQPFloat>>* A_triplets,
+    std::vector<OSQPFloat>* l, std::vector<OSQPFloat>* u, int* num_A_rows,
     std::unordered_map<Binding<Constraint>, int>* constraint_start_row) {
   // Loop over the linear constraints, stack them to get l, u and A.
   for (const auto& constraint : linear_constraints) {
@@ -166,8 +166,8 @@ void ParseLinearConstraints(
 
 void ParseBoundingBoxConstraints(
     const MathematicalProgram& prog,
-    std::vector<Eigen::Triplet<OSQPFloat>>* A_triplets, std::vector<OSQPFloat>* l,
-    std::vector<OSQPFloat>* u, int* num_A_rows,
+    std::vector<Eigen::Triplet<OSQPFloat>>* A_triplets,
+    std::vector<OSQPFloat>* l, std::vector<OSQPFloat>* u, int* num_A_rows,
     std::unordered_map<Binding<Constraint>, int>* constraint_start_row) {
   // Loop over the linear constraints, stack them to get l, u and A.
   for (const auto& constraint : prog.bounding_box_constraints()) {
@@ -195,10 +195,9 @@ void ParseBoundingBoxConstraints(
 void ParseAllLinearConstraints(
     const MathematicalProgram& prog,
     std::vector<Eigen::Triplet<OSQPFloat>>& A_triplets,
-    Eigen::SparseMatrix<OSQPFloat>* A,
-    std::vector<OSQPFloat>* l, std::vector<OSQPFloat>* u,
+    Eigen::SparseMatrix<OSQPFloat>* A, std::vector<OSQPFloat>* l,
+    std::vector<OSQPFloat>* u,
     std::unordered_map<Binding<Constraint>, int>* constraint_start_row) {
-
   A_triplets.clear();
   l->clear();
   u->clear();
@@ -254,8 +253,8 @@ OSQPCscMatrix* EigenSparseToCSC(const Eigen::SparseMatrix<OSQPFloat>& mat) {
                            inner_indices, outer_indices);
 }
 
-void UpdateCSCFromEigenSparse(
-    const Eigen::SparseMatrix<OSQPFloat>& mat_from, OSQPCscMatrix* mat_to)  {
+void UpdateCSCFromEigenSparse(const Eigen::SparseMatrix<OSQPFloat>& mat_from,
+                              OSQPCscMatrix* mat_to) {
   DRAKE_DEMAND(mat_to != nullptr);
 
   for (int i = 0; i < mat_from.nonZeros(); i++) {
@@ -294,8 +293,7 @@ void SetFastOsqpSolverSettings(const SolverOptions& solver_options,
                                OSQPSettings* settings) {
   std::unordered_map<std::string, double> options_double;
   std::unordered_map<std::string, int> options_int;
-  const auto solver_it =
-      solver_options.options.find(OsqpSolver::id().name());
+  const auto solver_it = solver_options.options.find(OsqpSolver::id().name());
   if (solver_it != solver_options.options.end()) {
     for (const auto& [key, value] : solver_it->second) {
       if (std::holds_alternative<double>(value)) {
@@ -327,7 +325,8 @@ void SetFastOsqpSolverSettings(const SolverOptions& solver_options,
                            &(settings->scaled_termination));
   SetFastOsqpSolverSetting(options_int, "check_termination",
                            &(settings->check_termination));
-  SetFastOsqpSolverSetting(options_int, "warm_starting", &(settings->warm_starting));
+  SetFastOsqpSolverSetting(options_int, "warm_starting",
+                           &(settings->warm_starting));
   SetFastOsqpSolverSetting(options_int, "scaling", &(settings->scaling));
   SetFastOsqpSolverSetting(options_int, "adaptive_rho",
                            &(settings->adaptive_rho));
@@ -370,7 +369,7 @@ bool FastOsqpSolver::is_available() { return true; }
 void FastOsqpSolver::InitializeSolver(const MathematicalProgram& prog,
                                       const SolverOptions& solver_options) {
   // Get the cost for the QP.
-   q_ = std::vector<OSQPFloat>(prog.num_vars(), 0);
+  q_ = std::vector<OSQPFloat>(prog.num_vars(), 0);
   double constant_cost_term{0};
 
   ParseQuadraticCosts(prog, P_triplets_, &P_sparse_, &q_, &constant_cost_term);
@@ -381,8 +380,8 @@ void FastOsqpSolver::InitializeSolver(const MathematicalProgram& prog,
   std::unordered_map<Binding<Constraint>, int> constraint_start_row;
 
   // Parse the linear constraints.
-  ParseAllLinearConstraints(
-      prog, A_triplets_, &A_sparse_, &l_, &u_, &constraint_start_row);
+  ParseAllLinearConstraints(prog, A_triplets_, &A_sparse_, &l_, &u_,
+                            &constraint_start_row);
 
   P_csc_ = EigenSparseToCSC(P_sparse_);
   A_csc_ = EigenSparseToCSC(A_sparse_);
@@ -421,8 +420,7 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
                              const Eigen::VectorXd& initial_guess,
                              const SolverOptions& merged_options,
                              MathematicalProgramResult* result) const {
-  auto& solver_details =
-      result->SetSolverDetailsType<OsqpSolverDetails>();
+  auto& solver_details = result->SetSolverDetailsType<OsqpSolverDetails>();
 
   // Apply any per-solve option changes.
   SetFastOsqpSolverSettings(merged_options, osqp_settings_);
@@ -447,8 +445,8 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   std::unordered_map<Binding<Constraint>, int> constraint_start_row;
 
   // Parse the linear constraints.
-  ParseAllLinearConstraints(
-      prog, A_triplets_, &A_sparse_, &l_, &u_, &constraint_start_row);
+  ParseAllLinearConstraints(prog, A_triplets_, &A_sparse_, &l_, &u_,
+                            &constraint_start_row);
 
   // If any step fails, it will set the solution_result and skip other steps.
   std::optional<SolutionResult> solution_result;
@@ -481,7 +479,7 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   if (!solution_result) {
     DRAKE_THROW_UNLESS(workspace_ != nullptr);
     const OSQPInt osqp_solve_err = osqp_solve(workspace_);
-    DisableWarmStart(); // will only be re-enabled if the solve was successful
+    DisableWarmStart();  // will only be re-enabled if the solve was successful
     if (osqp_solve_err != 0) {
       solution_result = SolutionResult::kInvalidInput;
     }
@@ -556,14 +554,14 @@ void FastOsqpSolver::DoSolve(const MathematicalProgram& prog,
   }
   result->set_solution_result(solution_result.value());
 
-//  c_free(P_csc->x);
-//  c_free(P_csc->i);
-//  c_free(P_csc->p);
-//  c_free(P_csc);
-//  c_free(A_csc->x);
-//  c_free(A_csc->i);
-//  c_free(A_csc->p);
-//  c_free(A_csc);
+  //  c_free(P_csc->x);
+  //  c_free(P_csc->i);
+  //  c_free(P_csc->p);
+  //  c_free(P_csc);
+  //  c_free(A_csc->x);
+  //  c_free(A_csc->i);
+  //  c_free(A_csc->p);
+  //  c_free(A_csc);
 }
 
 }  // namespace solvers

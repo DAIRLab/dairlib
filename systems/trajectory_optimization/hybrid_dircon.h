@@ -13,10 +13,10 @@
 #include "drake/common/drake_copyable.h"
 #include "drake/common/symbolic/expression.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/planning/trajectory_optimization/multiple_shooting.h"
 #include "drake/solvers/constraint.h"
 #include "drake/systems/framework/context.h"
 #include "drake/systems/framework/system.h"
-#include "drake/planning/trajectory_optimization/multiple_shooting.h"
 
 namespace dairlib {
 namespace systems {
@@ -203,7 +203,7 @@ class HybridDircon
 
   using drake::planning::trajectory_optimization::MultipleShooting::N;
   using drake::planning::trajectory_optimization::MultipleShooting::
-  SubstitutePlaceholderVariables;
+      SubstitutePlaceholderVariables;
 
   void ScaleTimeVariables(double scale);
   void ScaleQuaternionSlackVariables(double scale);

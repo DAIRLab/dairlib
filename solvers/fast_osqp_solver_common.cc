@@ -67,9 +67,9 @@ bool CheckAttributes(const MathematicalProgram& prog,
     if (explanation) {
       *explanation =
           "OsqpSolver is unable to solve because the quadratic cost " +
-              nonconvex_quadratic_cost->to_string() +
-              " is non-convex. Either change this cost to a convex one, or switch "
-              "to a different solver like SNOPT/IPOPT/NLOPT.";
+          nonconvex_quadratic_cost->to_string() +
+          " is non-convex. Either change this cost to a convex one, or switch "
+          "to a different solver like SNOPT/IPOPT/NLOPT.";
     }
     return false;
   }

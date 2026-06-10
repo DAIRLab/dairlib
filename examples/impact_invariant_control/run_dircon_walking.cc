@@ -1,6 +1,6 @@
 #include <chrono>
-#include <thread>
 #include <iostream>
+#include <thread>
 
 #include <gflags/gflags.h>
 
@@ -154,13 +154,13 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
   auto& prog = trajopt->prog();
   trajopt->AddDurationBounds(FLAGS_max_duration, 2.0 * FLAGS_max_duration);
   prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
-                           "walking_snopt.out");
+                       "walking_snopt.out");
   prog.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major iterations limit", 1000);
+                       "Major iterations limit", 1000);
+  prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Iterations limit",
+                       100000);
   prog.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Iterations limit", 100000);
-  prog.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Minor iterations limit", 5000);
+                       "Minor iterations limit", 5000);
 
   // Set initial guesses
   for (uint j = 0; j < timesteps.size(); j++) {
@@ -186,29 +186,29 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
 
   // periodicity constraints
   prog.AddLinearConstraint(xf(positions_map["planar_z"]) ==
-                               (x0(positions_map["planar_z"])));
+                           (x0(positions_map["planar_z"])));
   //  prog.AddLinearConstraint(xf(positions_map["planar_roty"]) ==
   //                               (x0(positions_map["planar_roty"])));
   prog.AddLinearConstraint(xf(positions_map["left_hip_pin"]) ==
-                               (x0(positions_map["left_hip_pin"])));
+                           (x0(positions_map["left_hip_pin"])));
   prog.AddLinearConstraint(xf(positions_map["right_hip_pin"]) ==
-                               (x0(positions_map["right_hip_pin"])));
+                           (x0(positions_map["right_hip_pin"])));
   prog.AddLinearConstraint(xf(positions_map["left_knee_pin"]) ==
-                               (x0(positions_map["left_knee_pin"])));
+                           (x0(positions_map["left_knee_pin"])));
   prog.AddLinearConstraint(xf(positions_map["right_knee_pin"]) ==
-                               (x0(positions_map["right_knee_pin"])));
+                           (x0(positions_map["right_knee_pin"])));
   //  prog.AddLinearConstraint(x0.tail(n) == VectorXd::Zero(n));
   //  prog.AddLinearConstraint(xf.tail(n) == VectorXd::Zero(n));
   prog.AddLinearConstraint(x0(n + velocities_map["planar_xdot"]) ==
-                               xf(n + velocities_map["planar_xdot"]));
+                           xf(n + velocities_map["planar_xdot"]));
   prog.AddLinearConstraint(x0(n + velocities_map["left_knee_pindot"]) ==
-                               xf(n + velocities_map["left_knee_pindot"]));
+                           xf(n + velocities_map["left_knee_pindot"]));
   prog.AddLinearConstraint(x0(n + velocities_map["right_knee_pindot"]) ==
-                               xf(n + velocities_map["right_knee_pindot"]));
+                           xf(n + velocities_map["right_knee_pindot"]));
   prog.AddLinearConstraint(x0(n + velocities_map["left_hip_pindot"]) ==
-                               xf(n + velocities_map["left_hip_pindot"]));
+                           xf(n + velocities_map["left_hip_pindot"]));
   prog.AddLinearConstraint(x0(n + velocities_map["right_hip_pindot"]) ==
-                               xf(n + velocities_map["right_hip_pindot"]));
+                           xf(n + velocities_map["right_hip_pindot"]));
   //  input constraints
   trajopt->AddConstraintToAllKnotPoints(u(0) >= -150);
   trajopt->AddConstraintToAllKnotPoints(u(1) >= -150);
@@ -245,8 +245,10 @@ drake::trajectories::PiecewisePolynomial<double> run_traj_opt(
 
   double alpha = .2;
   int num_poses = std::max((int)(timesteps.size() + 1), FLAGS_knot_points);
-  trajopt->CreateVisualizationCallback(FindResourceOrThrow(
-      "examples/impact_invariant_control/five_link_biped.urdf"), num_poses, alpha);
+  trajopt->CreateVisualizationCallback(
+      FindResourceOrThrow(
+          "examples/impact_invariant_control/five_link_biped.urdf"),
+      num_poses, alpha);
 
   // Solve the traj optimization problem
   auto start = std::chrono::high_resolution_clock::now();
@@ -291,7 +293,7 @@ int doMain(int argc, char* argv[]) {
   int nx = plant.num_positions() + plant.num_velocities();
   //  Eigen::VectorXd x_0(nx);
   Eigen::VectorXd x_0 = Eigen::VectorXd::Random(nx);
-//  x_0(0) = 1;
+  //  x_0(0) = 1;
 
   Eigen::VectorXd init_l_vec(2);
   init_l_vec << 0, 15 * FLAGS_gravity;

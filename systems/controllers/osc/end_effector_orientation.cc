@@ -1,5 +1,7 @@
 #include "end_effector_orientation.h"
+
 #include <iostream>
+
 #include "dairlib/lcmt_radio_out.hpp"
 
 using drake::systems::BasicVector;
@@ -13,7 +15,8 @@ using drake::trajectories::Trajectory;
 
 namespace dairlib {
 
-EndEffectorOrientationTrajectoryGenerator::EndEffectorOrientationTrajectoryGenerator() {
+EndEffectorOrientationTrajectoryGenerator::
+    EndEffectorOrientationTrajectoryGenerator() {
   auto pp = drake::trajectories::PiecewiseQuaternionSlerp<double>();
 
   trajectory_port_ =
@@ -21,23 +24,27 @@ EndEffectorOrientationTrajectoryGenerator::EndEffectorOrientationTrajectoryGener
               "trajectory",
               drake::Value<drake::trajectories::Trajectory<double>>(pp))
           .get_index();
-  radio_port_ = this->DeclareAbstractInputPort("lcmt_radio_out",
-      drake::Value<dairlib::lcmt_radio_out>{}).get_index();
+  radio_port_ =
+      this->DeclareAbstractInputPort("lcmt_radio_out",
+                                     drake::Value<dairlib::lcmt_radio_out>{})
+          .get_index();
   PiecewiseQuaternionSlerp<double> empty_slerp_traj;
   Trajectory<double>& traj_inst = empty_slerp_traj;
-  this->DeclareAbstractOutputPort("end_effector_orientation", traj_inst,
-                                  &EndEffectorOrientationTrajectoryGenerator::CalcTraj)
+  this->DeclareAbstractOutputPort(
+          "end_effector_orientation", traj_inst,
+          &EndEffectorOrientationTrajectoryGenerator::CalcTraj)
       .get_index();
 }
 
 void EndEffectorOrientationTrajectoryGenerator::CalcTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
-  const auto& radio_out = this->EvalInputValue<dairlib::lcmt_radio_out>(
-    context, radio_port_);
+  const auto& radio_out =
+      this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
   auto* casted_traj = (PiecewiseQuaternionSlerp<double>*)dynamic_cast<
       PiecewiseQuaternionSlerp<double>*>(traj);
-  //if (radio_out->channel[14] and track_orientation_) {  TODO: Figure out why teleop tracks end effector orientation
+  // if (radio_out->channel[14] and track_orientation_) {  TODO: Figure out why
+  // teleop tracks end effector orientation
   if (track_orientation_) {
     const auto& trajectory_input =
         this->EvalAbstractInput(context, trajectory_port_)

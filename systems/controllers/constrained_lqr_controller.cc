@@ -1,4 +1,5 @@
 #include "systems/controllers/constrained_lqr_controller.h"
+
 #include "multibody/multibody_utils.h"
 
 #include "drake/math/autodiff_gradient.h"
@@ -6,22 +7,22 @@
 namespace dairlib {
 namespace systems {
 
-using Eigen::VectorXd;
-using Eigen::MatrixXd;
+using drake::AutoDiffVecXd;
+using drake::AutoDiffXd;
 using drake::MatrixX;
 using drake::VectorX;
-using drake::AutoDiffXd;
-using drake::AutoDiffVecXd;
-using drake::math::InitializeAutoDiff;
 using drake::math::ExtractGradient;
 using drake::math::ExtractValue;
+using drake::math::InitializeAutoDiff;
 using drake::systems::Context;
 using drake::systems::controllers::LinearQuadraticRegulator;
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
 
 ConstrainedLQRController::ConstrainedLQRController(
-      const multibody::KinematicEvaluatorSet<AutoDiffXd>& evaluators,
-      const Context<AutoDiffXd>& context, const VectorXd& lambda,
-      const MatrixXd& Q, const Eigen::MatrixXd& R)
+    const multibody::KinematicEvaluatorSet<AutoDiffXd>& evaluators,
+    const Context<AutoDiffXd>& context, const VectorXd& lambda,
+    const MatrixXd& Q, const Eigen::MatrixXd& R)
     : evaluators_(evaluators),
       plant_(evaluators.plant()),
       num_forces_(evaluators.count_full()) {
@@ -82,8 +83,8 @@ ConstrainedLQRController::ConstrainedLQRController(
   MatrixXd F_quat =
       MatrixXd::Zero(num_quat, J_active_qdot.cols() + J_active_v.cols());
   for (int i = 0; i < num_quat; i++) {
-    F_quat.row(i).segment(quat_start.at(i), 4) = ExtractValue(
-        plant_.GetPositions(context).segment(quat_start.at(i),4));
+    F_quat.row(i).segment(quat_start.at(i), 4) =
+        ExtractValue(plant_.GetPositions(context).segment(quat_start.at(i), 4));
   }
 
   // Computing F
@@ -92,10 +93,9 @@ ConstrainedLQRController::ConstrainedLQRController(
   MatrixXd F(J_active_qdot.rows() + J_active_v.rows() + num_quat,
              J_active_qdot.cols() + J_active_v.cols());
   F << ExtractValue(J_active_qdot),
-       MatrixXd::Zero(J_active_qdot.rows(), J_active_v.cols()),
-       MatrixXd::Zero(J_active_v.rows(), J_active_qdot.cols()),
-       ExtractValue(J_active_v),
-       F_quat;
+      MatrixXd::Zero(J_active_qdot.rows(), J_active_v.cols()),
+      MatrixXd::Zero(J_active_v.rows(), J_active_qdot.cols()),
+      ExtractValue(J_active_v), F_quat;
 
   // Computing the null space of F
   Eigen::HouseholderQR<MatrixXd> qr_decomp(F.transpose());
@@ -109,18 +109,17 @@ ConstrainedLQRController::ConstrainedLQRController(
   // Creating a combined autodiff vector and then extracting the individual
   // components to ensure proper gradient initialization.
 
-  VectorXd xu(plant_.num_positions() + plant_.num_velocities()
-      + plant_.num_actuators());
+  VectorXd xu(plant_.num_positions() + plant_.num_velocities() +
+              plant_.num_actuators());
   auto x = ExtractValue(plant_.GetPositionsAndVelocities(context));
-  auto u =
-      ExtractValue(plant_.get_actuation_input_port().Eval(context));
+  auto u = ExtractValue(plant_.get_actuation_input_port().Eval(context));
   xu << x, u;
   AutoDiffVecXd xu_ad = InitializeAutoDiff(xu);
 
-  AutoDiffVecXd x_ad = xu_ad.head(plant_.num_positions()
-      + plant_.num_velocities());
-  AutoDiffVecXd u_ad = xu_ad.segment(plant_.num_positions()
-      + plant_.num_velocities(), plant_.num_actuators());
+  AutoDiffVecXd x_ad =
+      xu_ad.head(plant_.num_positions() + plant_.num_velocities());
+  AutoDiffVecXd u_ad = xu_ad.segment(
+      plant_.num_positions() + plant_.num_velocities(), plant_.num_actuators());
 
   auto context_ad = multibody::CreateContext<AutoDiffXd>(plant_, x_ad, u_ad);
 

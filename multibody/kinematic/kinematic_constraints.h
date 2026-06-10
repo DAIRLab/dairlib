@@ -4,13 +4,14 @@
 
 #include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "solvers/nonlinear_constraint.h"
+
 #include "drake/multibody/plant/multibody_plant.h"
 
 namespace dairlib {
 namespace multibody {
 
 /// A constraint class to wrap the position component of a KinematicEvaluatorSet
-/// 
+///
 /// In its most basic form, this constraint is of the form
 ///    lb <= phi(q) <= ub
 /// corresponding to the __active__ constraints only.
@@ -42,20 +43,20 @@ class KinematicPositionConstraint : public solvers::NonlinearConstraint<T> {
   /// This constructor takes a shared_ptr<Context> as an argument to share
   /// cached kinematic/dynamic computation within the context.
   /// If a context pointer is not provided, will create a new context.
-  /// 
+  ///
   /// This constructor takes three additional arguments: lower and upper bounds,
   /// and a vector of booleans identifying whether the ith __full__ constraint
   /// is relative.
   KinematicPositionConstraint(
       const drake::multibody::MultibodyPlant<T>& plant,
-      const KinematicEvaluatorSet<T>& evaluators,
-      const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
+      const KinematicEvaluatorSet<T>& evaluators, const Eigen::VectorXd& lb,
+      const Eigen::VectorXd& ub,
       const std::set<int>& full_constraint_relative = {},
       drake::systems::Context<T>* context = nullptr,
       const std::string& description = "kinematic_position");
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
-                                  drake::VectorX<T>* y) const;
+                          drake::VectorX<T>* y) const;
 
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;
@@ -66,7 +67,7 @@ class KinematicPositionConstraint : public solvers::NonlinearConstraint<T> {
 };
 
 /// A constraint class to wrap the velocity component of a KinematicEvaluatorSet
-/// 
+///
 /// This constraint is of the form
 ///    lb <= d/dt phi(q) <= ub
 /// corresponding to the __active__ constraints only.
@@ -91,17 +92,16 @@ class KinematicVelocityConstraint : public solvers::NonlinearConstraint<T> {
   /// This constructor takes a shared_ptr<Context> as an argument to share
   /// cached kinematic/dynamic computation within the context.
   /// If a context pointer is not provided, will create a new context.
-  /// 
+  ///
   /// This constructor takes additional arguments: lower and upper bounds.
   KinematicVelocityConstraint(
       const drake::multibody::MultibodyPlant<T>& plant,
-      const KinematicEvaluatorSet<T>& evaluators,
-      const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
-      drake::systems::Context<T>* context = nullptr,
+      const KinematicEvaluatorSet<T>& evaluators, const Eigen::VectorXd& lb,
+      const Eigen::VectorXd& ub, drake::systems::Context<T>* context = nullptr,
       const std::string& description = "kinematic_velocity");
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
-                                  drake::VectorX<T>* y) const;
+                          drake::VectorX<T>* y) const;
 
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;
@@ -112,7 +112,7 @@ class KinematicVelocityConstraint : public solvers::NonlinearConstraint<T> {
 
 /// A constraint class to wrap the acceleration component of a
 /// KinematicEvaluatorSet
-/// 
+///
 /// This constraint is of the form
 ///    lb <= d^2/dt^2 phi(q) <= u
 /// corresponding to the __active__ constraints only.
@@ -138,17 +138,16 @@ class KinematicAccelerationConstraint : public solvers::NonlinearConstraint<T> {
   /// This constructor takes a shared_ptr<Context> as an argument to share
   /// cached kinematic/dynamic computation within the context.
   /// If a context pointer is not provided, will create a new context.
-  /// 
+  ///
   /// This constructor takes additional arguments: lower and upper bounds.
   KinematicAccelerationConstraint(
       const drake::multibody::MultibodyPlant<T>& plant,
-      const KinematicEvaluatorSet<T>& evaluators,
-      const Eigen::VectorXd& lb, const Eigen::VectorXd& ub,
-      drake::systems::Context<T>* context = nullptr,
+      const KinematicEvaluatorSet<T>& evaluators, const Eigen::VectorXd& lb,
+      const Eigen::VectorXd& ub, drake::systems::Context<T>* context = nullptr,
       const std::string& description = "kinematic_acceleration");
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
-                                  drake::VectorX<T>* y) const;
+                          drake::VectorX<T>* y) const;
 
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;

@@ -238,18 +238,20 @@ void DoMain(double duration, int max_iter, const string& data_directory,
     double s_dyn_2 = (FLAGS_scale_variable) ? 6.0 : 1.0;
     double s_dyn_3 = (FLAGS_scale_variable) ? 85.0 : 1.0;
     double_support.SetDynamicsScale(
-        {pelvis_qw_idx, pelvis_qx_idx, pelvis_qy_idx, pelvis_qz_idx, pelvis_x_idx,
-         pelvis_y_idx, pelvis_z_idx, hip_roll_left_idx, hip_roll_right_idx,
-         hip_yaw_left_idx, hip_yaw_right_idx, hip_pitch_left_idx,
-         hip_pitch_right_idx, knee_left_idx, knee_right_idx},
+        {pelvis_qw_idx, pelvis_qx_idx, pelvis_qy_idx, pelvis_qz_idx,
+         pelvis_x_idx, pelvis_y_idx, pelvis_z_idx, hip_roll_left_idx,
+         hip_roll_right_idx, hip_yaw_left_idx, hip_yaw_right_idx,
+         hip_pitch_left_idx, hip_pitch_right_idx, knee_left_idx,
+         knee_right_idx},
         1.0 / 150.0);
     double_support.SetDynamicsScale(
         {ankle_joint_left_idx, ankle_joint_right_idx},
         1.0 / 150.0 / 3.33 / s_dyn_1);
     double_support.SetDynamicsScale({toe_left_idx, toe_right_idx}, 1.0 / 150.0);
     double_support.SetDynamicsScale(
-        {pelvis_wx_idx, pelvis_wy_idx, pelvis_wz_idx, pelvis_vx_idx, pelvis_vy_idx,
-         pelvis_vz_idx, hip_roll_leftdot_idx, hip_roll_rightdot_idx},
+        {pelvis_wx_idx, pelvis_wy_idx, pelvis_wz_idx, pelvis_vx_idx,
+         pelvis_vy_idx, pelvis_vz_idx, hip_roll_leftdot_idx,
+         hip_roll_rightdot_idx},
         1.0 / 150.0 / s_dyn_1);
     double_support.SetDynamicsScale({hip_yaw_leftdot_idx, hip_yaw_rightdot_idx},
                                     1.0 / 150.0 / s_dyn_2);
@@ -356,9 +358,9 @@ void DoMain(double duration, int max_iter, const string& data_directory,
 
   // start/end velocity constraints
   prog.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
-                                   x0.tail(n_v));
+                                x0.tail(n_v));
   prog.AddBoundingBoxConstraint(VectorXd::Zero(n_v), VectorXd::Zero(n_v),
-                                   xf.tail(n_v));
+                                xf.tail(n_v));
 
   // create joint/motor names
   vector<std::pair<string, string>> l_r_pairs{
@@ -372,7 +374,7 @@ void DoMain(double duration, int max_iter, const string& data_directory,
   vector<string> sym_joint_names{"hip_pitch", "knee", "ankle_joint", "toe"};
   vector<string> joint_names{};
   vector<string> motor_names{};
-  for (auto &l_r_pair : l_r_pairs) {
+  for (auto& l_r_pair : l_r_pairs) {
     for (unsigned int i = 0; i < asy_joint_names.size(); i++) {
       joint_names.push_back(asy_joint_names[i] + l_r_pair.first);
       motor_names.push_back(asy_joint_names[i] + l_r_pair.first + "_motor");
@@ -399,7 +401,7 @@ void DoMain(double duration, int max_iter, const string& data_directory,
   for (int i = 0; i < num_knotpoints; i++) {
     auto ui = trajopt.input_vars(0, i);
     prog.AddBoundingBoxConstraint(VectorXd::Constant(n_u, -300),
-                                     VectorXd::Constant(n_u, +300), ui);
+                                  VectorXd::Constant(n_u, +300), ui);
   }
 
   // toe position constraint in y direction (avoid leg crossing)
@@ -449,9 +451,9 @@ void DoMain(double duration, int max_iter, const string& data_directory,
     trajopt.ScaleTimeVariables(0.015);
     // state
     std::vector<int> idx_list = {
-        n_q + pelvis_wx_idx,          n_q + pelvis_wy_idx,
-        n_q + pelvis_wz_idx,          n_q + pelvis_vx_idx,
-        n_q + pelvis_vy_idx,          n_q + pelvis_vz_idx,
+        n_q + pelvis_wx_idx,        n_q + pelvis_wy_idx,
+        n_q + pelvis_wz_idx,        n_q + pelvis_vx_idx,
+        n_q + pelvis_vy_idx,        n_q + pelvis_vz_idx,
         n_q + hip_roll_leftdot_idx, n_q + hip_roll_rightdot_idx,
         n_q + hip_yaw_leftdot_idx,  n_q + hip_yaw_rightdot_idx};
     trajopt.ScaleStateVariables(idx_list, 6);
@@ -547,8 +549,7 @@ void DoMain(double duration, int max_iter, const string& data_directory,
   for (int i = 0; i < num_knotpoints; i++) {
     auto xi = trajopt.state(i);
     if ((prog.GetInitialGuess(xi.segment<4>(pelvis_qw_idx)).norm() == 0) ||
-        std::isnan(
-            prog.GetInitialGuess(xi.segment<4>(pelvis_qw_idx)).norm())) {
+        std::isnan(prog.GetInitialGuess(xi.segment<4>(pelvis_qw_idx)).norm())) {
       prog.SetInitialGuess(xi(pelvis_qw_idx), 1);
       prog.SetInitialGuess(xi(pelvis_qx_idx), 0);
       prog.SetInitialGuess(xi(pelvis_qy_idx), 0);
@@ -575,9 +576,7 @@ void DoMain(double duration, int max_iter, const string& data_directory,
   auto start = std::chrono::high_resolution_clock::now();
   auto solver = drake::solvers::MakeSolver(solver_id);
   drake::solvers::MathematicalProgramResult result;
-  solver->Solve(prog, prog.initial_guess(),
-                prog.solver_options(),
-                &result);
+  solver->Solve(prog, prog.initial_guess(), prog.solver_options(), &result);
   SolutionResult solution_result = result.get_solution_result();
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
@@ -607,9 +606,8 @@ void DoMain(double duration, int max_iter, const string& data_directory,
   VectorXd z = result.GetSolution(prog.decision_variables());
   VectorXd constraint_y, constraint_lb, constraint_ub;
   MatrixXd constraint_A;
-  solvers::LinearizeConstraints(
-      prog, z, &constraint_y,&constraint_A,
-      &constraint_lb, &constraint_ub);
+  solvers::LinearizeConstraints(prog, z, &constraint_y, &constraint_A,
+                                &constraint_lb, &constraint_ub);
   if (to_store_data) {
     writeCSV(data_directory + string("z.csv"), z);
     writeCSV(data_directory + string("A.csv"), constraint_A);

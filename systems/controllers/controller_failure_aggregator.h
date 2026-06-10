@@ -21,6 +21,7 @@ class ControllerFailureAggregator : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>& get_status_output_port() const {
     return this->get_output_port(status_output_port_);
   }
+
  private:
   void AggregateFailureSignals(const drake::systems::Context<double>& context,
                                dairlib::lcmt_controller_failure* output) const;

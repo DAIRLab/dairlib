@@ -13,12 +13,12 @@
 #include <gflags/gflags.h>
 
 #include "common/parameters/franka_drake_lcm_driver_channels.h"
-#include "examples/sampling_c3/sampling_c3_utils.h"
-#include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
-#include "systems/franka_state_translator.h"
+#include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
+#include "examples/sampling_c3/sampling_c3_utils.h"
 #include "multibody/multibody_utils.h"
 #include "systems/framework/lcm_driven_loop.h"
+#include "systems/franka_state_translator.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 
@@ -38,7 +38,6 @@ using dairlib::systems::RobotOutputSender;
 using dairlib::systems::SubvectorPassThrough;
 using dairlib::systems::TimestampedVector;
 
-
 DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
 DEFINE_string(demo_name, "jacktoy",
@@ -49,8 +48,9 @@ namespace dairlib {
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  std::string controller_params_path = "examples/sampling_c3/" +
-    FLAGS_demo_name + "/parameters/sampling_c3_controller_params.yaml";
+  std::string controller_params_path =
+      "examples/sampling_c3/" + FLAGS_demo_name +
+      "/parameters/sampling_c3_controller_params.yaml";
   SamplingC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
           controller_params_path);

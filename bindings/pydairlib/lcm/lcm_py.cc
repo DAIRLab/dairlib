@@ -14,10 +14,10 @@ using dairlib::pydairlib::BindCppSerializers;
 // pybind11 trampoline class to permit overriding virtual functions in
 // Python.
 PYBIND11_MODULE(lcm_py, m) {
-//  PYDRAKE_PREVENT_PYTHON3_MODULE_REIMPORT(m);
+  //  PYDRAKE_PREVENT_PYTHON3_MODULE_REIMPORT(m);
   // Bind C++ serializers.
   BindCppSerializers();
 }
 
-}  // namespace pydrake
-}  // namespace drake
+}  // namespace pydairlib
+}  // namespace dairlib

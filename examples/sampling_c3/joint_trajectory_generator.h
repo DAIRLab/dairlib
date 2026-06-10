@@ -9,8 +9,8 @@ namespace dairlib {
 class JointTrajectoryGenerator : public drake::systems::LeafSystem<double> {
  public:
   JointTrajectoryGenerator(
-    const drake::multibody::MultibodyPlant<double>& plant,
-    const Eigen::VectorXd& default_target_position);
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const Eigen::VectorXd& default_target_position);
 
   const drake::systems::InputPort<double>& get_input_port_robot_state() const {
     return this->get_input_port(state_port_);
@@ -18,7 +18,8 @@ class JointTrajectoryGenerator : public drake::systems::LeafSystem<double> {
   const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_port_);
   }
-  const drake::systems::InputPort<double>& get_input_port_target_joint_position() const {
+  const drake::systems::InputPort<double>&
+  get_input_port_target_joint_position() const {
     return this->get_input_port(target_joint_position_port_);
   }
   const drake::systems::OutputPort<double>& get_output_port_joint(
@@ -28,8 +29,8 @@ class JointTrajectoryGenerator : public drake::systems::LeafSystem<double> {
 
  private:
   drake::systems::EventStatus DiscreteVariableUpdate(
-    const drake::systems::Context<double>& context,
-    drake::systems::DiscreteValues<double>* discrete_state) const;
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
 
   void CalcTraj(int joint_index, const drake::systems::Context<double>& context,
                 drake::AbstractValue* traj) const;

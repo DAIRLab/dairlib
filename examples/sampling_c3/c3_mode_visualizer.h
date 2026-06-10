@@ -2,11 +2,12 @@
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
+
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 
-#include "drake/systems/framework/leaf_system.h"
 #include "drake/multibody/plant/multibody_plant.h"
+#include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
 namespace systems {
@@ -18,8 +19,8 @@ namespace systems {
 /// the visualizer).
 class C3ModeVisualizer : public drake::systems::LeafSystem<double> {
  public:
-
-  explicit C3ModeVisualizer(const drake::multibody::MultibodyPlant<double>& plant);
+  explicit C3ModeVisualizer(
+      const drake::multibody::MultibodyPlant<double>& plant);
 
   // Input ports
   const drake::systems::InputPort<double>& get_input_port_is_c3_mode() const {

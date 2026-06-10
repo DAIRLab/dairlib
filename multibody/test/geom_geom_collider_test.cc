@@ -1,7 +1,9 @@
-#include "multibody/multibody_utils.h"
 #include "multibody/geom_geom_collider.h"
-#include "common/find_resource.h"
+
 #include <iostream>
+
+#include "common/find_resource.h"
+#include "multibody/multibody_utils.h"
 
 #include "drake/geometry/scene_graph.h"
 #include "drake/multibody/parsing/parser.h"
@@ -17,7 +19,6 @@ using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using Eigen::VectorXd;
 
-
 void GeomGeomColliderTest() {
   drake::systems::DiagramBuilder<double> builder;
 
@@ -28,28 +29,27 @@ void GeomGeomColliderTest() {
 
   parser.package_map().Add("robot_properties_fingers",
                            "examples/trifinger/robot_properties_fingers");
-  parser.AddModels(FindResourceOrThrow("examples/trifinger/"
+  parser.AddModels(FindResourceOrThrow(
+      "examples/trifinger/"
       "robot_properties_fingers/urdf/trifinger_minimal_collision.urdf"));
   parser.AddModels(FindResourceOrThrow(
       "examples/trifinger/robot_properties_fingers/cube/cube_v2.urdf"));
 
   auto X_WI = drake::math::RigidTransform<double>::Identity();
-  plant.WeldFrames(plant.world_frame(),
-                   plant.GetFrameByName("base_link"), X_WI);
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"),
+                   X_WI);
   plant.Finalize();
 
   auto diagram = builder.Build();
 
-
   const std::vector<GeometryId>& finger_lower_link_0_geoms =
-      plant.GetCollisionGeometriesForBody(plant.GetBodyByName(
-          "finger_lower_link_0"));
+      plant.GetCollisionGeometriesForBody(
+          plant.GetBodyByName("finger_lower_link_0"));
   const std::vector<GeometryId>& finger_lower_link_120_geoms =
-      plant.GetCollisionGeometriesForBody(plant.GetBodyByName(
-          "finger_lower_link_120"));
+      plant.GetCollisionGeometriesForBody(
+          plant.GetBodyByName("finger_lower_link_120"));
   const std::vector<GeometryId>& cube_geoms =
-      plant.GetCollisionGeometriesForBody(plant.GetBodyByName(
-          "cube"));
+      plant.GetCollisionGeometriesForBody(plant.GetBodyByName("cube"));
 
   // Each body here only has one geometry
   auto geom_A = finger_lower_link_0_geoms[0];
@@ -59,8 +59,8 @@ void GeomGeomColliderTest() {
   GeomGeomCollider collider_A_cube(plant, SortedPair(geom_A, cube_geoms[0]));
 
   auto diagram_context = diagram->CreateDefaultContext();
-  auto& context = diagram->GetMutableSubsystemContext(plant,
-                                                      diagram_context.get());
+  auto& context =
+      diagram->GetMutableSubsystemContext(plant, diagram_context.get());
 
   VectorXd q = VectorXd::Zero(plant.num_positions());
   auto q_map = MakeNameToPositionsMap(plant);
@@ -92,8 +92,8 @@ void GeomGeomColliderTest() {
   std::cout << J_A_B << std::endl << std::endl;
 
   std::cout << "A-B, planar" << std::endl;
-  auto [phi_A_B_planar, J_A_B_planar] = collider_A_B.EvalPlanar(context,
-                                                                Eigen::Vector3d(0, 1, 0));
+  auto [phi_A_B_planar, J_A_B_planar] =
+      collider_A_B.EvalPlanar(context, Eigen::Vector3d(0, 1, 0));
   std::cout << J_A_B_planar << std::endl << std::endl;
 }
 
@@ -101,7 +101,4 @@ void GeomGeomColliderTest() {
 }  // namespace multibody
 }  // namespace dairlib
 
-
-int main(int argc, char **argv) {
-  dairlib::multibody::GeomGeomColliderTest();
-}
+int main(int argc, char** argv) { dairlib::multibody::GeomGeomColliderTest(); }

@@ -1,7 +1,8 @@
 #pragma once
+#include <memory>
+
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_radio_out.hpp"
-#include <memory>
 
 #include "drake/systems/framework/leaf_system.h"
 
@@ -21,12 +22,11 @@ class CassieOutToRadio : public drake::systems::LeafSystem<double> {
   }
 
  protected:
-  void CalcRadioOut(
-      const drake::systems::Context<double>& context,
-      dairlib::lcmt_radio_out* output) const;
+  void CalcRadioOut(const drake::systems::Context<double>& context,
+                    dairlib::lcmt_radio_out* output) const;
 
  private:
-  bool is_abstract() const { return false;}
+  bool is_abstract() const { return false; }
 
   int cassie_out_input_port_;
   int radio_output_port_;

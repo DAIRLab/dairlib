@@ -41,8 +41,8 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
                   const DirconModeSequence<T>* ext_sequence,
                   const MultibodyPlant<T>& plant, int num_knotpoints)
     : drake::planning::trajectory_optimization::MultipleShooting(
-    plant.num_actuators(), plant.num_positions() + plant.num_velocities(),
-    num_knotpoints, 1e-8, 1e8),
+          plant.num_actuators(), plant.num_positions() + plant.num_velocities(),
+          num_knotpoints, 1e-8, 1e8),
       my_sequence_(std::move(my_sequence)),
       plant_(plant),
       mode_sequence_(ext_sequence ? *ext_sequence : *my_sequence_),
@@ -66,11 +66,12 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
     if (mode_length(i_mode) > 1) {
       double min_dt = mode.min_T() / (mode.num_knotpoints() - 1);
       double max_dt = mode.max_T() / (mode.num_knotpoints() - 1);
-      prog().AddBoundingBoxConstraint(min_dt, max_dt, time_step(mode_start_[i_mode]));
+      prog().AddBoundingBoxConstraint(min_dt, max_dt,
+                                      time_step(mode_start_[i_mode]));
       for (int j = 0; j < mode.num_knotpoints() - 2; j++) {
         // all timesteps must be equal
         prog().AddLinearConstraint(time_step(mode_start_[i_mode] + j) ==
-            time_step(mode_start_[i_mode] + j + 1));
+                                   time_step(mode_start_[i_mode] + j + 1));
       }
     }
 
@@ -90,14 +91,14 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
     // quaternion_slack_vars_ (slack variables used to scale quaternion norm to
     // 1 in the dynamic constraints)
     int num_quat = multibody::QuaternionStartIndices(plant_).size();
-    quaternion_slack_vars_.push_back(
-        prog().NewContinuousVariables(num_quat * (mode.num_knotpoints() - 1),
-                               "quat_slack[" + std::to_string(i_mode) + "]"));
+    quaternion_slack_vars_.push_back(prog().NewContinuousVariables(
+        num_quat * (mode.num_knotpoints() - 1),
+        "quat_slack[" + std::to_string(i_mode) + "]"));
 
     // Bound quaternion slack variables to avoid false full rotations
     double slack_bound = 1;
     prog().AddBoundingBoxConstraint(-slack_bound, slack_bound,
-                             quaternion_slack_vars_.at(i_mode));
+                                    quaternion_slack_vars_.at(i_mode));
 
     //  Post-impact variables. Note: impulse variables declared below.
     if (i_mode > 0) {
@@ -111,9 +112,9 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
     }
 
     // Constraint offset variables for relative constraints
-    offset_vars_.push_back(
-        prog().NewContinuousVariables(mode.num_relative_constraints(),
-                               "rel_offset[" + std::to_string(i_mode) + "]"));
+    offset_vars_.push_back(prog().NewContinuousVariables(
+        mode.num_relative_constraints(),
+        "rel_offset[" + std::to_string(i_mode) + "]"));
 
     //
     // Create context elements for knot points
@@ -192,9 +193,9 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
             "kinematic_position[" + std::to_string(i_mode) + "][" +
                 std::to_string(j) + "]");
         pos_constraint->SetConstraintScaling(mode.GetKinPositionScale());
-        prog().AddConstraint(pos_constraint,
-                      {state_vars(i_mode, j).head(plant_.num_positions()),
-                       offset_vars(i_mode)});
+        prog().AddConstraint(
+            pos_constraint, {state_vars(i_mode, j).head(plant_.num_positions()),
+                             offset_vars(i_mode)});
       }
 
       // Velocity constraints if type is not acceleration only. Also skip if
@@ -223,8 +224,8 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
           cache_[i_mode].get());
       accel_constraint->SetConstraintScaling(mode.GetKinAccelerationScale());
       prog().AddConstraint(accel_constraint,
-                    {state_vars(i_mode, j), input_vars(i_mode, j),
-                     force_vars(i_mode, j)});
+                           {state_vars(i_mode, j), input_vars(i_mode, j),
+                            force_vars(i_mode, j)});
     }
 
     //
@@ -233,9 +234,9 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
     if (i_mode > 0) {
       int pre_impact_index = mode_length(i_mode - 1) - 1;
       if (is_impact) {
-        impulse_vars_.push_back(
-            prog().NewContinuousVariables(mode.evaluators().count_full(),
-                                   "impulse[" + std::to_string(i_mode) + "]"));
+        impulse_vars_.push_back(prog().NewContinuousVariables(
+            mode.evaluators().count_full(),
+            "impulse[" + std::to_string(i_mode) + "]"));
 
         // Use pre-impact context
         auto impact_constraint = std::make_shared<ImpactConstraint<T>>(
@@ -256,7 +257,7 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
             state_vars(i_mode - 1, pre_impact_index)
                 .tail(plant_.num_velocities());
         prog().AddLinearConstraint(pre_impact_velocity ==
-            post_impact_velocity_vars(i_mode - 1));
+                                   post_impact_velocity_vars(i_mode - 1));
       }
     }
 
@@ -269,7 +270,7 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
         auto start_indices = multibody::QuaternionStartIndices(plant_);
         for (auto start_index : start_indices) {
           prog().AddConstraint(quaternion_constraint,
-                        state_vars(i_mode, j).segment(start_index, 4));
+                               state_vars(i_mode, j).segment(start_index, 4));
         }
       }
     }
@@ -294,10 +295,11 @@ Dircon<T>::Dircon(std::unique_ptr<DirconModeSequence<T>> my_sequence,
 
         if (i_mode > 0 && is_impact) {
           // Add to impulse variables
-          prog().AddConstraint(force_constraint,
-                        impulse_vars(i_mode - 1)
-                            .segment(mode.evaluators().evaluator_full_start(k),
-                                     e.num_full()));
+          prog().AddConstraint(
+              force_constraint,
+              impulse_vars(i_mode - 1)
+                  .segment(mode.evaluators().evaluator_full_start(k),
+                           e.num_full()));
         }
       }
     }
@@ -371,9 +373,9 @@ const VectorXDecisionVariable Dircon<T>::state_vars(int mode_index,
   // If first knot of a mode after the first, use post impact velocity variables
   if (knotpoint_index == 0 && mode_index > 0) {
     VectorXDecisionVariable ret(plant_.num_positions() +
-        plant_.num_velocities());
+                                plant_.num_velocities());
     ret << x_vars().segment(mode_start_[mode_index] * (plant_.num_positions() +
-                                plant_.num_velocities()),
+                                                       plant_.num_velocities()),
                             plant_.num_positions()),
         post_impact_velocity_vars(mode_index - 1);
     return ret;
@@ -429,13 +431,13 @@ void Dircon<T>::CreateVisualizationCallback(
   int num_poses = num_modes() + 1;
   for (int i = 0; i < num_modes(); i++) {
     DRAKE_DEMAND(poses_per_mode.at(i) == 0 ||
-        (poses_per_mode.at(i) + 2 <= (uint)mode_length(i)));
+                 (poses_per_mode.at(i) + 2 <= (uint)mode_length(i)));
     num_poses += poses_per_mode.at(i);
   }
 
   // Assemble variable list
   drake::solvers::VectorXDecisionVariable vars(num_poses *
-      plant_.num_positions());
+                                               plant_.num_positions());
 
   int index = 0;
   for (int i = 0; i < num_modes(); i++) {
@@ -526,7 +528,7 @@ void Dircon<T>::CreateVisualizationCallback(std::string model_file,
     for (int i_mode = 0; i_mode < num_modes(); i_mode++) {
       double fractional_value =
           num_poses_without_ends * (mode_length(i_mode) - 2) -
-              num_poses_per_mode.at(i_mode) * mode_sum;
+          num_poses_per_mode.at(i_mode) * mode_sum;
 
       if (fractional_value > value) {
         value = fractional_value;
@@ -590,18 +592,21 @@ void Dircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
     // Substitute the velocity vars with the correct post-impact velocity vars
     // before substituting the rest of the expression
     if (mode > 0) {
-      prog().AddCost(MultipleShooting::SubstitutePlaceholderVariables(
-          SubstitutePostImpactVelocityVariables(g, mode), mode_start) *
+      prog().AddCost(
+          MultipleShooting::SubstitutePlaceholderVariables(
+              SubstitutePostImpactVelocityVariables(g, mode), mode_start) *
           (h_vars()(mode_start) / 2));
     } else {
-      prog().AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, mode_start) *
+      prog().AddCost(
+          MultipleShooting::SubstitutePlaceholderVariables(g, mode_start) *
           (h_vars()(mode_start) / 2));
     }
     for (int i = mode_start + 1; i < mode_end - 1; ++i) {
       prog().AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, i) *
-          (h_vars()(i - 1) + h_vars()(i)) / 2);
+                     (h_vars()(i - 1) + h_vars()(i)) / 2);
     }
-    prog().AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, mode_end - 1) *
+    prog().AddCost(
+        MultipleShooting::SubstitutePlaceholderVariables(g, mode_end - 1) *
         h_vars()(mode_end - 2) / 2);
   }
 }
@@ -677,7 +682,7 @@ void Dircon<T>::SetInitialForceTrajectory(
   const auto& mode = get_mode(mode_index);
   double start_time = 0;
   double h;
-  if (time_steps_are_decision_variables ())
+  if (time_steps_are_decision_variables())
     h = prog().GetInitialGuess(h_vars()[0]);
   else
     h = fixed_time_step();
@@ -705,7 +710,8 @@ void Dircon<T>::SetInitialForceTrajectory(
     }
   }
 
-  prog().SetInitialGuess(collocation_force_vars_[mode_index], guess_collocation_force);
+  prog().SetInitialGuess(collocation_force_vars_[mode_index],
+                         guess_collocation_force);
 
   VectorXd guess_collocation_slack(collocation_slack_vars_[mode_index].size());
   if (traj_init_vc.empty()) {
@@ -719,7 +725,8 @@ void Dircon<T>::SetInitialForceTrajectory(
   }
 
   // call superclass method
-  prog().SetInitialGuess(collocation_slack_vars_[mode_index], guess_collocation_slack);
+  prog().SetInitialGuess(collocation_slack_vars_[mode_index],
+                         guess_collocation_slack);
 }
 
 template <typename T>
@@ -750,7 +757,8 @@ void Dircon<T>::SetInitialForceTrajectory(
     }
   }
   prog().SetInitialGuess(force_vars_[mode_index], guess_force);
-  prog().SetInitialGuess(collocation_force_vars_[mode_index], guess_collocation_force);
+  prog().SetInitialGuess(collocation_force_vars_[mode_index],
+                         guess_collocation_force);
 }
 
 template <typename T>
@@ -786,7 +794,7 @@ void Dircon<T>::ScaleQuaternionSlackVariables(double scale) {
 template <typename T>
 void Dircon<T>::ScaleStateVariable(int state_index, double scale) {
   DRAKE_DEMAND(0 <= state_index &&
-      state_index < plant_.num_positions() + plant_.num_velocities());
+               state_index < plant_.num_positions() + plant_.num_velocities());
 
   // x_vars_ in MathematicalProgram
   for (int j_knot = 0; j_knot < N(); j_knot++) {
@@ -799,7 +807,7 @@ void Dircon<T>::ScaleStateVariable(int state_index, double scale) {
     for (int mode = 0; mode < num_modes() - 1; mode++) {
       auto vars = post_impact_velocity_vars(mode);
       prog().SetVariableScaling(vars(state_index - plant_.num_positions()),
-                               scale);
+                                scale);
     }
   }
 }
@@ -828,8 +836,8 @@ void Dircon<T>::ScaleForceVariable(int mode_index, int force_index,
   }
   // Force at collocation pints
   for (int j = 0; j < mode_length(mode_index) - 1; j++) {
-    prog().SetVariableScaling(collocation_force_vars(mode_index, j)(force_index),
-                             scale);
+    prog().SetVariableScaling(
+        collocation_force_vars(mode_index, j)(force_index), scale);
   }
 }
 
@@ -851,8 +859,8 @@ void Dircon<T>::ScaleKinConstraintSlackVariable(int mode_index, int slack_index,
   DRAKE_DEMAND(slack_index < n_lambda);
 
   for (int j = 0; j < mode_length(mode_index) - 1; j++) {
-    prog().SetVariableScaling(collocation_slack_vars(mode_index, j)(slack_index),
-                             scale);
+    prog().SetVariableScaling(
+        collocation_slack_vars(mode_index, j)(slack_index), scale);
   }
 }
 

@@ -10,7 +10,6 @@
 #include "examples/Cassie/systems/cassie_out_to_radio.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/kinematic/kinematic_evaluator_set.h"
-#include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/osc/com_tracking_data.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"

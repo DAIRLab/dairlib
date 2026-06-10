@@ -1,34 +1,32 @@
 #pragma GCC diagnostic ignored "-Wuninitialized"
 
-#include <gflags/gflags.h>
-
-#include <memory>
 #include <chrono>
 #include <iostream>
+#include <memory>
 
 #include <gflags/gflags.h>
 
-#include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/solvers/mathematical_program.h"
-#include "drake/solvers/constraint.h"
-#include "drake/solvers/snopt_solver.h"
-#include "drake/multibody/parsing/parser.h"
-#include "drake/solvers/solve.h"
-
 #include "common/find_resource.h"
-#include "systems/trajectory_optimization/dircon/dircon.h"
 #include "multibody/kinematic/distance_evaluator.h"
 #include "multibody/kinematic/world_point_evaluator.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
+#include "systems/trajectory_optimization/dircon/dircon.h"
+
+#include "drake/multibody/parsing/parser.h"
+#include "drake/solvers/constraint.h"
+#include "drake/solvers/mathematical_program.h"
+#include "drake/solvers/snopt_solver.h"
+#include "drake/solvers/solve.h"
+#include "drake/systems/analysis/simulator.h"
+#include "drake/systems/framework/diagram_builder.h"
 
 /// Simple example using WorldPointEvaluator.Starting from an acrobot, adds
 /// two constraints.
 ///  1) A WorldPointEvaluator to simulate a ball joint between the base and
 ///      the world.
 ///  2) A DistanceEvaluator between the base and a point on the lower link.
-///     This converts the system to a 3D passive pendulum, as the lower and 
+///     This converts the system to a 3D passive pendulum, as the lower and
 ///     upperlinks will be fixed relative to one another.
 ///
 /// Runs DIRCON from a given initial condition.
@@ -37,27 +35,26 @@ DEFINE_bool(autodiff, false, "Use double or autodiff");
 
 namespace dairlib {
 namespace {
-using drake::multibody::MultibodyPlant;
 using drake::geometry::SceneGraph;
+using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::trajectories::PiecewisePolynomial;
 
+using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
-using Eigen::MatrixXd;
 
-using systems::trajectory_optimization::DirconModeSequence;
-using systems::trajectory_optimization::DirconMode;
 using systems::trajectory_optimization::Dircon;
+using systems::trajectory_optimization::DirconMode;
+using systems::trajectory_optimization::DirconModeSequence;
 
 // Fixed path to double pendulum SDF model.
 static const char* const kDoublePendulumUrdfPath =
-  "systems/trajectory_optimization/dircon/test/acrobot_floating.urdf";
+    "systems/trajectory_optimization/dircon/test/acrobot_floating.urdf";
 
 template <typename T>
 void runDircon() {
-  const std::string urdf_path =
-      FindResourceOrThrow(kDoublePendulumUrdfPath);
+  const std::string urdf_path = FindResourceOrThrow(kDoublePendulumUrdfPath);
   MultibodyPlant<double> plant_double(0.0);
   MultibodyPlant<double> plant_vis(0.0);
 
@@ -74,12 +71,12 @@ void runDircon() {
 
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_pointer;
   if (typeid(T) == typeid(drake::AutoDiffXd)) {
-    plant_pointer = drake::systems::System<double>::ToAutoDiffXd(
-      plant_double);
+    plant_pointer = drake::systems::System<double>::ToAutoDiffXd(plant_double);
   }
-  const MultibodyPlant<T>& plant = typeid(T) == typeid(double) ? 
-      reinterpret_cast<const MultibodyPlant<T>&>(plant_double) : 
-      reinterpret_cast<const MultibodyPlant<T>&>(*plant_pointer);
+  const MultibodyPlant<T>& plant =
+      typeid(T) == typeid(double)
+          ? reinterpret_cast<const MultibodyPlant<T>&>(plant_double)
+          : reinterpret_cast<const MultibodyPlant<T>&>(*plant_pointer);
 
   const auto& base = plant.GetFrameByName("base_link");
   const auto& lower_link = plant.GetFrameByName("lower_link");
@@ -88,11 +85,11 @@ void runDircon() {
   Vector3d pt2(-1, 0, 0);
   double distance = .7;
 
-  auto distance_eval = multibody::DistanceEvaluator<T>(plant, pt1, base,
-      pt2, lower_link, distance);
+  auto distance_eval = multibody::DistanceEvaluator<T>(plant, pt1, base, pt2,
+                                                       lower_link, distance);
 
-  auto pin_eval = multibody::WorldPointEvaluator<T>(plant,
-      Vector3d::Zero(), base);
+  auto pin_eval =
+      multibody::WorldPointEvaluator<T>(plant, Vector3d::Zero(), base);
 
   auto evaluators = multibody::KinematicEvaluatorSet<T>(plant);
   evaluators.add_evaluator(&distance_eval);
@@ -107,8 +104,7 @@ void runDircon() {
 
   const double R = 100;  // Cost on input effort
   auto u = trajopt.input();
-  trajopt.AddRunningCost(u.transpose()*R*u);
-
+  trajopt.AddRunningCost(u.transpose() * R * u);
 
   auto positions_map = multibody::MakeNameToPositionsMap(plant);
   auto velocities_map = multibody::MakeNameToVelocitiesMap(plant);
@@ -120,7 +116,7 @@ void runDircon() {
   // trajopt.prog().SetSolverOption(drake::solvers::SnoptSolver::id(),
   //                          "Print file", "../snopt.out");
   trajopt.prog().SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major iterations limit", 200);
+                                 "Major iterations limit", 200);
 
   int nx = plant.num_positions() + plant.num_velocities();
   VectorXd times(num_knotpoints);
@@ -128,7 +124,7 @@ void runDircon() {
   MatrixXd inputs(1, num_knotpoints);
   for (int i = 0; i < num_knotpoints; i++) {
     times(i) = min_T * i / (num_knotpoints - 1);
-    states.col(i) = .1*Eigen::VectorXd::Random(nx);
+    states.col(i) = .1 * Eigen::VectorXd::Random(nx);
     states.col(i).head(4) /= states.col(i).head(4).norm();
     inputs.col(i) = Eigen::VectorXd::Zero(1);
   }
@@ -145,20 +141,19 @@ void runDircon() {
   trajopt.prog().AddLinearConstraint(x0(positions_map.at("base_qy")) == .3);
   trajopt.prog().AddLinearConstraint(x0(positions_map.at("base_qz")) == -.2);
   trajopt.prog().AddLinearConstraint(x0(positions_map.at("base_qw")) >= .1);
-  trajopt.prog().AddLinearConstraint(x0(plant.num_positions() + 
-      velocities_map.at("base_wx")) == 0);
-  trajopt.prog().AddLinearConstraint(x0(plant.num_positions() + 
-      velocities_map.at("base_wy")) == 0);
-  trajopt.prog().AddLinearConstraint(x0(plant.num_positions() + 
-      velocities_map.at("base_wz")) == 0);
-
+  trajopt.prog().AddLinearConstraint(
+      x0(plant.num_positions() + velocities_map.at("base_wx")) == 0);
+  trajopt.prog().AddLinearConstraint(
+      x0(plant.num_positions() + velocities_map.at("base_wy")) == 0);
+  trajopt.prog().AddLinearConstraint(
+      x0(plant.num_positions() + velocities_map.at("base_wz")) == 0);
 
   auto start = std::chrono::high_resolution_clock::now();
   const auto result = Solve(trajopt.prog(), trajopt.prog().initial_guess());
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
-  std::cout << "Solve time:" << elapsed.count() <<std::endl;
-  std::cout << "Cost:" << result.get_optimal_cost() <<std::endl;
+  std::cout << "Solve time:" << elapsed.count() << std::endl;
+  std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
 
   if (result.is_success()) {
     std::cout << "Success." << std::endl;
@@ -169,9 +164,9 @@ void runDircon() {
   // // Print out solution
   // VectorXd z = result.GetSolution(trajopt.decision_variables());
   // for (int i = 0; i < z.size(); i++) {
-  //   std::cout << trajopt.decision_variables()(i) << " = " << z(i) << std::endl;
+  //   std::cout << trajopt.decision_variables()(i) << " = " << z(i) <<
+  //   std::endl;
   // }
-
 
   // visualizer
   const drake::trajectories::PiecewisePolynomial<double> pp_xtraj =

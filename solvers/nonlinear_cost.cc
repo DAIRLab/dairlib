@@ -1,4 +1,5 @@
 #include "solvers/nonlinear_cost.h"
+
 #include "drake/common/default_scalars.h"
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"

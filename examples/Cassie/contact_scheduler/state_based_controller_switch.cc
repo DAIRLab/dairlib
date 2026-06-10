@@ -1,18 +1,18 @@
 #include <iostream>
 #include <string>
 
-#include <gflags/gflags.h>
 #include <dairlib/lcmt_contact_timing.hpp>
+#include <gflags/gflags.h>
 
 #include "dairlib/lcmt_controller_switch.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 
+#include "drake/common/text_logging.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/serializer.h"
-#include "drake/common/text_logging.h"
 
 namespace dairlib {
 
@@ -74,8 +74,8 @@ int do_main(int argc, char* argv[]) {
   // Create subscriber for lcm driven loop
   drake::lcm::Subscriber<dairlib::lcmt_robot_output> input_sub(&lcm_local,
                                                                FLAGS_channel_x);
-  drake::lcm::Subscriber<dairlib::lcmt_contact_timing> timing_sub(&lcm_local,
-                                                               FLAGS_contact_schedule_channel);
+  drake::lcm::Subscriber<dairlib::lcmt_contact_timing> timing_sub(
+      &lcm_local, FLAGS_contact_schedule_channel);
 
   // Wait for the first message and initialize the context time..
   drake::log()->info("Waiting for first lcm input message");
@@ -88,19 +88,19 @@ int do_main(int argc, char* argv[]) {
 
   LcmHandleSubscriptionsUntil(&lcm_local,
                               [&]() { return timing_sub.count() > 0; });
-  while(timing_sub.message().transition_states.back() != FLAGS_trigger_state){
+  while (timing_sub.message().transition_states.back() != FLAGS_trigger_state) {
     timing_sub.clear();
     LcmHandleSubscriptionsUntil(&lcm_local,
                                 [&]() { return timing_sub.count() > 0; });
   }
-  const double transition_time = timing_sub.message().transition_times.back() + FLAGS_fsm_offset;
+  const double transition_time =
+      timing_sub.message().transition_times.back() + FLAGS_fsm_offset;
   std::cout << "transition time: " << transition_time << std::endl;
 
   // Create output message
   dairlib::lcmt_controller_switch msg;
   msg.channel = FLAGS_new_channel;
   msg.blend_duration = FLAGS_blend_duration;
-
 
   int pub_count = 0;
   while (pub_count < 1) {

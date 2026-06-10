@@ -2,12 +2,14 @@
 #include <string>
 
 #include <gflags/gflags.h>
+
 #include "attic/multibody/multibody_solvers.h"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_utils.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/sensors/sim_cassie_sensor_aggregator.h"
+
 #include "drake/lcmt_contact_results_for_viz.hpp"
 #include "drake/multibody/joints/floating_base_types.h"
 #include "drake/multibody/rigid_body_plant/contact_results_to_lcm.h"
@@ -23,12 +25,12 @@
 
 namespace dairlib {
 
-using dairlib::systems::SubvectorPassThrough;
 using dairlib::multibody::PositionSolver;
+using dairlib::systems::SubvectorPassThrough;
 using drake::solvers::MathematicalProgramResult;
-using drake::systems::lcm::LcmSubscriberSystem;
-using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::ContactResultsToLcmSystem;
+using drake::systems::lcm::LcmPublisherSystem;
+using drake::systems::lcm::LcmSubscriberSystem;
 
 // Simulation parameters.
 DEFINE_double(timestep, 1e-4, "The simulator time step (s)");
@@ -62,21 +64,21 @@ DEFINE_double(init_ankle, 1.3, "Initial ankle joint position");
 DEFINE_double(init_toe, -1.5, "Initial toe joint position");
 
 DEFINE_double(end_time, std::numeric_limits<double>::infinity(),
-    "End time of simulation");
+              "End time of simulation");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   std::unique_ptr<RigidBodyTree<double>> tree;
-  if (!FLAGS_floating_base){
+  if (!FLAGS_floating_base) {
     tree = makeCassieTreePointer();
   } else {
     tree = makeCassieTreePointer("examples/Cassie/urdf/cassie_v2.urdf",
                                  drake::multibody::joints::kQuaternion);
     const double terrain_size = 100;
     const double terrain_depth = 0.20;
-    drake::multibody::AddFlatTerrainToWorld(
-        tree.get(), terrain_size, terrain_depth);
+    drake::multibody::AddFlatTerrainToWorld(tree.get(), terrain_size,
+                                            terrain_depth);
   }
 
   // Add imu frame to Cassie's pelvis
@@ -92,8 +94,8 @@ int do_main(int argc, char* argv[]) {
 
   // contact force visualization
   ContactResultsToLcmSystem<double>& contact_viz =
-  *builder.template AddSystem<ContactResultsToLcmSystem<double>>(
-      plant->get_rigid_body_tree());
+      *builder.template AddSystem<ContactResultsToLcmSystem<double>>(
+          plant->get_rigid_body_tree());
   contact_viz.set_name("contact_visualization");
   auto& contact_results_publisher = *builder.AddSystem(
       LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
@@ -169,7 +171,7 @@ int do_main(int argc, char* argv[]) {
                                           &simulator.get_mutable_context());
 
   // drake::systems::Context<double>& sim_context =
-      // simulator.get_mutable_context();
+  // simulator.get_mutable_context();
   // auto integrator =
   //     simulator.reset_integrator<drake::systems::RungeKutta2Integrator<double>>(
   //         *diagram, FLAGS_timestep, &sim_context);
@@ -239,7 +241,8 @@ int do_main(int argc, char* argv[]) {
   MathematicalProgramResult program_result = position_solver.Solve();
 
   if (!program_result.is_success()) {
-    std::cout << "Solver error: " << program_result.get_solution_result() << std::endl;
+    std::cout << "Solver error: " << program_result.get_solution_result()
+              << std::endl;
     return 0;
   }
 
@@ -257,8 +260,7 @@ int do_main(int argc, char* argv[]) {
     // state[3] = 0;
     // state[4] = 0;
   } else {
-    std::cout << "ngroups " << context.num_discrete_state_groups()
-              << std::endl;
+    std::cout << "ngroups " << context.num_discrete_state_groups() << std::endl;
     drake::systems::BasicVector<double>& state =
         context.get_mutable_discrete_state(0);
     std::cout << "Discrete " << state.size() << std::endl;

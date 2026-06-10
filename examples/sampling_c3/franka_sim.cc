@@ -1,4 +1,5 @@
 #include <math.h>
+
 #include <vector>
 
 #include <drake/common/find_resource.h>
@@ -19,11 +20,11 @@
 
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
-#include "examples/sampling_c3/sampling_c3_utils.h"
+#include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
+#include "examples/sampling_c3/parameter_headers/lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
-#include "examples/sampling_c3/parameter_headers/lcm_channels.h"
-#include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
+#include "examples/sampling_c3/sampling_c3_utils.h"
 #include "multibody/multibody_utils.h"
 #include "systems/robot_lcm_systems.h"
 
@@ -50,7 +51,6 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-
 DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
 DEFINE_string(demo_name, "jacktoy",
@@ -60,8 +60,9 @@ int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Load parameters.
-  std::string controller_params_path = "examples/sampling_c3/" +
-    FLAGS_demo_name + "/parameters/sampling_c3_controller_params.yaml";
+  std::string controller_params_path =
+      "examples/sampling_c3/" + FLAGS_demo_name +
+      "/parameters/sampling_c3_controller_params.yaml";
   SamplingC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
           controller_params_path);
@@ -71,30 +72,32 @@ int DoMain(int argc, char* argv[]) {
       drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(lcm_channels_file);
   FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
       controller_params.sim_params_file);
-  SamplingC3Options sampling_c3_options = 
-       drake::yaml::LoadYamlFile<SamplingC3Options>(controller_params.sampling_c3_options_file);
+  SamplingC3Options sampling_c3_options =
+      drake::yaml::LoadYamlFile<SamplingC3Options>(
+          controller_params.sampling_c3_options_file);
 
   // Build the simulation plant.
   DiagramBuilder<double> builder;
   double sim_dt = sim_params.dt;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
   ModelInstanceIndex franka_index = AddFrankaToPlant(
-    &plant, &scene_graph, true, true, sampling_c3_options.include_walls);
+      &plant, &scene_graph, true, true, sampling_c3_options.include_walls);
 
   int num_objects = sim_params.object_models.size();
-  std::vector<ModelInstanceIndex> object_indices = AddObjectsToPlant(
-        &plant, &scene_graph, sim_params.object_models);
+  std::vector<ModelInstanceIndex> object_indices =
+      AddObjectsToPlant(&plant, &scene_graph, sim_params.object_models);
 
   // ModelInstanceIndex object_index = AddObjectToPlant(&plant, &scene_graph,
   //                                                    sim_params.object_model);
 
   // std::vector<ModelInstanceIndex> balls;
-//   int num_balls = 1;
-//   for (int i = 0; i < num_balls; i++) {
-//     ModelInstanceIndex object_index1 = AddObjectToPlant(&plant, &scene_graph,
-//                                                      "examples/sampling_c3/urdf/ball.urdf");
-//     balls.push_back(object_index1);
-//   }                                                                          
+  //   int num_balls = 1;
+  //   for (int i = 0; i < num_balls; i++) {
+  //     ModelInstanceIndex object_index1 = AddObjectToPlant(&plant,
+  //     &scene_graph,
+  //                                                      "examples/sampling_c3/urdf/ball.urdf");
+  //     balls.push_back(object_index1);
+  //   }
   plant.Finalize();
   /* -------------------------------------------------------------------------------------------*/
 
@@ -105,21 +108,23 @@ int DoMain(int argc, char* argv[]) {
       &builder, plant, lcm, lcm_channel_params.franka_input_channel,
       lcm_channel_params.franka_state_channel, sim_params.franka_publish_rate,
       franka_index, sim_params.publish_efforts, sim_params.actuator_delay);
-  
+
   std::vector<systems::ObjectStateSender*> object_state_senders;
   std::vector<LcmPublisherSystem*> object_state_pubs;
   for (int i = 0; i < num_objects; i++) {
-    std::cout << "Object index " << i << ": " << object_indices.at(i) << std::endl;
+    std::cout << "Object index " << i << ": " << object_indices.at(i)
+              << std::endl;
     object_state_senders.push_back(
-      builder.AddSystem<systems::ObjectStateSender>(plant, false, object_indices.at(i)));
+        builder.AddSystem<systems::ObjectStateSender>(plant, false,
+                                                      object_indices.at(i)));
     object_state_pubs.push_back(
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
-          lcm_channel_params.object_state_channels.at(i), lcm,
-          1.0 / sim_params.object_publish_rate)));
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
+            lcm_channel_params.object_state_channels.at(i), lcm,
+            1.0 / sim_params.object_publish_rate)));
   }
   for (int i = 0; i < num_objects; i++) {
     builder.Connect(plant.get_state_output_port(object_indices[i]),
-                  object_state_senders.at(i)->get_input_port_state());
+                    object_state_senders.at(i)->get_input_port_state());
     builder.Connect(object_state_senders.at(i)->get_output_port(),
                     object_state_pubs.at(i)->get_input_port());
   }
@@ -145,7 +150,7 @@ int DoMain(int argc, char* argv[]) {
 
   q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
   for (int i = 0; i < num_objects; i++) {
-      q.segment(7 * (i+1), 7) = sim_params.q_init_objects.at(i);
+    q.segment(7 * (i + 1), 7) = sim_params.q_init_objects.at(i);
   }
   q.tail(7) = sim_params.q_init_objects.at(num_objects - 1);
 

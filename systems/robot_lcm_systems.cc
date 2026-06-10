@@ -37,6 +37,8 @@ RobotOutputReceiver::RobotOutputReceiver(
   num_efforts_ = plant.num_actuators();
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
+  model_instance_ =
+      drake::multibody::ModelInstanceIndex(DEFAULT_MODEL_INSTANCE_INDEX);
 
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
@@ -145,7 +147,8 @@ void RobotOutputReceiver::InitializeSubscriberPositions(
   }
 
   // Set quaternion w = 1, assumes drake quaternion ordering of wxyz
-  if (has_model_instance_) {
+  if (model_instance_ !=
+      drake::multibody::ModelInstanceIndex(DEFAULT_MODEL_INSTANCE_INDEX)) {
     if (plant.HasUniqueFreeBaseBody(model_instance_)) {
       state_msg.position.at(0) = 1;
     }
@@ -312,6 +315,8 @@ ObjectStateReceiver::ObjectStateReceiver(
   num_velocities_ = plant.num_velocities();
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
+  model_instance_ =
+      drake::multibody::ModelInstanceIndex(DEFAULT_MODEL_INSTANCE_INDEX);
 
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
@@ -403,7 +408,8 @@ void ObjectStateReceiver::InitializeSubscriberPositions(
   }
 
   // Set quaternion w = 1, assumes drake quaternion ordering of wxyz
-  if (has_model_instance_) {
+  if (model_instance_ !=
+      drake::multibody::ModelInstanceIndex(DEFAULT_MODEL_INSTANCE_INDEX)) {
     if (plant.HasUniqueFreeBaseBody(model_instance_)) {
       state_msg.position.at(0) = 1;
     }
@@ -432,7 +438,8 @@ ObjectStateSender::ObjectStateSender(
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
 
-  model_instance_ = drake::multibody::default_model_instance();
+  model_instance_ =
+      drake::multibody::ModelInstanceIndex(DEFAULT_MODEL_INSTANCE_INDEX);
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
 

@@ -20,6 +20,8 @@
 namespace dairlib {
 namespace systems {
 
+constexpr int DEFAULT_MODEL_INSTANCE_INDEX = 88888888;
+
 /// @file This file contains classes dealing with sending/receiving
 /// LCM messages related to a robot.
 

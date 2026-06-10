@@ -22,6 +22,7 @@
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/impact_info_vector.h"
 #include "systems/framework/output_vector.h"
+#include "systems/controllers/osc/inverse_dynamics_qp.h"
 
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"

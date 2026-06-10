@@ -5,6 +5,7 @@
 
 #include "drake/geometry/meshcat_visualizer.h"
 #include "drake/geometry/scene_graph.h"
+#include "drake/geometry/meshcat_visualizer.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/diagram.h"
@@ -63,6 +64,10 @@ class MultiposeVisualizer {
   void DrawPoses(Eigen::MatrixXd poses, std::optional<double> time_in_recording = std::nullopt);
 
   const std::shared_ptr<drake::geometry::Meshcat> GetMeshcat() {
+    return meshcat_;
+  }
+
+  const std::shared_ptr<drake::geometry::Meshcat> GetMeshcat(){
     return meshcat_;
   }
 

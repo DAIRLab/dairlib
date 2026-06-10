@@ -24,7 +24,7 @@ class VectorAggregator : public drake::systems::LeafSystem<double> {
   /// @param vector_length is the length of the input TimestampedVector
   VectorAggregator(int vector_length) {
     DeclareVectorInputPort(kUseDefaultName,
-      TimestampedVector<double>(vector_length));
+                           TimestampedVector<double>(vector_length));
     DeclarePerStepEvent<drake::systems::PublishEvent<double>>(
         drake::systems::PublishEvent<double>(
             drake::systems::Event<double>::TriggerType::kPerStep));

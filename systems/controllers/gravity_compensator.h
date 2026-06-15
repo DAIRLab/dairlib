@@ -6,7 +6,7 @@
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
-#include <drake/multibody/math/spatial_velocity.h>
+#include <drake/multibody/math/spatial_algebra.h>
 #include <drake/systems/framework/continuous_state.h>
 #include <drake/systems/framework/vector_base.h>
 

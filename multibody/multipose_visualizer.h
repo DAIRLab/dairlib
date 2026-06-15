@@ -67,10 +67,6 @@ class MultiposeVisualizer {
     return meshcat_;
   }
 
-  const std::shared_ptr<drake::geometry::Meshcat> GetMeshcat() {
-    return meshcat_;
-  }
-
  private:
   int num_poses_;
   drake::multibody::MultibodyPlant<double>* plant_;

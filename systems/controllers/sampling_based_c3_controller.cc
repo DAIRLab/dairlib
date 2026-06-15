@@ -1107,7 +1107,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;
 
 #pragma omp critical
-    { c3_objects.at(i) = test_c3_object; }
+    {
+      c3_objects.at(i) = test_c3_object;
+    }
     // Add travel cost (just looking at xy displacement, not also z).
     double xy_travel_distance =
         (test_state.head(2) - x_lcs_curr.head(2)).norm();
@@ -1757,13 +1759,6 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   vector<VectorXd> u_sol = c3_curr_plan_->GetInputSolution();
   vector<VectorXd> x_sol = c3_curr_plan_->GetStateSolution();
 
-  // TODO @bibit:  this is hacky and affects non-planar examples
-  // if (x_sol[0][2] >= 0.03) {
-  //   for (int i = 0; i < x_sol.size(); ++i) {
-  //     x_sol[i][2] -= 0.01;
-  //   }
-  // }
-
   // Setting up matrices to set up LCMTrajectory object.
   MatrixXd knots = MatrixXd::Zero(n_x_, N_);
   VectorXd timestamps = VectorXd::Zero(N_);
@@ -1810,12 +1805,15 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
     }
   }
 
-  // TODO @bibit:  this breaks non-planar examples
-  // for (int i = 0; i < N_; i++) {
-  //   knots(2, i) =
-  //       sampling_params_.z_height + wall_offset;  // keep ee height constant
-  //   knots(n_q_ + 2, i) = 0;                       // keep ee z-velo constant
-  // }
+  // For planar demos, overwrite the C3 plan to keep the EE height constant and
+  // EE velocity zero.
+  if (sampling_c3_options_.planar_demo) {
+    for (int i = 0; i < N_; i++) {
+      knots(2, i) =
+          sampling_params_.z_height + wall_offset;  // keep ee height constant
+      knots(n_q_ + 2, i) = 0;                       // keep ee z-velo zero
+    }
+  }
 
   // Add end effector position target to LCM Trajectory.
   LcmTrajectory::Trajectory ee_traj;
@@ -2630,7 +2628,6 @@ void SamplingC3Controller::OutputC3SolutionBestPlanObject(
   output->utime = context.get_time() * 1e6;
 }
 
-// TODO @bibit:  continue looking for changes from here
 void SamplingC3Controller::OutputC3SolutionBestPlan(
     const drake::systems::Context<double>& context,
     C3Output::C3Solution* c3_solution) const {

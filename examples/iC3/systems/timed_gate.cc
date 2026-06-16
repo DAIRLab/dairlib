@@ -124,6 +124,10 @@ void TimedGate::OutputActorTrajectory(
       for (int i = 0; i < c3_force_data.cols(); i++) {
         std::cout << "timed gate u " << c3_force_data.col(i).transpose() << std::endl;
       }
+
+      for (int i = 0; i < c3_position_data.cols()-1; i++) {
+        std::cout << "finger velo " << ((c3_position_data.col(i+1) - c3_position_data.col(i)) / ic3_options_.dt).transpose() << std::endl;
+      }
     }
 
 

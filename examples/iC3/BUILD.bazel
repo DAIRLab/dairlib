@@ -23,7 +23,11 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 
-
+cc_library(
+    name = "hybrid_mpc_options",
+    hdrs = ["hybrid_mpc_options.h"],
+    visibility = ["//visibility:public"],
+)
 
 py_binary(
     name = "xbox_script",

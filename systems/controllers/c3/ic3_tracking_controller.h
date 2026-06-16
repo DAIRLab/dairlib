@@ -61,6 +61,10 @@ class iC3TrackingController : public drake::systems::LeafSystem<double> {
     return this->get_input_port(ic3_u_port_);
   }
 
+  const drake::systems::InputPort<double>& get_input_port_ic3_lambda() const {
+    return this->get_input_port(ic3_lambda_port_);
+  }
+
   const drake::systems::InputPort<double>& get_input_port_lcs() const {
     return this->get_input_port(lcs_input_port_);
   }
@@ -109,6 +113,7 @@ class iC3TrackingController : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex lqr_input_port_;
   drake::systems::InputPortIndex ic3_x_port_;
   drake::systems::InputPortIndex ic3_u_port_;
+  drake::systems::InputPortIndex ic3_lambda_port_;
   drake::systems::InputPortIndex timestep_port_;
   drake::systems::OutputPortIndex c3_solution_port_;
   drake::systems::OutputPortIndex tracking_target_port_;

@@ -14,6 +14,9 @@ num_timesteps_to_use: 50
 
 rollout_dt_scaling: 2
 
+add_acceleration_cost: false
+acceleration_cost_weight: 30
+
 track_ic3_inputs: true
 add_constraints_follow_plan: false
 
@@ -21,6 +24,10 @@ hold_last_timestep_position: true
 vertical_offset: -0.0
 
 use_time_varying_lcs: false
+
+lambda_tracking_weight: 0
+
+lqr_alpha: 0
 
 value_function_ee_cost: [1, 1, 1, 1, 1]
 value_function_object_orientation_cost: 10 # radians

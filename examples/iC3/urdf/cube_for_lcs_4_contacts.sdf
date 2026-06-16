@@ -7,9 +7,9 @@
         <inertial>
           <mass>0.05</mass>
           <inertia>
-            <ixx>0.000083</ixx>
-            <iyy>0.000083</iyy>
-            <izz>0.000083</izz>
+            <ixx>0.0001</ixx>
+            <iyy>0.0001</iyy>
+            <izz>0.0001</izz>
             <ixy>0.0</ixy>
             <ixz>0.0</ixz>
             <iyz>0.0</iyz>

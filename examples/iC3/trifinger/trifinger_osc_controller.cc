@@ -232,6 +232,13 @@ int DoMain(int argc, char* argv[]) {
   ee_position_tracking_data_240->SetCmdAccelerationBounds(
       -end_effector_acceleration_limits, end_effector_acceleration_limits);   
 
+	std::set<int> disabled_indices;
+  for (int i = 0; i < 3; ++i) {
+    disabled_indices.emplace_hint(disabled_indices.end(), i);
+  }
+	ee_position_tracking_data_0->DisableFeedforwardAccel(disabled_indices);
+  ee_position_tracking_data_120->DisableFeedforwardAccel(disabled_indices);
+  ee_position_tracking_data_240->DisableFeedforwardAccel(disabled_indices);
 
   vector<Vector3d> pts_to_track;
   for (int i = 0; i < 3; i++) {

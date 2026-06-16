@@ -10,6 +10,9 @@ struct iC3Options {
 
   bool print_costs;
 
+  bool add_acceleration_cost;
+  double acceleration_cost_weight;
+
   int iter_to_use;
   int num_timesteps_to_use;
   double vertical_offset;
@@ -19,6 +22,10 @@ struct iC3Options {
 
   bool track_ic3_inputs;
   bool add_constraints_follow_plan;
+
+  double lambda_tracking_weight;
+
+  double lqr_alpha;
 
   int N;
   double dt; // REMOVE after importing all options from c3 repo
@@ -54,7 +61,11 @@ struct iC3Options {
     a->Visit(DRAKE_NVP(rollout_dt_scaling));
     a->Visit(DRAKE_NVP(ee_tracking_weight)); 
     a->Visit(DRAKE_NVP(ee_tracking_vector)); 
+    a->Visit(DRAKE_NVP(add_acceleration_cost));
+    a->Visit(DRAKE_NVP(acceleration_cost_weight));
     a->Visit(DRAKE_NVP(use_time_varying_lcs)); 
+    a->Visit(DRAKE_NVP(lqr_alpha));
+    a->Visit(DRAKE_NVP(lambda_tracking_weight)); 
     a->Visit(DRAKE_NVP(value_function_ee_cost)); 
     a->Visit(DRAKE_NVP(value_function_object_orientation_cost)); 
     a->Visit(DRAKE_NVP(value_function_object_position_cost)); 

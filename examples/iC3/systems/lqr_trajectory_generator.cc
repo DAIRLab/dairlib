@@ -102,12 +102,21 @@ void LqrTrajectoryGenerator::OutputActorTrajectory(
 
 
   // HARDCODED HOW LONG TO SIMULATE FOR
-  int num_sim_timesteps = 3;
+  int num_sim_timesteps = 2;
   MatrixXd u_hat_input = actor_input.get_value().replicate(1, num_sim_timesteps);
   
+  auto start_rollout = std::chrono::high_resolution_clock::now();
+
   auto [x_hat, u_hat] = SimulateLCS(x_curr, u_hat_input, context);
   x_hat = x_hat.rightCols(x_hat.cols() - 1); // Remove x0 for size consistency
-  
+
+  auto finish_rollout = std::chrono::high_resolution_clock::now();
+  auto elapsed_rollout = finish_rollout - start_rollout;
+  double solve_time_rollout =
+      std::chrono::duration_cast<std::chrono::microseconds>(elapsed_rollout).count() /
+      1e6;
+  std::cout << "Rollout time " << solve_time_rollout << std::endl;
+
   MatrixXd forces;
   MatrixXd torques;
   MatrixXd positions;
@@ -239,6 +248,12 @@ std::tuple<MatrixXd, MatrixXd> LqrTrajectoryGenerator::SimulateLCS(VectorXd x0, 
       }
     } 
 
+    // std::cout << "lqr traj gen A_x " << A_x_.diagonal().transpose() << std::endl;
+    // std::cout << "lqr traj gen lb_x_ " << lb_x_.transpose() << std::endl;
+    // std::cout << "lqr traj gen ub_x_ " << ub_x_.transpose() << std::endl;
+
+    x_curr = lcs.Simulate(x_curr, u);
+
     // Threshold positions and inputs, assume A_x, A_u are diagonal 0/1 matrices
     for (int j = 0; j < A_x_.rows(); j++) {
       if (A_x_(j, j) == 1) {
@@ -250,11 +265,20 @@ std::tuple<MatrixXd, MatrixXd> LqrTrajectoryGenerator::SimulateLCS(VectorXd x0, 
           u(j) = std::min(std::max(u(j), lb_u_(j)), ub_u_(j));
       }
     }
-    
-    x_hat.col(i+1) = lcs.Simulate(x_curr, u);
-    x_curr = x_hat.col(i+1);
 
+    x_hat.col(i+1) = x_curr;
     u_hat_thresholded.col(i) = u;
+  }
+
+  // HARDCODED remove gravity comp
+  for (int i = 0; i < u_hat_thresholded.cols(); i++) {
+    if (example_idx_ == 0) {
+      u_hat_thresholded.col(i)(2) = u_hat_thresholded.col(i)(2) - 0.85 * 9.81;
+    } else if (example_idx_ == 1 || example_idx_ == 2) {
+      for (int f = 0; f < 3; f++) {
+        u_hat_thresholded.col(i)(3*f+2) = u_hat_thresholded.col(i)(3*f+2) - 0.02 * 9.81;
+      }
+    }
   }
 
   MatrixXd x_hat_downsampled(MatrixXd::Zero(n_x_, N + 1));

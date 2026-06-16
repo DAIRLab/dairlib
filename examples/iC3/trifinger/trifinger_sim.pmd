@@ -11,6 +11,10 @@ group "controllers" {
         exec = "bazel-bin/examples/iC3/trifinger/trifinger_lqr_controller";
         host = "localhost";
     }
+    cmd "trifinger_hybrid_mpc_controller" {
+        exec = "bazel-bin/examples/iC3/trifinger/trifinger_hybrid_mpc_controller";
+        host = "localhost";
+    }
     cmd "trifinger_osc" {
         exec = "bazel-bin/examples/iC3/trifinger/trifinger_osc_controller";
         host = "localhost";

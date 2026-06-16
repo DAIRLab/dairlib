@@ -148,8 +148,10 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
     std::cout << x_hat.rows() << " x " << x_hat.cols() << std::endl;
   }
 
-  // std::cout << "c3 x sol " << x_hat.col(0).transpose() << std::endl;
-  // std::cout << "c3 x sol " << x_hat.col(1).transpose() << std::endl;
+  for (int i = 0; i < x_hat.cols(); i++) {
+    std::cout << "c3 x sol " << i << " " << x_hat.col(i).segment(9, 7).transpose() << std::endl;
+  }
+
 
   // std::cout << "c3 u sol " << u_hat.col(0).transpose() << std::endl;
   // std::cout << "c3 u sol " << u_hat.col(1).transpose() << std::endl;
@@ -171,6 +173,15 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
     MatrixXd temp(x_hat.rows(), x_hat.cols() + 1);
     temp << x_hat, x_hat.col(x_hat.cols()-1);
     x_hat = temp; 
+
+    // Threshold
+    for (int i = 0; i < x_hat.cols(); i++) {
+      for (int j = 0; j < A_x_.rows(); j++) {
+        if (A_x_(j, j) == 1) {
+          x_hat.col(i)(j) = std::clamp(x_hat.col(i)(j), lb_x_(j), ub_x_(j));
+        }
+      }
+    }
   }
 
 
@@ -192,50 +203,6 @@ void C3TrajectoryGenerator::OutputActorTrajectory(
     }
 
   }
-
-  // HARDCODED INDICES
-  // Zero out forces (excluding gravity) if object and ee not in contact
-  // Otherwise osc force tracking will compensate for a non-existent contact force
-  // if (example_idx_ == 0) {
-  //   for (auto pair : contact_pairs_) {
-  //     plant_.SetPositionsAndVelocities(plant_context_, x_lcs_vector->get_data());
-
-  //     const auto& query_port = plant_.get_geometry_query_input_port();
-  //       const auto& query_object =
-  //         query_port.template Eval<drake::geometry::QueryObject<double>>(*plant_context_);
-
-  //     drake::geometry::SignedDistancePair<double> result =
-  //         query_object.ComputeSignedDistancePairClosestPoints(pair.first(), pair.second());
-  //     double phi = result.distance;
-
-  //     if (phi > 1e-6) {
-  //       for (int i = 0; i < u_hat.cols(); i++) {
-  //         u_hat.col(i) = VectorXd::Zero(n_u_);
-  //         u_hat.col(i)(2) = -tau_g(2); // gravity comp
-  //       }
-  //       break;
-  //     }
-  //   }
-  // } else if (example_idx_ == 1 || example_idx_ == 2) {
-  //   for (int p = 0; p < 3; p++) {
-  //     plant_.SetPositionsAndVelocities(plant_context_, x_lcs_vector->get_data());
-
-  //     const auto& query_port = plant_.get_geometry_query_input_port();
-  //       const auto& query_object =
-  //         query_port.template Eval<drake::geometry::QueryObject<double>>(*plant_context_);
-
-  //     drake::geometry::SignedDistancePair<double> result =
-  //         query_object.ComputeSignedDistancePairClosestPoints(contact_pairs_[p].first(), contact_pairs_[p].second());
-  //     double phi = result.distance;
-
-  //     if (phi > 1e-6) {
-  //       for (int i = 0; i < u_hat.cols(); i++) {
-  //         u_hat.col(i).segment(3*p, 3) = VectorXd::Zero(3);
-  //         u_hat.col(i)(3*p+2) = -tau_g(3*p+2); // gravity comp
-  //       }
-  //     }
-  //   }
-  // }
 
 	// Make non-degenerate trajectory for N = 1
   MatrixXd positions;
@@ -502,7 +469,7 @@ std::tuple<MatrixXd, MatrixXd> C3TrajectoryGenerator::SimulateLCS(VectorXd x0, M
     // Threshold inputs
     for (int j = 0; j < A_u_.rows(); j++) {
       if (A_u_(j, j) == 1) {
-          u(j) = std::min(std::max(u(j), lb_u_(j)), ub_u_(j));
+          u(j) = std::clamp(u(j), lb_u_(j), ub_u_(j));
       }
     }
     VectorXd x_next = lcs.Simulate(x_curr, u);
@@ -510,7 +477,7 @@ std::tuple<MatrixXd, MatrixXd> C3TrajectoryGenerator::SimulateLCS(VectorXd x0, M
     // Threshold states
     for (int j = 0; j < A_x_.rows(); j++) {
       if (A_x_(j, j) == 1) {
-        x_next(j) = std::min(std::max(x_next(j), lb_x_(j)), ub_x_(j));
+        x_next(j) = std::clamp(x_next(j), lb_x_(j), ub_x_(j));
       }
     }
 

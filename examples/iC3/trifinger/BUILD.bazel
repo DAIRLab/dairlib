@@ -156,6 +156,43 @@ cc_binary(
     ]
 )
 
+
+cc_binary(
+    name = "trifinger_hybrid_mpc_controller",
+    srcs = ["trifinger_hybrid_mpc_controller.cc"],
+    data = [
+        "//examples/iC3:urdfs",
+    ],
+    deps = [
+        "//common",
+        "//systems/senders:c3_state_sender",
+        "//lcm:lcm_trajectory_saver",
+        "@c3//:libc3",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/controllers",
+        "//systems/controllers/osc:operational_space_control",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/primitives:radio_parser",
+        "//systems/trajectory_optimization:c3_output_systems",
+        "@drake//:drake_shared_library",
+        "//examples/iC3/trifinger/parameter_headers:trifinger_controller_params",
+        "//examples/iC3/trifinger/parameter_headers:trifinger_lcm_channels",
+        "//examples/iC3:iC3_options",
+        "//examples/iC3:hybrid_mpc_options",
+        "//examples/iC3/systems:lqr_trajectory_generator",
+        "//examples/iC3/systems:timed_gate",
+        "//examples/iC3/systems:ic3_timing_system",
+        "//systems/controllers:ic3_hybrid_mpc_tracking_controller",
+        "//examples/iC3/trifinger/systems:trifinger_systems",
+        "@gflags",
+    ],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lopenblas",
+    ]
+)
+
 cc_binary(
     name = "trifinger_test_traj_controller",
     srcs = ["trifinger_test_traj_controller.cc"],

@@ -12,19 +12,17 @@
 #include "examples/iC3/trifinger/parameter_headers/trifinger_controller_params.h"
 #include "examples/iC3/trifinger/parameter_headers/trifinger_lcm_channels.h"
 #include "examples/iC3/iC3_options.h"
-#include "examples/iC3/systems/c3_goal_generator.h"
-#include "examples/iC3/systems/c3_trajectory_generator.h"
+#include "examples/iC3/hybrid_mpc_options.h"
+#include "examples/iC3/systems/lqr_trajectory_generator.h"
 #include "examples/iC3/trifinger/systems/trifinger_kinematics.h"
-#include "systems/controllers/c3/ic3_tracking_controller.h"
+#include "systems/controllers/c3/ic3_hybrid_mpc_tracking_controller.h"
 #include "examples/iC3/systems/timed_gate.h"
 #include "examples/iC3/systems/iC3_timing_system.h"
 
 
 #include "multibody/multibody_utils.h"
 #include "c3/multibody/lcs_factory.h"
-#include "c3/core/c3_options.h"
 #include "c3/systems/c3_controller_options.h"
-#include "c3/core/solver_options_io.h"
 
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/primitives/radio_parser.h"
@@ -58,28 +56,33 @@ using Eigen::VectorXd;
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
 
-DEFINE_string(example, "180", "trifinger example - 180 or pivot");
+DEFINE_string(controller_settings,
+              "examples/iC3/trifinger/parameters/trifinger_controller_params.yaml",
+              "Controller settings such as channels. Attempting to minimize "
+              "number of gflags");
+DEFINE_string(lcm_channels,
+              "examples/iC3/trifinger/parameters/trifinger_lcm_channels_simulation.yaml",
+              "Filepath containing lcm channels");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   drake::lcm::DrakeLcm lcm("udpm://239.255.76.67:7667?ttl=0");
-
-  DRAKE_DEMAND(FLAGS_example == "180" || FLAGS_example == "pivot");
-
-  std::string controller_settings_file = (FLAGS_example == "180") ? "examples/iC3/trifinger/parameters/trifinger_controller_params.yaml" 
-                                        : "examples/iC3/trifinger/parameters/trifinger_pivot_controller_params.yaml";
-  std::string lcm_channels_file = "examples/iC3/trifinger/parameters/trifinger_lcm_channels_simulation.yaml";
 
   // load parameters
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
 
   TrifingerLcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<TrifingerLcmChannels>(lcm_channels_file);
+      drake::yaml::LoadYamlFile<TrifingerLcmChannels>(FLAGS_lcm_channels);
 
   TrifingerControllerParams controller_params =
       drake::yaml::LoadYamlFile<TrifingerControllerParams>(
-          controller_settings_file);
+          FLAGS_controller_settings);
+
+  // HARDCODED path
+  HybridMpcOptions hybrid_mpc_options =
+      drake::yaml::LoadYamlFile<HybridMpcOptions>(
+        "examples/iC3/trifinger/parameters/trifinger_hybrid_mpc_options.yaml");
 
   iC3Options ic3_options =
       drake::yaml::LoadYamlFile<iC3Options>(
@@ -88,12 +91,6 @@ int DoMain(int argc, char* argv[]) {
   C3ControllerOptions c3_controller_options =
       drake::yaml::LoadYamlFile<C3ControllerOptions>(
           controller_params.c3_controller_options_file);
-
-  drake::solvers::SolverOptions solver_options =
-      drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(
-          FindResourceOrThrow(controller_params.osqp_settings_file))
-          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
-
 
   MultibodyPlant<double> plant_trifinger(0.0);
   Parser parser_trifinger(&plant_trifinger);
@@ -133,7 +130,7 @@ int DoMain(int argc, char* argv[]) {
   auto object_context = plant_object.CreateDefaultContext();
 
 
-  // Plant for c3 mpc
+  // Plant for lcs
   DiagramBuilder<double> plant_builder;
   auto [plant_for_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_builder, 0.0);
@@ -163,190 +160,90 @@ int DoMain(int argc, char* argv[]) {
       plant_for_lcs, diagram_context.get());
   auto plant_lcs_context_ad = plant_for_lcs_autodiff->CreateDefaultContext();
 
-
-  GeometryId ground_collision_geom = 
-    plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("ground"))[0];
-
-  std::vector<GeometryId> end_effector_collision_geoms;
-  for (auto fingertip_name : controller_params.end_effector_names) {
-    end_effector_collision_geoms.push_back(
-        plant_for_lcs.GetCollisionGeometriesForBody(
-            plant_for_lcs.GetBodyByName(fingertip_name))[0]);
-  }
-
-	std::vector<GeometryId> cube_collision_geoms;
-  for (int i = 0; i <= 8; i++) {
-      cube_collision_geoms.push_back(
-          plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("cube"))[i]);
-  }
-
-  std::vector<SortedPair<GeometryId>> contact_pairs;
-  // fingertip-cube contact pairs
-	for (auto geom_id : end_effector_collision_geoms) {
-		contact_pairs.emplace_back(cube_collision_geoms[0], geom_id);
-  }
-
-  // cube-ground contact pairs
-  int num_contacts = (FLAGS_example == "180") ? 4 : 8;
-  for (int i = 1; i < num_contacts; i++) {
-		contact_pairs.emplace_back(cube_collision_geoms[i], ground_collision_geom);
-  }
-
   LCSFactory lcs_factory = LCSFactory(plant_for_lcs, plant_lcs_context, *plant_for_lcs_autodiff, 
                                     *plant_lcs_context_ad, c3_controller_options.lcs_factory_options);
 
   int n_x = plant_for_lcs.num_positions() + plant_for_lcs.num_velocities();
   int n_u = plant_for_lcs.num_actuators();
 
-  MatrixXd A_x_c3(MatrixXd::Zero(n_x, n_x));
-  VectorXd lb_x_c3(VectorXd::Zero(n_x));
-  VectorXd ub_x_c3(VectorXd::Zero(n_x));
-
   MatrixXd A_x(MatrixXd::Zero(n_x, n_x));
   VectorXd lb_x(VectorXd::Zero(n_x));
   VectorXd ub_x(VectorXd::Zero(n_x));
+
+  MatrixXd A_x_mpc(MatrixXd::Zero(n_x, n_x));
+  VectorXd lb_x_mpc(VectorXd::Zero(n_x));
+  VectorXd ub_x_mpc(VectorXd::Zero(n_x));
 
   MatrixXd A_u(MatrixXd::Zero(n_u, n_u));
   VectorXd lb_u(VectorXd::Zero(n_u));
   VectorXd ub_u(VectorXd::Zero(n_u));
 
-  if (FLAGS_example == "180") {
+  for (int i = 0; i < 3; i++) {
 
-    // A_x_c3(13, 13) = 1;
-    // A_x_c3(14, 14) = 1;
-    // lb_x_c3(13) = -0.03;
-    // lb_x_c3(14) = -0.03;
-    // ub_x_c3(13) = 0.03;
-    // ub_x_c3(14) = 0.03;
+    A_x(3*i, 3*i) = 1;
+    A_x(3*i+1, 3*i+1) = 1;
+    A_x(3*i+2, 3*i+2) = 1;
 
-    for (int i = 0; i < 3; i++) {
-    //   A_x_c3(3*i, 3*i) = 1;
-    //   A_x_c3(3*i+1, 3*i+1) = 1;
+    A_x(16 + 3*i, 16 + 3*i) = 1;
+    A_x(16 + 3*i + 1, 16 + 3*i+1) = 1;
+    A_x(16 + 3*i + 2, 16 + 3*i+2) = 1;
 
-      A_x_c3(16 + 3*i, 16 + 3*i) = 1;
-      A_x_c3(16 + 3*i + 1, 16 + 3*i+1) = 1;
+    lb_x(3*i) = xd(3*i) - 0.07;
+    lb_x(3*i+1) = xd(3*i+1) - 0.07;
+    lb_x(3*i+2) = xd(3*i+2) - 0.01;
 
-    //   lb_x_c3(3*i) = xd(3*i) - 0.08;
-    //   lb_x_c3(3*i+1) = xd(3*i+1) - 0.08;
-      lb_x_c3(16 + 3*i) = -0.07;
-      lb_x_c3(16 + 3*i+1) = -0.07;
+    lb_x(16 + 3*i) = -0.15;
+    lb_x(16 + 3*i+1) = -0.15;
+    lb_x(16 + 3*i+2) = -0.05;
 
-    //   ub_x_c3(3*i) = xd(3*i) + 0.08;
-    //   ub_x_c3(3*i+1) = xd(3*i+1) + 0.08;
-      ub_x_c3(16 + 3*i) = 0.07;
-      ub_x_c3(16 + 3*i+1) = 0.07;
+    ub_x(3*i) = xd(3*i) + 0.07;
+    ub_x(3*i+1) = xd(3*i+1) + 0.07;
+    ub_x(3*i+2) = xd(3*i+2) + 0.01;
 
-      A_x(3*i, 3*i) = 1;
-      A_x(3*i+1, 3*i+1) = 1;
-      A_x(3*i+2, 3*i+2) = 1;
+    ub_x(16 + 3*i) = 0.15;
+    ub_x(16 + 3*i+1) = 0.15;
+    ub_x(16 + 3*i+2) = 0.05;
 
-      A_x(16 + 3*i, 16 + 3*i) = 1;
-      A_x(16 + 3*i + 1, 16 + 3*i+1) = 1;
-      A_x(16 + 3*i + 2, 16 + 3*i+2) = 1;
+    A_x_mpc(3*i, 3*i) = 1;
+    A_x_mpc(3*i+1, 3*i+1) = 1;
+    A_x_mpc(3*i+2, 3*i+2) = 1;
 
-      lb_x(3*i) = xd(3*i) - 0.06;
-      lb_x(3*i+1) = xd(3*i+1) - 0.06;
-      lb_x(3*i+2) = xd(3*i+2) - 0.01;
+    A_x_mpc(16 + 3*i, 16 + 3*i) = 1;
+    A_x_mpc(16 + 3*i + 1, 16 + 3*i+1) = 1;
+    A_x_mpc(16 + 3*i + 2, 16 + 3*i+2) = 1;
 
-      lb_x(16 + 3*i) = -0.07;
-      lb_x(16 + 3*i+1) = -0.07;
-      lb_x(16 + 3*i+2) = -0.01;
+    lb_x_mpc(3*i) = xd(3*i) - 0.09;
+    lb_x_mpc(3*i+1) = xd(3*i+1) - 0.09;
+    lb_x_mpc(3*i+2) = xd(3*i+2) - 0.03;
 
-      ub_x(3*i) = xd(3*i) + 0.06;
-      ub_x(3*i+1) = xd(3*i+1) + 0.06;
-      ub_x(3*i+2) = xd(3*i+2) + 0.01;
+    lb_x_mpc(16 + 3*i) = -0.18;
+    lb_x_mpc(16 + 3*i+1) = -0.18;
+    lb_x_mpc(16 + 3*i+2) = -0.1;
 
-      ub_x(16 + 3*i) = 0.07;
-      ub_x(16 + 3*i+1) = 0.07;
-      ub_x(16 + 3*i+2) = 0.01;
+    ub_x_mpc(3*i) = xd(3*i) + 0.09;
+    ub_x_mpc(3*i+1) = xd(3*i+1) + 0.09;
+    ub_x_mpc(3*i+2) = xd(3*i+2) + 0.03;
 
-
-      A_u(3*i, 3*i) = 1;
-      A_u(3*i+1, 3*i+1) = 1;
-      A_u(3*i+2, 3*i+2) = 1;
-      
-      lb_u(3*i) = -0.4;
-      lb_u(3*i+1) = -0.4;
-      lb_u(3*i+2) = 0.18;
-
-      ub_u(3*i) = 0.4;
-      ub_u(3*i+1) = 0.4;
-      ub_u(3*i+2) = 0.22;
-    }
-  } else if (FLAGS_example == "pivot") {
-    for (int i = 0; i < 3; i++) {
-      A_x_c3(3*i, 3*i) = 1;
-      A_x_c3(3*i+1, 3*i+1) = 1;
-      A_x_c3(3*i+2, 3*i+2) = 1;
-
-      A_x_c3(16 + 3*i, 16 + 3*i) = 1;
-      A_x_c3(16 + 3*i + 1, 16 + 3*i + 1) = 1;
-      A_x_c3(16 + 3*i + 2, 16 + 3*i + 2) = 1;
-
-      lb_x_c3(3*i) = xd(3*i) - 0.075;
-      lb_x_c3(3*i+1) = xd(3*i+1) - 0.075;
-      lb_x_c3(3*i+2) = xd(3*i+2) - 0.025;
-
-      ub_x_c3(3*i) = xd(3*i) + 0.075;
-      ub_x_c3(3*i+1) = xd(3*i+1) + 0.075;
-      ub_x_c3(3*i+2) = xd(3*i+2) + 0.075;
-
-      lb_x_c3(16 + 3*i) = -0.2;
-      lb_x_c3(16 + 3*i+1) = -0.2;
-      lb_x_c3(16 + 3*i+2) = -0.2;
-
-      ub_x_c3(3*i) = xd(3*i) + 0.08;
-      ub_x_c3(3*i+1) = xd(3*i+1) + 0.08;
-      ub_x_c3(3*i+2) = xd(3*i+2) + 0.08;
-
-      ub_x_c3(16 + 3*i) = 0.2;
-      ub_x_c3(16 + 3*i+1) = 0.2;
-      ub_x_c3(16 + 3*i+2) = 0.2;
-
-      
-      A_x(3*i, 3*i) = 1;
-      A_x(3*i+1, 3*i+1) = 1;
-      A_x(3*i+2, 3*i+2) = 1;
-
-      A_x(16 + 3*i, 16 + 3*i) = 1;
-      A_x(16 + 3*i + 1, 16 + 3*i + 1) = 1;
-      A_x(16 + 3*i + 2, 16 + 3*i + 2) = 1;
-
-      lb_x(3*i) = xd(3*i) - 0.08;
-      lb_x(3*i+1) = xd(3*i+1) - 0.08;
-      lb_x(3*i+2) = xd(3*i+2) - 0.03;
-
-      lb_x(16 + 3*i) = -0.2;
-      lb_x(16 + 3*i+1) = -0.2;
-      lb_x(16 + 3*i+2) = -0.2;
-
-      ub_x(3*i) = xd(3*i) + 0.08;
-      ub_x(3*i+1) = xd(3*i+1) + 0.08;
-      ub_x(3*i+2) = xd(3*i+2) + 0.08;
-
-      ub_x(16 + 3*i) = 0.2;
-      ub_x(16 + 3*i+1) = 0.2;
-      ub_x(16 + 3*i+2) = 0.2;
-
-
-      A_u(3*i, 3*i) = 1;
-      A_u(3*i+1, 3*i+1) = 1;
-      A_u(3*i+2, 3*i+2) = 1;
-
-      lb_u(3*i) = -0.5;
-      lb_u(3*i+1) = -0.5;
-      lb_u(3*i+2) = 0;
-      
-      ub_u(3*i) = 0.5;
-      ub_u(3*i+1) = 0.5;
-      ub_u(3*i+2) = 0.4;
-    }
+    ub_x_mpc(16 + 3*i) = 0.18;
+    ub_x_mpc(16 + 3*i+1) = 0.18;
+    ub_x_mpc(16 + 3*i+2) = 0.1;
   }
-  
-  int example_idx = (FLAGS_example == "180") ? 1 : 2;
 
+  for (int i = 0; i < 3; i++) {
+    A_u(3*i, 3*i) = 1;
+    A_u(3*i+1, 3*i+1) = 1;
+    A_u(3*i+2, 3*i+2) = 1;
+    
+    lb_u(3*i) = -0.4;
+    lb_u(3*i+1) = -0.4;
+    lb_u(3*i+2) = 0.15;
+
+    ub_u(3*i) = 0.4;
+    ub_u(3*i+1) = 0.4;
+    ub_u(3*i+2) = 0.25;
+  }
+
+  std::cout << "Before builder " << std::endl;
   DiagramBuilder<double> builder;
   auto trifinger_state_receiver =
     builder.AddSystem<systems::RobotOutputReceiver>(plant_trifinger);
@@ -367,6 +264,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.ic3_forces_channel, &lcm));
 
+
   auto c3_actor_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_actor_channel, &lcm,
@@ -383,9 +281,6 @@ int DoMain(int argc, char* argv[]) {
   auto object_state_receiver =
       builder.AddSystem<systems::ObjectStateReceiver>(plant_object);
 
-  auto c3_goal_generator = 
-      builder.AddSystem<C3GoalGenerator>(plant_for_lcs, lcs_factory, ic3_options, c3_controller_options, controller_params.x_target, example_idx); 
-
   auto reduced_order_model_receiver =
     builder.AddSystem<TrifingerKinematics>(
         plant_trifinger, trifinger_context.get(), plant_object, object_context.get(),
@@ -398,24 +293,22 @@ int DoMain(int argc, char* argv[]) {
   auto ic3_timing_system = builder.AddSystem<iC3TimingSystem>(
             ic3_options, controller_params);
 
-
   auto x_desired_source =
     builder.AddSystem<drake::systems::ConstantVectorSource<double>>(xd);    
 
   auto controller =
-      builder.AddSystem<systems::iC3TrackingController>
-          (plant_for_lcs, c3_controller_options, ic3_options, 
-           example_idx, A_x_c3, lb_x_c3, ub_x_c3, A_u, lb_u, ub_u, plant_lcs_context, contact_pairs);
+      builder.AddSystem<systems::iC3HybridMpcTrackingController>
+          (plant_for_lcs, lcs_factory, hybrid_mpc_options, ic3_options, 1,
+            A_x_mpc, lb_x_mpc, ub_x_mpc, A_u, lb_u, ub_u);
 
-  auto c3_trajectory_generator =
-      builder.AddSystem<C3TrajectoryGenerator>(plant_for_lcs, &plant_lcs_context, lcs_factory, 
-      contact_pairs, ic3_options, c3_controller_options, controller_params.track_dynamically_feasible, example_idx,
+  auto lqr_trajectory_generator =
+      builder.AddSystem<LqrTrajectoryGenerator>(plant_for_lcs, lcs_factory, ic3_options, 1,
         A_x, lb_x, ub_x, A_u, lb_u, ub_u); 
-  c3_trajectory_generator->SetPublishEndEffectorOrientation(false);
-  
 
+  lqr_trajectory_generator->SetPublishEndEffectorOrientation(false);
+  
   auto timed_gate =
-      builder.AddSystem<TimedGate>(ic3_options, example_idx);    
+      builder.AddSystem<TimedGate>(ic3_options, 1);    
 
   builder.Connect(object_state_sub->get_output_port(),
                   object_state_receiver->get_input_port());
@@ -424,16 +317,7 @@ int DoMain(int argc, char* argv[]) {
                   reduced_order_model_receiver->get_input_port_trifinger_state());  
   builder.Connect(object_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_object_state());
-    
-  // Note: nominal position unused here
-  builder.Connect(nominal_position->get_output_port(),
-                  c3_goal_generator->get_input_port_nominal_position());       
-  builder.Connect(reduced_order_model_receiver->get_output_port(),
-                  c3_goal_generator->get_input_port_state());    
-  builder.Connect(ic3_x_trajectory_sub->get_output_port(),
-                  c3_goal_generator->get_input_port_ic3_x()); 
-  builder.Connect(ic3_timing_system->get_output_port_timestep(),
-                  c3_goal_generator->get_input_port_timestep());                 
+                    
                   
   builder.Connect(radio_sub->get_output_port(),
                   ic3_timing_system->get_input_port_radio());  
@@ -441,14 +325,8 @@ int DoMain(int argc, char* argv[]) {
 
   builder.Connect(ic3_timing_system->get_output_port_timestep(),
                   controller->get_input_port_timestep());
-  builder.Connect(c3_goal_generator->get_output_port_x_curr(),
-                  controller->get_input_port_lcs_state());
-  builder.Connect(c3_goal_generator->get_output_port_target(),
-                  controller->get_input_port_target());
-  builder.Connect(c3_goal_generator->get_output_port_lcs(),
-                  controller->get_input_port_lcs());
-  builder.Connect(lqr_sub->get_output_port(),
-                  controller->get_input_port_lqr());    
+  builder.Connect(reduced_order_model_receiver->get_output_port(),
+                  controller->get_input_port_lcs_state());  
   builder.Connect(ic3_x_trajectory_sub->get_output_port(),
                   controller->get_input_port_ic3_x());
   builder.Connect(ic3_u_trajectory_sub->get_output_port(),
@@ -457,16 +335,16 @@ int DoMain(int argc, char* argv[]) {
                   controller->get_input_port_ic3_lambda());
 
   // Note: nominal position unused here
-    builder.Connect(reduced_order_model_receiver->get_output_port(),
-                  c3_trajectory_generator->get_input_port_x_lcs());
   builder.Connect(nominal_position->get_output_port(),
-                  c3_trajectory_generator->get_input_port_nominal_position());
-  builder.Connect(controller->get_output_port_c3_solution(),
-                  c3_trajectory_generator->get_input_port_c3_solution());
+                  lqr_trajectory_generator->get_input_port_nominal_position());
+  builder.Connect(controller->get_output_port_actor_input(),
+                  lqr_trajectory_generator->get_input_port_actor_input());
   builder.Connect(controller->get_output_port_tracking_target(),
-                  c3_trajectory_generator->get_input_port_tracking_target());
+                  lqr_trajectory_generator->get_input_port_tracking_target());
+  builder.Connect(reduced_order_model_receiver->get_output_port(),
+                  lqr_trajectory_generator->get_input_port_x_curr());   
 
-  builder.Connect(c3_trajectory_generator->get_output_port_actor_trajectory(),
+  builder.Connect(lqr_trajectory_generator->get_output_port_actor_trajectory(),
                   timed_gate->get_input_port_c3_actor());
   builder.Connect(nominal_position->get_output_port(),
                   timed_gate->get_input_port_nominal_position());
@@ -480,10 +358,9 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(timed_gate->get_output_port_actor(),
                   c3_actor_trajectory_sender->get_input_port());
 
-
   auto owned_diagram = builder.Build();
   std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
-  shared_diagram->set_name(("trifinger_controller"));
+  shared_diagram->set_name(("trifinger_hybrid_mpc_controller"));
   DrawAndSaveDiagramGraph(*shared_diagram);
 
   std::cout << "Before lcm driven loop" << std::endl;

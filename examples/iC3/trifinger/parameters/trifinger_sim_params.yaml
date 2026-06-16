@@ -23,7 +23,7 @@ dt: 0.0005
 realtime_rate: 1.0
 q_init_trifinger: [0, -1, -1.5, 0, -1, -1.5, 0, -1, -1.5]       
         
-q_init_object: [1, 0, 0, 0, 1, 0, 0.05]
+q_init_object: [1, 0, 0, 0, 0, 0, 0.05]
                
 # All probably broken               
 visualize_workspace: false  

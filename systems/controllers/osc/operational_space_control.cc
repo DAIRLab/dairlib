@@ -1063,6 +1063,8 @@ VectorXd OperationalSpaceControl::SolveQp(
     
     drake::log()->warn("OSQP Status: {}", details.status_val); 
     drake::log()->warn("Iterations: {}", details.iter);
+    drake::log()->warn("Primal Res: {}", details.primal_res); 
+    drake::log()->warn("Dual Res: {}", details.dual_res);
   }
 
   for (auto& tracking_data : *tracking_data_vec_) {

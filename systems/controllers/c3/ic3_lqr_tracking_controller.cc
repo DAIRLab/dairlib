@@ -141,6 +141,8 @@ drake::systems::EventStatus iC3LqrTrackingController::ComputePlan(
   auto& lcs =
       this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
   
+  auto start_ic3_traj = std::chrono::high_resolution_clock::now();
+
   // Get iC3 plan
   const std::string trajectory_name = "iteration_" + std::to_string(ic3_options_.iter_to_use);
   const auto& lcm_all_x_trajectories = 
@@ -160,9 +162,16 @@ drake::systems::EventStatus iC3LqrTrackingController::ComputePlan(
   MatrixXd input_data = input_trajectory.datapoints;
   MatrixXd force_data = force_trajectory.datapoints;
 
-  // std::cout << "x hat " << state_data.rows() << " x " << state_data.cols() << std::endl;
-  // std::cout << "u hat " << input_data.rows() << " x " << input_data.cols() << std::endl;
-  // std::cout << "lambda hat " << force_data.rows() << " x " << force_data.cols() << std::endl;
+
+  auto finish_ic3_traj = std::chrono::high_resolution_clock::now();
+  auto elapsed_ic3_traj = finish_ic3_traj - start_ic3_traj;
+  double solve_time_ic3_traj =
+      std::chrono::duration_cast<std::chrono::microseconds>(elapsed_ic3_traj).count() /
+      1e6;
+  std::cout << "ic3 traj time " << solve_time_ic3_traj << std::endl;
+      
+  
+  auto start_value_function = std::chrono::high_resolution_clock::now();
 
   // Get H, K, k_ff
   vector<Eigen::MatrixXd> H;
@@ -191,9 +200,18 @@ drake::systems::EventStatus iC3LqrTrackingController::ComputePlan(
       K_hat.push_back(std::move(mat));
       k_ff_hat.push_back(Eigen::VectorXd::Map(source_k_ff[i].data(), source_k_ff[i].size()));
     }
+    
+    auto finish_value_function = std::chrono::high_resolution_clock::now();
+    auto elapsed_value_function = finish_value_function - start_value_function;
+    double solve_time_value_function =
+        std::chrono::duration_cast<std::chrono::microseconds>(elapsed_value_function).count() /
+        1e6;
+    std::cout << "ic3 value function time " << solve_time_value_function << std::endl;
 
     int idx = std::min(ic3_options_.N-1, ic3_timestep);
 
+
+    auto start_simulate = std::chrono::high_resolution_clock::now();
     // Simulate to get lambda
     VectorXd u_nominal = input_data.col(idx);
     c3::LCSSimulateConfig config; 
@@ -201,6 +219,15 @@ drake::systems::EventStatus iC3LqrTrackingController::ComputePlan(
     config.max_exp = -6;
     auto [x_out, lambda] = lcs.SimulateAndReturnForce(x_lcs, u_nominal, config);
     
+    auto finish_simulate = std::chrono::high_resolution_clock::now();
+    auto elapsed_simulate = finish_simulate - start_simulate;
+    double solve_time_simulate =
+        std::chrono::duration_cast<std::chrono::microseconds>(elapsed_simulate).count() /
+        1e6;
+    std::cout << "lcs simulate time " << solve_time_simulate << std::endl;
+
+    auto start_matrix_multiplication = std::chrono::high_resolution_clock::now();
+
     // Update feedforward gain
     MatrixXd B = lcs.B()[0];
     MatrixXd D = lcs.D()[0];
@@ -214,7 +241,7 @@ drake::systems::EventStatus iC3LqrTrackingController::ComputePlan(
     VectorXd k_ff = k_ff_hat[idx] + solver.solve(rhs);
     MatrixXd K = K_hat[idx];
 
-    double alpha = 1;
+    double alpha = ic3_options_.lqr_alpha;
     u_out_ = u_nominal + K * (x_lcs - x_nominal) + alpha * k_ff;
 
   } else {

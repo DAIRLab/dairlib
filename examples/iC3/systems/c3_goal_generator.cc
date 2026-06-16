@@ -235,6 +235,7 @@ void C3GoalGenerator::OutputLCS(
         x_hat.col(k).segment(9, 3) = x_hat.col(k).segment(9, 3) - nominal_position->get_value();
       }
     }
+
     lcs = MakeTimeVaryingLCS(x_hat, u_hat);
 
   } else {
@@ -242,6 +243,11 @@ void C3GoalGenerator::OutputLCS(
       // Translate xyz position to match ic3's origin
       x_lcs.segment(0, 3) = x_lcs.segment(0, 3) - nominal_position->get_value(); 
       x_lcs.segment(9, 3) = x_lcs.segment(9, 3) - nominal_position->get_value();
+    }
+
+    // Normalize quaternions
+    for (auto idx : quaternion_indices_) {
+      x_lcs.segment(idx, 4) = x_lcs.segment(idx, 4).normalized();
     }
 
     if (!x_lcs.allFinite()) {

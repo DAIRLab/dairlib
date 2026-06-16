@@ -1,48 +1,48 @@
 group "simulations" {
     cmd "franka_sim" {
         exec = "bazel-bin/examples/sampling_c3/franka_sim --demo_name=jacktoy";
-        host = "bibit_sim_host";
+        host = "localhost";
     }
 }
 
 group "operator" {
     cmd "visualizer" {
         exec = "bazel-bin/examples/sampling_c3/franka_visualizer --is_simulation=true --demo_name=jacktoy";
-        host = "bibit_sim_host";
+        host = "localhost";
     }
     cmd "drake-director" {
         exec = "bazel-bin/director/drake-director";
-        host = "bibit_sim_host";
+        host = "localhost";
     }
     cmd "xbox" {
         exec = "bazel-bin/examples/sampling_c3/xbox_script";
-        host = "bibit_sim_host";
+        host = "localhost";
     }
     cmd "start_logging" {
         exec = "python3 examples/sampling_c3/start_logging.py sim jacktoy /mnt/data2/jacktoy/logs/";
-        host = "bibit_sim_host";
+        host = "localhost";
     }
 }
 
 group "controllers" {    
     cmd "move_to_init" {
         exec = "bazel-bin/examples/sampling_c3/franka_joint_osc_controller --is_simulation=true --demo_name=jacktoy";
-        host = "bibit_sim_host";
+        host = "localhost";
     }
     cmd "franka_osc" {
         exec = "bazel-bin/examples/sampling_c3/franka_osc_controller --is_simulation=true --demo_name=jacktoy";
-        host = "bibit_sim_host";
+        host = "localhost";
     }
     cmd "sampling_c3" {
         exec = "bazel-bin/examples/sampling_c3/franka_sampling_c3_controller --is_simulation=true --demo_name=jacktoy";
-        host = "bibit_sim_host";
+        host = "localhost";
     }
 }
 
 group "debug" {
     cmd "lcm-spy" {
         exec = "bazel-bin/lcmtypes/dair-lcm-spy";
-        host = "bibit_sim_host";
+        host = "localhost";
     }
 }
 

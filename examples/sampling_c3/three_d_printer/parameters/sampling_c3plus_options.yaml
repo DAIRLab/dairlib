@@ -1,0 +1,181 @@
+### C3 options
+admm_iter: 3
+# rho: 0  #This isn't used anywhere!
+rho_scale: 3
+num_threads: 5
+num_outer_threads: 5
+delta_option: 1
+projection_type: 'C3+'     # 'MIQP' or 'QP' or 'C3+'
+contact_model: 'anitescu'   # 'stewart_and_trinkle' or 'anitescu'.
+warm_start: false
+scale_lcs: true
+end_on_qp_step: false
+solve_time_filter_alpha: 0.95
+publish_frequency: 0
+penalize_input_change: true  # Penalize (u-u_prev) instead of u.
+num_friction_directions: 2
+planar_normal_direction: [0, 0, 1]  # If treating as planar contact, this is the normal direction.
+spring_stiffness: 0.0  # Not used in C3+.
+
+N: 7
+gamma: 1.0  # discount factor on MPC costs
+
+# As alpha -> 0, any complimentarity constraint error in QP projection -> 0.
+qp_projection_alpha: 0.01
+qp_projection_scaling: 1
+
+### Limits
+# Workspace limits specified as linear constraints [x, y, z, lb, ub]
+workspace_limits: [[1, 0, 0, 0.23, 0.8], [0, 1, 0, -0.507, 0.507], [0, 0, 1, -0.04, 0.3]]  # for big object like egg carton, x limits should be [0.23, 0.8]
+# Table is x = 0.075 -> 0.71, y = -0.457 -> 0.457
+
+robot_radius_limits: [0.28, 0.75]  # for big object like egg carton, the limits should be [0.23, 0.75]
+workspace_margins: 0.03
+u_horizontal_limits: [-10, 10]
+u_vertical_limits: [-3, 3]
+ee_velocity_limits: [-0.14, 0.14]
+
+### Whether to use a predicted EE location for each mode.
+use_predicted_x0_c3: true
+use_predicted_x0_repos: true
+use_predicted_x0_reset_mechanism: false  # Resets if prediction is too far.
+
+### Anything demo specific parameters:
+# Contact pairs include a number of
+#   1. ee-ground
+#   2. ee-object
+#   3. object-ground
+#   4. object-object (C(N, 2) sub-lists)
+#   5. object-wall (N sub-lists, where N is the number of objects)
+mu_per_pair_type: [0.823, 0.42, 0.46, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3]                                              # match URDFs with (2mu1*mu2)/(mu1+mu2)
+
+resolve_contacts_to_lists: [[0, 1, 12, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0]]
+# Per-group contact model flags (same length/order as resolve_contacts_to_lists):
+#   0 → keep original friction directions (use all num_friction_directions)
+#   1 → treat as planar contact (reduce to 2 friction directions per contact)
+resolve_as_planar_contacts_list: [0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0]
+
+# Index into this list to choose number of contacts for C3 solve and cost.
+num_contacts_index: 0
+num_contacts_index_for_cost: 0
+
+planning_dt_position: 0.075
+planning_dt_pose: 0.075
+
+lcs_dt_resolution: 4
+nominal_ee_accel: 2
+
+include_walls: false
+include_back_wall: false # if include_walls is true, then include_back_wall is ignored
+
+### Cost parameters
+### If list of lists, then index into them with num_contact_index(_for_cost).
+# Set 4x4 portion of Q for quaternion based on current and desired quaternion.
+use_quaternion_dependent_cost: true
+q_quaternion_dependent_weight: 1000
+q_quaternion_dependent_regularizer_fraction: 0
+
+Kp_for_ee_pd_rollout: [100, 100, 50]
+Kd_for_ee_pd_rollout: [0.5, 0.5, 0.5]
+
+### Pose tracking cost parameters
+# Matrix scaling
+w_Q: 80
+w_R: 10
+w_G: 0.2
+w_U: 0.5
+
+q_vector: [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 150, 150, 120, 0.1, 0.1, 0.1, 0.1, 150, 150, 120, 0.1, 0.1, 0.1, 0.1, 150, 150, 120, 0.1, 0.1, 0.1, 0.1, 150, 150, 120, 15, 15, 10, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]                                                                                                                                               # object 1 linear velocity
+r_vector: [0.01, 0.01, 1]
+
+# Penalty on matching projected variables
+g_x: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+g_u: [0, 0, 0]
+g_gamma_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+g_lambda_n_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+g_lambda_t_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+g_eta_slack_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+g_eta_n_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+g_eta_t_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+g_lambda_list: [[2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]]
+g_eta_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+
+# Penalty on matching the QP variables. In C3+, we only match \eta and \lambda
+u_x: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+u_u: [0, 0, 0]
+u_gamma_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+u_lambda_n_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+u_lambda_t_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+u_eta_slack_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+u_eta_n_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+u_eta_t_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+
+# u_lambda_list is not used for the QP projection; overwritten by alpha*F.
+u_lambda_list: [[1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+u_eta_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+
+### Position tracking cost parameters
+# Matrix scaling
+w_Q_position: 50
+w_R_position: 10
+w_G_position: 0.2
+w_U_position: 0.26
+
+q_vector_position: [0.01, 0.01, 0.01, 0, 0, 0, 0, 200, 200, 120, 0, 0, 0, 0, 200, 200, 120, 0, 0, 0, 0, 200, 200, 120, 0, 0, 0, 0, 200, 200, 120, 15, 15, 10, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]                                                                                                                               # object 2 linear velocity
+r_vector_position: [0.01, 0.01, 1]
+
+# Penalty on matching projected variables
+g_x_position: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+g_u_position: [0, 0, 0]
+g_gamma_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+g_lambda_n_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+g_lambda_t_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+g_eta_slack_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+g_eta_n_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+g_eta_t_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+g_lambda_position_list: [[2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]]
+g_eta_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+
+# Penalty on matching the QP variables
+u_x_position: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+u_u_position: [0, 0, 0]
+u_gamma_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+u_lambda_n_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+u_lambda_t_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+u_eta_slack_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+u_eta_n_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+u_eta_t_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+# u_lambda is not used for the QP projection; overwritten by alpha*F.
+u_lambda_position_list: [[1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+u_eta_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+
+
+### NO NEED TO CHANGE THE BELOW.  Parameters needed for the C3Options struct but
+### are overwritten by other sampling C3 parameters.
+# use_predicted_x0: false   # instead:  use_predicted_x0_c3,
+                          #           use_predicted_x0_repos,
+                          #           use_predicted_x0_reset_mechanism
+dt: 0             # instead:  planning_dt_pose, planning_dt_position
+# solve_dt: 0       # unused
+dt_cost: 0
+num_contacts: 0   # instead based on summing index of resolve_contacts_to_lists
+# Instead for the below, index into their _list versions.
+g_gamma: []
+g_lambda_n: []
+g_lambda_t: []
+g_lambda: []
+u_gamma: []
+u_lambda_n: []
+u_lambda_t: []
+u_lambda: []
+
+g_eta_slack: []
+g_eta_n: []
+g_eta_t: []
+g_eta: []
+u_eta_slack: []
+u_eta_n: []
+u_eta_t: []
+u_eta: []
+final_augmented_cost_contact_scaling: 1000
+final_augmented_cost_contact_indices: [0, 1, 2, 3]

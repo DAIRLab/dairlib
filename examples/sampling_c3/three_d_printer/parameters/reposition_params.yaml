@@ -1,0 +1,35 @@
+# Repositioning trajectory type options (defined as RepositioningTrajectoryType
+# enum in reposition_params.h):
+#   0. kSpline:           move from current to target with spline that distorts
+#                         around the object.
+#   1. kSpherical:        move away from object to a radius, along the spherical
+#                         surface to outside target, then in to target.
+#   2. kCircular:         (planar) move away from object to a planar radius,
+#                         along the circle to outside target, then in to target.
+#   3. kPiecewiseLinear:  move up to waypoint height, over to above target, then
+#                         down.
+traj_type: 3
+
+### Parameters used for multiple repositioning trajectory types.
+speed: 0.18    # m/s
+
+# Thresholds for switching to straight line trajectories.
+use_straight_line_traj_under_spline: 0.12             # xyz meters for spline
+use_straight_line_traj_within_angle: 0.3              # rad for circle/sphere
+use_straight_line_traj_under_piecewise_linear: 0.008  # xy meters for PWL
+
+# Spline-specific parameters.
+spline_width: 0.17
+
+# Spherical-specific parameters.
+sphere_radius: 0.18
+
+# Circular-specific parameters.
+circle_radius: 0.20
+circle_height: 0.00
+
+max_tilt_angle: 20
+
+# Piecewise-linear-specific parameters.
+pwl_waypoint_height: 0.07738005
+# This ^ will be overwritten by generating new files.

@@ -1,0 +1,73 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "parameters",
+    data = glob([
+        "parameters/*.yaml",
+    ]),
+)
+
+cc_library(
+    name = "lcm_channels_anything",
+    hdrs = [],
+    data = [
+        "//examples/sampling_c3:shared_params_yamls",
+    ],
+    deps = [
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "franka_sim_params_anything",
+    hdrs = [],
+    data = [
+        "parameters/sim_params.yaml",
+    ],
+    deps = [
+        "//examples/sampling_c3/parameter_headers:franka_sim_params",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "sampling_c3_controller_params_anything",
+    hdrs = [],
+    data = [
+        "parameters/sampling_c3_controller_params.yaml",
+        "parameters/sampling_params.yaml",
+        "//examples/sampling_c3:shared_params_yamls",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "goal_params_anything",
+    hdrs = [],
+    data = [
+        "parameters/goal_params.yaml",
+    ],
+    deps = [
+        "//examples/sampling_c3/parameter_headers:goal_params",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "franka_drake_lcm_driver_channels_anything",
+    hdrs = [],
+    data = [
+        "//common/parameters:franka_drake_lcm_driver_channels",
+    ],
+    deps = [
+        "//common/parameters:franka_drake_lcm_driver_channels",
+        "@drake//:drake_shared_library",
+    ],
+)

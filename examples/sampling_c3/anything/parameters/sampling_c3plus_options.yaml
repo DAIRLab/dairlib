@@ -41,6 +41,8 @@ use_predicted_x0_repos: true
 use_predicted_x0_reset_mechanism: false  # Resets if prediction is too far.
 
 ### Anything demo specific parameters:
+planar_demo: true
+
 # Contact pairs include a number of
 #   1. ee-ground
 #   2. ee-object

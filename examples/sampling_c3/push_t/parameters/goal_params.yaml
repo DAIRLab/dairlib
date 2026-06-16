@@ -9,8 +9,10 @@ goal_mode: 0
 # Success thresholds for position and orientation.
 position_success_threshold: 0.02
 orientation_success_threshold: 0.1  # 0.1 rad = 5.7 degrees
+only_use_xy_position: true
 
 resting_object_height: -0.009      # in world frame
+resting_object_heights: [-0.009]
 ee_target_z_offset_above_object: 0.06   # defines EE goal w.r.t. object position
 
 # Lookahead parameters to define a sub-goal for C3.
@@ -26,13 +28,17 @@ angle_hysteresis: 0.4
 # Factor to convert an angular error to angular velocity command (0=disabled).
 angle_err_to_vel_factor: 0
 
-# Initial goal (and only goal for fixed goal mode).
-fixed_target_position: [0.48199167, 0.18745379, -0.009]
+# Initial goal (and only goal for fixed goal mode) DEPRECATED.
+fixed_target_position: [0.65, 0.18745379, -0.009]
 fixed_target_orientation: [-0.9327733, 0, 0, 0.36046353]
 
-fixed_target_positions: [[]]
-fixed_target_orientations: [[]]
+fixed_target_positions: [[0.5, 0.0, -0.009]]
+fixed_target_orientations: [[0.707, 0, 0, 0.707]]
+
 # Random-specific parameters.
-random_goal_x_limits: [0.44, 0.52]
-random_goal_y_limits: [0.02, 0.25]
+random_goal_x_limits: [0.5, 0.51]  # for small object use [0.45, 0.55], big object [0.5, 0.51]
+random_goal_y_limits: [-0.30, 0.30]   # for small object use [-0.25, 0.25], big object [-0.15, 0.15]
 random_goal_radius_limits: [0.5, 0.52]
+
+random_goal_gen_max_attempts: 100
+pairwise_goal_distance: 0.20  # How far each pair of goals must be from each other

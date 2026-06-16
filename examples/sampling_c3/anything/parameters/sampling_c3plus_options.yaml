@@ -12,7 +12,7 @@ scale_lcs: true
 end_on_qp_step: false
 solve_time_filter_alpha: 0.95
 publish_frequency: 0
-penalize_input_change: true  # Penalize (u-u_prev) instead of u.
+penalize_input_change: false  # Penalize (u-u_prev) instead of u.
 num_friction_directions: 2
 planar_normal_direction: [0, 0, 1]  # If treating as planar contact, this is the normal direction.
 spring_stiffness: 0.0  # Not used in C3+.

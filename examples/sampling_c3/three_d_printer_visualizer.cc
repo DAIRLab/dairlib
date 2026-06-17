@@ -68,7 +68,7 @@ using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 
-DEFINE_bool(is_simulation, true, "True for simulation, false for hardware");
+DEFINE_bool(demo_type, "visualizer", "Whether to run the visualizer or the sim. Options are 'visualizer' and 'simulator' and 'hardware'");
 DEFINE_string(demo_name, "jacktoy",
               "Name for the demo, used when building filepaths for output.");
 
@@ -87,9 +87,19 @@ int do_main(int argc, char* argv[]) {
           controller_params.vis_params_file);
   SamplingC3Options sampling_c3_options = controller_params.sampling_c3_options;
   SamplingParams sampling_params = controller_params.sampling_params;
-  std::string lcm_channels_file =
-      FLAGS_is_simulation ? controller_params.lcm_channels_simulation_file
-                          : controller_params.lcm_channels_hardware_file;
+  std::string lcm_channels_file;
+
+  if (demo_type == "visualize") {
+      lcm_channels_file = controller_params.lcm_channels_visualize_file;
+  } else if (demo_type == "simulation") {
+      lcm_channels_file = controller_params.lcm_channels_simulation_file; 
+  } else if (demo_type == "hardware") {
+      lcm_channels_file = controller_params.lcm_channels_hardware_file;
+  } else {
+  throw std::runtime_error(
+      "Invalid demo_type: " + demo_type +
+      ". Must be 'visualize', 'simulation', or 'hardware'.");
+}
   SamplingC3LcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(lcm_channels_file);
 

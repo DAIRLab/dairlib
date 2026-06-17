@@ -321,3 +321,67 @@ py_binary(
         "//lcmtypes:lcmtypes_robot_py",
     ],
 )
+
+
+cc_binary(
+    name = "three_d_printer_visualizer",
+    srcs = ["three_d_printer_visualizer.cc"],
+    data = [
+        ":urdfs",
+        "//examples/sampling_c3:all_example_params_yamls",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        ":c3_mode_visualizer",
+        "//examples/sampling_c3:sampling_c3_utils",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
+        "//examples/sampling_c3/parameter_headers:visualizer_params",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
+        "//examples/sampling_c3/parameter_headers:sampling_params",
+        "//common",
+        "//multibody:utils",
+        "//multibody:visualization_utils",
+        "//systems/senders:senders",
+        "//systems:franka_kinematics",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization:lcm_trajectory_systems",
+        "//systems/visualization:lcm_visualization_systems",
+        "@drake//:drake_shared_library",
+        "@c3//:libc3",
+        "@gflags",
+    ],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lopenblas",
+    ],
+)
+
+
+cc_binary(
+    name = "three_d_printer_sim",
+    srcs = ["three_d_printer_sim.cc"],
+    data = [
+        ":urdfs",
+        "//examples/sampling_c3:all_example_params_yamls",
+        "@drake_models//:franka_description",
+    ],
+    deps = [
+        "//examples/sampling_c3:sampling_c3_utils",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
+        "//examples/sampling_c3/parameter_headers:franka_sim_params",
+        "//common",
+        "//systems:robot_lcm_systems",
+        "//systems:system_utils",
+        "//systems/framework:lcm_driven_loop",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lopenblas",
+    ],
+)

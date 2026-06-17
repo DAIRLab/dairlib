@@ -129,7 +129,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
           lcm_channel_params.radio_channel, &lcm));
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant, plant_context.get(), plant_context.get(), false);
+      plant, plant_context.get(), false);
   if (osc_params.publish_debug_info) {
     auto osc_debug_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
@@ -180,8 +180,11 @@ int DoMain(int argc, char* argv[]) {
   osc->SetInputCostWeights(osc_params.W_input_regularization);
   osc->SetInputSmoothingCostWeights(
       osc_params.W_input_smoothing_regularization);
-  osc->SetAccelerationConstraints(osc_params.enforce_acceleration_constraints);
-
+  if (osc_params.enforce_acceleration_constraints) {
+    osc->EnableAccelerationConstraints();
+  } else {
+    osc->DisableAccelerationConstraints();
+  }
   osc->SetContactFriction(osc_params.mu);
   osc->SetOsqpSolverOptions(solver_options);
 

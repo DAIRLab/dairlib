@@ -92,8 +92,8 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
       left_right_foot({left_toe_origin, right_toe_origin}),
       left_foot_points({left_heel, left_toe}),
       right_foot_points({right_heel, right_toe}),
-      view_frame_(
-          std::make_shared<multibody::WorldYawViewFrame<double>>(plant.GetBodyByName("pelvis"))),
+      view_frame_(std::make_shared<multibody::WorldYawViewFrame<double>>(
+          plant.GetBodyByName("pelvis"))),
       left_toe_evaluator(multibody::WorldPointEvaluator(
           plant, left_toe.first, left_toe.second, *view_frame_,
           Matrix3d::Identity(), Vector3d::Zero(), {1, 2})),
@@ -198,16 +198,17 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
   swing_ft_accel_gain_multiplier_samples[2](2, 2) *= 0;
   swing_ft_accel_gain_multiplier_samples[3](2, 2) *= 0;
   auto swing_ft_accel_gain_multiplier_gain_multiplier =
-      std::make_shared<PiecewisePolynomial<double>>(PiecewisePolynomial<double>::FirstOrderHold(
-          swing_ft_accel_gain_multiplier_breaks,
-          swing_ft_accel_gain_multiplier_samples));
+      std::make_shared<PiecewisePolynomial<double>>(
+          PiecewisePolynomial<double>::FirstOrderHold(
+              swing_ft_accel_gain_multiplier_breaks,
+              swing_ft_accel_gain_multiplier_samples));
 
   /**** Initialize all the leaf systems ****/
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant, plant_context.get(), plant_context.get(), true);
+      plant, plant_context.get(), true);
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
       plant, fsm_states, state_durations);
   auto liftoff_event_time =
@@ -234,28 +235,26 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
   // Contact information for OSC
   osc->SetContactFriction(osc_walking_gains.mu);
 
-  osc->AddStateAndContactPoint(left_stance_state, &left_toe_evaluator);
-  osc->AddStateAndContactPoint(left_stance_state, &left_heel_evaluator);
-  osc->AddStateAndContactPoint(right_stance_state, &right_toe_evaluator);
-  osc->AddStateAndContactPoint(right_stance_state, &right_heel_evaluator);
-  if (has_double_stance) {
-    osc->AddStateAndContactPoint(post_left_double_support_state,
-                                 &left_toe_evaluator);
-    osc->AddStateAndContactPoint(post_left_double_support_state,
-                                 &left_heel_evaluator);
-    osc->AddStateAndContactPoint(post_left_double_support_state,
-                                 &right_toe_evaluator);
-    osc->AddStateAndContactPoint(post_left_double_support_state,
-                                 &right_heel_evaluator);
-    osc->AddStateAndContactPoint(post_right_double_support_state,
-                                 &left_toe_evaluator);
-    osc->AddStateAndContactPoint(post_right_double_support_state,
-                                 &left_heel_evaluator);
-    osc->AddStateAndContactPoint(post_right_double_support_state,
-                                 &right_toe_evaluator);
-    osc->AddStateAndContactPoint(post_right_double_support_state,
-                                 &right_heel_evaluator);
-  }
+  osc->AddContactPoint("left_toe",
+                       std::unique_ptr<multibody::WorldPointEvaluator<double>>(
+                           &left_toe_evaluator),
+                       {left_stance_state, post_left_double_support_state,
+                        post_right_double_support_state});
+  osc->AddContactPoint("left_heel",
+                       std::unique_ptr<multibody::WorldPointEvaluator<double>>(
+                           &left_heel_evaluator),
+                       {left_stance_state, post_left_double_support_state,
+                        post_right_double_support_state});
+  osc->AddContactPoint("right_toe",
+                       std::unique_ptr<multibody::WorldPointEvaluator<double>>(
+                           &right_toe_evaluator),
+                       {right_stance_state, post_left_double_support_state,
+                        post_right_double_support_state});
+  osc->AddContactPoint("right_heel",
+                       std::unique_ptr<multibody::WorldPointEvaluator<double>>(
+                           &right_heel_evaluator),
+                       {right_stance_state, post_left_double_support_state,
+                        post_right_double_support_state});
 
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
@@ -266,7 +265,8 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
   evaluators.add_evaluator(&left_fixed_ankle_spring);
   evaluators.add_evaluator(&right_fixed_ankle_spring);
 
-  osc->AddKinematicConstraint(&evaluators);
+  osc->AddKinematicConstraint(
+      std::unique_ptr<multibody::KinematicEvaluatorSet<double>>(&evaluators));
 
   /**** Trajectory Generators ****/
 
@@ -346,8 +346,10 @@ OSCWalkingControllerDiagram::OSCWalkingControllerDiagram(
       "swing_ft_traj", osc_walking_gains.K_p_swing_foot,
       osc_walking_gains.K_d_swing_foot, osc_walking_gains.W_swing_foot, plant,
       plant);
-  swing_ft_traj_global_->AddStateAndPointToTrack(left_stance_state, "toe_right");
-  swing_ft_traj_global_->AddStateAndPointToTrack(right_stance_state, "toe_left");
+  swing_ft_traj_global_->AddStateAndPointToTrack(left_stance_state,
+                                                 "toe_right");
+  swing_ft_traj_global_->AddStateAndPointToTrack(right_stance_state,
+                                                 "toe_left");
   swing_ft_traj_local_->SetTimeVaryingPDGainMultiplier(
       swing_ft_gain_multiplier_gain_multiplier);
   swing_ft_traj_local_->SetTimerVaryingFeedForwardAccelMultiplier(

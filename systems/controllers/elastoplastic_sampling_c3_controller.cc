@@ -228,21 +228,23 @@ ElastoPlasticSC3Controller::CreateLCSObjectsForSamples(
             elastoplastic_sc3_options_.num_friction_directions_per_contact
                 .value(),
             verbose_);
-    ElastoPlasticLCSFactoryOptions eplcs_factory_options_for_cost = {
-        .deformation_model = elastoplastic_sc3_options_.deformation_model,
-        .num_internal_contacts =
-            elastoplastic_sc3_options_.num_internal_contacts,
-        .contact_model = elastoplastic_sc3_options_.contact_model,
-        .N = N_ * elastoplastic_sc3_options_.lcs_dt_resolution,
-        .dt = dt_ / elastoplastic_sc3_options_.lcs_dt_resolution,
-        .num_contacts = resolved_external_contact_pairs_for_cost.size(),
-        .spring_stiffness = 0.0,
-        .num_friction_directions_per_contact =
-            elastoplastic_sc3_options_
-                .num_friction_directions_per_contact_for_cost,
-        .mu_per_contact = elastoplastic_sc3_options_.mu_for_cost,
-        .planar_normal_direction =
-            elastoplastic_sc3_options_.planar_normal_direction};
+    ElastoPlasticLCSFactoryOptions eplcs_factory_options_for_cost =
+        elastoplastic_sc3_options_.GetElastoPlasticLCSFactoryOptions();
+    eplcs_factory_options_for_cost.contact_model =
+        elastoplastic_sc3_options_.contact_model;
+    eplcs_factory_options_for_cost.N =
+        N_ * elastoplastic_sc3_options_.lcs_dt_resolution;
+    eplcs_factory_options_for_cost.dt =
+        dt_ / elastoplastic_sc3_options_.lcs_dt_resolution;
+    eplcs_factory_options_for_cost.num_contacts =
+        resolved_external_contact_pairs_for_cost.size();
+    eplcs_factory_options_for_cost.spring_stiffness = 0.0;
+    eplcs_factory_options_for_cost.num_friction_directions_per_contact =
+        elastoplastic_sc3_options_.num_friction_directions_per_contact_for_cost;
+    eplcs_factory_options_for_cost.mu_per_contact =
+        elastoplastic_sc3_options_.mu_for_cost;
+    eplcs_factory_options_for_cost.planar_normal_direction =
+        elastoplastic_sc3_options_.planar_normal_direction;
     LCS lcs_object_sample_for_cost =
         ElastoPlasticLCSFactory(plant_, *context_, plant_ad_, *context_ad_,
                                 resolved_external_contact_pairs_for_cost,

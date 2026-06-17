@@ -215,7 +215,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       std::vector<int> num_friction_directions, bool verbose) const;
 
   /// Variables that are accessible to child classes.
-  SamplingC3ControllerParams controller_params_;
+  const SamplingC3ControllerParams controller_params_;
   int n_q_;
   int n_v_;
   int n_x_;
@@ -250,7 +250,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
           "solvers/osqp_options_default.yaml")
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
-  SamplingParams sampling_params_;
+  const SamplingParams sampling_params_;
 
  private:
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
@@ -310,6 +310,12 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const bool& print_current_pos_and_rot_cost) const;
 
   void ResetProgressMetrics() const;
+
+  void ResetSampleBuffers() const;
+
+  void IncludeEEOrientationTargetIfEnabled(
+      LcmTrajectory* lcm_trajectory, const Eigen::Vector3d& ee_position,
+      const Eigen::VectorXd& timestamps) const;
 
   /// Output port functions
   /// TODO:  many of these can stay the same as long as these variables are
@@ -438,15 +444,19 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       unsuccessful_sample_buffer_configurations_port_;
   drake::systems::OutputPortIndex unsuccessful_sample_buffer_costs_port_;
 
-  SamplingC3Options sampling_c3_options_;
-  SamplingC3RepositionParams reposition_params_;
-  SamplingC3ProgressParams progress_params_;
-  SamplingC3GoalParams goal_params_;
+  const SamplingC3Options sampling_c3_options_;
+  const SamplingC3RepositionParams reposition_params_;
+  const SamplingC3ProgressParams progress_params_;
+  const SamplingC3GoalParams goal_params_;
 
   int max_num_samples_;
 
   double solve_time_filter_constant_;
   drake::systems::DiscreteStateIndex plan_start_time_index_;
+
+  const bool adaptive_ee_tilt_;
+  double max_ee_dist_from_workspace_center_;
+  Eigen::Vector3d workspace_center_;
 
   /// TODO:  There are many mutable class variables, which is not best practice
   /// in the Drake systems framework.  These could be converted to discrete

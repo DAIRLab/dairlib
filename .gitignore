@@ -14,3 +14,4 @@ attic/multibody/solver_log/
 /MODULE.bazel.lock
 venv/
 tmp/
+callgrind.out.*

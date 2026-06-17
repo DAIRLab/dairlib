@@ -579,7 +579,7 @@ Eigen::VectorXd MeshNormalSampling(
     // Check distance from mesh
     const auto& results = query_object.ComputeSignedDistanceToPoint(
         candidate_state.segment(0, 3));
-    distance = results[2].distance;  // index 2 = body_volume
+    distance = results[2].distance;  // 2 = body_volume (0 = EE, 1 = ground)
 
     bool in_collision =
         (distance <= sampling_params.sample_projection_clearance);

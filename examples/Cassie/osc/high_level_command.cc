@@ -85,10 +85,10 @@ HighLevelCommand::HighLevelCommand(
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName("pelvis")) {
   state_port_ = this->DeclareVectorInputPort(
-                        "x, u, t", OutputVector<double>(plant.num_positions(),
-                                                        plant.num_velocities(),
-                                                        plant.num_actuators()))
-                    .get_index();
+          "x, u, t", OutputVector<double>(plant.num_positions(),
+                                          plant.num_velocities(),
+                                          plant.num_actuators()))
+      .get_index();
 
   yaw_port_ =
       this->DeclareVectorOutputPort("pelvis_yaw", 1,
@@ -182,8 +182,8 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
 
   // Convex combination of 0 and desired yaw velocity
   double weight = 1 / (1 + exp(-params_of_no_turning_(0) *
-                               (global_com_pos_to_target_pos.norm() -
-                                params_of_no_turning_(1))));
+      (global_com_pos_to_target_pos.norm() -
+          params_of_no_turning_(1))));
   double desired_filtered_yaw_vel = (1 - weight) * 0 + weight * des_yaw_vel;
 
   //////////// Get desired horizontal vel ////////////
@@ -213,15 +213,15 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
     // Sagittal plane position PD control
     double com_vel_sagittal = local_com_vel(0);
     des_sagittal_vel = kp_pos_sagittal_ * (local_com_pos_to_target_pos(0) +
-                                         target_pos_offset_) +
-                      kd_pos_sagittal_ * (-com_vel_sagittal);
+        target_pos_offset_) +
+        kd_pos_sagittal_ * (-com_vel_sagittal);
     des_sagittal_vel =
         std::clamp(des_sagittal_vel, -vel_max_sagittal_, vel_max_sagittal_);
 
     // Frontal plane position PD control.  TODO(yminchen): tune this
     double com_vel_lateral = local_com_vel(1);
     des_lateral_vel = kp_pos_lateral_ * (local_com_pos_to_target_pos(1)) +
-                      kd_pos_lateral_ * (-com_vel_lateral);
+        kd_pos_lateral_ * (-com_vel_lateral);
     des_lateral_vel =
         std::clamp(des_lateral_vel, -vel_max_lateral_, vel_max_lateral_);
   }

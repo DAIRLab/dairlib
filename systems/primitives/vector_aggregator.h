@@ -24,7 +24,7 @@ class VectorAggregator : public drake::systems::LeafSystem<double> {
   /// @param vector_length is the length of the input TimestampedVector
   VectorAggregator(int vector_length) {
     DeclareVectorInputPort(kUseDefaultName,
-      TimestampedVector<double>(vector_length));
+                           TimestampedVector<double>(vector_length));
     DeclarePerStepEvent<drake::systems::PublishEvent<double>>(
         drake::systems::PublishEvent<double>(
             drake::systems::Event<double>::TriggerType::kPerStep));
@@ -65,10 +65,10 @@ class VectorAggregator : public drake::systems::LeafSystem<double> {
  private:
   void DoPublish(const drake::systems::Context<double>& context,
                  const std::vector<const drake::systems::PublishEvent<double>*>&
-                     events) const {
-    const TimestampedVector<double>* input =
-      dynamic_cast<const TimestampedVector<double>*>(
-        EvalVectorInput(context, 0));
+                 events) const {
+    auto input =
+        dynamic_cast<const TimestampedVector<double>*>(
+            EvalVectorInput(context, 0));
 
     bool is_new_input = false;
     if (received_vectors_.empty() && input->get_timestamp() != 0)

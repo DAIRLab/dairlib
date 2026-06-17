@@ -79,9 +79,7 @@ We have tested that our OSC works for the following robot platforms: Cassie, Fra
 
 ### Contact-Implicit MPC (C3)
 
-WIP
-
-See [systems/controllers/c3_controller.cc](systems/controllers/c3_controller.cc)
+Refer to [c3](https://github.com/DAIRLab/c3) repo
 
 ### Trajectory Optimization (DIRCON)
 A modern Drake implementation of the DIRCON constrained trajectory optimization algorithm. Currently under construction. See `/examples/PlanarWalker/run_gait_dircon.cc` for a simple example of the hybrid DIRCON algorithm. The more complete example set (from the paper) currently exists on an older version of Drake https://github.com/mposa/drake/tree/hybrid-merge

@@ -196,8 +196,9 @@ int do_main(int argc, char* argv[]) {
   contact_results_publisher.set_name("contact_results_publisher");
 
   // Sensor aggregator and publisher of lcmt_cassie_out
-  auto radio_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(FLAGS_radio_channel, lcm));
+  auto radio_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
+          FLAGS_radio_channel, lcm));
   const auto& sensor_aggregator =
       AddImuAndAggregator(&builder, plant, passthrough->get_output_port());
 

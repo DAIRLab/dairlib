@@ -11,7 +11,7 @@ namespace solvers {
 /// @param normal_index the index (0,1, or 2) into the force vector for the
 ///   normal force. Default = 2.
 std::shared_ptr<drake::solvers::LorentzConeConstraint>
-    CreateConicFrictionConstraint(double mu, int normal_index = 2);
+CreateConicFrictionConstraint(double mu, int normal_index = 2);
 
 /// Utility method to create a linear cone constraint for friction.
 /// Constraint is a polytopic approximation of mu * lambda_n >= ||lambda_t||.
@@ -28,8 +28,8 @@ std::shared_ptr<drake::solvers::LorentzConeConstraint>
 /// @param inscribed Whether the approximation is inscribed or circumscribed.
 ///   Default = true.
 std::shared_ptr<drake::solvers::LinearConstraint>
-    CreateLinearFrictionConstraint(double mu, int num_faces = 8,
-    int normal_index = 2, bool inscribed = true);
+CreateLinearFrictionConstraint(double mu, int num_faces = 8,
+                               int normal_index = 2, bool inscribed = true);
 
 }  // namespace solvers
 }  // namespace dairlib

@@ -67,15 +67,14 @@ class TimeBasedFiniteStateMachine : public drake::systems::LeafSystem<double> {
   double eps_ = 1e-12;
 };
 
-
-class TimeBasedFiniteStateMachineWithTrigger :
-    public drake::systems::LeafSystem<double> {
+class TimeBasedFiniteStateMachineWithTrigger
+    : public drake::systems::LeafSystem<double> {
  public:
   TimeBasedFiniteStateMachineWithTrigger(
       const drake::multibody::MultibodyPlant<double>& plant,
       const std::vector<int>& states,
-      const std::vector<double>& state_durations,
-      bool with_trigger_input_port, double one_stride_period);
+      const std::vector<double>& state_durations, bool with_trigger_input_port,
+      double one_stride_period);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -86,7 +85,8 @@ class TimeBasedFiniteStateMachineWithTrigger :
   const drake::systems::OutputPort<double>& get_output_port_fsm() const {
     return this->get_output_port(fsm_port_);
   }
-  const drake::systems::OutputPort<double>& get_output_port_global_fsm_idx() const {
+  const drake::systems::OutputPort<double>& get_output_port_global_fsm_idx()
+      const {
     return this->get_output_port(global_fsm_idx_port_);
   }
 
@@ -96,7 +96,8 @@ class TimeBasedFiniteStateMachineWithTrigger :
       drake::systems::DiscreteValues<double>* discrete_state) const;
   void CalcFiniteState(const drake::systems::Context<double>& context,
                        drake::systems::BasicVector<double>* fsm_state) const;
-  void CalcGlobalFsmIdx(const drake::systems::Context<double>& context,
+  void CalcGlobalFsmIdx(
+      const drake::systems::Context<double>& context,
       drake::systems::BasicVector<double>* global_fsm_idx) const;
 
   int state_port_;
@@ -115,7 +116,6 @@ class TimeBasedFiniteStateMachineWithTrigger :
 
   double eps_ = 1e-12;
 };
-
 
 }  // namespace systems
 }  // namespace dairlib

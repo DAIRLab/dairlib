@@ -2,6 +2,7 @@
 
 #include <string>
 #include <unordered_map>
+
 #include "drake/common/symbolic/expression.h"
 #include "drake/solvers/cost.h"
 

@@ -1,6 +1,6 @@
-#include <algorithm>
 #include "examples/Cassie/networking/cassie_input_receiver.h"
 
+#include <algorithm>
 
 namespace dairlib {
 namespace systems {
@@ -8,13 +8,14 @@ namespace systems {
 using drake::systems::Context;
 using drake::systems::LeafSystem;
 
-template <typename T> void copy_vector(const T* input, T* output, int size);
+template <typename T>
+void copy_vector(const T* input, T* output, int size);
 
 CassieInputReceiver::CassieInputReceiver() {
   this->DeclareAbstractInputPort("lcmt_cassie_in",
-    drake::Value<dairlib::lcmt_cassie_in>{});
-  this->DeclareAbstractOutputPort(
-      "cassie_in_t", &CassieInputReceiver::CopyOutput);
+                                 drake::Value<dairlib::lcmt_cassie_in>{});
+  this->DeclareAbstractOutputPort("cassie_in_t",
+                                  &CassieInputReceiver::CopyOutput);
 }
 
 template <typename T>

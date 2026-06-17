@@ -43,16 +43,16 @@ class ButterworthFilter : public DiscreteTimeFilter {
   ButterworthFilter(Eigen::VectorXd& a, Eigen::VectorXd& b, int vector_size);
   void Reset() override;
   void Update(Eigen::VectorXd) override;
-  void UpdateParameters(Eigen::VectorXd &b, Eigen::VectorXd &a);
+  void UpdateParameters(Eigen::VectorXd& b, Eigen::VectorXd& a);
 
  private:
   int nb_;
   int na_;
   int data_size_;
-  Eigen::MatrixXd y_; // Array of previously filtered values
-  Eigen::MatrixXd x_; // Array of raw values
-  Eigen::VectorXd b_; // filter coefficient
-  Eigen::VectorXd a_; // filter coefficient
+  Eigen::MatrixXd y_;  // Array of previously filtered values
+  Eigen::MatrixXd x_;  // Array of raw values
+  Eigen::VectorXd b_;  // filter coefficient
+  Eigen::VectorXd a_;  // filter coefficient
 };
 
 }  // namespace dairlib

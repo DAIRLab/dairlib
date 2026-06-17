@@ -6,7 +6,6 @@
 #include "drake/systems/controllers/linear_quadratic_regulator.h"
 #include "drake/systems/framework/leaf_system.h"
 
-
 namespace dairlib {
 namespace systems {
 

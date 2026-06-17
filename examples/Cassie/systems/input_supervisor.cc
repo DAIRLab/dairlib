@@ -1,7 +1,8 @@
 #include "examples/Cassie/systems/input_supervisor.h"
 
-#include <dairlib/lcmt_cassie_out.hpp>
 #include <iostream>
+
+#include <dairlib/lcmt_cassie_out.hpp>
 #include <dairlib/lcmt_controller_failure.hpp>
 
 #include "dairlib/lcmt_controller_switch.hpp"
@@ -19,7 +20,8 @@ using systems::TimestampedVector;
 InputSupervisor::InputSupervisor(
     const drake::multibody::MultibodyPlant<double>& plant,
     const std::string& initial_channel, double max_joint_velocity,
-    double update_period, Eigen::VectorXd& input_limit, int min_consecutive_failures)
+    double update_period, Eigen::VectorXd& input_limit,
+    int min_consecutive_failures)
     : plant_(plant),
       num_actuators_(plant_.num_actuators()),
       num_positions_(plant_.num_positions()),
@@ -28,7 +30,6 @@ InputSupervisor::InputSupervisor(
       min_consecutive_failures_(min_consecutive_failures),
       max_joint_velocity_(max_joint_velocity),
       input_limit_(input_limit) {
-
   // Create input ports
   command_input_port_ =
       this->DeclareVectorInputPort("u, t",
@@ -149,7 +150,8 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
 
   // If the soft estop signal is triggered, applying only damping regardless of
   // any other controller signal
-  if (cassie_out->pelvis.radio.channel[15] == -1 || cassie_out->pelvis.radio.channel[13] == -1) {
+  if (cassie_out->pelvis.radio.channel[15] == -1 ||
+      cassie_out->pelvis.radio.channel[13] == -1) {
     Eigen::VectorXd u = -K_ * state->GetVelocities();
     input_limit_ = 100 * Eigen::VectorXd::Ones(num_actuators_);
     output->set_timestamp(state->get_timestamp());
@@ -174,10 +176,10 @@ void InputSupervisor::SetMotorTorques(const Context<double>& context,
     } else if (command_value < -input_limit_(i)) {
       command_value = -input_limit_(i);
     }
-//    if(i < 2){
-//      command_value += -0.2 * K_.row(i) * state->GetVelocities();
-//      command_value = 0.95 * command_value + 0.05 * prev_efforts(i);
-//    }
+    //    if(i < 2){
+    //      command_value += -0.2 * K_.row(i) * state->GetVelocities();
+    //      command_value = 0.95 * command_value + 0.05 * prev_efforts(i);
+    //    }
     output->get_mutable_data()(i) = command_value;
   }
 }
@@ -314,7 +316,8 @@ void InputSupervisor::CheckRadio(
     drake::systems::DiscreteValues<double>* discrete_state) const {
   const auto& cassie_out = this->EvalInputValue<dairlib::lcmt_cassie_out>(
       context, cassie_input_port_);
-  if (cassie_out->pelvis.radio.channel[15] == -1 || cassie_out->pelvis.radio.channel[13] == -1) {
+  if (cassie_out->pelvis.radio.channel[15] == -1 ||
+      cassie_out->pelvis.radio.channel[13] == -1) {
     discrete_state->get_mutable_value(
         error_indices_index_)[error_indices_.at("soft_estop")] = 1;
   }

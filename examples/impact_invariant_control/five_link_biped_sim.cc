@@ -117,7 +117,8 @@ int do_main(int argc, char* argv[]) {
       LcmPublisherSystem::Make<drake::lcmt_contact_results_for_viz>(
           "CONTACT_RESULTS", lcm, 1.0 / FLAGS_publish_rate));
   contact_results_publisher.set_name("contact_results_publisher");
-  auto state_sender = builder.AddSystem<systems::RobotOutputSender>(plant, true);
+  auto state_sender =
+      builder.AddSystem<systems::RobotOutputSender>(plant, true);
 
   // Contact results to lcm msg.
   builder.Connect(*input_sub, *input_receiver);

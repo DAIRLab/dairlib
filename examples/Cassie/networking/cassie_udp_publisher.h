@@ -1,27 +1,26 @@
 #pragma once
 
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 #include <memory>
 #include <string>
-#include <vector>
 #include <unordered_set>
+#include <vector>
+
+#include "examples/Cassie/networking/udp_serializer.h"
 
 #include "drake/common/drake_copyable.h"
 #include "drake/common/drake_throw.h"
 #include "drake/systems/framework/leaf_system.h"
-#include "examples/Cassie/networking/udp_serializer.h"
-
 
 namespace dairlib {
 namespace systems {
 
 using UDPTriggerTypes =
     std::unordered_set<drake::systems::TriggerType, drake::DefaultHash>;
-
 
 /**
  * Publishes a UDP message containing information from its input port.
@@ -52,14 +51,14 @@ class CassieUDPPublisher : public drake::systems::LeafSystem<double> {
    * @pre publish_period is non-negative.
    * @pre publish_period > iff publish_triggers contains kPeriodic
    */
-  static std::unique_ptr<CassieUDPPublisher> Make(const std::string& address,
-      const int port, const UDPTriggerTypes& publish_triggers,
-      double publish_period = 0.0) {
+  static std::unique_ptr<CassieUDPPublisher> Make(
+      const std::string& address, const int port,
+      const UDPTriggerTypes& publish_triggers, double publish_period = 0.0) {
     return std::make_unique<CassieUDPPublisher>(address, port, publish_triggers,
-        publish_period);
+                                                publish_period);
   }
 
-/**
+  /**
    * A factory method that returns an %CassieUDPPublisher
    * Instantates the default publish triggers: kForced and either (kPeriodic
    * if publish_period > 0) or (kPerStep if publish_period = 0)
@@ -75,7 +74,8 @@ class CassieUDPPublisher : public drake::systems::LeafSystem<double> {
    * @pre publish_period is non-negative.
    */
   static std::unique_ptr<CassieUDPPublisher> Make(const std::string& address,
-      const int port, double publish_period = 0.0) {
+                                                  const int port,
+                                                  double publish_period = 0.0) {
     return std::make_unique<CassieUDPPublisher>(address, port, publish_period);
   }
 
@@ -96,8 +96,8 @@ class CassieUDPPublisher : public drake::systems::LeafSystem<double> {
    * @pre publish_period is non-negative.
    */
   CassieUDPPublisher(const std::string& address, const int port,
-      const UDPTriggerTypes& publish_triggers, double publish_period = 0.0);
-
+                     const UDPTriggerTypes& publish_triggers,
+                     double publish_period = 0.0);
 
   /**
    * A constructor for a %CassieUDPPublisher
@@ -115,7 +115,7 @@ class CassieUDPPublisher : public drake::systems::LeafSystem<double> {
    * @pre publish_period is non-negative.
    */
   CassieUDPPublisher(const std::string& address, const int port,
-      double publish_period = 0.0);
+                     double publish_period = 0.0);
 
   ~CassieUDPPublisher() override;
   /**

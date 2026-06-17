@@ -1,8 +1,10 @@
-#include <string.h>
 #include <inttypes.h>
-#include <lcm/lcm.h>
+#include <string.h>
+
 #include <iostream>
 #include <list>
+
+#include <lcm/lcm.h>
 
 /**
   This is a simple program to fix any LCM messages that may be out of sequence
@@ -18,11 +20,11 @@
 constexpr int kBufferLength = 20;
 
 bool event_sorter(lcm_eventlog_event_t* const& lhs,
-    lcm_eventlog_event_t* const& rhs) {
+                  lcm_eventlog_event_t* const& rhs) {
   return lhs->timestamp < rhs->timestamp;
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   int N = 0;
   std::list<lcm_eventlog_event_t*> buffer;
 
@@ -48,8 +50,7 @@ int main(int argc, char **argv) {
   int64_t last_timestamp = 0;
   int64_t last_write_timestamp = 0;
   while (1) {
-    lcm_eventlog_event_t *event = lcm_eventlog_read_next_event(log);
-
+    lcm_eventlog_event_t* event = lcm_eventlog_read_next_event(log);
 
     if (!event) {
       break;
@@ -74,13 +75,11 @@ int main(int argc, char **argv) {
 
       int64_t timestamp = buffer.front()->timestamp;
       if (timestamp < last_write_timestamp) {
-        std::cout <<
-            "ERROR: buffer size too small to capture out-of-order message!"
+        std::cout
+            << "ERROR: buffer size too small to capture out-of-order message!"
             << std::endl;
       }
       last_write_timestamp = timestamp;
-
-
 
       // Free and remove message
       free(buffer.front()->channel);
@@ -104,14 +103,13 @@ int main(int argc, char **argv) {
   while (N > 0) {
     lcm_eventlog_write_event(log_out, buffer.front());
 
-      int64_t timestamp = buffer.front()->timestamp;
-      if (timestamp < last_write_timestamp) {
-        std::cout <<
-            "ERROR: buffer size too small to capture out-of-order message!"
-            << std::endl;
-      }
-      last_write_timestamp = timestamp;
-
+    int64_t timestamp = buffer.front()->timestamp;
+    if (timestamp < last_write_timestamp) {
+      std::cout
+          << "ERROR: buffer size too small to capture out-of-order message!"
+          << std::endl;
+    }
+    last_write_timestamp = timestamp;
 
     // Free and remove message
     free(buffer.front()->channel);

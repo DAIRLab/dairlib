@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+
 #include "drake/systems/framework/diagram.h"
 
 namespace dairlib {

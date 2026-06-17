@@ -1,18 +1,20 @@
 #pragma once
 
+#include <list>
 #include <memory>
 #include <vector>
-#include <list>
+
+#include "systems/trajectory_optimization/dircon_kinematic_data.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
-#include "systems/trajectory_optimization/dircon_kinematic_data.h"
 
 namespace dairlib {
 
 template <typename T>
 class DirconKinematicDataSet {
  public:
-  DirconKinematicDataSet(const drake::multibody::MultibodyPlant<T>& plant,
+  DirconKinematicDataSet(
+      const drake::multibody::MultibodyPlant<T>& plant,
       std::vector<DirconKinematicData<T>*>* constraints,
       std::vector<int> skip_constraint_inds = std::vector<int>());
 
@@ -103,7 +105,7 @@ class DirconKinematicDataSet {
    public:
     bool operator()(const CacheKey<T>& a, const CacheKey<T>& b) const {
       auto ret = (a.state.isApprox(b.state)) && (a.forces.isApprox(b.forces)) &&
-          (a.input.isApprox(b.input));
+                 (a.input.isApprox(b.input));
       return ret;
     }
   };
@@ -120,9 +122,7 @@ class DirconKinematicDataSet {
     }
 
     // Get the data associated with a key element
-    const CacheData& GetData(const CacheKey<T>& key) {
-      return map_[key];
-    }
+    const CacheData& GetData(const CacheKey<T>& key) { return map_[key]; }
 
     // Adds an entry to storage. If at max size, removes the oldest element
     // For speed, this assumes that the map does not contain the key already!!
@@ -151,7 +151,6 @@ class DirconKinematicDataSet {
   drake::VectorX<T> cdot_;
   drake::MatrixX<T> J_;
   drake::VectorX<T> Jdotv_;
-
 
   drake::VectorX<T> cddot_;
   drake::VectorX<T> vdot_;

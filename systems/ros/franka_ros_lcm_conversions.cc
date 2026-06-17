@@ -4,8 +4,8 @@
 
 #include "franka_msgs/FrankaState.h"
 #include "multibody/multibody_utils.h"
-#include "nav_msgs/Path.h"
 #include "nav_msgs/Odometry.h"
+#include "nav_msgs/Path.h"
 #include "sensor_msgs/JointState.h"
 
 namespace dairlib {

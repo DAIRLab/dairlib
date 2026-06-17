@@ -81,8 +81,7 @@ void RotTaskSpaceTrackingData::UpdateYdot(
 
 void RotTaskSpaceTrackingData::UpdateYdotError(const Eigen::VectorXd& v_proj) {
   DRAKE_DEMAND(ydot_des_.size() == 3);
-  error_ydot_ =
-      ydot_des_ - ydot_;
+  error_ydot_ = ydot_des_ - ydot_;
   if (with_view_frame_) {
     error_ydot_ = view_frame_rot_T_ * error_ydot_;
   }

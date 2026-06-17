@@ -1,10 +1,10 @@
 #include "hybrid_dircon.h"
 
 #include <algorithm>  // std::max
+#include <iostream>
 #include <stdexcept>
 #include <utility>
 #include <vector>
-#include <iostream>
 
 #include "multibody/multibody_utils.h"
 
@@ -18,6 +18,7 @@ namespace trajectory_optimization {
 using drake::AutoDiffXd;
 using drake::VectorX;
 using drake::multibody::MultibodyPlant;
+using drake::planning::trajectory_optimization::MultipleShooting;
 using drake::solvers::Binding;
 using drake::solvers::Constraint;
 using drake::solvers::MathematicalProgram;
@@ -25,7 +26,6 @@ using drake::solvers::MathematicalProgramResult;
 using drake::solvers::MatrixXDecisionVariable;
 using drake::solvers::VectorXDecisionVariable;
 using drake::symbolic::Expression;
-using drake::planning::trajectory_optimization::MultipleShooting;
 using drake::trajectories::PiecewisePolynomial;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -40,10 +40,10 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
                               vector<DirconKinematicDataSet<T>*> constraints,
                               vector<DirconOptions> options)
     : MultipleShooting(
-    plant.num_actuators(), plant.num_positions() + plant.num_velocities(),
-    std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
-        num_time_samples.size() + 1,
-    1e-8, 1e8),
+          plant.num_actuators(), plant.num_positions() + plant.num_velocities(),
+          std::accumulate(num_time_samples.begin(), num_time_samples.end(), 0) -
+              num_time_samples.size() + 1,
+          1e-8, 1e8),
       plant_(plant),
       constraints_(constraints),
       num_modes_(num_time_samples.size()),
@@ -65,12 +65,12 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
     // set timestep bounds
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
       prog().AddBoundingBoxConstraint(minimum_timestep[i], maximum_timestep[i],
-                               time_step(mode_start_[i] + j));
+                                      time_step(mode_start_[i] + j));
     }
     for (int j = 0; j < mode_lengths_[i] - 2; j++) {
       // all timesteps must be equal
       prog().AddLinearConstraint(time_step(mode_start_[i] + j) ==
-          time_step(mode_start_[i] + j + 1));
+                                 time_step(mode_start_[i] + j + 1));
     }
 
     // initialize constraint lengths
@@ -114,7 +114,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
           {state().tail(plant_.num_velocities()),
            Eigen::Map<MatrixXDecisionVariable>(
                ((drake::solvers::VectorXDecisionVariable)
-                   v_post_impact_vars_by_mode(i - 1))
+                    v_post_impact_vars_by_mode(i - 1))
                    .data(),
                plant_.num_velocities(), 1)
                .cast<Expression>()});
@@ -132,7 +132,8 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
       // Otherwise, start with the second knot in order to avoid imposing the
       // same constraint twice.
       for (int j = (i == 0) ? 0 : 1; j < mode_lengths_[i]; j++) {
-        prog().AddConstraint(quat_norm_constraint, state_vars_by_mode(i, j).head(4));
+        prog().AddConstraint(quat_norm_constraint,
+                             state_vars_by_mode(i, j).head(4));
       }
     }
 
@@ -140,7 +141,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
     auto dynamic_constraint = std::make_shared<DirconDynamicConstraint<T>>(
         plant_, *constraints_[i], is_quaternion);
     DRAKE_ASSERT(static_cast<int>(dynamic_constraint->num_constraints()) ==
-        num_states());
+                 num_states());
     dynamic_constraint->SetConstraintScaling(
         options[i].getDynConstraintScaling());
     for (int j = 0; j < mode_lengths_[i] - 1; j++) {
@@ -233,8 +234,8 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
     // Add force to cost function
     if (options[i].getForceCost() != 0) {
       auto A = options[i].getForceCost() *
-          MatrixXd::Identity(num_kinematic_constraints_wo_skipping(i),
-                             num_kinematic_constraints_wo_skipping(i));
+               MatrixXd::Identity(num_kinematic_constraints_wo_skipping(i),
+                                  num_kinematic_constraints_wo_skipping(i));
       auto b = MatrixXd::Zero(num_kinematic_constraints_wo_skipping(i), 1);
       for (int j = 0; j < mode_lengths_[i]; j++) {
         // Add || Ax - b ||^2
@@ -248,9 +249,10 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
             plant_, *constraints_[i]);
         impact_constraint->SetConstraintScaling(
             options[i].getImpConstraintScaling());
-        prog().AddConstraint(impact_constraint,
-                      {state_vars_by_mode(i - 1, mode_lengths_[i - 1] - 1),
-                       impulse_vars(i - 1), v_post_impact_vars_by_mode(i - 1)});
+        prog().AddConstraint(
+            impact_constraint,
+            {state_vars_by_mode(i - 1, mode_lengths_[i - 1] - 1),
+             impulse_vars(i - 1), v_post_impact_vars_by_mode(i - 1)});
 
         // Add constraints on impulse variables
         int start_index = 0;
@@ -259,8 +261,8 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
               constraints_[i]->getConstraint(j);
           for (int k = 0; k < constraint_j->numForceConstraints(); k++) {
             prog().AddConstraint(constraint_j->getForceConstraint(k),
-                          impulse_vars(i - 1).segment(
-                              start_index, constraint_j->getLength()));
+                                 impulse_vars(i - 1).segment(
+                                     start_index, constraint_j->getLength()));
           }
           start_index += constraint_j->getLength();
         }
@@ -268,7 +270,7 @@ HybridDircon<T>::HybridDircon(const MultibodyPlant<T>& plant,
       } else {
         auto x_vars_prev = state_vars_by_mode(i - 1, mode_lengths_[i - 1] - 1);
         prog().AddConstraint(v_post_impact_vars_by_mode(i - 1) ==
-            x_vars_prev.tail(plant.num_velocities()));
+                             x_vars_prev.tail(plant.num_velocities()));
       }
     }
 
@@ -338,7 +340,7 @@ void HybridDircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
   // polynomial of degree 3 which Drake can handle, although the
   // documentation says it only supports up to second order.
   for (int mode = 0; mode < num_modes(); ++mode) {
-    if(mode_length(mode) < 2){
+    if (mode_length(mode) < 2) {
       continue;
     }
     int mode_start = mode_start_[mode];
@@ -346,18 +348,21 @@ void HybridDircon<T>::DoAddRunningCost(const drake::symbolic::Expression& g) {
     // Substitute the velocity vars with the correct post-impact velocity vars
     // before substituting the rest of the expression
     if (mode > 0) {
-      prog().AddCost(MultipleShooting::SubstitutePlaceholderVariables(
-          SubstitutePostImpactVelocityVariables(g, mode), mode_start) *
+      prog().AddCost(
+          MultipleShooting::SubstitutePlaceholderVariables(
+              SubstitutePostImpactVelocityVariables(g, mode), mode_start) *
           (h_vars()(mode_start) / 2));
     } else {
-      prog().AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, mode_start) *
+      prog().AddCost(
+          MultipleShooting::SubstitutePlaceholderVariables(g, mode_start) *
           (h_vars()(mode_start) / 2));
     }
     for (int i = mode_start + 1; i < mode_end - 1; ++i) {
       prog().AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, i) *
-          (h_vars()(i - 1) + h_vars()(i)) / 2);
+                     (h_vars()(i - 1) + h_vars()(i)) / 2);
     }
-    prog().AddCost(MultipleShooting::SubstitutePlaceholderVariables(g, mode_end - 1) *
+    prog().AddCost(
+        MultipleShooting::SubstitutePlaceholderVariables(g, mode_end - 1) *
         h_vars()(mode_end - 2) / 2);
   }
 }
@@ -460,7 +465,8 @@ void HybridDircon<T>::SetInitialForceTrajectory(
           traj_init_lc.value(start_time + (i + 0.5) * h);
     }
   }
-  prog().SetInitialGuess(collocation_force_vars_[mode], guess_collocation_force);
+  prog().SetInitialGuess(collocation_force_vars_[mode],
+                         guess_collocation_force);
 
   VectorXd guess_collocation_slack(collocation_slack_vars_[mode].size());
   if (traj_init_vc.empty()) {
@@ -474,7 +480,8 @@ void HybridDircon<T>::SetInitialForceTrajectory(
     }
   }
   // call superclass method
-  prog().SetInitialGuess(collocation_slack_vars_[mode], guess_collocation_slack);
+  prog().SetInitialGuess(collocation_slack_vars_[mode],
+                         guess_collocation_slack);
 }
 
 template <typename T>
@@ -610,13 +617,13 @@ void HybridDircon<T>::CreateVisualizationCallback(
   int num_poses = num_modes_ + 1;  // start and finish of every mode
   for (int i = 0; i < num_modes_; i++) {
     DRAKE_DEMAND(poses_per_mode.at(i) == 0 ||
-        (poses_per_mode.at(i) + 2 <= (uint)mode_lengths_.at(i)));
+                 (poses_per_mode.at(i) + 2 <= (uint)mode_lengths_.at(i)));
     num_poses += poses_per_mode.at(i);
   }
 
   // Assemble variable list
   drake::solvers::VectorXDecisionVariable vars(num_poses *
-      plant_.num_positions());
+                                               plant_.num_positions());
 
   int index = 0;
   for (int i = 0; i < num_modes_; i++) {
@@ -704,7 +711,7 @@ void HybridDircon<T>::CreateVisualizationCallback(
     for (int i = 0; i < num_modes_; i++) {
       double fractional_value =
           num_poses_without_ends * (mode_lengths_.at(i) - 2) -
-              num_poses_per_mode.at(i) * mode_sum;
+          num_poses_per_mode.at(i) * mode_sum;
 
       if (fractional_value > value) {
         value = fractional_value;

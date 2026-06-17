@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Eigen/Dense>
+
 #include "drake/common/yaml/yaml_read_archive.h"
 
 struct FrankaSimParams {

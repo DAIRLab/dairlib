@@ -29,7 +29,6 @@ class TimestampedVectorTest : public ::testing::Test {
 };
 
 TEST_F(TimestampedVectorTest, ValueChecks) {
-
   ASSERT_EQ(time_, vector_->get_timestamp());
 
   ASSERT_EQ(input_value_, vector_->get_data());
@@ -45,7 +44,6 @@ TEST_F(TimestampedVectorTest, NonMutableCheck) {
 }
 
 TEST_F(TimestampedVectorTest, MutableCheck) {
-
   auto data = vector_->get_mutable_data();
   data(0) = 1;
   ASSERT_EQ(1, vector_->GetAtIndex(0));
@@ -64,8 +62,7 @@ TEST_F(TimestampedVectorTest, SetCheck) {
 }  // namespace systems
 }  // namespace dairlib
 
-
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

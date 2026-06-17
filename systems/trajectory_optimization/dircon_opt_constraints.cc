@@ -1,4 +1,5 @@
 #include "dircon_opt_constraints.h"
+
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -31,8 +32,9 @@ using std::string;
 
 template <typename T>
 QuaternionNormConstraint<T>::QuaternionNormConstraint()
-    : solvers::NonlinearConstraint<T>(1, 4, VectorXd::Zero(1), 
-          VectorXd::Zero(1), "quaternion_norm_constraint") {}
+    : solvers::NonlinearConstraint<T>(1, 4, VectorXd::Zero(1),
+                                      VectorXd::Zero(1),
+                                      "quaternion_norm_constraint") {}
 template <typename T>
 void QuaternionNormConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const drake::VectorX<T>>& x, drake::VectorX<T>* y) const {
@@ -231,9 +233,8 @@ DirconKinematicConstraint<T>::DirconKinematicConstraint(
       num_velocities_{num_velocities},
       type_{type},
       is_constraint_relative_{is_constraint_relative},
-      n_relative_{
-          static_cast<int>(std::count(is_constraint_relative.begin(),
-                                      is_constraint_relative.end(), true))},
+      n_relative_{static_cast<int>(std::count(
+          is_constraint_relative.begin(), is_constraint_relative.end(), true))},
       context_(plant_.CreateDefaultContext()) {
   // Set sparsity pattern and relative map
   std::vector<std::pair<int, int>> sparsity;
@@ -303,7 +304,7 @@ void DirconKinematicConstraint<T>::EvaluateConstraint(
     case kAll:
       *y = VectorX<T>(3 * num_kinematic_constraints_);
       *y << constraints_->getCDDot(), constraints_->getCDot(),
-           constraints_->getC() + relative_map_ * offset;
+          constraints_->getC() + relative_map_ * offset;
       break;
     case kAccelAndVel:
       *y = VectorX<T>(2 * num_kinematic_constraints_);
@@ -329,11 +330,11 @@ DirconImpactConstraint<T>::DirconImpactConstraint(
     int num_positions, int num_velocities,
     int num_kinematic_constraints_wo_skipping)
     : solvers::NonlinearConstraint<T>(num_velocities,
-                                  num_positions + 2 * num_velocities +
-                                      num_kinematic_constraints_wo_skipping,
-                                  VectorXd::Zero(num_velocities),
-                                  VectorXd::Zero(num_velocities),
-                                  "impact_constraint"),
+                                      num_positions + 2 * num_velocities +
+                                          num_kinematic_constraints_wo_skipping,
+                                      VectorXd::Zero(num_velocities),
+                                      VectorXd::Zero(num_velocities),
+                                      "impact_constraint"),
       plant_(plant),
       constraints_(&constraints),
       num_states_{num_positions + num_velocities},

@@ -10,10 +10,10 @@ using Eigen::VectorXd;
 using std::string;
 
 using dairlib::systems::OutputVector;
-using drake::multibody::RigidBodyFrame;
 using drake::multibody::Frame;
 using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
+using drake::multibody::RigidBodyFrame;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::DiscreteUpdateEvent;
@@ -28,14 +28,13 @@ FlightFootTrajGenerator::FlightFootTrajGenerator(
     const MultibodyPlant<double>& plant, Context<double>* context,
     const string& hip_name, bool isLeftFoot,
     const PiecewisePolynomial<double>& foot_traj,
-    const PiecewisePolynomial<double>& hip_traj,
-    double time_offset)
+    const PiecewisePolynomial<double>& hip_traj, double time_offset)
     : plant_(plant),
       context_(context),
       world_(plant.world_frame()),
       hip_frame_(plant.GetFrameByName(hip_name)),
       foot_traj_(foot_traj),
-      hip_traj_(hip_traj){
+      hip_traj_(hip_traj) {
   PiecewisePolynomial<double> empty_pp_traj(VectorXd(0));
   Trajectory<double>& traj_inst = empty_pp_traj;
 
@@ -51,10 +50,10 @@ FlightFootTrajGenerator::FlightFootTrajGenerator(
 
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(
-      "x, u, t", OutputVector<double>(plant_.num_positions(),
-                                      plant_.num_velocities(),
-                                      plant_.num_actuators()))
-      .get_index();
+                        "x, u, t", OutputVector<double>(plant_.num_positions(),
+                                                        plant_.num_velocities(),
+                                                        plant_.num_actuators()))
+                    .get_index();
   fsm_port_ =
       this->DeclareVectorInputPort("fsm", BasicVector<double>(1)).get_index();
 
@@ -64,7 +63,7 @@ FlightFootTrajGenerator::FlightFootTrajGenerator(
 }
 
 PiecewisePolynomial<double> FlightFootTrajGenerator::GenerateRelativeTraj()
-const {
+    const {
   return foot_traj_ - hip_traj_;
 }
 

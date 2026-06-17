@@ -1,12 +1,13 @@
 #pragma once
 
-#include <string>
 #include <map>
+#include <string>
 #include <vector>
 
-#include "drake/systems/framework/leaf_system.h"
-#include "examples/Cassie/datatypes/cassie_user_in_t.h"
 #include "dairlib/lcmt_cassie_in.hpp"
+#include "examples/Cassie/datatypes/cassie_user_in_t.h"
+
+#include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
 namespace systems {
@@ -18,7 +19,7 @@ class CassieInputSender : public drake::systems::LeafSystem<double> {
 
  private:
   void Output(const drake::systems::Context<double>& context,
-                    lcmt_cassie_in* output) const;
+              lcmt_cassie_in* output) const;
 };
 
 }  // namespace systems

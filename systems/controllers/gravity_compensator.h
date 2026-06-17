@@ -1,22 +1,20 @@
 #pragma once
 
-#include <vector>
-#include <utility>
 #include <iostream>
-
+#include <utility>
+#include <vector>
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
+#include <drake/multibody/math/spatial_algebra.h>
+#include <drake/systems/framework/continuous_state.h>
+#include <drake/systems/framework/vector_base.h>
 
 #include "systems/framework/output_vector.h"
-#include "drake/systems/framework/leaf_system.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/context.h"
-
-#include <drake/systems/framework/continuous_state.h>
-#include <drake/systems/framework/vector_base.h>
-#include <drake/multibody/math/spatial_velocity.h>
+#include "drake/systems/framework/leaf_system.h"
 
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;

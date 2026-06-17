@@ -22,8 +22,8 @@ void AddPositiveWorkCost(
 template <typename T>
 class PositiveMechanicalWork : public NonlinearCost<T> {
  public:
-  PositiveMechanicalWork(int n_v, int n_u, const Eigen::MatrixXd& B,
-                         double W, const std::string& description);
+  PositiveMechanicalWork(int n_v, int n_u, const Eigen::MatrixXd& B, double W,
+                         const std::string& description);
 
  private:
   void EvaluateCost(const Eigen::Ref<const drake::VectorX<T>>& x,
@@ -38,8 +38,8 @@ class PositiveMechanicalWork : public NonlinearCost<T> {
 template <typename T>
 class ElectricalLoss : public NonlinearCost<T> {
  public:
-  ElectricalLoss(int n_v, int n_u, const Eigen::MatrixXd& B,
-                         double W, const std::string& description);
+  ElectricalLoss(int n_v, int n_u, const Eigen::MatrixXd& B, double W,
+                 const std::string& description);
 
  private:
   void EvaluateCost(const Eigen::Ref<const drake::VectorX<T>>& x,

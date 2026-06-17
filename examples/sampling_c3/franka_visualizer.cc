@@ -26,6 +26,7 @@
 #include "systems/visualization/lcm_visualization_systems.h"
 
 #include "drake/common/find_resource.h"
+#include "drake/common/text_logging.h"
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/geometry/drake_visualizer.h"
 #include "drake/geometry/meshcat_point_cloud_visualizer.h"
@@ -38,7 +39,6 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/multiplexer.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
-#include "drake/common/text_logging.h"
 
 namespace dairlib {
 

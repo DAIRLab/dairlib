@@ -76,7 +76,8 @@ void ButterworthFilter::Update(VectorXd value) {
   y_.col(0) = y;
 }
 
-void ButterworthFilter::UpdateParameters(Eigen::VectorXd &b, Eigen::VectorXd &a) {
+void ButterworthFilter::UpdateParameters(Eigen::VectorXd& b,
+                                         Eigen::VectorXd& a) {
   DRAKE_DEMAND(b.size() == nb_);
   DRAKE_DEMAND(a.size() == na_);
   this->b_ = b;

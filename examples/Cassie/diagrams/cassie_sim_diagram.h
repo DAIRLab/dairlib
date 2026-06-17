@@ -21,9 +21,11 @@ class CassieSimDiagram : public drake::systems::Diagram<double> {
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(CassieSimDiagram)
 
   /// @param[in] urdf filepath containing the osc_running_gains.
-  CassieSimDiagram(std::shared_ptr<drake::multibody::MultibodyPlant<double>> plant,
-      const std::string& urdf = "examples/Cassie/urdf/cassie_v2.urdf", bool visualize = false,
-      double mu = 0.8, double stiffness = 1e4, double dissipation_rate = 1e2);
+  CassieSimDiagram(
+      std::shared_ptr<drake::multibody::MultibodyPlant<double>> plant,
+      const std::string& urdf = "examples/Cassie/urdf/cassie_v2.urdf",
+      bool visualize = false, double mu = 0.8, double stiffness = 1e4,
+      double dissipation_rate = 1e2);
 
   /// @return the input port for the actuation command.
   const drake::systems::InputPort<double>& get_input_port_actuation() const {
@@ -41,14 +43,11 @@ class CassieSimDiagram : public drake::systems::Diagram<double> {
   }
 
   /// @return the output port for the lcmt_cassie_out_message
-  const drake::systems::OutputPort<double>& get_output_port_cassie_out()
-      const {
+  const drake::systems::OutputPort<double>& get_output_port_cassie_out() const {
     return this->get_output_port(cassie_out_port_);
   }
 
-  drake::multibody::MultibodyPlant<double>& get_plant() {
-    return *plant_;
-  }
+  drake::multibody::MultibodyPlant<double>& get_plant() { return *plant_; }
   //  const drake::systems::System<double>& get_sensor_aggregator() { return
   //  *sensor_aggregator_; } const drake::systems::System<double>&
   //  get_radio_parser() { return *radio_parser_; }

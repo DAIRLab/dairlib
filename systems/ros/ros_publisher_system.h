@@ -2,13 +2,13 @@
 
 #include <memory>
 #include <string>
-#include <vector>
 #include <unordered_set>
+#include <vector>
+
+#include "ros/ros.h"
 
 #include "drake/common/drake_copyable.h"
 #include "drake/systems/framework/leaf_system.h"
-
-#include "ros/ros.h"
 
 namespace dairlib {
 namespace systems {
@@ -46,7 +46,7 @@ class RosPublisherSystem : public drake::systems::LeafSystem<double> {
       const std::string& topic, ros::NodeHandle* node_handle,
       double publish_period = 0.0) {
     return std::make_unique<RosPublisherSystem<RosMessage>>(topic, node_handle,
-      publish_period);
+                                                            publish_period);
   }
 
   /**
@@ -64,8 +64,8 @@ class RosPublisherSystem : public drake::systems::LeafSystem<double> {
   static std::unique_ptr<RosPublisherSystem<RosMessage>> Make(
       const std::string& topic, ros::NodeHandle* node_handle,
       const TriggerTypeSet& publish_triggers, double publish_period = 0.0) {
-    return std::make_unique<RosPublisherSystem<RosMessage>>(topic, node_handle,
-      publish_triggers, publish_period);
+    return std::make_unique<RosPublisherSystem<RosMessage>>(
+        topic, node_handle, publish_triggers, publish_period);
   }
 
   /**
@@ -86,7 +86,8 @@ class RosPublisherSystem : public drake::systems::LeafSystem<double> {
    * kPeriodic.
    */
   RosPublisherSystem(const std::string& topic, ros::NodeHandle* node_handle,
-      const TriggerTypeSet& publish_triggers, double publish_period = 0.0)
+                     const TriggerTypeSet& publish_triggers,
+                     double publish_period = 0.0)
       : topic_(topic), node_handle_(node_handle) {
     DRAKE_DEMAND(node_handle_ != nullptr);
     DRAKE_DEMAND(publish_period >= 0.0);
@@ -97,8 +98,8 @@ class RosPublisherSystem : public drake::systems::LeafSystem<double> {
     // Check that publish_triggers does not contain an unsupported trigger.
     for (const auto& trigger : publish_triggers) {
       DRAKE_THROW_UNLESS((trigger == TriggerType::kForced) ||
-        (trigger == TriggerType::kPeriodic) ||
-        (trigger == TriggerType::kPerStep));
+                         (trigger == TriggerType::kPeriodic) ||
+                         (trigger == TriggerType::kPerStep));
     }
 
     // Outgoing queue size chosen to be small, but 5 is arbitrary
@@ -120,7 +121,7 @@ class RosPublisherSystem : public drake::systems::LeafSystem<double> {
       DRAKE_THROW_UNLESS(publish_period > 0.0);
       const double offset = 0.0;
       this->DeclarePeriodicPublishEvent(publish_period, offset,
-          &RosPublisherSystem::PublishToRosTopic);
+                                        &RosPublisherSystem::PublishToRosTopic);
     } else {
       // publish_period > 0 without TriggerType::kPeriodic has no meaning and is
       // likely a mistake.
@@ -147,14 +148,15 @@ class RosPublisherSystem : public drake::systems::LeafSystem<double> {
    * publishing instead; see LeafSystem::DeclarePerStepPublishEvent().
    */
   RosPublisherSystem(const std::string& topic, ros::NodeHandle* node_handle,
-      double publish_period = 0.0)
-      : RosPublisherSystem(topic, node_handle,
-          (publish_period > 0.0) ?
-          TriggerTypeSet({drake::systems::TriggerType::kForced,
-                          drake::systems::TriggerType::kPeriodic}) :
-          TriggerTypeSet({drake::systems::TriggerType::kForced,
-                          drake::systems::TriggerType::kPerStep}),
-          publish_period) {}
+                     double publish_period = 0.0)
+      : RosPublisherSystem(
+            topic, node_handle,
+            (publish_period > 0.0)
+                ? TriggerTypeSet({drake::systems::TriggerType::kForced,
+                                  drake::systems::TriggerType::kPeriodic})
+                : TriggerTypeSet({drake::systems::TriggerType::kForced,
+                                  drake::systems::TriggerType::kPerStep}),
+            publish_period) {}
 
   ~RosPublisherSystem() override{};
 

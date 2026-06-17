@@ -47,9 +47,8 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
                             const MultibodyPlant<double>& object_plant,
                             Context<double>* object_context,
                             const std::string& end_effector_name,
-                            const std::string& object_name,
-                            bool include_end_effector_orientation,
-                            std::vector<std::string> object_names);
+                            std::vector<std::string> object_names,
+                            bool include_end_effector_orientation);
 
   std::vector<const drake::systems::InputPort<double>*>
   get_input_ports_object_state() const {
@@ -80,16 +79,17 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
   int num_object_positions_;
   int num_end_effector_velocities_;
   int num_object_velocities_;
-  std::vector<std::string> object_names_;
-  int num_objects_;
 
   const MultibodyPlant<double>& franka_plant_;
   Context<double>* franka_context_;
   const MultibodyPlant<double>& object_plant_;
   Context<double>* object_context_;
   const drake::multibody::Frame<double>& world_;
+
   std::string end_effector_name_;
-  std::string object_name_;
+  std::vector<std::string> object_names_;
+  int num_objects_;
+
   const bool include_end_effector_orientation_;
 };
 

@@ -11,8 +11,7 @@ position_success_threshold: 0.02
 orientation_success_threshold: 0.1  # 0.1 rad = 5.7 degrees
 only_use_xy_position: true  # only use xy position for detecting if goal is met
 
-resting_object_height: 0.031971466      # in world frame
-resting_object_heights: [0.031971466]
+resting_object_heights: [0.031971466]   # in world frame
 ee_target_z_offset_above_object: 0.06   # defines EE goal w.r.t. object position
 
 # Lookahead parameters to define a sub-goal for C3.
@@ -29,9 +28,6 @@ angle_hysteresis: 0.4
 angle_err_to_vel_factor: 0
 
 # Initial goal (and only goal for fixed goal mode).
-fixed_target_position: [0.45, 0.2, 0.031971466]
-fixed_target_orientation: [ 0.8804762392171493, 0.27984814233312133,
-                           -0.3647051996310009, -0.11591689595929514]
 fixed_target_positions: [[0.45, 0.2, 0.031971466]]
 fixed_target_orientations: [[0.8804762392171493, 0.27984814233312133,
                            -0.3647051996310009, -0.11591689595929514]]

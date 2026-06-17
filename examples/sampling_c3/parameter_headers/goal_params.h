@@ -23,8 +23,7 @@ struct SamplingC3GoalParams {
   double orientation_success_threshold;
   bool only_use_xy_position;
 
-  double resting_object_height;  // in world frame
-  std::vector<double> resting_object_heights;
+  std::vector<double> resting_object_heights;  // in world frame for each object
   double ee_target_z_offset_above_object;  // defines EE goal wrt object height
 
   /// Lookahead parameters to define a sub-goal for C3.
@@ -43,9 +42,6 @@ struct SamplingC3GoalParams {
   double angle_err_to_vel_factor;
 
   /// Initial goal (and only goal for fixed goal mode).
-  Eigen::Vector3d fixed_target_position;
-  Eigen::Vector4d fixed_target_orientation;
-
   std::vector<Eigen::Vector3d> fixed_target_positions;
   std::vector<Eigen::Vector4d> fixed_target_orientations;
 
@@ -65,15 +61,12 @@ struct SamplingC3GoalParams {
     ENUM_DESERIALIZE(a, goal_mode);
     a->Visit(DRAKE_NVP(position_success_threshold));
     a->Visit(DRAKE_NVP(orientation_success_threshold));
-    a->Visit(DRAKE_NVP(resting_object_height));
     a->Visit(DRAKE_NVP(resting_object_heights));
     a->Visit(DRAKE_NVP(ee_target_z_offset_above_object));
     a->Visit(DRAKE_NVP(lookahead_step_size));
     a->Visit(DRAKE_NVP(lookahead_angle));
     a->Visit(DRAKE_NVP(angle_hysteresis));
     a->Visit(DRAKE_NVP(angle_err_to_vel_factor));
-    a->Visit(DRAKE_NVP(fixed_target_position));
-    a->Visit(DRAKE_NVP(fixed_target_orientation));
     a->Visit(DRAKE_NVP(fixed_target_positions));
     a->Visit(DRAKE_NVP(fixed_target_orientations));
     a->Visit(DRAKE_NVP(random_goal_x_limits));

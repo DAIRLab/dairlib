@@ -2,7 +2,7 @@
 
 object_state_channel: OBJ_STATE_SIMULATION          # lcmt_object_state
 robot_state_channel: FRANKA_STATE_SIMULATION        # lcmt_robot_output
-robot_input_channel: FRANKA_INPUT                   # lcmt_robot_input
+robot_input_channel: FRANKA_INPUT_SIMULATION        # lcmt_robot_input
 
 mpm_channel: MPM_POINT_POSITIONS                    # lcmt_material_points
 tetrahedra_channel: TETRAHEDRA                      # lcmt_tetrahedra

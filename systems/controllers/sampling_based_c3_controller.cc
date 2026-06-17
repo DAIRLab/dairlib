@@ -492,8 +492,8 @@ SamplingC3Controller::SamplingC3Controller(
 std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
     C3CostComputationType cost_type, const LCS& lcs_for_cost,
     const C3::CostMatrices& cost_mats, const std::shared_ptr<C3>& c3_object,
-    const bool& force_tracking_disabled, int num_objects,
-    const bool& print_cost_breakdown) const {
+    const bool& force_tracking_disabled, const bool& print_cost_breakdown,
+    const int& num_objects) const {
   // Extract needed information from the C3 object.
   const LCS lcs_for_plan = c3_object->GetLCS();
   vector<VectorXd> x_desired = c3_object->GetDesiredState();
@@ -537,7 +537,6 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
   vector<MatrixXd> R_cost = cost_mats.R;
 
   // Set a few more variables necessary for some of the cost types.
-  const int ee_vel_index = 3 + 7 * num_objects;
   auto simulate_config = c3::LCSSimulateConfig();
   simulate_config.regularized = true;
   simulate_config.min_exp = -8;
@@ -559,9 +558,8 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
 
     // Use the simulated object trajectories but the planned robot trajectory.
     for (int i = 0; i < N_ + 1; i++) {
-      XX[i].segment(3, 7 * num_objects) = XX_sim[i].segment(3, 7 * num_objects);
-      XX[i].segment(ee_vel_index + 3, 6 * num_objects) =
-          XX_sim[i].segment(ee_vel_index + 3, 6 * num_objects);
+      XX[i].segment(3, n_q_ - 3) = XX_sim[i].segment(3, n_q_ - 3);
+      XX[i].segment(n_q_ + 3, n_v_ - 3) = XX_sim[i].segment(n_q_ + 3, n_v_ - 3);
     }
 
   } else if (cost_type == C3CostComputationType::kSimImpedance) {
@@ -583,9 +581,8 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
 
     // Use the simulated object trajectories but the planned robot trajectory.
     for (int i = 0; i < N_ + 1; i++) {
-      XX[i].segment(3, 7 * num_objects) = XX_sim[i].segment(3, 7 * num_objects);
-      XX[i].segment(ee_vel_index + 3, 6 * num_objects) =
-          XX_sim[i].segment(ee_vel_index + 3, 6 * num_objects);
+      XX[i].segment(3, n_q_ - 3) = XX_sim[i].segment(3, n_q_ - 3);
+      XX[i].segment(n_q_ + 3, n_v_ - 3) = XX_sim[i].segment(n_q_ + 3, n_v_ - 3);
     }
 
   } else if (cost_type == C3CostComputationType::kSimImpedanceObjectCostOnly) {
@@ -601,7 +598,7 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
     // object state errors contribute to cost.
     for (int i = 0; i < N_ + 1; i++) {
       Q_cost[i].block(0, 0, 3, 3) *= 0.0;
-      Q_cost[i].block(3 + 7 * num_objects, 3 + 7 * num_objects, 3, 3) *= 0.0;
+      Q_cost[i].block(n_q_, n_q_, 3, 3) *= 0.0;
       if (i < N_) {
         R_cost[i] *= 0.0;
       }
@@ -621,7 +618,7 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
                                                             Q_identity);
     double error_contrib_ee_vel =
         TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
-            ee_vel_index, ee_vel_index + 3, XX, x_desired, Q_identity);
+            n_q_, n_q_ + 3, XX, x_desired, Q_identity);
 
     double error_contrib_obj_orientation = 0.0;
     double error_contrib_obj_pos = 0.0;
@@ -637,12 +634,12 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
               Q_identity);
       error_contrib_obj_ang_vel +=
           TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
-              ee_vel_index + 3 + 6 * obj_idx,
-              ee_vel_index + 3 + 6 * obj_idx + 3, XX, x_desired, Q_identity);
+              n_q_ + 3 + 6 * obj_idx, n_q_ + 3 + 6 * obj_idx + 3, XX, x_desired,
+              Q_identity);
       error_contrib_obj_vel +=
           TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
-              ee_vel_index + 3 + 6 * obj_idx + 3,
-              ee_vel_index + 3 + 6 * obj_idx + 6, XX, x_desired, Q_identity);
+              n_q_ + 3 + 6 * obj_idx + 3, n_q_ + 3 + 6 * obj_idx + 6, XX,
+              x_desired, Q_identity);
     }
 
     // Costs
@@ -650,8 +647,8 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
         TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(0, 3, XX, x_desired,
                                                             Q_cost);
     double cost_contrib_ee_vel =
-        TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
-            ee_vel_index, ee_vel_index + 3, XX, x_desired, Q_cost);
+        TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(n_q_, n_q_ + 3, XX,
+                                                            x_desired, Q_cost);
     double cost_contrib_u =
         TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(UU, R_cost);
 
@@ -668,12 +665,12 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
               3 + 7 * obj_idx + 4, 3 + 7 * obj_idx + 7, XX, x_desired, Q_cost);
       cost_contrib_obj_ang_vel +=
           TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
-              ee_vel_index + 3 + 6 * obj_idx,
-              ee_vel_index + 3 + 6 * obj_idx + 3, XX, x_desired, Q_cost);
+              n_q_ + 3 + 6 * obj_idx, n_q_ + 3 + 6 * obj_idx + 3, XX, x_desired,
+              Q_cost);
       cost_contrib_obj_vel +=
           TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
-              ee_vel_index + 3 + 6 * obj_idx + 3,
-              ee_vel_index + 3 + 6 * obj_idx + 6, XX, x_desired, Q_cost);
+              n_q_ + 3 + 6 * obj_idx + 3, n_q_ + 3 + 6 * obj_idx + 6, XX,
+              x_desired, Q_cost);
     }
 
     std::cout << "Error breakdown" << std::endl;
@@ -1042,8 +1039,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
     std::pair<double, vector<VectorXd>> cost_trajectory_pair = CalcCost(
         cost_type, lcs_candidates_for_cost.at(i), c3_costmat, test_c3_object,
-        force_tracking_disabled, controller_params_.num_objects,
-        print_cost_breakdown || verbose_);
+        force_tracking_disabled, print_cost_breakdown || verbose_,
+        controller_params_.num_objects);
 
     double c3_cost = cost_trajectory_pair.first;
     all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;

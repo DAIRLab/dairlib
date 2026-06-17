@@ -214,7 +214,48 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const std::vector<int>& resolve_contacts_to_list,
       std::vector<int> num_friction_directions, bool verbose) const;
 
+  // TODO hardcodes robot state size
+  void ResolvePredictedEEState(const bool& is_teleop,
+                               drake::VectorX<double>& x_lcs_curr) const;
+
+  // TODO hardcodes robot state size
+  void CheckForWorkspaceLimitViolations(
+      const TimestampedVector<double>* lcs_x_curr) const;
+
+  // TODO hardcodes object quaternions, etc. -- could avoid by having
+  // use_quaternion_dependent_cost false
+  void UpdateCostMatrices(const drake::VectorX<double>& x_lcs_curr,
+                          const BasicVector<double>& x_lcs_des,
+                          const C3Options& c3_options) const;
+
+  // TODO hardcodes robot state size
+  void MaintainSampleBuffers(const Eigen::VectorXd& x_lcs) const;
+
+  void AugmentSamplesWithBuffer(
+      std::vector<std::shared_ptr<c3::C3>>& c3_objects) const;
+
+  void AddToUnsuccessfulBuffer(const Eigen::VectorXd& x_lcs) const;
+
+  void ResetSampleBuffers() const;
+
+  // TODO needs c3_curr_plan_, is_doing_c3_, filtered_solve_time_
+  // TODO hardcodes robot state size
+  // TODO @bibit:  currently is broken for any non-planar example since it sets
+  // the z height of the EE to a fixed value.
+  void UpdateC3ExecutionTrajectory(const Eigen::VectorXd& x_lcs,
+                                   const double& t_context) const;
+
+  // TODO needs all_sample_locations_, best_sample_index_, some other params and
+  // flags
+  void UpdateRepositioningExecutionTrajectory(const Eigen::VectorXd& x_lcs,
+                                              const double& t_context) const;
+
   /// Variables that are accessible to child classes.
+  drake::systems::InputPortIndex radio_port_;
+  drake::systems::InputPortIndex final_target_input_port_;
+  drake::systems::InputPortIndex target_input_port_;
+  drake::systems::InputPortIndex lcs_state_input_port_;
+
   const SamplingC3ControllerParams controller_params_;
   int n_q_;
   int n_v_;
@@ -251,14 +292,72 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   const SamplingParams sampling_params_;
+  const SamplingC3ProgressParams progress_params_;
+  const SamplingC3GoalParams goal_params_;
+  const SamplingC3RepositionParams reposition_params_;
+
+  // Keep track of current C3 execution's best seen cost (some of these
+  // variables are in the protected section, others are private).
+  mutable int best_progress_steps_ago_;
+  mutable double lowest_cost_;
+
+  // Samples and associated costs computed in current control loop.
+  mutable std::vector<Eigen::Vector3d> all_sample_locations_;
+  mutable std::vector<std::vector<Eigen::VectorXd>>
+      all_sample_dynamically_feasible_plans_;
+  mutable Eigen::Vector3d prev_repositioning_target_ = Eigen::Vector3d::Zero();
+  mutable std::vector<double> all_sample_costs_;
+
+  // To detect if the final goal has been updated.
+  mutable Eigen::VectorXd x_final_target_;
+  mutable int detected_goal_changes_ = -1;
+  mutable bool achieved_fixed_goal_ = false;
+
+  // Sample buffer-related variables.
+  mutable int num_in_buffer_ = 0;
+  mutable Eigen::MatrixXd sample_buffer_;  // (N_sample_buffer x n_q)
+  mutable Eigen::VectorXd sample_costs_buffer_;
+
+  // Unsuccessful sample buffer-related variables.
+  mutable int num_in_unsuccessful_buffer_ = 0;
+  mutable Eigen::MatrixXd
+      unsuccessful_sample_buffer_;  // (num_in_unsuccessful_buffer_ x n_q)
+  mutable Eigen::VectorXd unsuccessful_sample_costs_buffer_;
+
+  // Miscellaneous sample related variables.
+  mutable bool is_doing_c3_ = true;
+  mutable bool finished_reposition_flag_ = false;
+
+  // Mesh-based sampling variables.
+  // TODO @bibit:  these don't need to be accessible by the child class other
+  // than the call to GenerateSampleStates requires input arguments.
+  std::vector<double> face_bins_;
+  std::vector<Face> faces_;
+  std::vector<std::vector<Face>> faces_per_object_;
+  std::vector<std::vector<double>> face_bins_per_object_;
+  std::vector<double> total_area_per_object_;
+
+  // Mode switching variables.
+  mutable SampleIndex best_sample_index_ = kCurrentLocation;
+  mutable ModeSwitchReason mode_switch_reason_ = kNoSwitch;
+  mutable PursuedTargetSource pursued_target_source_ = kNoTarget;
+
+  mutable Eigen::Vector3d ee_position_curr_;
+
+  mutable double filtered_solve_time_ = 0;
+  double solve_time_filter_constant_;
+  drake::systems::DiscreteStateIndex plan_start_time_index_;
+
+  Eigen::VectorXd Kp_for_cost_;
+  Eigen::VectorXd Kd_for_cost_;
 
  private:
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
       C3CostComputationType cost_type, const c3::LCS& lcs_for_cost,
       const c3::C3::CostMatrices& cost_mats,
       const std::shared_ptr<c3::C3>& c3_object,
-      const bool& force_tracking_disabled, int num_objects,
-      const bool& print_cost_breakdown) const;
+      const bool& force_tracking_disabled, const bool& print_cost_breakdown,
+      const int& num_objects = 0) const;
 
   // TODO rework for EPSC3
   std::pair<std::vector<c3::LCS>, std::vector<c3::LCS>>
@@ -269,49 +368,14 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   /// Helper functions
   // TODO hardcodes robot state size
-  void ResolvePredictedEEState(const bool& is_teleop,
-                               drake::VectorX<double>& x_lcs_curr) const;
-
-  // TODO hardcodes robot state size
   void ClampEndEffectorAcceleration(drake::VectorX<double>& x_lcs_curr) const;
-
-  // TODO hardcodes robot state size
-  void CheckForWorkspaceLimitViolations(
-      const TimestampedVector<double>* lcs_x_curr) const;
-
-  // TODO hardcodes object quaternions, etc. -- could avoid by having
-  // use_quaternion_dependent_cost false
-  void UpdateCostMatrices(const drake::VectorX<double>& x_lcs_curr,
-                          const BasicVector<double>& x_lcs_des,
-                          const C3Options& c3_options) const;
-
-  // TODO needs c3_curr_plan_, is_doing_c3_, filtered_solve_time_
-  // TODO hardcodes robot state size
-  void UpdateC3ExecutionTrajectory(const Eigen::VectorXd& x_lcs,
-                                   const double& t_context) const;
-
-  // TODO needs all_sample_locations_, best_sample_index_, some other params and
-  // flags
-  void UpdateRepositioningExecutionTrajectory(const Eigen::VectorXd& x_lcs,
-                                              const double& t_context) const;
-
-  // TODO hardcodes robot state size
-  void MaintainSampleBuffers(const Eigen::VectorXd& x_lcs) const;
-
-  void AugmentSamplesWithBuffer(
-      std::vector<std::shared_ptr<c3::C3>>& c3_objects) const;
-
-  void AddToUnsuccessfulBuffer(const Eigen::VectorXd& x_lcs) const;
 
   void KeepTrackOfC3ModeProgress(
       const drake::VectorX<double>& x_lcs_curr,
-      const BasicVector<double>& x_lcs_final_des,
-      bool& reset_progress_cost_buffer,
+      const BasicVector<double>& x_lcs_final_des, bool& met_minimum_progress,
       const bool& print_current_pos_and_rot_cost) const;
 
   void ResetProgressMetrics() const;
-
-  void ResetSampleBuffers() const;
 
   void IncludeEEOrientationTargetIfEnabled(
       LcmTrajectory* lcm_trajectory, const Eigen::Vector3d& ee_position,
@@ -402,16 +466,6 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       Eigen::VectorXd* unsuccessful_sample_buffer_costs) const;
 
-  std::vector<double> face_bins_;
-  std::vector<Face> faces_;
-  std::vector<std::vector<Face>> faces_per_object_;
-  std::vector<std::vector<double>> face_bins_per_object_;
-  std::vector<double> total_area_per_object_;
-
-  drake::systems::InputPortIndex radio_port_;
-  drake::systems::InputPortIndex final_target_input_port_;
-  drake::systems::InputPortIndex target_input_port_;
-  drake::systems::InputPortIndex lcs_state_input_port_;
   // Current sample output port indices
   drake::systems::OutputPortIndex c3_solution_curr_plan_port_;
   drake::systems::OutputPortIndex c3_solution_curr_plan_actor_port_;
@@ -445,14 +499,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex unsuccessful_sample_buffer_costs_port_;
 
   const SamplingC3Options sampling_c3_options_;
-  const SamplingC3RepositionParams reposition_params_;
-  const SamplingC3ProgressParams progress_params_;
-  const SamplingC3GoalParams goal_params_;
 
   int max_num_samples_;
-
-  double solve_time_filter_constant_;
-  drake::systems::DiscreteStateIndex plan_start_time_index_;
 
   const bool adaptive_ee_tilt_;
   double max_ee_dist_from_workspace_center_;
@@ -461,12 +509,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   /// TODO:  There are many mutable class variables, which is not best practice
   /// in the Drake systems framework.  These could be converted to discrete
   /// state variables.
-  Eigen::VectorXd Kp_for_cost_;
-  Eigen::VectorXd Kd_for_cost_;
 
-  // Keep track of current C3 execution's best seen cost.
-  mutable int best_progress_steps_ago_;
-  mutable double lowest_cost_;
+  // Keep track of current C3 execution's best seen cost (some of these
+  // variables are in the protected section, others are private).
   mutable double lowest_pos_and_rot_current_cost_;
   mutable double lowest_position_error_;
   mutable double lowest_orientation_error_;
@@ -474,13 +519,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable double current_orientation_error_;
   mutable std::queue<double> object_config_cost_history_;
 
-  mutable double filtered_solve_time_ = 0;
-
   // Predictions for the end effector location.
   mutable Eigen::VectorXd x_pred_curr_plan_;
   mutable Eigen::VectorXd x_from_last_control_loop_;
   mutable Eigen::VectorXd x_pred_from_last_control_loop_;
-  mutable Eigen::Vector3d ee_position_curr_;
 
   // C3 solution for current location.
   // TODO: these are currently assigned values but go unused -- may be useful if
@@ -503,41 +545,11 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable LcmTrajectory c3_execution_lcm_traj_;
   mutable LcmTrajectory repos_execution_lcm_traj_;
 
-  // Samples and associated costs computed in current control loop.
-  mutable std::vector<Eigen::Vector3d> all_sample_locations_;
-  mutable std::vector<std::vector<Eigen::VectorXd>>
-      all_sample_dynamically_feasible_plans_;
-  mutable Eigen::Vector3d prev_repositioning_target_ = Eigen::Vector3d::Zero();
-  mutable std::vector<double> all_sample_costs_;
-
-  // To detect if the final goal has been updated.
-  mutable Eigen::VectorXd x_final_target_;
-  mutable int detected_goal_changes_ = -1;
-  mutable bool achieved_fixed_goal_ = false;
-
-  // Sample buffer-related variables.
-  mutable int num_in_buffer_ = 0;
-  mutable Eigen::MatrixXd sample_buffer_;  // (N_sample_buffer x n_q)
-  mutable Eigen::VectorXd sample_costs_buffer_;
-
-  // Unsuccessful sample buffer-related variables.
-  mutable int num_in_unsuccessful_buffer_ = 0;
-  mutable Eigen::MatrixXd
-      unsuccessful_sample_buffer_;  // (num_in_unsuccessful_buffer_ x n_q)
-  mutable Eigen::VectorXd unsuccessful_sample_costs_buffer_;
-
-  // Miscellaneous sample related variables.
-  mutable bool is_doing_c3_ = true;
-  mutable bool finished_reposition_flag_ = false;
   // Crossing a threshold as the object gets closer to the goal means the
   // controller goes from caring only about object position to caring about full
   // pose.
   mutable bool crossed_cost_switching_threshold_ = false;
   mutable int num_threads_to_use_;
-
-  mutable SampleIndex best_sample_index_ = kCurrentLocation;
-  mutable ModeSwitchReason mode_switch_reason_ = kNoSwitch;
-  mutable PursuedTargetSource pursued_target_source_ = kNoTarget;
 };
 
 }  // namespace systems

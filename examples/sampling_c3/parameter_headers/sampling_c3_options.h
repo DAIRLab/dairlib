@@ -26,6 +26,10 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
   bool use_predicted_x0_repos;
   bool use_predicted_x0_reset_mechanism;  // Resets if prediction is too far.
 
+  /// Whether this is a planar demo, which ensures C3 mode is restricted to a
+  /// plane.
+  bool planar_demo;
+
   /// Contact pair parameters.
   std::vector<double> mu_per_pair_type;
   std::vector<std::vector<int>> resolve_contacts_to_lists;
@@ -143,6 +147,7 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     a->Visit(DRAKE_NVP(use_predicted_x0_c3));
     a->Visit(DRAKE_NVP(use_predicted_x0_repos));
     a->Visit(DRAKE_NVP(use_predicted_x0_reset_mechanism));
+    a->Visit(DRAKE_NVP(planar_demo));
 
     a->Visit(DRAKE_NVP(mu_per_pair_type));
     a->Visit(DRAKE_NVP(resolve_contacts_to_lists));

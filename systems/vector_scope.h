@@ -1,9 +1,14 @@
 #pragma once
 
+#include <string>
+
+#include "drake/systems/framework/context.h"
+#include "drake/systems/framework/event_status.h"
+#include "drake/systems/framework/leaf_system.h"
+
 namespace dairlib {
 namespace systems {
 
-using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::EventStatus;
 

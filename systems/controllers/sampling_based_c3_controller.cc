@@ -79,9 +79,11 @@ SamplingC3Controller::SamplingC3Controller(
       progress_params_(controller_params_.progress_params),
       goal_params_(controller_params_.goal_params),
       adaptive_ee_tilt_(controller_params_.include_end_effector_orientation),
-      G_(vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.G)),
-      U_(vector<MatrixXd>(sampling_c3_options_.N, sampling_c3_options_.U)),
-      N_(sampling_c3_options_.N),
+      G_(vector<MatrixXd>(controller_params_.sampling_c3_options.N,
+                          controller_params_.sampling_c3_options.G)),
+      U_(vector<MatrixXd>(controller_params_.sampling_c3_options.N,
+                          controller_params_.sampling_c3_options.U)),
+      N_(controller_params_.sampling_c3_options.N),
       verbose_(verbose) {
   this->set_name("sampling_c3_controller");
 
@@ -800,7 +802,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         sampling_c3_options_.planning_dt_position;  // Always set dt_ according
                                                     // to pose or position mode.
     x_final_target_ = x_lcs_final_des.value();
-    // is_doing_c3_ = false;
+    is_doing_c3_ = false;
     detected_goal_changes_++;
 
     // Reset the sample buffers now that the costs have changed.
@@ -906,6 +908,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       in_collision = true;
       break;
     }
+  }
+  // Consider the sample in collision if there is no previous repositioning
+  // target (the first control loop when starting in repositioning mode).
+  if (prev_repositioning_target_.isZero()) {
+    in_collision = true;
   }
 
   // Add the previous best repositioning target to the candidate states at index

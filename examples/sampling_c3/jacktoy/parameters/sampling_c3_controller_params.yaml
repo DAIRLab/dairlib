@@ -17,13 +17,9 @@ lcm_channels_simulation_file: examples/sampling_c3/shared_parameters/lcm_channel
 
 # Note:  Use capsule_1 body name as representative of the pose of the entire
 # jack model.  This works because capsule_1's origin is the same as the jack's.
-object_model: examples/sampling_c3/urdf/jack_control.sdf
-object_body_name: capsule_1
-base_name: something
-
-include_end_effector_orientation: false
-
 object_models: [examples/sampling_c3/urdf/jack_control.sdf]
 base_names: [capsule_1]
+
+include_end_effector_orientation: false
 
 control_loop_delay_ms: 0

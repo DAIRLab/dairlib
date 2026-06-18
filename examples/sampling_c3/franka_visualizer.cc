@@ -170,9 +170,8 @@ int do_main(int argc, char* argv[]) {
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_object,
-          object_context.get(), kEndEffectorName,
-          controller_params.object_body_name, false,
-          controller_params.base_names);
+          object_context.get(), kEndEffectorName, controller_params.base_names,
+          false);
 
   builder.Connect(franka_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
@@ -402,9 +401,8 @@ int do_main(int argc, char* argv[]) {
 
   if (vis_params.visualize_c3_plan_best) {
     auto object_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, FindResourceOrThrow(vis_params.object_vis_model),
-        "object_position_target", "object_orientation_target",
-        "plans/best_planned", sampling_c3_options.N, true,
+        meshcat, vis_params.object_vis_models, position_names,
+        orientation_names, "plans/best_planned", sampling_c3_options.N, true,
         vis_params.c3_best_object_color);
     builder.Connect(trajectory_sub_object_best->get_output_port(),
                     object_pose_drawer_best->get_input_port_trajectory());
@@ -420,10 +418,9 @@ int do_main(int argc, char* argv[]) {
 
     auto dynamically_feasible_object_pose_drawer_best =
         builder.AddSystem<systems::LcmPoseDrawer>(
-            meshcat, FindResourceOrThrow(vis_params.object_vis_model),
-            "object_position_target", "object_orientation_target",
-            "plans/dynamically_feasible_best_plan", sampling_c3_options.N + 1,
-            true, vis_params.df_best_object_color);
+            meshcat, vis_params.object_vis_models, position_names,
+            orientation_names, "plans/dynamically_feasible_best_plan",
+            sampling_c3_options.N + 1, true, vis_params.df_best_object_color);
     builder.Connect(
         dynamically_feasible_trajectory_sub_object_best->get_output_port(),
         dynamically_feasible_object_pose_drawer_best

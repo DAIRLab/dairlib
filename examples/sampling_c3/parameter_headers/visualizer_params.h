@@ -6,7 +6,6 @@
 
 struct SamplingC3VisualizerParams {
   std::string ee_vis_model;
-  std::string object_vis_model;
   std::vector<std::string> object_vis_models;
   double visualizer_publish_rate;
 
@@ -45,7 +44,6 @@ struct SamplingC3VisualizerParams {
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(ee_vis_model));
-    a->Visit(DRAKE_NVP(object_vis_model));
     a->Visit(DRAKE_NVP(object_vis_models));
     a->Visit(DRAKE_NVP(visualizer_publish_rate));
     a->Visit(DRAKE_NVP(camera_pose));

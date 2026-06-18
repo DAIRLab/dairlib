@@ -1,13 +1,13 @@
 group "simulations" {
     cmd "franka_sim" {
-        exec = "bazel-bin/examples/sampling_c3/three_d_printer_sim --demo_name=anything";
+        exec = "bazel-bin/examples/sampling_c3/three_d_printer_sim --demo_name=three_d_printer";
         host = "localhost";
     }
 }
 
 group "operator" {
     cmd "visualizer" {
-        exec = "bazel-bin/examples/sampling_c3/three_d_printer_visualizer --is_simulation=true --demo_name=anything";
+        exec = "bazel-bin/examples/sampling_c3/three_d_printer_visualizer --demo_type=visualize --demo_name=three_d_printer";
         host = "localhost";
     }
     cmd "drake-director" {

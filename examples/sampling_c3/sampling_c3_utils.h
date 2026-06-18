@@ -11,6 +11,8 @@ namespace dairlib {
 /// Constants for the Franka and end effector.
 static constexpr const char* kFrankaModel =
   "package://drake_models/franka_description/urdf/panda_arm.urdf";
+static constexpr const char* k3DPrinterModel =
+  "examples/sampling_c3/urdf/3d_Printer/3_d_printer.urdf";  
 static constexpr const char* kEndEffectorModel =
   "examples/sampling_c3/urdf/end_effector_full.urdf";
 static constexpr const char* kEndEffectorSimpleModel =
@@ -67,11 +69,30 @@ drake::multibody::ModelInstanceIndex AddFrankaToPlant(
     const bool& include_ground_and_platform = true,
     const bool& include_walls = false);
 
+/// Add the 3D printer to a given multibody plant and scene graph.
+/// @param plant a pointer to the MultibodyPlant
+/// @param scene_graph a pointer to the SceneGraph--may be nullptr (or omitted)
+/// @param include_walls whether to add border walls to workspace
+/// @param include_ground_and_platform whether to include the ground and
+/// platform in the plant. If false, only the Franka and end effector will be
+/// added.
+/// @return the ModelInstanceIndex of the Franka in the plant
+
+
+drake::multibody::ModelInstanceIndex Add3DPrinterToPlant(
+    drake::multibody::MultibodyPlant<double>* plant,
+    drake::geometry::SceneGraph<double>* scene_graph = nullptr,
+    const bool& include_ee = true,
+    const bool& include_ground_and_platform = true,
+    const bool& include_walls = false);
+
 /// Add bin walls to a given multibody plant and scene graph.
 /// @param plant a pointer to the MultibodyPlant
 /// @param scene_graph a pointer to the SceneGraph--may be nullptr (or omitted)
 /// @param include_back_wall whether to include the back wall; may be desired to
 /// exclude the back wall in the LCS model.
+
+
 void AddWallsToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,

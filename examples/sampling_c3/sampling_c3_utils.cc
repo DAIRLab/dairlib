@@ -57,6 +57,22 @@ ModelInstanceIndex AddFrankaToPlant(MultibodyPlant<double>* plant,
   return franka_index;
 }
 
+ModelInstanceIndex Add3DPrinterToPlant(MultibodyPlant<double>* plant,
+                                       SceneGraph<double>* scene_graph,
+                                       const bool& include_ee,
+                                       const bool& include_ground_and_platform,
+                                       const bool& include_walls) {
+  Parser parser(plant, scene_graph);
+  parser.SetAutoRenaming(true);
+
+  ModelInstanceIndex franka_index = parser.AddModelsFromUrl(k3DPrinterModel)[0];
+  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
+  plant->WeldFrames(plant->world_frame(),
+                    plant->GetFrameByName("base_link"), X_WI);
+
+  return franka_index;
+}
+
 void AddWallsToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph,

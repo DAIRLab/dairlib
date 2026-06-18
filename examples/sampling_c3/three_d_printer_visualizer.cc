@@ -68,7 +68,7 @@ using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 
-DEFINE_bool(demo_type, "visualizer", "Whether to run the visualizer or the sim. Options are 'visualizer' and 'simulator' and 'hardware'");
+DEFINE_string(demo_type, "visualize", "Whether to run the visualizer or the sim. Options are 'visualizer' and 'simulator' and 'hardware'");
 DEFINE_string(demo_name, "jacktoy",
               "Name for the demo, used when building filepaths for output.");
 
@@ -89,15 +89,15 @@ int do_main(int argc, char* argv[]) {
   SamplingParams sampling_params = controller_params.sampling_params;
   std::string lcm_channels_file;
 
-  if (demo_type == "visualize") {
+  if (FLAGS_demo_type == "visualize") {
       lcm_channels_file = controller_params.lcm_channels_visualize_file;
-  } else if (demo_type == "simulation") {
+  } else if (FLAGS_demo_type == "simulation") {
       lcm_channels_file = controller_params.lcm_channels_simulation_file; 
-  } else if (demo_type == "hardware") {
+  } else if (FLAGS_demo_type == "hardware") {
       lcm_channels_file = controller_params.lcm_channels_hardware_file;
   } else {
   throw std::runtime_error(
-      "Invalid demo_type: " + demo_type +
+      "Invalid demo_type: " + FLAGS_demo_type +
       ". Must be 'visualize', 'simulation', or 'hardware'.");
 }
   SamplingC3LcmChannels lcm_channel_params =
@@ -107,10 +107,16 @@ int do_main(int argc, char* argv[]) {
 
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
+    std::cout << "object_model = "
+          << controller_params.object_models[0]
+          << std::endl;
 
+std::cout << "base_name = "
+          << controller_params.base_names[0]
+          << std::endl;
   // Build the visualizer plant.
   MultibodyPlant<double> plant(0.0);
-  ModelInstanceIndex franka_index = AddFrankaToPlant(
+  ModelInstanceIndex franka_index = Add3DPrinterToPlant(
       &plant, &scene_graph, true, true, sampling_c3_options.include_walls);
 
   // Getting vector of object indices for all objects
@@ -121,7 +127,7 @@ int do_main(int argc, char* argv[]) {
   // Create a Franka-only plant.
   MultibodyPlant<double> plant_franka(0.0);
   ModelInstanceIndex franka_index0 =
-      AddFrankaToPlant(&plant_franka, nullptr, true, false);
+      Add3DPrinterToPlant(&plant_franka, nullptr, true, false);
   plant_franka.Finalize();
   auto franka_context = plant_franka.CreateDefaultContext();
 

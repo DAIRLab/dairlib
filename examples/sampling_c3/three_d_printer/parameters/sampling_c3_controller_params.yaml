@@ -1,20 +1,21 @@
-sampling_c3_options_file: examples/sampling_c3/anything/parameters/sampling_c3plus_options.yaml
-reposition_params_file: examples/sampling_c3/anything/parameters/reposition_params.yaml
-progress_params_file: examples/sampling_c3/anything/parameters/progress_params_c3plus.yaml
-sampling_params_file: examples/sampling_c3/anything/parameters/sampling_params.yaml
-goal_params_file: examples/sampling_c3/anything/parameters/goal_params.yaml
+sampling_c3_options_file: examples/sampling_c3/three_d_printer/parameters/sampling_c3plus_options.yaml
+reposition_params_file: examples/sampling_c3/three_d_printer/parameters/reposition_params.yaml
+progress_params_file: examples/sampling_c3/three_d_printer/parameters/progress_params_c3plus.yaml
+sampling_params_file: examples/sampling_c3/three_d_printer/parameters/sampling_params.yaml
+goal_params_file: examples/sampling_c3/three_d_printer/parameters/goal_params.yaml
 
-sim_params_file: examples/sampling_c3/anything/parameters/sim_params.yaml
-vis_params_file: examples/sampling_c3/anything/parameters/vis_params.yaml
+sim_params_file: examples/sampling_c3/three_d_printer/parameters/sim_params.yaml
+vis_params_file: examples/sampling_c3/three_d_printer/parameters/vis_params.yaml
 osc_params_file: examples/sampling_c3/shared_parameters/osc_params.yaml
 osqp_settings_file: examples/sampling_c3/shared_parameters/sampling_c3_qp_settings.yaml
 osc_qp_settings_file: examples/sampling_c3/shared_parameters/osc_qp_settings.yaml
 franka_driver_channels_file: common/parameters/franka_drake_lcm_driver_channels.yaml
 lcm_channels_hardware_file: examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml
 lcm_channels_simulation_file: examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml
+lcm_channels_visualize_file: examples/sampling_c3/shared_parameters/lcm_channels_visualize.yaml
 
 object_model: examples/sampling_c3/urdf/nut/nut_controller.sdf
-object_models: [examples/sampling_c3/urdf/G_shape_video/G_shape_video_controller.sdf, examples/sampling_c3/urdf/R_shape_texture/R_shape_texture_controller.sdf, examples/sampling_c3/urdf/A_shape_video/A_shape_video_controller.sdf, examples/sampling_c3/urdf/S_shape_texture/S_shape_texture_controller.sdf]
+object_models: [examples/sampling_c3/urdf/push_t_white/push_t_white_controller.sdf]
 object_body_name: body
 base_name: A_shape_video
 # base_names: [P_shape_texture, U_shape_texture, S_shape_texture, H_shape_texture]
@@ -35,7 +36,7 @@ base_name: A_shape_video
 # base_names: [T_small_video, H_shape_texture, I_shape_texture, N_shape_video, G_shape_video]
 # base_names: [D_shape_texture, A_shape_video, I_shape_texture, R_shape_texture]
 # base_names: [G_shape_video, R_shape_texture, A_shape_video, S_shape_texture]
-base_names: [cube_shape]
+base_names: [push_t_white]
 
 include_end_effector_orientation: false
 

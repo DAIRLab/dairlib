@@ -25,6 +25,7 @@ struct SamplingC3ControllerParams {
   std::string franka_driver_channels_file;
   std::string lcm_channels_hardware_file;
   std::string lcm_channels_simulation_file;
+  std::string lcm_channels_visualize_file;
 
   std::string object_model;
   std::vector<std::string> object_models;
@@ -60,6 +61,7 @@ struct SamplingC3ControllerParams {
     a->Visit(DRAKE_NVP(franka_driver_channels_file));
     a->Visit(DRAKE_NVP(lcm_channels_hardware_file));
     a->Visit(DRAKE_NVP(lcm_channels_simulation_file));
+    a->Visit(DRAKE_NVP(lcm_channels_visualize_file));
     a->Visit(DRAKE_NVP(object_model));
     a->Visit(DRAKE_NVP(object_body_name));
     a->Visit(DRAKE_NVP(base_name));

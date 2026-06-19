@@ -12,8 +12,8 @@ using drake::systems::Context;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
-SampleBufferSender::SampleBufferSender(
-  int buffer_size, int n_config, std::string name)
+SampleBufferSender::SampleBufferSender(int buffer_size, int n_config,
+                                       std::string name)
     : buffer_size_(buffer_size), n_config_(n_config) {
   this->set_name(name);
 
@@ -49,7 +49,7 @@ void SampleBufferSender::OutputSampleBufferLcm(
   DRAKE_ASSERT(buffer_costs->size() == buffer_size_);
 
   // Count the number of active samples in the buffer.
-  int n_in_buffer = std::count_if (buffer_costs->begin(), buffer_costs->end(),
+  int n_in_buffer = std::count_if(buffer_costs->begin(), buffer_costs->end(),
                                   [](double cost) { return cost >= 0; });
 
   // Convert the Eigen matrices to std::vectors.

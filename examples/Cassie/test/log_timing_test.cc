@@ -1,4 +1,5 @@
 #include <iostream>
+
 #include <Eigen/Dense>
 #include <gflags/gflags.h>
 #include <lcm/lcm-cpp.hpp>
@@ -14,7 +15,7 @@ DEFINE_int64(max_count, 5000, "Max number of messages to read.");
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   lcm::LogFile log(FLAGS_file, "r");
-  
+
   auto event = log.readNextEvent();
 
   double time = event->timestamp;
@@ -26,8 +27,7 @@ int main(int argc, char* argv[]) {
   Eigen::VectorXd dt(FLAGS_max_count);
   int count = 0;
 
-  while (event != NULL &&
-         count < FLAGS_max_count) {
+  while (event != NULL && count < FLAGS_max_count) {
     time = event->timestamp;
     times(count) = time;
     dt(count) = time - last_time;
@@ -41,8 +41,8 @@ int main(int argc, char* argv[]) {
     dt.conservativeResize(count);
   }
 
-  auto std_dev = std::sqrt(
-      (dt.rowwise() - dt.colwise().mean()).squaredNorm()/(dt.size() - 1));
-  std::cout << "dt (microseconds) mean: " << dt.mean() << " std_dev: " <<
-      std_dev << std::endl;
+  auto std_dev = std::sqrt((dt.rowwise() - dt.colwise().mean()).squaredNorm() /
+                           (dt.size() - 1));
+  std::cout << "dt (microseconds) mean: " << dt.mean()
+            << " std_dev: " << std_dev << std::endl;
 }

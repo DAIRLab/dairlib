@@ -90,10 +90,9 @@ HighLevelCommand::HighLevelCommand(
                                                         plant.num_actuators()))
                     .get_index();
 
-  yaw_port_ =
-      this->DeclareVectorOutputPort("pelvis_yaw", 1,
-                                    &HighLevelCommand::CopyHeadingAngle)
-          .get_index();
+  yaw_port_ = this->DeclareVectorOutputPort("pelvis_yaw", 1,
+                                            &HighLevelCommand::CopyHeadingAngle)
+                  .get_index();
   xy_port_ =
       this->DeclareVectorOutputPort("pelvis_xy", 2,
                                     &HighLevelCommand::CopyDesiredHorizontalVel)
@@ -213,8 +212,8 @@ VectorXd HighLevelCommand::CalcCommandFromTargetPosition(
     // Sagittal plane position PD control
     double com_vel_sagittal = local_com_vel(0);
     des_sagittal_vel = kp_pos_sagittal_ * (local_com_pos_to_target_pos(0) +
-                                         target_pos_offset_) +
-                      kd_pos_sagittal_ * (-com_vel_sagittal);
+                                           target_pos_offset_) +
+                       kd_pos_sagittal_ * (-com_vel_sagittal);
     des_sagittal_vel =
         std::clamp(des_sagittal_vel, -vel_max_sagittal_, vel_max_sagittal_);
 

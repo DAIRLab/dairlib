@@ -2,6 +2,7 @@
 
 #include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
+
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
@@ -25,7 +26,7 @@ namespace osc {
 class HeadingTrajGenerator : public drake::systems::LeafSystem<double> {
  public:
   HeadingTrajGenerator(const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>* context);
+                       drake::systems::Context<double>* context);
 
   // Input/output ports
   const drake::systems::InputPort<double>& get_state_input_port() const {

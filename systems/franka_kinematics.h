@@ -127,6 +127,7 @@ class FrankaKinematics : public drake::systems::LeafSystem<double> {
   MultibodyPlant<double>* elastoplastic_plant_;
   Context<double>* elastoplastic_context_;
   const drake::multibody::Frame<double>& world_;
+
   std::string end_effector_name_;
   const bool include_end_effector_orientation_;
 };

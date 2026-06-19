@@ -1,11 +1,10 @@
 #pragma once
 
 #include "drake/common/trajectories/trajectory.h"
+#include "drake/geometry/drake_visualizer.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
-#include "drake/geometry/drake_visualizer.h"
-
 
 namespace dairlib {
 namespace multibody {

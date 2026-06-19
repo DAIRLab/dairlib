@@ -42,7 +42,8 @@ class OptionsTrackingData : public OscTrackingData {
       std::shared_ptr<drake::trajectories::Trajectory<double>>
           ff_accel_multiplier_traj);
 
-  void SetCmdAccelerationBounds(const Eigen::VectorXd& lb, const Eigen::VectorXd& ub);
+  void SetCmdAccelerationBounds(const Eigen::VectorXd& lb,
+                                const Eigen::VectorXd& ub);
 
   void SetViewFrame(std::shared_ptr<multibody::ViewFrame<double>> view_frame) {
     view_frame_ = view_frame;

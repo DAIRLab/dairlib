@@ -19,16 +19,17 @@ using drake::systems::kUseDefaultName;
 
 template <typename T>
 SubvectorPassThrough<T>::SubvectorPassThrough(int vector_size, int start,
-      int length)
+                                              int length)
     : drake::systems::LeafSystem<T>(
-        drake::systems::SystemTypeTag<SubvectorPassThrough>()),
-      start_(start), length_(length) {
+          drake::systems::SystemTypeTag<SubvectorPassThrough>()),
+      start_(start),
+      length_(length) {
   DRAKE_DEMAND(vector_size != -1);
   drake::systems::BasicVector<T> input(vector_size);
   drake::systems::BasicVector<T> output(length);
   this->DeclareVectorInputPort(kUseDefaultName, input);
-  this->DeclareVectorOutputPort(kUseDefaultName,
-      output, &SubvectorPassThrough::DoCalcVectorOutput);
+  this->DeclareVectorOutputPort(kUseDefaultName, output,
+                                &SubvectorPassThrough::DoCalcVectorOutput);
 }
 
 template <typename T>
@@ -40,8 +41,8 @@ SubvectorPassThrough<T>::SubvectorPassThrough(
 
 template <typename T>
 void SubvectorPassThrough<T>::DoCalcVectorOutput(
-      const drake::systems::Context<T>& context,
-      drake::systems::BasicVector<T>* output) const {
+    const drake::systems::Context<T>& context,
+    drake::systems::BasicVector<T>* output) const {
   const drake::systems::BasicVector<T>& input =
       *this->EvalVectorInput(context, 0);
   output->SetFromVector(input.get_value().segment(start_, length_));

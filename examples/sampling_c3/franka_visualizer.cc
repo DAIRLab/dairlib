@@ -26,6 +26,7 @@
 #include "systems/visualization/lcm_visualization_systems.h"
 
 #include "drake/common/find_resource.h"
+#include "drake/common/text_logging.h"
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/geometry/drake_visualizer.h"
 #include "drake/geometry/meshcat_point_cloud_visualizer.h"
@@ -38,7 +39,6 @@
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/multiplexer.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
-#include "drake/common/text_logging.h"
 
 namespace dairlib {
 
@@ -401,9 +401,8 @@ int do_main(int argc, char* argv[]) {
 
   if (vis_params.visualize_c3_plan_best) {
     auto object_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, FindResourceOrThrow(vis_params.object_vis_model),
-        "object_position_target", "object_orientation_target",
-        "plans/best_planned", sampling_c3_options.N, true,
+        meshcat, vis_params.object_vis_models, position_names,
+        orientation_names, "plans/best_planned", sampling_c3_options.N, true,
         vis_params.c3_best_object_color);
     builder.Connect(trajectory_sub_object_best->get_output_port(),
                     object_pose_drawer_best->get_input_port_trajectory());
@@ -419,10 +418,9 @@ int do_main(int argc, char* argv[]) {
 
     auto dynamically_feasible_object_pose_drawer_best =
         builder.AddSystem<systems::LcmPoseDrawer>(
-            meshcat, FindResourceOrThrow(vis_params.object_vis_model),
-            "object_position_target", "object_orientation_target",
-            "plans/dynamically_feasible_best_plan", sampling_c3_options.N + 1,
-            true, vis_params.df_best_object_color);
+            meshcat, vis_params.object_vis_models, position_names,
+            orientation_names, "plans/dynamically_feasible_best_plan",
+            sampling_c3_options.N + 1, true, vis_params.df_best_object_color);
     builder.Connect(
         dynamically_feasible_trajectory_sub_object_best->get_output_port(),
         dynamically_feasible_object_pose_drawer_best

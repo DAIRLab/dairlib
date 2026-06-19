@@ -2,7 +2,6 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-
 struct FrankaRosChannels {
   std::string franka_state_channel;
   std::string tray_state_channel;

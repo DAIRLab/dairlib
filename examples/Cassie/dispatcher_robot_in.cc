@@ -8,15 +8,14 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_lcm_driven_loop.h"
 #include "examples/Cassie/cassie_utils.h"
-#include "examples/Cassie/systems/input_supervisor.h"
 #include "examples/Cassie/networking/cassie_input_translator.h"
 #include "examples/Cassie/networking/cassie_udp_publisher.h"
+#include "examples/Cassie/systems/input_supervisor.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/linear_controller.h"
 #include "systems/controllers/pd_config_lcm.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
-
 
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/framework/diagram.h"
@@ -206,9 +205,9 @@ int do_main(int argc, char* argv[]) {
   // Run lcm-driven simulation
   CassieLcmDrivenLoop<dairlib::lcmt_robot_input,
                       dairlib::lcmt_controller_switch>
-      loop(&lcm_local, shared_diagram, command_receiver,
-           input_channels, FLAGS_control_channel_name_initial, switch_channel,
-           true, FLAGS_state_channel_name);
+      loop(&lcm_local, shared_diagram, command_receiver, input_channels,
+           FLAGS_control_channel_name_initial, switch_channel, true,
+           FLAGS_state_channel_name);
 
   auto msg = dairlib::lcmt_pd_config();
   msg.timestamp = 0;
@@ -226,7 +225,7 @@ int do_main(int argc, char* argv[]) {
       &(loop.get_diagram()->GetMutableSubsystemContext(
           *config_receiver, &loop.get_diagram_mutable_context())),
       msg);
-//  DrawAndSaveDiagramGraph(*loop.get_diagram());
+  //  DrawAndSaveDiagramGraph(*loop.get_diagram());
   loop.Simulate();
 
   return 0;

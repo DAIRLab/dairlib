@@ -57,8 +57,11 @@ struct OSCGains {
             this->W_lambda_h_reg.data(), this->W_lambda_h_reg.size());
     W_acceleration = w_accel * w_acceleration.asDiagonal();
     W_input_regularization = w_input * w_input_regularization.asDiagonal();
-    W_input_smoothing_regularization = w_input_reg * w_input_regularization.asDiagonal();
-    W_lambda_c_regularization = w_lambda * w_lambda_c_regularization.asDiagonal();
-    W_lambda_h_regularization = w_lambda * w_lambda_h_regularization.asDiagonal();
+    W_input_smoothing_regularization =
+        w_input_reg * w_input_regularization.asDiagonal();
+    W_lambda_c_regularization =
+        w_lambda * w_lambda_c_regularization.asDiagonal();
+    W_lambda_h_regularization =
+        w_lambda * w_lambda_h_regularization.asDiagonal();
   }
 };

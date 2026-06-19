@@ -1,9 +1,11 @@
-/**This system is used by the osc diagram to read an end effector trajectory 
- * from an lcm message and pass it onto the OSC class. It allows for teleop to 
+/**This system is used by the osc diagram to read an end effector trajectory
+ * from an lcm message and pass it onto the OSC class. It allows for teleop to
  * track the current end effector position or a neutral position based on the
  * teleop_neutral_pose flag. */
 #include "end_effector_position.h"
+
 #include <iostream>
+
 #include "dairlib/lcmt_radio_out.hpp"
 #include "multibody/multibody_utils.h"
 
@@ -42,20 +44,21 @@ EndEffectorPositionTrajectoryGenerator::EndEffectorPositionTrajectoryGenerator(
               "trajectory",
               drake::Value<drake::trajectories::Trajectory<double>>(pp))
           .get_index();
-  radio_port_ = this->DeclareAbstractInputPort("lcmt_radio_out",
-      drake::Value<dairlib::lcmt_radio_out>{}).get_index();
+  radio_port_ =
+      this->DeclareAbstractInputPort("lcmt_radio_out",
+                                     drake::Value<dairlib::lcmt_radio_out>{})
+          .get_index();
 
   PiecewisePolynomial<double> empty_pp_traj(neutral_pose);
   Trajectory<double>& traj_inst = empty_pp_traj;
   if (teleop_neutral_pose) {
     this->DeclareAbstractOutputPort(
-      "end_effector_trajectory", traj_inst,
-      &EndEffectorPositionTrajectoryGenerator::CalcPoseShiftingTraj);
-  }
-  else {
+        "end_effector_trajectory", traj_inst,
+        &EndEffectorPositionTrajectoryGenerator::CalcPoseShiftingTraj);
+  } else {
     this->DeclareAbstractOutputPort(
-      "end_effector_trajectory", traj_inst,
-      &EndEffectorPositionTrajectoryGenerator::CalcNeutralPoseBasedTraj);
+        "end_effector_trajectory", traj_inst,
+        &EndEffectorPositionTrajectoryGenerator::CalcNeutralPoseBasedTraj);
   }
 }
 
@@ -75,8 +78,8 @@ void EndEffectorPositionTrajectoryGenerator::CalcNeutralPoseBasedTraj(
   const auto& trajectory_input =
       this->EvalAbstractInput(context, trajectory_port_)
           ->get_value<drake::trajectories::Trajectory<double>>();
-  const auto& radio_out = this->EvalInputValue<dairlib::lcmt_radio_out>(
-    context, radio_port_);
+  const auto& radio_out =
+      this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
@@ -106,8 +109,8 @@ void EndEffectorPositionTrajectoryGenerator::CalcPoseShiftingTraj(
   const auto& trajectory_input =
       this->EvalAbstractInput(context, trajectory_port_)
           ->get_value<drake::trajectories::Trajectory<double>>();
-  const auto& radio_out = this->EvalInputValue<dairlib::lcmt_radio_out>(
-    context, radio_port_);
+  const auto& radio_out =
+      this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);
@@ -117,12 +120,11 @@ void EndEffectorPositionTrajectoryGenerator::CalcPoseShiftingTraj(
       // every time teleop mode is newly entered, the robot will stay where it
       // is instead of snapping to the neutral position elsewhere.
       const OutputVector<double>* franka_state =
-        (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
+          (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
       VectorXd q_franka = franka_state->GetPositions();
-      multibody::SetPositionsIfNew<double>(plant_, q_franka,
-                                           context_);
+      multibody::SetPositionsIfNew<double>(plant_, q_franka, context_);
       auto end_effector_pose = plant_.EvalBodyPoseInWorld(
-        *context_, plant_.GetBodyByName(end_effector_name_));
+          *context_, plant_.GetBodyByName(end_effector_name_));
       shifting_pose_ = end_effector_pose.translation();
     }
     was_in_teleop_mode_ = true;
@@ -143,8 +145,7 @@ void EndEffectorPositionTrajectoryGenerator::CalcPoseShiftingTraj(
 
     result = drake::trajectories::PiecewisePolynomial<double>(y_0);
     *casted_traj = result;
-  }
-  else {
+  } else {
     was_in_teleop_mode_ = false;
     if (trajectory_input.value(0).isZero()) {
     } else {

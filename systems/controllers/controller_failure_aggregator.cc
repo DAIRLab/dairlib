@@ -19,8 +19,8 @@ namespace dairlib {
 namespace systems {
 
 ControllerFailureAggregator::ControllerFailureAggregator(
-    std::string controller_channel, int num_input_ports) :
-    controller_channel_(controller_channel){
+    std::string controller_channel, int num_input_ports)
+    : controller_channel_(controller_channel) {
   this->set_name("controller_failure_aggregator");
   for (int i = 0; i < num_input_ports; ++i) {
     input_ports_.push_back(
@@ -28,10 +28,11 @@ ControllerFailureAggregator::ControllerFailureAggregator(
                                      TimestampedVector<double>(1))
             .get_index());
   }
-  status_output_port_ = this->DeclareAbstractOutputPort(
-                         "lcmt_controller_failure",
-                         &ControllerFailureAggregator::AggregateFailureSignals)
-                     .get_index();
+  status_output_port_ =
+      this->DeclareAbstractOutputPort(
+              "lcmt_controller_failure",
+              &ControllerFailureAggregator::AggregateFailureSignals)
+          .get_index();
 }
 
 void ControllerFailureAggregator::AggregateFailureSignals(
@@ -42,7 +43,7 @@ void ControllerFailureAggregator::AggregateFailureSignals(
   for (auto port : input_ports_) {
     const TimestampedVector<double>* is_error =
         (TimestampedVector<double>*)this->EvalVectorInput(context, port);
-    status = std::max(status, (int) is_error->get_value()(0));
+    status = std::max(status, (int)is_error->get_value()(0));
     timestamp = is_error->get_timestamp();
   }
   output->controller_channel = controller_channel_;

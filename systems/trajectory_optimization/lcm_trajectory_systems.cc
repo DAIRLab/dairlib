@@ -2,7 +2,6 @@
 
 #include <iostream>
 
-
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
@@ -64,10 +63,13 @@ void LcmTrajectoryReceiver::OutputTrajectory(
           trajectory_block.time_vector, trajectory_block.datapoints);
     } else {
       *casted_traj = PiecewisePolynomial<double>::FirstOrderHold(
-          trajectory_block.time_vector, trajectory_block.datapoints.topRows(trajectory_block.datapoints.rows() / 2));
-//      *casted_traj = PiecewisePolynomial<double>::CubicHermite(
-//          trajectory_block.time_vector, trajectory_block.datapoints.topRows(3),
-//          trajectory_block.datapoints.bottomRows(3));
+          trajectory_block.time_vector,
+          trajectory_block.datapoints.topRows(
+              trajectory_block.datapoints.rows() / 2));
+      //      *casted_traj = PiecewisePolynomial<double>::CubicHermite(
+      //          trajectory_block.time_vector,
+      //          trajectory_block.datapoints.topRows(3),
+      //          trajectory_block.datapoints.bottomRows(3));
     }
   } else {
     *casted_traj = PiecewisePolynomial<double>(Vector3d::Zero());
@@ -113,14 +115,14 @@ void LcmOrientationTrajectoryReceiver::OutputTrajectory(
       throw std::out_of_range("");
     }
     const auto& trajectory_block = lcm_traj.GetTrajectory(trajectory_name_);
-    //std::cout << trajectory_block.time_vector << std::endl;
+    // std::cout << trajectory_block.time_vector << std::endl;
 
     std::vector<Eigen::Quaternion<double>> quaternion_datapoints;
     std::cout << "traj data: " << trajectory_block.datapoints << std::endl;
     for (int i = 0; i < trajectory_block.datapoints.cols(); ++i) {
       Eigen::Vector4d quat_vec = trajectory_block.datapoints.col(i);
-      quaternion_datapoints.push_back(
-        Eigen::Quaterniond(quat_vec(0), quat_vec(1), quat_vec(2), quat_vec(3)));
+      quaternion_datapoints.push_back(Eigen::Quaterniond(
+          quat_vec(0), quat_vec(1), quat_vec(2), quat_vec(3)));
     }
     *casted_traj = PiecewiseQuaternionSlerp(
         CopyVectorXdToStdVector(trajectory_block.time_vector),

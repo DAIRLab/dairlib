@@ -99,8 +99,8 @@ int DoMain(int argc, char* argv[]) {
   // Build Cassie MBP
   drake::multibody::MultibodyPlant<double> plant_w_spr(0.0);
   AddCassieMultibody(&plant_w_spr, nullptr, true /*floating base*/,
-                       "examples/Cassie/urdf/cassie_v2.urdf",
-                       true /*spring model*/, false /*loop closure*/);
+                     "examples/Cassie/urdf/cassie_v2.urdf",
+                     true /*spring model*/, false /*loop closure*/);
   plant_w_spr.Finalize();
 
   auto context_w_spr = plant_w_spr.CreateDefaultContext();
@@ -205,9 +205,9 @@ int DoMain(int argc, char* argv[]) {
   vector<double> state_durations;
 
   fsm_states = {left_stance_state, post_left_double_support_state,
-                  right_stance_state, post_right_double_support_state};
+                right_stance_state, post_right_double_support_state};
   state_durations = {left_support_duration, double_support_duration,
-                       right_support_duration, double_support_duration};
+                     right_support_duration, double_support_duration};
 
   auto fsm = builder.AddSystem<systems::TimeBasedFiniteStateMachine>(
       plant_w_spr, fsm_states, state_durations);
@@ -246,11 +246,11 @@ int DoMain(int argc, char* argv[]) {
       contact_points_in_each_state;
 
   unordered_fsm_states = {left_stance_state, right_stance_state,
-                            post_left_double_support_state,
-                            post_right_double_support_state};
+                          post_left_double_support_state,
+                          post_right_double_support_state};
   unordered_state_durations = {left_support_duration, right_support_duration,
-                                 double_support_duration,
-                                 double_support_duration};
+                               double_support_duration,
+                               double_support_duration};
   contact_points_in_each_state.push_back({left_toe_mid});
   contact_points_in_each_state.push_back({right_toe_mid});
   contact_points_in_each_state.push_back({left_toe_mid});
@@ -419,22 +419,26 @@ int DoMain(int argc, char* argv[]) {
       plant_w_spr, right_heel.first, right_heel.second, view_frame,
       Matrix3d::Identity(), Vector3d::Zero(), {0, 1, 2});
 
-  osc->AddContactPoint(
-      "left_toe",
-      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&left_toe_evaluator),
-      {left_stance_state, post_left_double_support_state, post_right_double_support_state});
-  osc->AddContactPoint(
-      "left_heel",
-      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&left_heel_evaluator),
-      {left_stance_state, post_left_double_support_state, post_right_double_support_state});
-  osc->AddContactPoint(
-      "right_toe",
-      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&right_toe_evaluator),
-      {right_stance_state, post_left_double_support_state, post_right_double_support_state});
-  osc->AddContactPoint(
-      "right_heel",
-      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&right_heel_evaluator),
-      {right_stance_state, post_left_double_support_state, post_right_double_support_state});
+  osc->AddContactPoint("left_toe",
+                       std::unique_ptr<multibody::WorldPointEvaluator<double>>(
+                           &left_toe_evaluator),
+                       {left_stance_state, post_left_double_support_state,
+                        post_right_double_support_state});
+  osc->AddContactPoint("left_heel",
+                       std::unique_ptr<multibody::WorldPointEvaluator<double>>(
+                           &left_heel_evaluator),
+                       {left_stance_state, post_left_double_support_state,
+                        post_right_double_support_state});
+  osc->AddContactPoint("right_toe",
+                       std::unique_ptr<multibody::WorldPointEvaluator<double>>(
+                           &right_toe_evaluator),
+                       {right_stance_state, post_left_double_support_state,
+                        post_right_double_support_state});
+  osc->AddContactPoint("right_heel",
+                       std::unique_ptr<multibody::WorldPointEvaluator<double>>(
+                           &right_heel_evaluator),
+                       {right_stance_state, post_left_double_support_state,
+                        post_right_double_support_state});
 
   // Swing foot tracking
   std::vector<double> swing_ft_gain_multiplier_breaks{
@@ -461,7 +465,6 @@ int DoMain(int argc, char* argv[]) {
               swing_ft_accel_gain_multiplier_breaks,
               swing_ft_accel_gain_multiplier_samples));
 
-
   auto swing_foot_data = std::make_unique<TransTaskSpaceTrackingData>(
       "swing_ft_data", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant_w_spr, plant_w_spr);
@@ -476,7 +479,8 @@ int DoMain(int argc, char* argv[]) {
       "swing_ft_traj", gains.K_p_swing_foot, gains.K_d_swing_foot,
       gains.W_swing_foot, plant_w_spr, plant_w_spr, swing_foot_data.get(),
       com_data.get());
-  auto pelvis_view_frame = std::make_shared<WorldYawViewFrame<double>>(plant_w_spr.GetBodyByName("pelvis"));
+  auto pelvis_view_frame = std::make_shared<WorldYawViewFrame<double>>(
+      plant_w_spr.GetBodyByName("pelvis"));
   swing_ft_traj_local->SetViewFrame(pelvis_view_frame);
 
   auto swing_ft_traj_global = std::make_unique<TransTaskSpaceTrackingData>(
@@ -607,8 +611,7 @@ int DoMain(int argc, char* argv[]) {
   // Run lcm-driven simulation
   DrawAndSaveDiagramGraph(*shared_diagram);
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &lcm_local, shared_diagram, state_receiver, FLAGS_channel_x,
-      true);
+      &lcm_local, shared_diagram, state_receiver, FLAGS_channel_x, true);
   loop.Simulate();
 
   return 0;

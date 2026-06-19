@@ -1,8 +1,8 @@
 #include "kinodynamic_planner.h"
 
 using drake::AbstractValue;
-using drake::multibody::RigidBodyFrame;
 using drake::multibody::JacobianWrtVariable;
+using drake::multibody::RigidBodyFrame;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::EventStatus;
@@ -90,24 +90,26 @@ void KinodynamicPlanner::AddAngularMomentumDynamicsConstraint() {
         std::make_shared<CentroidalMomentumConstraint>(&plant_ad_, std::nullopt,
                                                        &context_ad_, true));
 
-//    prog_.AddConstraint(dh_.at(i) == (c_[i][0] - r_[i][0]).cross(F_[i][0]),
-//                        {q_.at(i), v_.at(i), h_.at(i)});
+    //    prog_.AddConstraint(dh_.at(i) == (c_[i][0] -
+    //    r_[i][0]).cross(F_[i][0]),
+    //                        {q_.at(i), v_.at(i), h_.at(i)});
   }
 }
 
-void KinodynamicPlanner::AddIntegrationConstraints(){
+void KinodynamicPlanner::AddIntegrationConstraints() {
   for (int i = 1; i < n_knot_points_; ++i) {
     // eq 7d
-    prog_.AddLinearEqualityConstraint(q_[i] - q_[i-1] == v_[i] * dt_[i]);
+    prog_.AddLinearEqualityConstraint(q_[i] - q_[i - 1] == v_[i] * dt_[i]);
     // eq 7e
-    prog_.AddLinearEqualityConstraint(h_[i] - h_[i-1] == dh_[i] * dt_[i]);
+    prog_.AddLinearEqualityConstraint(h_[i] - h_[i - 1] == dh_[i] * dt_[i]);
 
     // eq 7f
-//    prog_.AddLinearEqualityConstraint(r_[i] - r_[i-1] == (dr_[i] + dr_[i-1])/2 * dt_[i]);
-    prog_.AddLinearEqualityConstraint(r_[i] - r_[i-1] == dr_[i] * dt_[i]);
+    //    prog_.AddLinearEqualityConstraint(r_[i] - r_[i-1] == (dr_[i] +
+    //    dr_[i-1])/2 * dt_[i]);
+    prog_.AddLinearEqualityConstraint(r_[i] - r_[i - 1] == dr_[i] * dt_[i]);
 
     // eq 7g
-    prog_.AddLinearEqualityConstraint(dr_[i] - dr_[i-1] == ddr_[i] * dt_[i]);
+    prog_.AddLinearEqualityConstraint(dr_[i] - dr_[i - 1] == ddr_[i] * dt_[i]);
   }
 }
 
@@ -117,10 +119,8 @@ void KinodynamicPlanner::AddDynamicsConstraint() {
   AddIntegrationConstraints();
 }
 
-void KinodynamicPlanner::AddKinematicConstraints(){
+void KinodynamicPlanner::AddKinematicConstraints() {
   // Linearize the kinematic constraints about current state
-
 }
-
 
 }  // namespace dairlib

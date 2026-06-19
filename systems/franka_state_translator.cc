@@ -46,7 +46,8 @@ void FrankaStateOutTranslator::OutputFrankaState(
   output->num_positions = panda_status->num_joints;
   output->num_velocities = panda_status->num_joints;
   output->num_efforts = panda_status->num_joints;
-//  output->position_names = std::vector<std::string>(output->num_positions, "double");
+  //  output->position_names = std::vector<std::string>(output->num_positions,
+  //  "double");
   output->velocity = panda_status->joint_velocity;
   output->effort = panda_status->joint_torque;
 }

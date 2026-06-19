@@ -60,7 +60,8 @@ DEFINE_double(publish_rate, 2000, "Publish rate for simulator");
 DEFINE_double(init_height, .7,
               "Initial starting height of the pelvis above "
               "ground");
-DEFINE_string(channel_u, "CASSIE_INPUT", "LCM channel to receive controller commands from");
+DEFINE_string(channel_u, "CASSIE_INPUT",
+              "LCM channel to receive controller commands from");
 DEFINE_double(platform_height, 0.0, "Height of the platform");
 DEFINE_double(platform_x, 0.0, "x location of the  platform");
 DEFINE_double(start_time, 0.0,
@@ -74,7 +75,7 @@ DEFINE_bool(visualize, true, "Set to true to visualize the platform");
 DEFINE_double(actuator_delay, 0.0,
               "Duration of actuator delay. Set to 0.0 by default.");
 DEFINE_bool(use_traj_state, true,
-              "Whether to intialize the sim from a specific state");
+            "Whether to intialize the sim from a specific state");
 DEFINE_string(contact_solver, "SAP",
               "Contact solver to use. Either TAMSI or SAP.");
 
@@ -123,8 +124,7 @@ int do_main(int argc, char* argv[]) {
   plant.Finalize();
 
   // Create maps for joints
-  std::map<std::string, int> pos_map =
-      multibody::MakeNameToPositionsMap(plant);
+  std::map<std::string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
   std::map<std::string, int> vel_map =
       multibody::MakeNameToVelocitiesMap(plant);
   std::map<std::string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
@@ -210,19 +210,19 @@ int do_main(int argc, char* argv[]) {
 
   Eigen::VectorXd x_traj_init = state_traj.value(FLAGS_start_time);
 
-  if (FLAGS_use_traj_state){
-    if(FLAGS_platform_x < 0){
+  if (FLAGS_use_traj_state) {
+    if (FLAGS_platform_x < 0) {
       x_traj_init(6) += FLAGS_platform_height;
     }
     plant.SetPositionsAndVelocities(&plant_context, x_traj_init);
-  }else{
+  } else {
     Eigen::VectorXd q_init, u_init, lambda_init;
     double mu_fp = 0;
     double min_normal_fp = 70;
     double toe_spread = 0.1;
     // Create a plant for CassieFixedPointSolver.
-    // Note that we cannot use the plant from the above diagram, because after the
-    // diagram is built, plant.get_input_port_actuation().HasValue(*context)
+    // Note that we cannot use the plant from the above diagram, because after
+    // the diagram is built, plant.get_input_port_actuation().HasValue(*context)
     // throws a segfault error
     drake::multibody::MultibodyPlant<double> plant_for_solver(0.0);
     AddCassieMultibody(&plant_for_solver, nullptr,
@@ -238,10 +238,9 @@ int do_main(int argc, char* argv[]) {
                                       &lambda_init);
     }
     plant.SetPositions(&plant_context, q_init);
-    plant.SetVelocities(&plant_context, Eigen::VectorXd::Zero(plant.num_velocities()));
+    plant.SetVelocities(&plant_context,
+                        Eigen::VectorXd::Zero(plant.num_velocities()));
   }
-
-
 
   diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));

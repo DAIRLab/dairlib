@@ -10,8 +10,8 @@ using Eigen::VectorXd;
 using std::string;
 
 using dairlib::systems::OutputVector;
-using drake::multibody::RigidBodyFrame;
 using drake::multibody::MultibodyPlant;
+using drake::multibody::RigidBodyFrame;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::DiscreteUpdateEvent;
@@ -30,8 +30,10 @@ EndEffectorForceTrajectoryGenerator::EndEffectorForceTrajectoryGenerator() {
               "trajectory",
               drake::Value<drake::trajectories::Trajectory<double>>(pp))
           .get_index();
-  radio_port_ = this->DeclareAbstractInputPort("lcmt_radio_out",
-      drake::Value<dairlib::lcmt_radio_out>{}).get_index();
+  radio_port_ =
+      this->DeclareAbstractInputPort("lcmt_radio_out",
+                                     drake::Value<dairlib::lcmt_radio_out>{})
+          .get_index();
   controller_switch_index_ = this->DeclareDiscreteState(VectorXd::Ones(1));
   DeclareForcedDiscreteUpdateEvent(
       &EndEffectorForceTrajectoryGenerator::DiscreteVariableUpdate);
@@ -45,8 +47,8 @@ EndEffectorForceTrajectoryGenerator::EndEffectorForceTrajectoryGenerator() {
 EventStatus EndEffectorForceTrajectoryGenerator::DiscreteVariableUpdate(
     const drake::systems::Context<double>& context,
     drake::systems::DiscreteValues<double>* discrete_state) const {
-  const auto& radio_out = this->EvalInputValue<dairlib::lcmt_radio_out>(
-    context, radio_port_);
+  const auto& radio_out =
+      this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
   const auto& trajectory_input =
       this->EvalAbstractInput(context, trajectory_port_)
           ->get_value<drake::trajectories::Trajectory<double>>();
@@ -67,8 +69,8 @@ void EndEffectorForceTrajectoryGenerator::CalcTraj(
   const auto& trajectory_input =
       this->EvalAbstractInput(context, trajectory_port_)
           ->get_value<drake::trajectories::Trajectory<double>>();
-  const auto& radio_out = this->EvalInputValue<dairlib::lcmt_radio_out>(
-    context, radio_port_);
+  const auto& radio_out =
+      this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
   auto* casted_traj =
       (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
           traj);

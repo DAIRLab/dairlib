@@ -1,13 +1,14 @@
 #pragma once
 
+#include <iostream>
 #include <map>
 #include <string>
 #include <vector>
-#include <iostream>
 
 #include "dairlib/lcmt_controller_switch.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 
+#include "drake/common/text_logging.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
@@ -15,7 +16,6 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/lcm/serializer.h"
-#include "drake/common/text_logging.h"
 
 namespace dairlib {
 namespace systems {
@@ -168,8 +168,7 @@ class LcmDrivenLoop {
       diagram_name_ = diagram->get_name();
     }
     diagram_ptr_ = diagram.get();
-    simulator_ =
-        std::make_unique<drake::systems::Simulator<double>>(*diagram);
+    simulator_ = std::make_unique<drake::systems::Simulator<double>>(*diagram);
     simulator_->set_publish_at_initialization(false);
 
     // Create subscriber for the switch (in the case of multi-input)
@@ -183,10 +182,10 @@ class LcmDrivenLoop {
     // Create subscribers for inputs
     for (const auto& name : input_channels) {
       std::cout << "Constructing subscriber for " << name << std::endl;
-      name_to_input_sub_map_.insert(std::make_pair(
-          name, Subscriber<InputMessageType>(drake_lcm_, name)));
+      name_to_input_sub_map_.insert(
+          std::make_pair(name, Subscriber<InputMessageType>(drake_lcm_, name)));
       name_to_input_sub_map_.at(name).subscription_->set_queue_capacity(
-        queue_capacity);
+          queue_capacity);
     }
 
     // Make sure input_channels contains active_channel, and then set initial
@@ -294,13 +293,14 @@ class LcmDrivenLoop {
         }
 
         return is_new_input_message || is_new_switch_message ||
-            is_new_state_message;
+               is_new_state_message;
       });
 
       // Pump drake's LCM subscribers to empty their internal queues until all
       // LCM buffers are up-to-date.
       // Addresses https://github.com/RobotLocomotion/drake/issues/15234
-      while (drake_lcm_->HandleSubscriptions(0) > 0);
+      while (drake_lcm_->HandleSubscriptions(0) > 0)
+        ;
 
       // Update the diagram context when there is new input message
       if (is_new_input_message || too_long_between_input_messages_) {
@@ -340,7 +340,7 @@ class LcmDrivenLoop {
         diagram_ptr_->CalcForcedUnrestrictedUpdate(
             diagram_context, &diagram_context.get_mutable_state());
         diagram_ptr_->CalcForcedDiscreteVariableUpdate(
-          diagram_context, &diagram_context.get_mutable_discrete_state());
+            diagram_context, &diagram_context.get_mutable_discrete_state());
         if (is_forced_publish_) {
           // Force-publish via the diagram
           diagram_ptr_->ForcedPublish(diagram_context);
@@ -370,8 +370,8 @@ class LcmDrivenLoop {
         simulator_->AdvanceTo(time);
         diagram_ptr_->CalcForcedUnrestrictedUpdate(
             diagram_context, &diagram_context.get_mutable_state());
-        diagram_ptr_->CalcForcedDiscreteVariableUpdate(diagram_context,
-                                                       &diagram_context.get_mutable_discrete_state());
+        diagram_ptr_->CalcForcedDiscreteVariableUpdate(
+            diagram_context, &diagram_context.get_mutable_discrete_state());
         if (is_forced_publish_) {
           // Force-publish via the diagram
           diagram_ptr_->ForcedPublish(diagram_context);

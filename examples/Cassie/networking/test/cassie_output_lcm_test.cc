@@ -2,28 +2,30 @@
 #include <numeric>
 #include <utility>
 
-#include <gtest/gtest.h>
 #include <gflags/gflags.h>
+#include <gtest/gtest.h>
+
+#include "examples/Cassie/networking/cassie_output_receiver.h"
+#include "examples/Cassie/networking/cassie_output_sender.h"
+
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
-#include "examples/Cassie/networking/cassie_output_sender.h"
-#include "examples/Cassie/networking/cassie_output_receiver.h"
 
 namespace dairlib {
 namespace systems {
 namespace {
 
+using drake::systems::BasicVector;
+using drake::systems::Context;
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
-using drake::systems::Context;
-using Eigen::VectorXd;
-using Eigen::MatrixXd;
-using std::make_unique;
-using std::unique_ptr;
 using drake::systems::System;
 using drake::systems::SystemOutput;
-using drake::systems::BasicVector;
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
+using std::make_unique;
+using std::unique_ptr;
 
 class CassieOutputLcmTest : public ::testing::Test {
  public:
@@ -77,18 +79,18 @@ TEST_F(CassieOutputLcmTest, SendReceiveTest) {
 
   // fill input_struct with consecutive numbers
   memset(&input_struct, 2, sizeof(input_struct));
-  unsigned char* p = (unsigned char *) &input_struct;
+  unsigned char* p = (unsigned char*)&input_struct;
   for (uint i = 0; i < sizeof(input_struct); i++) {
     p[i] = i % 63;
   }
 
-  auto& sender_context = diagram->GetMutableSubsystemContext(
-      *sender, diagram_context.get());
-  auto& receiver_context = diagram->GetMutableSubsystemContext(
-      *receiver, diagram_context.get());
+  auto& sender_context =
+      diagram->GetMutableSubsystemContext(*sender, diagram_context.get());
+  auto& receiver_context =
+      diagram->GetMutableSubsystemContext(*receiver, diagram_context.get());
 
   sender_context.FixInputPort(sender->get_input_port(0).get_index(),
-      drake::Value<cassie_out_t>(input_struct));
+                              drake::Value<cassie_out_t>(input_struct));
 
   auto output = receiver->AllocateOutput();
   receiver->CalcOutput(receiver_context, output.get());
@@ -98,11 +100,12 @@ TEST_F(CassieOutputLcmTest, SendReceiveTest) {
 
   // cannot memcmp the structs because of buffers between used data
   ASSERT_EQ(0, memcmp(&input_struct.pelvis.targetPc.etherCatStatus,
-               &output_struct.pelvis.targetPc.etherCatStatus,
-               sizeof(input_struct.pelvis.targetPc.etherCatStatus)));
-  ASSERT_EQ(0, memcmp(&input_struct.pelvis.targetPc.etherCatNotifications,
-               &output_struct.pelvis.targetPc.etherCatNotifications,
-               sizeof(input_struct.pelvis.targetPc.etherCatNotifications)));
+                      &output_struct.pelvis.targetPc.etherCatStatus,
+                      sizeof(input_struct.pelvis.targetPc.etherCatStatus)));
+  ASSERT_EQ(0,
+            memcmp(&input_struct.pelvis.targetPc.etherCatNotifications,
+                   &output_struct.pelvis.targetPc.etherCatNotifications,
+                   sizeof(input_struct.pelvis.targetPc.etherCatNotifications)));
   ASSERT_EQ(input_struct.pelvis.targetPc.taskExecutionTime,
             output_struct.pelvis.targetPc.taskExecutionTime);
   ASSERT_EQ(input_struct.pelvis.targetPc.overloadCounter,
@@ -117,19 +120,19 @@ TEST_F(CassieOutputLcmTest, SendReceiveTest) {
   ASSERT_EQ(input_struct.pelvis.battery.current,
             output_struct.pelvis.battery.current);
   ASSERT_EQ(0, memcmp(&input_struct.pelvis.battery.voltage,
-               &output_struct.pelvis.battery.voltage,
-               sizeof(input_struct.pelvis.battery.voltage)));
+                      &output_struct.pelvis.battery.voltage,
+                      sizeof(input_struct.pelvis.battery.voltage)));
   ASSERT_EQ(0, memcmp(&input_struct.pelvis.battery.temperature,
-               &output_struct.pelvis.battery.temperature,
-               sizeof(input_struct.pelvis.battery.temperature)));
+                      &output_struct.pelvis.battery.temperature,
+                      sizeof(input_struct.pelvis.battery.temperature)));
 
   ASSERT_EQ(input_struct.pelvis.radio.radioReceiverSignalGood,
             output_struct.pelvis.radio.radioReceiverSignalGood);
   ASSERT_EQ(input_struct.pelvis.radio.receiverMedullaSignalGood,
             output_struct.pelvis.radio.receiverMedullaSignalGood);
   ASSERT_EQ(0, memcmp(&input_struct.pelvis.radio.channel,
-               &output_struct.pelvis.radio.channel,
-               sizeof(input_struct.pelvis.radio.channel)));
+                      &output_struct.pelvis.radio.channel,
+                      sizeof(input_struct.pelvis.radio.channel)));
 
   ASSERT_EQ(input_struct.pelvis.vectorNav.dataGood,
             output_struct.pelvis.vectorNav.dataGood);
@@ -140,17 +143,18 @@ TEST_F(CassieOutputLcmTest, SendReceiveTest) {
   ASSERT_EQ(input_struct.pelvis.vectorNav.temperature,
             output_struct.pelvis.vectorNav.temperature);
   ASSERT_EQ(0, memcmp(&input_struct.pelvis.vectorNav.magneticField,
-               &output_struct.pelvis.vectorNav.magneticField,
-               sizeof(input_struct.pelvis.vectorNav.magneticField)));
+                      &output_struct.pelvis.vectorNav.magneticField,
+                      sizeof(input_struct.pelvis.vectorNav.magneticField)));
   ASSERT_EQ(0, memcmp(&input_struct.pelvis.vectorNav.angularVelocity,
-               &output_struct.pelvis.vectorNav.angularVelocity,
-               sizeof(input_struct.pelvis.vectorNav.angularVelocity)));
-  ASSERT_EQ(0, memcmp(&input_struct.pelvis.vectorNav.linearAcceleration,
-               &output_struct.pelvis.vectorNav.linearAcceleration,
-               sizeof(input_struct.pelvis.vectorNav.linearAcceleration)));
+                      &output_struct.pelvis.vectorNav.angularVelocity,
+                      sizeof(input_struct.pelvis.vectorNav.angularVelocity)));
+  ASSERT_EQ(0,
+            memcmp(&input_struct.pelvis.vectorNav.linearAcceleration,
+                   &output_struct.pelvis.vectorNav.linearAcceleration,
+                   sizeof(input_struct.pelvis.vectorNav.linearAcceleration)));
   ASSERT_EQ(0, memcmp(&input_struct.pelvis.vectorNav.orientation,
-               &output_struct.pelvis.vectorNav.orientation,
-               sizeof(input_struct.pelvis.vectorNav.orientation)));
+                      &output_struct.pelvis.vectorNav.orientation,
+                      sizeof(input_struct.pelvis.vectorNav.orientation)));
 
   ASSERT_EQ(input_struct.pelvis.medullaCounter,
             output_struct.pelvis.medullaCounter);
@@ -166,9 +170,8 @@ TEST_F(CassieOutputLcmTest, SendReceiveTest) {
             output_struct.pelvis.vtmTemperature);
 
   ASSERT_EQ(input_struct.isCalibrated, output_struct.isCalibrated);
-  ASSERT_EQ(0, memcmp(&input_struct.messages,
-               &output_struct.messages,
-               sizeof(input_struct.messages)));
+  ASSERT_EQ(0, memcmp(&input_struct.messages, &output_struct.messages,
+                      sizeof(input_struct.messages)));
 
   compareLeg(input_struct.leftLeg, output_struct.leftLeg);
   compareLeg(input_struct.rightLeg, output_struct.rightLeg);

@@ -1,7 +1,8 @@
 #include "multibody/geom_geom_collider.h"
 
-#include "drake/math/rotation_matrix.h"
 #include <iostream>
+
+#include "drake/math/rotation_matrix.h"
 using drake::EigenPtr;
 using drake::MatrixX;
 using drake::VectorX;
@@ -79,13 +80,13 @@ GeomGeomCollider<T>::CalcWitnessPoints(const Context<double>& context) {
     Vector3d throwaway_nhat_BA_W;
     T throwaway_distance;
     std::tie(p_ACa, p_BCb, throwaway_nhat_BA_W, throwaway_distance) =
-      DoSphereMeshCollision(context, is_A_mesh);
+        DoSphereMeshCollision(context, is_A_mesh);
   }
 
   else {
     const SignedDistancePair<T> signed_distance_pair =
-      query_object.ComputeSignedDistancePairClosestPoints(geometry_id_A_,
-                                                          geometry_id_B_);
+        query_object.ComputeSignedDistancePairClosestPoints(geometry_id_A_,
+                                                            geometry_id_B_);
     p_ACa = inspector.GetPoseInFrame(geometry_id_A_).template cast<T>() *
             signed_distance_pair.p_ACa;
     p_BCb = inspector.GetPoseInFrame(geometry_id_B_).template cast<T>() *
@@ -182,13 +183,12 @@ std::pair<T, MatrixX<T>> GeomGeomCollider<T>::DoEval(
   auto [is_sphere_and_mesh, is_A_mesh] = IsSphereAndMesh(context);
 
   if (is_sphere_and_mesh) {
-    std::tie(p_ACa, p_BCb, nhat_BA_W, distance) = DoSphereMeshCollision(
-      context, is_A_mesh);
-  }
-  else {
+    std::tie(p_ACa, p_BCb, nhat_BA_W, distance) =
+        DoSphereMeshCollision(context, is_A_mesh);
+  } else {
     const SignedDistancePair<T> signed_distance_pair =
-      query_object.ComputeSignedDistancePairClosestPoints(geometry_id_A_,
-                                                          geometry_id_B_);
+        query_object.ComputeSignedDistancePairClosestPoints(geometry_id_A_,
+                                                            geometry_id_B_);
     p_ACa = inspector.GetPoseInFrame(geometry_id_A_).template cast<T>() *
             signed_distance_pair.p_ACa;
     p_BCb = inspector.GetPoseInFrame(geometry_id_B_).template cast<T>() *
@@ -198,32 +198,35 @@ std::pair<T, MatrixX<T>> GeomGeomCollider<T>::DoEval(
     distance = signed_distance_pair.distance;
   }
 
-
   if (nhat_BA_W.array().isNaN().any()) {
-    GeometryId left_wall_id = plant_.GetCollisionGeometriesForBody(plant_.GetBodyByName("left_wall"))[0];
-    GeometryId right_wall_id = plant_.GetCollisionGeometriesForBody(plant_.GetBodyByName("right_wall"))[0];
-    GeometryId front_wall_id = plant_.GetCollisionGeometriesForBody(plant_.GetBodyByName("front_wall"))[0];
-    GeometryId back_wall_id = plant_.GetCollisionGeometriesForBody(plant_.GetBodyByName("back_wall"))[0];
-
+    GeometryId left_wall_id = plant_.GetCollisionGeometriesForBody(
+        plant_.GetBodyByName("left_wall"))[0];
+    GeometryId right_wall_id = plant_.GetCollisionGeometriesForBody(
+        plant_.GetBodyByName("right_wall"))[0];
+    GeometryId front_wall_id = plant_.GetCollisionGeometriesForBody(
+        plant_.GetBodyByName("front_wall"))[0];
+    GeometryId back_wall_id = plant_.GetCollisionGeometriesForBody(
+        plant_.GetBodyByName("back_wall"))[0];
 
     if (geometry_id_A_ == left_wall_id || geometry_id_B_ == left_wall_id) {
       std::cout << "set nhat_BA_W for left_wall" << std::endl;
       nhat_BA_W = {0, -1, 0};
-    } else if (geometry_id_A_ == right_wall_id || geometry_id_B_ == right_wall_id) {
+    } else if (geometry_id_A_ == right_wall_id ||
+               geometry_id_B_ == right_wall_id) {
       std::cout << "set nhat_BA_W for right_wall" << std::endl;
       nhat_BA_W = {0, 1, 0};
-    } else if (geometry_id_A_ == front_wall_id || geometry_id_B_ == front_wall_id) {
+    } else if (geometry_id_A_ == front_wall_id ||
+               geometry_id_B_ == front_wall_id) {
       std::cout << "set nhat_BA_W for front_wall" << std::endl;
       nhat_BA_W = {-1, 0, 0};
-    } else if (geometry_id_A_ == back_wall_id || geometry_id_B_ == back_wall_id) {
+    } else if (geometry_id_A_ == back_wall_id ||
+               geometry_id_B_ == back_wall_id) {
       std::cout << "set nhat_BA_W for back_wall" << std::endl;
       nhat_BA_W = {1, 0, 0};
     } else {
       throw std::runtime_error("GeomGeomCollider: nhat_BA_W is NaN");
     }
-
   }
-
 
   int n_cols = (wrt == JacobianWrtVariable::kV) ? plant_.num_velocities()
                                                 : plant_.num_positions();
@@ -254,7 +257,8 @@ std::pair<T, MatrixX<T>> GeomGeomCollider<T>::DoEval(
     force_basis = Eigen::MatrixXd::Zero(3, 3);
     force_basis.resize(3, 3);
     // First row is the contact normal, projected to the plane
-    force_basis.row(0) = nhat_BA_W - planar_normal*planar_normal.dot(nhat_BA_W);
+    force_basis.row(0) =
+        nhat_BA_W - planar_normal * planar_normal.dot(nhat_BA_W);
     force_basis.row(0).normalize();
 
     // Second row is the cross product between contact normal and planar normal
@@ -286,14 +290,14 @@ std::pair<bool, bool> GeomGeomCollider<T>::IsSphereAndMesh(
   bool is_A_mesh = (type_A == "Mesh");
   bool is_B_mesh = (type_B == "Mesh");
 
-  bool is_sphere_and_mesh = (is_A_sphere && is_B_mesh) ||
-                            (is_B_sphere && is_A_mesh);
+  bool is_sphere_and_mesh =
+      (is_A_sphere && is_B_mesh) || (is_B_sphere && is_A_mesh);
   return std::make_pair(is_sphere_and_mesh, is_A_mesh);
 }
 
 template <typename T>
 std::tuple<Vector3d, Vector3d, Vector3d, T>
-  GeomGeomCollider<T>::DoSphereMeshCollision(
+GeomGeomCollider<T>::DoSphereMeshCollision(
     const drake::systems::Context<T>& context, const bool& is_A_mesh) const {
   const auto& query_port = plant_.get_geometry_query_input_port();
   const auto& query_object =
@@ -304,42 +308,41 @@ std::tuple<Vector3d, Vector3d, Vector3d, T>
   GeometryId geometry_id_sphere = is_A_mesh ? geometry_id_B_ : geometry_id_A_;
 
   const auto* sphere = dynamic_cast<const drake::geometry::Sphere*>(
-    &inspector.GetShape(geometry_id_sphere));
+      &inspector.GetShape(geometry_id_sphere));
   T sphere_radius = sphere->radius();
 
   // Get the pose of the sphere in its own frame.
-  auto sphere_pose_in_sphere = inspector.GetPoseInFrame(
-    geometry_id_sphere).template cast<T>();
+  auto sphere_pose_in_sphere =
+      inspector.GetPoseInFrame(geometry_id_sphere).template cast<T>();
   // Convert to world frame.
   auto sphere_frame_id = inspector.GetFrameId(geometry_id_sphere);
   auto X_WS = plant_.EvalBodyPoseInWorld(
-    context, *plant_.GetBodyFromFrameId(sphere_frame_id));
+      context, *plant_.GetBodyFromFrameId(sphere_frame_id));
   auto sphere_pose = X_WS * sphere_pose_in_sphere;
 
   Vector3d sphere_center = sphere_pose.translation();
   GeometrySet geometry_set_with_mesh;
   geometry_set_with_mesh.Add(geometry_id_mesh);
   const SignedDistanceToPoint<T> signed_distance_to_point =
-    query_object.ComputeSignedDistanceGeometryToPoint(
-      sphere_center, geometry_set_with_mesh)[0];
+      query_object.ComputeSignedDistanceGeometryToPoint(
+          sphere_center, geometry_set_with_mesh)[0];
   // Set the values.
   Vector3d p_ACa, p_BCb;
   T distance = signed_distance_to_point.distance - sphere_radius;
   Vector3d nhat_BA_W = signed_distance_to_point.grad_W.normalized();
-  //std::cout << nhat_BA_W.transpose() << std::endl;
+  // std::cout << nhat_BA_W.transpose() << std::endl;
   if (is_A_mesh) {
     nhat_BA_W = -nhat_BA_W;
 
     p_ACa = inspector.GetPoseInFrame(geometry_id_A_).template cast<T>() *
-          signed_distance_to_point.p_GN;
+            signed_distance_to_point.p_GN;
     p_BCb = sphere_pose_in_sphere.template cast<T>() *
-      (-1 * sphere_radius * nhat_BA_W);
-  }
-  else {
+            (-1 * sphere_radius * nhat_BA_W);
+  } else {
     p_BCb = inspector.GetPoseInFrame(geometry_id_B_).template cast<T>() *
-          signed_distance_to_point.p_GN;
+            signed_distance_to_point.p_GN;
     p_ACa = sphere_pose_in_sphere.template cast<T>() *
-      (-1 * sphere_radius * nhat_BA_W);
+            (-1 * sphere_radius * nhat_BA_W);
   }
 
   return std::make_tuple(p_ACa, p_BCb, nhat_BA_W, distance);

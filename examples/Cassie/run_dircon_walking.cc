@@ -1,7 +1,7 @@
 #include <algorithm>
-#include <iostream>
 #include <chrono>
 #include <fstream>
+#include <iostream>
 #include <memory>
 #include <string>
 
@@ -467,7 +467,8 @@ void DoMain(double duration, double stride_length, double ground_incline,
       double s = 1;  // scale everything together
       // Dynamic constraints
       options_list[i].setDynConstraintScaling(
-          {pelvis_qw_idx, pelvis_qx_idx, pelvis_qy_idx, pelvis_qz_idx}, s * 1.0 / 30.0);
+          {pelvis_qw_idx, pelvis_qx_idx, pelvis_qy_idx, pelvis_qz_idx},
+          s * 1.0 / 30.0);
       options_list[i].setDynConstraintScaling(
           {pelvis_x_idx, pelvis_y_idx, pelvis_z_idx, hip_roll_left_idx,
            hip_roll_right_idx, hip_yaw_left_idx, hip_yaw_right_idx,
@@ -544,8 +545,8 @@ void DoMain(double duration, double stride_length, double ground_incline,
   //                           "../snopt.out");
   prog.SetSolverOption(drake::solvers::SnoptSolver::id(),
                        "Major iterations limit", max_iter);
-  prog.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                       "Iterations limit", 100000);  // QP subproblems
+  prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Iterations limit",
+                       100000);  // QP subproblems
   prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Verify level", 0);
   prog.SetSolverOption(
       drake::solvers::SnoptSolver::id(), "Scale option",
@@ -579,7 +580,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
   // x position constraint
   prog.AddBoundingBoxConstraint(0, 0, x0(pos_map.at("pelvis_x")));
   prog.AddBoundingBoxConstraint(stride_length, stride_length,
-                                    xf(pos_map.at("pelvis_x")));
+                                xf(pos_map.at("pelvis_x")));
 
   // height constraint
   //  prog.AddLinearConstraint(x0(pos_map.at("pelvis_z")) == 1);
@@ -602,31 +603,31 @@ void DoMain(double duration, double stride_length, double ground_incline,
 
   // Floating base periodicity
   prog.AddLinearConstraint(x0(pos_map.at("pelvis_qw")) ==
-                               xf(pos_map.at("pelvis_qw")));
+                           xf(pos_map.at("pelvis_qw")));
   prog.AddLinearConstraint(x0(pos_map.at("pelvis_qx")) ==
-                               -xf(pos_map.at("pelvis_qx")));
+                           -xf(pos_map.at("pelvis_qx")));
   prog.AddLinearConstraint(x0(pos_map.at("pelvis_qy")) ==
-                               xf(pos_map.at("pelvis_qy")));
+                           xf(pos_map.at("pelvis_qy")));
   prog.AddLinearConstraint(x0(pos_map.at("pelvis_qz")) ==
-                               -xf(pos_map.at("pelvis_qz")));
+                           -xf(pos_map.at("pelvis_qz")));
   prog.AddLinearConstraint(x0(pos_map.at("pelvis_y")) ==
-                               -xf(pos_map.at("pelvis_y")));
+                           -xf(pos_map.at("pelvis_y")));
   if (ground_incline == 0) {
     prog.AddLinearConstraint(x0(pos_map.at("pelvis_z")) ==
-                                 xf(pos_map.at("pelvis_z")));
+                             xf(pos_map.at("pelvis_z")));
   }
   prog.AddLinearConstraint(x0(n_q + vel_map.at("pelvis_wx")) ==
-                               xf(n_q + vel_map.at("pelvis_wx")));
+                           xf(n_q + vel_map.at("pelvis_wx")));
   prog.AddLinearConstraint(x0(n_q + vel_map.at("pelvis_wy")) ==
-                               -xf(n_q + vel_map.at("pelvis_wy")));
+                           -xf(n_q + vel_map.at("pelvis_wy")));
   prog.AddLinearConstraint(x0(n_q + vel_map.at("pelvis_wz")) ==
-                               xf(n_q + vel_map.at("pelvis_wz")));
+                           xf(n_q + vel_map.at("pelvis_wz")));
   prog.AddLinearConstraint(x0(n_q + vel_map.at("pelvis_vx")) ==
-                               xf(n_q + vel_map.at("pelvis_vx")));
+                           xf(n_q + vel_map.at("pelvis_vx")));
   prog.AddLinearConstraint(x0(n_q + vel_map.at("pelvis_vy")) ==
-                               -xf(n_q + vel_map.at("pelvis_vy")));
+                           -xf(n_q + vel_map.at("pelvis_vy")));
   prog.AddLinearConstraint(x0(n_q + vel_map.at("pelvis_vz")) ==
-                               xf(n_q + vel_map.at("pelvis_vz")));
+                           xf(n_q + vel_map.at("pelvis_vz")));
 
   // The legs joint positions/velocities/torque should be mirrored between legs
   // (notice that hip yaw and roll should be asymmetric instead of symmetric.)
@@ -677,8 +678,7 @@ void DoMain(double duration, double stride_length, double ground_incline,
   for (int i = 0; i < N; i++) {
     auto ui = trajopt->input(i);
     prog.AddBoundingBoxConstraint(VectorXd::Constant(n_u, -300),
-                                             VectorXd::Constant(n_u, +300),
-                                             ui);
+                                  VectorXd::Constant(n_u, +300), ui);
   }
 
   // toe position constraint in y direction (avoid leg crossing)
@@ -833,12 +833,12 @@ void DoMain(double duration, double stride_length, double ground_incline,
       auto lambdac = trajopt->collocation_force(0, i);
       if (diff_with_force_at_collocation) {
         prog.AddCost(w_lambda_diff *
-                                (lambda0 - lambdac).dot(lambda0 - lambdac));
+                     (lambda0 - lambdac).dot(lambda0 - lambdac));
         prog.AddCost(w_lambda_diff *
-                                (lambdac - lambda1).dot(lambdac - lambda1));
+                     (lambdac - lambda1).dot(lambdac - lambda1));
       } else {
         prog.AddCost(w_lambda_diff *
-                                (lambda0 - lambda1).dot(lambda0 - lambda1));
+                     (lambda0 - lambda1).dot(lambda0 - lambda1));
       }
     }
   }
@@ -994,9 +994,8 @@ void DoMain(double duration, double stride_length, double ground_incline,
   // produces NAN value in some calculation.
   for (int i = 0; i < N; i++) {
     auto xi = trajopt->state(i);
-    if ((prog.GetInitialGuess(xi.segment<4>(pelvis_qw_idx)).norm() ==
-        0) || std::isnan(prog.GetInitialGuess(
-            xi.segment<4>(pelvis_qw_idx)).norm())) {
+    if ((prog.GetInitialGuess(xi.segment<4>(pelvis_qw_idx)).norm() == 0) ||
+        std::isnan(prog.GetInitialGuess(xi.segment<4>(pelvis_qw_idx)).norm())) {
       prog.SetInitialGuess(xi(pos_map.at("pelvis_qw")), 1);
       prog.SetInitialGuess(xi(pos_map.at("pelvis_qx")), 0);
       prog.SetInitialGuess(xi(pos_map.at("pelvis_qy")), 0);

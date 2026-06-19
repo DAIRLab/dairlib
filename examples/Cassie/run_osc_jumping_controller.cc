@@ -35,8 +35,8 @@ namespace dairlib {
 using std::map;
 using std::pair;
 using std::string;
-using std::vector;
 using std::unique_ptr;
+using std::vector;
 
 using Eigen::Matrix3d;
 using Eigen::MatrixXd;
@@ -327,29 +327,25 @@ int DoMain(int argc, char* argv[]) {
   auto right_heel_evaluator = multibody::WorldPointEvaluator(
       plant_w_spr, right_heel.first, right_heel.second, Matrix3d::Identity(),
       Vector3d::Zero(), {0, 1, 2});
-  vector<int> stance_modes = {
-      osc_jump::BALANCE, osc_jump::CROUCH, osc_jump::LAND};
+  vector<int> stance_modes = {osc_jump::BALANCE, osc_jump::CROUCH,
+                              osc_jump::LAND};
 
   osc->AddContactPoint(
       "left_toe",
       unique_ptr<multibody::WorldPointEvaluator<double>>(&left_toe_evaluator),
-      stance_modes
-  );
+      stance_modes);
   osc->AddContactPoint(
       "left_heel",
       unique_ptr<multibody::WorldPointEvaluator<double>>(&left_heel_evaluator),
-      stance_modes
-  );
+      stance_modes);
   osc->AddContactPoint(
       "right_toe",
       unique_ptr<multibody::WorldPointEvaluator<double>>(&right_toe_evaluator),
-      stance_modes
-  );
+      stance_modes);
   osc->AddContactPoint(
       "right_heel",
       unique_ptr<multibody::WorldPointEvaluator<double>>(&right_heel_evaluator),
-      stance_modes
-  );
+      stance_modes);
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant_w_spr);
 

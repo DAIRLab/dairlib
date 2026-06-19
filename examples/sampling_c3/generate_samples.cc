@@ -766,40 +766,32 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
                   candidate_state);
 
     // Check collision with all objects
+    // Query results in order of:  0) EE, 1) ground, 2-N) objects, N+1-M)
+    // walls (if included).
     bool in_collision = false;
     const auto& results =
         query_object.ComputeSignedDistanceToPoint(projected_sample_point);
 
-    // for (int i = 0; i < results.size(); i++) {
-    //     GeometryId id = results[i].id_G;  // geometry closest to point
-    //     std::string name = query_object.inspector().GetName(id);
-    //     std::cout << "Geom: " << i << ", " << name << std::endl;
-    // }
-
     // Detect samples too close to wall
-    if (sampling_c3_options.include_walls && !sampling_params.sample_on_wall) {
-      int offset = (sampling_c3_options.include_back_wall) ? 4 : 3;
-
-      for (int i = results.size() - offset; i < results.size(); i++) {
-        if (results[i].distance <=
-            sampling_params.sample_projection_clearance) {
-          in_collision = true;
-          break;
+    int offset = 0;
+    if (sampling_c3_options.include_walls) {
+      offset = (sampling_c3_options.include_back_wall) ? 4 : 3;
+      if (!sampling_params.sample_on_wall) {
+        for (int i = results.size() - offset; i < results.size(); i++) {
+          if (results[i].distance <=
+              sampling_params.sample_projection_clearance) {
+            in_collision = true;
+            break;
+          }
         }
       }
     }
 
-    for (int i = 0; i < num_objects; i++) {
-      // std::cout << results[2 + 4*i].distance << std::endl;
-      //  Only compare with body_volume
-
-      for (int j = 2 + 13 * i; j < 12 + 13 * i;
-           j++) {  // Check each convex piece, assumes 10 pieces/object
-        if (results[j].distance <=
-            sampling_params.sample_projection_clearance) {
-          in_collision = true;
-          break;
-        }
+    // Detect samples too close to object(s)
+    for (int i = 2; i < results.size() - offset; i++) {
+      if (results[i].distance <= sampling_params.sample_projection_clearance) {
+        in_collision = true;
+        break;
       }
     }
 

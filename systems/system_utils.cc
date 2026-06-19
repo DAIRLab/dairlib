@@ -25,11 +25,11 @@ void DrawAndSaveDiagramGraph(const drake::systems::Diagram<double>& diagram,
   std::regex r(" ");
   path = std::regex_replace(path, r, "\\ ");
   std::string cmd = "dot -Tsvg " + path + " -o " + path + ".svg";
-  (void) std::system(cmd.c_str());
+  (void)std::system(cmd.c_str());
 
   // Remove Graphviz string file
   cmd = "rm " + path;
-  (void) std::system(cmd.c_str());
+  (void)std::system(cmd.c_str());
 }
 
 }  // namespace dairlib

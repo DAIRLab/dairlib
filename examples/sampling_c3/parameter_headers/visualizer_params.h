@@ -1,14 +1,14 @@
 #pragma once
 
 #include <Eigen/Dense>
+
 #include "drake/common/yaml/yaml_read_archive.h"
 
 struct SamplingC3VisualizerParams {
   std::string ee_vis_model;
-  std::string object_vis_model;
   std::vector<std::string> object_vis_models;
   double visualizer_publish_rate;
-  
+
   Eigen::VectorXd camera_pose;
   Eigen::VectorXd camera_target;
 
@@ -23,7 +23,7 @@ struct SamplingC3VisualizerParams {
   bool visualize_is_c3_mode;
   bool visualize_sample_locations;
   bool visualize_sample_buffer;
-  
+
   Eigen::VectorXd is_c3_mode_color;
   Eigen::VectorXd sample_color;
 
@@ -44,7 +44,6 @@ struct SamplingC3VisualizerParams {
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(ee_vis_model));
-    a->Visit(DRAKE_NVP(object_vis_model));
     a->Visit(DRAKE_NVP(object_vis_models));
     a->Visit(DRAKE_NVP(visualizer_publish_rate));
     a->Visit(DRAKE_NVP(camera_pose));
@@ -71,5 +70,5 @@ struct SamplingC3VisualizerParams {
     a->Visit(DRAKE_NVP(c3_best_ee_color));
     a->Visit(DRAKE_NVP(df_best_object_color));
     a->Visit(DRAKE_NVP(df_best_ee_color));
-}
+  }
 };

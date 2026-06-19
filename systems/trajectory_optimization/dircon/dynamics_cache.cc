@@ -6,22 +6,22 @@ namespace dairlib {
 namespace systems {
 namespace trajectory_optimization {
 
-using drake::AutoDiffXd;
 using drake::AutoDiffVecXd;
+using drake::AutoDiffXd;
 
 inline void hash_combine(std::size_t& seed, const double& v) {
-    seed ^= std::hash<double>{}(v) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+  seed ^= std::hash<double>{}(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }
 
 inline void hash_combine(std::size_t& seed,
-    const Eigen::Ref<const Eigen::VectorXd>& v) {
+                         const Eigen::Ref<const Eigen::VectorXd>& v) {
   for (int i = 0; i < v.size(); i++) {
-    hash_combine(seed, v(i)); 
+    hash_combine(seed, v(i));
   }
 }
 
 inline void hash_combine(std::size_t& seed,
-    const Eigen::Ref<const AutoDiffVecXd>& v) {
+                         const Eigen::Ref<const AutoDiffVecXd>& v) {
   for (int i = 0; i < v.size(); i++) {
     hash_combine(seed, v(i).value());
     hash_combine(seed, v(i).derivatives());
@@ -31,14 +31,12 @@ inline void hash_combine(std::size_t& seed,
 template <typename T>
 DynamicsCache<T>::DynamicsCache(
     const multibody::KinematicEvaluatorSet<T>& evaluators, int max_size)
-  : evaluators_(evaluators),
-    max_size_(max_size) {}
+    : evaluators_(evaluators), max_size_(max_size) {}
 
 template <typename T>
 drake::VectorX<T> DynamicsCache<T>::CalcTimeDerivativesWithForce(
-    drake::systems::Context<T>* context,
-    const drake::VectorX<T>& forces) {
-  CacheKey<T> key{evaluators_.plant().GetPositionsAndVelocities(*context), 
+    drake::systems::Context<T>* context, const drake::VectorX<T>& forces) {
+  CacheKey<T> key{evaluators_.plant().GetPositionsAndVelocities(*context),
                   evaluators_.plant().get_actuation_input_port().Eval(*context),
                   forces};
   auto it = map_.find(key);
@@ -80,17 +78,16 @@ std::size_t CacheHasher<T>::operator()(const CacheKey<T>& key) const {
 
 template <>
 bool CacheComparer<double>::operator()(const CacheKey<double>& a,
-    const CacheKey<double>& b) const {
-  return (a.state == b.state) && (a.forces == b.forces) &&
-      (a.input == b.input);
+                                       const CacheKey<double>& b) const {
+  return (a.state == b.state) && (a.forces == b.forces) && (a.input == b.input);
 }
 
 template <>
-bool CacheComparer<AutoDiffXd>::operator()(const CacheKey<AutoDiffXd>& a,
-    const CacheKey<AutoDiffXd>& b) const {
+bool CacheComparer<AutoDiffXd>::operator()(
+    const CacheKey<AutoDiffXd>& a, const CacheKey<AutoDiffXd>& b) const {
   return AreVectorsEqual(a.state, b.state) &&
          AreVectorsEqual(a.input, b.input) &&
-        AreVectorsEqual(a.forces, b.forces);
+         AreVectorsEqual(a.forces, b.forces);
 }
 
 }  // namespace trajectory_optimization

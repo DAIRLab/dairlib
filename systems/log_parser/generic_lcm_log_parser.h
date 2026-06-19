@@ -1,13 +1,14 @@
 #pragma once
 
 #include <string>
+
+#include "systems/primitives/vector_aggregator.h"
+
 #include "drake/lcm/drake_lcm_log.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_log_playback_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
-
-#include "systems/primitives/vector_aggregator.h"
 
 namespace dairlib {
 namespace multibody {
@@ -60,7 +61,6 @@ void parseLcmLog(std::unique_ptr<U> system, std::string file,
   *t = output_aggregator->BuildTimestampVector();
 
   *x = output_aggregator->BuildMatrixFromVectors();
-  }
-} // multibody
-} //dairlib
-
+}
+}  // namespace multibody
+}  // namespace dairlib

@@ -33,8 +33,8 @@ enum RunningFsmState { kLeftStance, kRightStance, kLeftFlight, kRightFlight };
  * - fsm_port: current contact mode (RunningFsmState)
  * - clock_port: current clock (phase variable)
  * - impact_info_port: upcoming contact/impact event (ImpactInfoVector)
- * - contact_scheduler_port: upcoming start and end times for pelvis and foot (BasicVector)
- * trajectories
+ * - contact_scheduler_port: upcoming start and end times for pelvis and foot
+ * (BasicVector) trajectories
  * - debug_port: lcm output for predicted contact mode switches
  * (lcmt_contact_timing)
  */

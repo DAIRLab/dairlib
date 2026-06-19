@@ -15,10 +15,10 @@ using Eigen::VectorXd;
 using std::string;
 
 using dairlib::systems::OutputVector;
-using drake::multibody::RigidBodyFrame;
 using drake::multibody::Frame;
 using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
+using drake::multibody::RigidBodyFrame;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::DiscreteUpdateEvent;

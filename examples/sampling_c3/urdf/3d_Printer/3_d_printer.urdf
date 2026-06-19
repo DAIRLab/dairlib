@@ -1,60 +1,653 @@
 <?xml version="1.0"?>
-<robot name="corexy_printer">
+<robot name="sovol_sv08_simple">
 
+  <!--
+    Base:
+
+    Overall printer size from online specs:
+    X = 0.55 m
+    Y = 0.537 m
+    Z = 0.575 m
+  -->
   <link name="base_link">
+    <inertial>
+      <origin xyz="0.175 0.175 -0.05" rpy="0 0 0"/>
+      <mass value="15.0"/>
+      <inertia
+        ixx="0.50" ixy="0.0" ixz="0.0"
+        iyy="0.50" iyz="0.0"
+        izz="0.50"/>
+    </inertial>
+
     <visual>
+      <origin xyz="0.175 0.175 -0.05" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="examples/sampling_c3/urdf/3d_Printer/stationary_assembly.obj"/>
+        <box size="0.55 0.537 0.0596"/>
       </geometry>
+      <material name="dark_gray">
+        <color rgba="0.25 0.25 0.25 1.0"/>
+      </material>
+    </visual>
+
+    <collision>
+      <origin xyz="0.175 0.175 -0.05" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.55 0.537 0.0798"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!--
+    Posts:
+
+    Post height:
+    total printer height - base height
+    = 0.575 - 0.10
+    = 0.475 m
+  -->
+  <link name="front_left_post">
+    <inertial>
+      <origin xyz="0.175 0.175 0.1375" rpy="0 0 0"/>
+      <mass value="2.0"/>
+      <inertia
+        ixx="0.02" ixy="0.0" ixz="0.0"
+        iyy="0.02" iyz="0.0"
+        izz="0.02"/>
+    </inertial>
+    <visual>
+      <origin xyz="0.175 0.175 0.1375" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.04 0.04 0.475"/>
+      </geometry>
+      <material name="silver">
+        <color rgba="0.7 0.7 0.7 1.0"/>
+      </material>
     </visual>
   </link>
+
+  <joint name="base_to_front_left_post" type="fixed">
+    <parent link="base_link"/>
+    <child link="front_left_post"/>
+    <!--
+      Base half sizes:
+      x half = 0.55 / 2 = 0.275
+      y half = 0.537 / 2 = 0.2685
+
+      Post thickness = 0.04, so half thickness = 0.02
+
+      To place post just inside edge:
+      x = 0.275 - 0.02 = 0.255
+      y = 0.2685 - 0.02 = 0.2485
+
+      z = 0.10 because posts start on top of base
+    -->
+    <origin xyz="0.255 0.2485 0.0798" rpy="0 0 0"/>
+  </joint>
+
+  <link name="front_right_post">
+    <inertial>
+      <origin xyz="0.175 0.175 0.1375" rpy="0 0 0"/>
+      <mass value="2.0"/>
+      <inertia
+        ixx="0.02" ixy="0.0" ixz="0.0"
+        iyy="0.02" iyz="0.0"
+        izz="0.02"/>
+    </inertial>
+    <visual>
+      <origin xyz="0.175 0.175 0.1375" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.04 0.04 0.475"/>
+      </geometry>
+      <material name="silver">
+        <color rgba="0.7 0.7 0.7 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="base_to_front_right_post" type="fixed">
+    <parent link="base_link"/>
+    <child link="front_right_post"/>
+    <origin xyz="0.255 -0.2485 0.0798" rpy="0 0 0"/>
+  </joint>
+
+  <link name="rear_left_post">
+    <inertial>
+      <origin xyz="0.175 0.175 0.1375" rpy="0 0 0"/>
+      <mass value="2.0"/>
+      <inertia
+        ixx="0.02" ixy="0.0" ixz="0.0"
+        iyy="0.02" iyz="0.0"
+        izz="0.02"/>
+    </inertial>
+    <visual>
+      <origin xyz="0.175 0.175 0.1375" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.04 0.04 0.475"/>
+      </geometry>
+      <material name="silver">
+        <color rgba="0.7 0.7 0.7 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="base_to_rear_left_post" type="fixed">
+    <parent link="base_link"/>
+    <child link="rear_left_post"/>
+    <origin xyz="-0.255 0.2485 0.0798" rpy="0 0 0"/>
+  </joint>
+
+  <link name="rear_right_post">
+    <inertial>
+      <origin xyz="0.175 0.175 0.1375" rpy="0 0 0"/>
+      <mass value="2.0"/>
+      <inertia
+        ixx="0.02" ixy="0.0" ixz="0.0"
+        iyy="0.02" iyz="0.0"
+        izz="0.02"/>
+    </inertial>
+    <visual>
+      <origin xyz="0.175 0.175 0.1375" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.04 0.04 0.475"/>
+      </geometry>
+      <material name="silver">
+        <color rgba="0.7 0.7 0.7 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="base_to_rear_right_post" type="fixed">
+    <parent link="base_link"/>
+    <child link="rear_right_post"/>
+    <origin xyz="-0.255 -0.2485 0.0798" rpy="0 0 0"/>
+  </joint>
+
+  <!--
+    Top rails:
+    4 horizontal bars.
+
+    Total printer height = 0.575
+    Top rail thickness = 0.04
+    So rail center z = 0.575 - 0.02 = 0.555
+  -->
+  <link name="left_top_rail">
+    <inertial>
+      <origin xyz="0.175 0.175 -0.1" rpy="0 0 0"/>
+      <mass value="1.0"/>
+      <inertia
+        ixx="0.02" ixy="0.0" ixz="0.0"
+        iyy="0.02" iyz="0.0"
+        izz="0.02"/>
+    </inertial>
+    <visual>
+      <origin xyz="0.175 0.175 -0.1" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.04 0.537 0.04"/>
+      </geometry>
+      <material name="silver">
+        <color rgba="0.7 0.7 0.7 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="base_to_left_top_rail" type="fixed">
+    <parent link="base_link"/>
+    <child link="left_top_rail"/>
+    <!--
+      Left/right rail x position matches post centers:
+      x = +/-0.255
+
+      Rail center is at top frame height:
+      z = 0.555
+    -->
+    <origin xyz="0.255 0 0.5348" rpy="0 0 0"/>
+  </joint>
+
+  <link name="right_top_rail">
+    <inertial>
+      <origin xyz="0.175 0.175 -0.1" rpy="0 0 0"/>
+      <mass value="1.0"/>
+      <inertia
+        ixx="0.02" ixy="0.0" ixz="0.0"
+        iyy="0.02" iyz="0.0"
+        izz="0.02"/>
+    </inertial>
+    <visual>
+      <origin xyz="0.175 0.175 -0.1" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.04 0.537 0.04"/>
+      </geometry>
+      <material name="silver">
+        <color rgba="0.7 0.7 0.7 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="base_to_right_top_rail" type="fixed">
+    <parent link="base_link"/>
+    <child link="right_top_rail"/>
+    <origin xyz="-0.255 0 0.5348" rpy="0 0 0"/>
+  </joint>
+
+  <link name="front_top_rail">
+    <inertial>
+      <origin xyz="0.175 0.175 -0.1" rpy="0 0 0"/>
+      <mass value="1.0"/>
+      <inertia
+        ixx="0.02" ixy="0.0" ixz="0.0"
+        iyy="0.02" iyz="0.0"
+        izz="0.02"/>
+    </inertial>
+    <visual>
+      <origin xyz="0.175 0.175 -0.1" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.55 0.04 0.04"/>
+      </geometry>
+      <material name="silver">
+        <color rgba="0.7 0.7 0.7 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="base_to_front_top_rail" type="fixed">
+    <parent link="base_link"/>
+    <child link="front_top_rail"/>
+    <origin xyz="0 0.2485 0.5348" rpy="0 0 0"/>
+  </joint>
+
+  <link name="rear_top_rail">
+    <inertial>
+      <origin xyz="0.175 0.175 -0.1" rpy="0 0 0"/>
+      <mass value="1.0"/>
+      <inertia
+        ixx="0.02" ixy="0.0" ixz="0.0"
+        iyy="0.02" iyz="0.0"
+        izz="0.02"/>
+    </inertial>
+    <visual>
+      <origin xyz="0.175 0.175 -0.1" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.55 0.04 0.04"/>
+      </geometry>
+      <material name="silver">
+        <color rgba="0.7 0.7 0.7 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="base_to_rear_top_rail" type="fixed">
+    <parent link="base_link"/>
+    <child link="rear_top_rail"/>
+    <origin xyz="0 -0.2485 0.5348" rpy="0 0 0"/>
+  </joint>
+
+
+  <link name="build_plate">
+    <inertial>
+      <origin xyz="0.175 0.175 -0.1" rpy="0 0 0"/>
+      <mass value="1.0"/>
+      <inertia
+        ixx="0.02" ixy="0.0" ixz="0.0"
+        iyy="0.02" iyz="0.0"
+        izz="0.02"/>
+    </inertial>
+    <visual>
+      <origin xyz="0.175 0.175 -0.1" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.355 0.355 0.0202"/>
+      </geometry>
+      <material name="black">
+        <color rgba="0.15 0.15 0.15 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.175 0.175 -0.1" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.355 0.355 0.0202"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="base_to_build_plate" type="fixed">
+    <parent link="base_link"/>
+    <child link="build_plate"/>
+    <origin xyz="0 -0.0856 0.0899" rpy="0 0 0"/>
+  </joint>
+
+  <!--
+    Moving Z gantry frame:
+    This is the flat gantry assembly that moves up/down.
+
+    Location of inner face of posts:
+    x = 0.55 / 2 - 0.04 = 0.235
+    y = 0.537 / 2 - 0.04 = 0.2285
+
+    Beam thickness = 0.03, so half thickness = 0.015
+
+    To place frame just inside inner face of posts:
+    x = 0.235 - 0.015 = 0.22
+    y = 0.2285 - 0.015 = 0.2135
+
+    z = 0.10 because posts start on top of base
+  -->
 
   <link name="z_gantry">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="3.0"/>
+      <inertia
+        ixx="0.05" ixy="0.0" ixz="0.0"
+        iyy="0.05" iyz="0.0"
+        izz="0.05"/>
+    </inertial>
+
+    <!-- Left beam running in y 
+    
+    Length of beam: 
+    0.537 - 2*0.04 = 0.457 m
+    -->
     <visual>
+      <origin xyz="-0.225 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="examples/sampling_c3/urdf/3d_Printer/z_gantry_assembly.obj"/>
+        <box size="0.02 0.457 0.0265"/>
       </geometry>
+      <material name="blue">
+        <color rgba="0.2 0.4 0.9 1.0"/>
+      </material>
+    </visual>
+
+    <!-- Right beam running in y -->
+    <visual>
+      <origin xyz="0.225 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.02 0.457 0.0265"/>
+      </geometry>
+      <material name="blue">
+        <color rgba="0.2 0.4 0.9 1.0"/>
+      </material>
+    </visual>
+
+    <!-- Rear crossbar running in x 
+    Length of beam:
+    0.55 - 2*0.04 - 2*0.015 = 0.44 m
+    -->
+    <visual>
+      <origin xyz="0 0.2185 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.44 0.02 0.0265"/>
+      </geometry>
+      <material name="blue">
+        <color rgba="0.2 0.4 0.9 1.0"/>
+      </material>
     </visual>
   </link>
 
-  <joint name="z_axis" type="prismatic">
+  <joint name="z_axis_joint" type="prismatic">
     <parent link="base_link"/>
     <child link="z_gantry"/>
-    <origin xyz="0.0 0.01983 0.038" rpy="0.0 0.0 0.0"/>
+    <!-- Base (0.10) + Z gantry half height (0.15) + X carriage height (0.44) -->
+    <origin xyz="0.175 0.175 0.0474" rpy="0 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit lower="0" upper="0.35" effort="1000" velocity="0.2"/>
+    <limit lower="0.0" upper="0.345" effort="100" velocity="0.5"/>
   </joint>
 
-  <link name="xy_gantry">
+  <!--
+    Y-moving beam:
+    This beam rides on the Z gantry and moves in the y direction.
+
+    One horizontal bar running across x.
+  -->
+  <link name="y_beam">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="2.0"/>
+      <inertia
+        ixx="0.03" ixy="0.0" ixz="0.0"
+        iyy="0.03" iyz="0.0"
+        izz="0.03"/>
+    </inertial>
+
     <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="examples/sampling_c3/urdf/3d_Printer/y_gantry_assembly.obj"/>
+        <!--
+          Beam length from origin to inner face of z gantry:
+          x = 0.235 - 0.015 - 0.015 = 0.205
+
+          For total length:
+          0.205 * 2 = 0.41 m
+        -->
+        <box size="0.43 0.028 0.02"/>
       </geometry>
+      <material name="red">
+        <color rgba="0.9 0.2 0.2 1.0"/>
+      </material>
     </visual>
   </link>
 
-  <joint name="y_axis" type="prismatic">
-    <parent link="z_gantry"/>
-    <child link="xy_gantry"/>
-    <origin xyz="0.0 -0.1512 0.0" rpy="0.0 0.0 0.0"/>
-    <axis xyz="0 1 0"/>
-    <limit lower="0" upper="0.35" effort="500" velocity="1.0"/>
+  <joint name="y_axis_joint" type="prismatic">
+  <parent link="z_gantry"/>
+  <child link="y_beam"/>
+  <origin xyz="0 -0.038875 0" rpy="0 0 0"/>
+  <axis xyz="0 1 0"/>
+  <!--
+    Build volume in y is 0.35 m, so half-range is 0.175 m.
+  -->
+  <limit lower="-0.175" upper="0.175" effort="100" velocity="0.5"/>
   </joint>
+  
+  <!--
+    X carriage:
+    Block representing the printhead carriage/toolhead.
+     It rides on the y_beam and moves in the x direction.
+  -->
+  <link name="x_carriage">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.0"/>
+      <inertia
+        ixx="0.01" ixy="0.0" ixz="0.0"
+        iyy="0.01" iyz="0.0"
+        izz="0.01"/>
+    </inertial>
 
-  <link name="toolhead">
     <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="examples/sampling_c3/urdf/3d_Printer/toolhead_assembly.obj"/>
+        <!--
+          TODO
+          From AliExpress.. will have to check offset
+        -->
+        <box size="0.080 0.11 0.1092"/>
       </geometry>
+      <material name="green">
+        <color rgba="0.2 0.8 0.2 1.0"/>
+      </material>
     </visual>
   </link>
 
-  <joint name="x_axis" type="prismatic">
-    <parent link="xy_gantry"/>
-    <child link="toolhead"/>
-    <origin xyz="-0.3522 -0.01983 -0.3528" rpy="0.0 0.0 0.0"/>
-    <axis xyz="1 0 0"/>
-    <limit lower="0" upper="0.35" effort="500" velocity="1.0"/>
-  </joint>
+<joint name="x_axis_joint" type="prismatic">
+  <parent link="y_beam"/>
+  <child link="x_carriage"/>
+  <origin xyz="0 -0.04068 0.001371" rpy="0 0 0"/>
+  <axis xyz="1 0 0"/>
+  <!--
+    Build volume in x is 0.35 m, so half-range is 0.175 m.
+  -->
+  <limit lower="-0.175" upper="0.175" effort="100" velocity="0.5"/>
+</joint>
+  
+  <!--
+    Print volume marker:
+    Printable dimensions are:
+    x = 0.35
+    y = 0.35
+    z = 0.345
 
+    Top of print volume:
+    0.10 + 0.345 = 0.445
+
+    Half dimensions:
+    x half = 0.175
+    y half = 0.175
+    z half = 0.345 / 2 = 0.1725
+
+    Marker bar thickness = 0.005
+  -->
+  <link name="print_volume_marker">
+    <inertial>
+      <origin xyz="0.175 0.175 0.0725" rpy="0 0 0"/>
+      <mass value="0.5"/>
+      <inertia
+        ixx="0.01" ixy="0.0" ixz="0.0"
+        iyy="0.01" iyz="0.0"
+        izz="0.01"/>
+    </inertial>
+
+    <!-- Bottom front edge -->
+    <visual>
+      <origin xyz="0 0.175 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.35 0.005 0.005"/>
+      </geometry>
+      <material name="orange">
+        <color rgba="1.0 0.5 0.0 1.0"/>
+      </material>
+    </visual>
+
+    <!-- Bottom rear edge -->
+    <visual>
+      <origin xyz="0 -0.175 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.35 0.005 0.005"/>
+      </geometry>
+      <material name="orange">
+        <color rgba="1.0 0.5 0.0 1.0"/>
+      </material>
+    </visual>
+
+    <!-- Bottom left edge -->
+    <visual>
+      <origin xyz="-0.175 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.005 0.35 0.005"/>
+      </geometry>
+      <material name="orange">
+        <color rgba="1.0 0.5 0.0 1.0"/>
+      </material>
+    </visual>
+
+    <!-- Bottom right edge -->
+    <visual>
+      <origin xyz="0.175 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.005 0.35 0.005"/>
+      </geometry>
+      <material name="orange">
+        <color rgba="1.0 0.5 0.0 1.0"/>
+      </material>
+    </visual>
+
+    <!-- Top front edge -->
+    <visual>
+      <origin xyz="0 0.175 0.345" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.35 0.005 0.005"/>
+      </geometry>
+      <material name="orange">
+        <color rgba="1.0 0.5 0.0 1.0"/>
+      </material>
+    </visual>
+
+    <!-- Top rear edge -->
+    <visual>
+      <origin xyz="0 -0.175 0.345" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.35 0.005 0.005"/>
+      </geometry>
+      <material name="orange">
+        <color rgba="1.0 0.5 0.0 1.0"/>
+      </material>
+    </visual>
+
+    <!-- Top left edge -->
+    <visual>
+      <origin xyz="-0.175 0 0.345" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.005 0.35 0.005"/>
+      </geometry>
+      <material name="orange">
+        <color rgba="1.0 0.5 0.0 1.0"/>
+      </material>
+    </visual>
+
+    <!-- Top right edge -->
+    <visual>
+      <origin xyz="0.175 0 0.345" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.005 0.35 0.005"/>
+      </geometry>
+      <material name="orange">
+        <color rgba="1.0 0.5 0.0 1.0"/>
+      </material>
+    </visual>
+
+    <!-- Front left vertical -->
+    <visual>
+      <origin xyz="-0.175 0.175 0.1725" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.005 0.005 0.345"/>
+      </geometry>
+      <material name="orange">
+        <color rgba="1.0 0.5 0.0 1.0"/>
+      </material>
+    </visual>
+
+    <!-- Front right vertical -->
+    <visual>
+      <origin xyz="0.175 0.175 0.1725" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.005 0.005 0.345"/>
+      </geometry>
+      <material name="orange">
+        <color rgba="1.0 0.5 0.0 1.0"/>
+      </material>
+    </visual>
+
+    <!-- Rear left vertical -->
+    <visual>
+      <origin xyz="-0.175 -0.175 0.1725" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.005 0.005 0.345"/>
+      </geometry>
+      <material name="orange">
+        <color rgba="1.0 0.5 0.0 1.0"/>
+      </material>
+    </visual>
+
+    <!-- Rear right vertical -->
+    <visual>
+      <origin xyz="0.175 -0.175 0.1725" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.005 0.005 0.345"/>
+      </geometry>
+      <material name="orange">
+        <color rgba="1.0 0.5 0.0 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="base_to_print_volume_marker" type="fixed">
+    <parent link="base_link"/>
+    <child link="print_volume_marker"/>
+
+    <!--
+      Marker link origin is placed at the bottom center of the print volume.
+
+      Bottom of volume starts at top of build plate:
+      z = 0.10
+    -->
+    <origin xyz="0.175 0.0894 0.0" rpy="0 0 0"/>
+  </joint>
+  
 </robot>

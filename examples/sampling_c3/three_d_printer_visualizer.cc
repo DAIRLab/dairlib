@@ -39,6 +39,9 @@
 #include "drake/systems/primitives/multiplexer.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
 #include "drake/common/text_logging.h"
+#include <filesystem>
+#include <iostream>
+#include <string>
 
 namespace dairlib {
 
@@ -68,40 +71,104 @@ using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 
+SamplingC3ControllerParams controller_params;
+
 DEFINE_string(demo_type, "visualize", "Whether to run the visualizer or the sim. Options are 'visualizer' and 'simulator' and 'hardware'");
-DEFINE_string(demo_name, "jacktoy",
+DEFINE_string(demo_name, "three_d_printer",
               "Name for the demo, used when building filepaths for output.");
+
+
+namespace fs = std::filesystem;
+
+namespace {
+
+// Print + resolve path safely
+inline std::string ResolveAndPrintPath(const std::string& path) {
+  fs::path p(path);
+
+  std::cout << "\n[debug] YAML path:\n";
+  std::cout << "  input  = " << path << "\n";
+  std::cout << "  abs    = " << fs::absolute(p) << "\n";
+  std::cout << "  exists = " << fs::exists(p) << "\n";
+
+  if (!fs::exists(p)) {
+    throw std::runtime_error("Missing YAML file: " + path);
+  }
+
+  return p.string();
+}
+
+// Generic YAML loader with tracing
+template <typename T>
+T LoadYamlDebug(const std::string& path) {
+  std::cout << "\n[debug] Loading YAML into type: " << typeid(T).name() << "\n";
+  std::cout << "[debug] path = " << path << std::endl;
+
+  auto resolved = ResolveAndPrintPath(path);
+
+  std::cout << "[debug] parsing...\n";
+  T obj = drake::yaml::LoadYamlFile<T>(resolved);
+  std::cout << "[debug] parse complete\n";
+
+  return obj;
+}
+
+} // namespace
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  // Load parameters.
-  std::string controller_params_path =
-      "examples/sampling_c3/" + FLAGS_demo_name +
-      "/parameters/sampling_c3_controller_params.yaml";
-  SamplingC3ControllerParams controller_params =
-      drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
-          controller_params_path);
-  SamplingC3VisualizerParams vis_params =
-      drake::yaml::LoadYamlFile<SamplingC3VisualizerParams>(
-          controller_params.vis_params_file);
-  SamplingC3Options sampling_c3_options = controller_params.sampling_c3_options;
-  SamplingParams sampling_params = controller_params.sampling_params;
-  std::string lcm_channels_file;
 
-  if (FLAGS_demo_type == "visualize") {
-      lcm_channels_file = controller_params.lcm_channels_visualize_file;
-  } else if (FLAGS_demo_type == "simulation") {
-      lcm_channels_file = controller_params.lcm_channels_simulation_file; 
-  } else if (FLAGS_demo_type == "hardware") {
-      lcm_channels_file = controller_params.lcm_channels_hardware_file;
-  } else {
-  throw std::runtime_error(
-      "Invalid demo_type: " + FLAGS_demo_type +
-      ". Must be 'visualize', 'simulation', or 'hardware'.");
+std::cout << "\n==============================\n";
+std::cout << "[debug] ENTERING PARAM LOADING\n";
+std::cout << "cwd = " << std::filesystem::current_path() << "\n";
+std::cout << "demo_name = " << FLAGS_demo_name << "\n";
+std::cout << "demo_type = " << FLAGS_demo_type << "\n";
+std::cout << "==============================\n\n";
+
+// 1. Controller params (root config)
+std::string controller_params_path =
+    "examples/sampling_c3/" + FLAGS_demo_name +
+    "/parameters/sampling_c3_controller_params.yaml";
+
+std::cout << "[debug] controller_params_path = "
+          << controller_params_path << std::endl;
+
+auto controller_params =
+    LoadYamlDebug<SamplingC3ControllerParams>(controller_params_path);
+
+// 2. Visualizer params
+auto vis_params =
+    LoadYamlDebug<SamplingC3VisualizerParams>(
+        controller_params.vis_params_file);
+
+// 3. Sampling configs
+SamplingC3Options sampling_c3_options =
+    controller_params.sampling_c3_options;
+
+SamplingParams sampling_params =
+    controller_params.sampling_params;
+// 4. LCM channels selection (string switch, NOT YAML struct yet)
+std::string lcm_channels_file;
+
+std::cout << "\n[debug] selecting LCM channels file...\n";
+
+if (FLAGS_demo_type == "visualize") {
+  lcm_channels_file = controller_params.lcm_channels_visualize_file;
+} else if (FLAGS_demo_type == "simulation") {
+  lcm_channels_file = controller_params.lcm_channels_simulation_file;
+} else if (FLAGS_demo_type == "hardware") {
+  lcm_channels_file = controller_params.lcm_channels_hardware_file;
+} else {
+  throw std::runtime_error("Invalid demo_type: " + FLAGS_demo_type);
 }
-  SamplingC3LcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(lcm_channels_file);
+
+std::cout << "[debug] selected lcm_channels_file = "
+          << lcm_channels_file << std::endl;
+
+// 5. Now load LCM channel struct
+auto lcm_channel_params =
+    LoadYamlDebug<SamplingC3LcmChannels>(lcm_channels_file);
 
   drake::systems::DiagramBuilder<double> builder;
 
@@ -151,7 +218,7 @@ std::cout << "base_name = "
   // std::this_thread::sleep_for(std::chrono::seconds(15));
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
-  auto franka_state_receiver =
+  auto three_d_printer_state_receiver =
       builder.AddSystem<RobotOutputReceiver>(plant, franka_index);
 
   // Duplicating object state reciever for each object
@@ -161,12 +228,12 @@ std::cout << "base_name = "
         builder.AddSystem<ObjectStateReceiver>(plant, obj_index));
   }
 
-  auto franka_passthrough = builder.AddSystem<SubvectorPassThrough>(
-      franka_state_receiver->get_output_port(0).size(), 0,
+  auto three_d_printer_passthrough = builder.AddSystem<SubvectorPassThrough>(
+      three_d_printer_state_receiver->get_output_port(0).size(), 0,
       plant.num_positions(franka_index));
   auto robot_time_passthrough = builder.AddSystem<SubvectorPassThrough>(
-      franka_state_receiver->get_output_port(0).size(),
-      franka_state_receiver->get_output_port(0).size() - 1, 1);
+      three_d_printer_state_receiver->get_output_port(0).size(),
+      three_d_printer_state_receiver->get_output_port(0).size() - 1, 1);
 
   // Duplicating passthrough for each object
   std::vector<SubvectorPassThrough<double>*> tray_passthroughs;
@@ -190,7 +257,7 @@ std::cout << "base_name = "
           controller_params.object_body_name, false,
           controller_params.base_names);
 
-  builder.Connect(franka_state_receiver->get_output_port(),
+  builder.Connect(three_d_printer_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
 
   std::vector<const drake::systems::InputPort<double>*> ro_model_object_inputs =
@@ -202,9 +269,9 @@ std::cout << "base_name = "
   std::cout << "After loop?" << std::endl;
 
   // LCM subscribers.
-  auto franka_state_sub =
+  auto three_d_printer_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-          lcm_channel_params.franka_state_channel, lcm));
+          lcm_channel_params.three_d_printer_state_channel, lcm));
 
   std::vector<LcmSubscriberSystem*> object_state_subs;
   for (int i = 0; i < object_state_receivers.size(); i++) {
@@ -294,13 +361,13 @@ std::cout << "base_name = "
                    sampling_c3_options.workspace_limits[1][3];  // y
     double height = sampling_c3_options.workspace_limits[2][4] -
                     sampling_c3_options.workspace_limits[2][3];  // z
-    Vector3d workspace_center = {
-        0.5 * (sampling_c3_options.workspace_limits[0][4] +
-               sampling_c3_options.workspace_limits[0][3]),
-        0.5 * (sampling_c3_options.workspace_limits[1][4] +
-               sampling_c3_options.workspace_limits[1][3]),
-        0.5 * (sampling_c3_options.workspace_limits[2][4] +
-               sampling_c3_options.workspace_limits[2][3])};
+    Vector3d workspace_center(
+    0.5 * (sampling_c3_options.workspace_limits[0][4] +
+           sampling_c3_options.workspace_limits[0][3]),
+    0.5 * (sampling_c3_options.workspace_limits[1][4] +
+           sampling_c3_options.workspace_limits[1][3]),
+    0.5 * (sampling_c3_options.workspace_limits[2][4] +
+           sampling_c3_options.workspace_limits[2][3]));
     meshcat->SetObject("c3_workspace",
                        drake::geometry::Box(width, depth, height),
                        {0, 1, 0, 0.2});
@@ -552,7 +619,7 @@ std::cout << "base_name = "
         is_c3_mode_drawer->get_input_port_trajectory());
   }
 
-  builder.Connect(franka_passthrough->get_output_port(),
+  builder.Connect(three_d_printer_passthrough->get_output_port(),
                   mux->get_input_port(0));
   for (int i = 1; i <= tray_passthroughs.size(); i++) {
     builder.Connect(tray_passthroughs.at(i - 1)->get_output_port(),
@@ -562,14 +629,14 @@ std::cout << "base_name = "
   builder.Connect(
       to_pose->get_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
-  builder.Connect(*franka_state_receiver, *franka_passthrough);
-  builder.Connect(*franka_state_receiver, *robot_time_passthrough);
+  builder.Connect(*three_d_printer_state_receiver, *three_d_printer_passthrough);
+  builder.Connect(*three_d_printer_state_receiver, *robot_time_passthrough);
 
   for (int i = 0; i < object_state_receivers.size(); i++) {
     builder.Connect(*(object_state_receivers.at(i)),
                     *(tray_passthroughs.at(i)));
   }
-  builder.Connect(*franka_state_sub, *franka_state_receiver);
+  builder.Connect(*three_d_printer_state_sub, *three_d_printer_state_receiver);
 
   for (int i = 0; i < object_state_subs.size(); i++) {
     builder.Connect(*(object_state_subs.at(i)),
@@ -584,8 +651,8 @@ std::cout << "base_name = "
   DrawAndSaveDiagramGraph(*diagram);
   auto context = diagram->CreateDefaultContext();
 
-  auto& franka_state_sub_context =
-      diagram->GetMutableSubsystemContext(*franka_state_sub, context.get());
+  auto& three_d_printer_state_sub_context =
+      diagram->GetMutableSubsystemContext(*three_d_printer_state_sub, context.get());
 
   std::vector<drake::systems::Context<double>*> object_state_sub_contexts;
   for (int i = 0; i < object_state_receivers.size(); i++) {
@@ -593,8 +660,8 @@ std::cout << "base_name = "
         *(object_state_subs.at(i)), context.get()));
   }
 
-  franka_state_receiver->InitializeSubscriberPositions(
-      plant, franka_state_sub_context);
+  three_d_printer_state_receiver->InitializeSubscriberPositions(
+      plant, three_d_printer_state_sub_context);
   for (int i = 0; i < object_state_receivers.size(); i++) {
     object_state_receivers.at(i)->InitializeSubscriberPositions(
         plant, *object_state_sub_contexts.at(i));

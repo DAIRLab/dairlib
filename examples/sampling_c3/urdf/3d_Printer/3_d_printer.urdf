@@ -311,7 +311,7 @@
   <joint name="base_to_build_plate" type="fixed">
     <parent link="base_link"/>
     <child link="build_plate"/>
-    <origin xyz="0 -0.0856 0.0899" rpy="0 0 0"/>
+    <origin xyz="0 0 0.0899" rpy="0 0 0"/>
   </joint>
 
   <!--
@@ -428,12 +428,12 @@
   <joint name="y_axis_joint" type="prismatic">
   <parent link="z_gantry"/>
   <child link="y_beam"/>
-  <origin xyz="0 -0.038875 0" rpy="0 0 0"/>
+  <origin xyz="0 -0.128275 0" rpy="0 0 0"/>
   <axis xyz="0 1 0"/>
   <!--
     Build volume in y is 0.35 m, so half-range is 0.175 m.
   -->
-  <limit lower="-0.175" upper="0.175" effort="100" velocity="0.5"/>
+  <limit lower="0" upper="0.350" effort="100" velocity="0.5"/>
   </joint>
   
   <!--
@@ -469,12 +469,12 @@
 <joint name="x_axis_joint" type="prismatic">
   <parent link="y_beam"/>
   <child link="x_carriage"/>
-  <origin xyz="0 -0.04068 0.001371" rpy="0 0 0"/>
+  <origin xyz="-0.175 -0.04068 0.001371" rpy="0 0 0"/>
   <axis xyz="1 0 0"/>
   <!--
     Build volume in x is 0.35 m, so half-range is 0.175 m.
   -->
-  <limit lower="-0.175" upper="0.175" effort="100" velocity="0.5"/>
+  <limit lower="0" upper="0.350" effort="100" velocity="0.5"/>
 </joint>
   
   <!--
@@ -647,7 +647,7 @@
       Bottom of volume starts at top of build plate:
       z = 0.10
     -->
-    <origin xyz="0.175 0.0894 0.0" rpy="0 0 0"/>
+    <origin xyz="0.175 0.175 0.0" rpy="0 0 0"/>
   </joint>
   
 </robot>

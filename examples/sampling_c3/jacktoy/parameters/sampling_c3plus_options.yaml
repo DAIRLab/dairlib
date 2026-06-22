@@ -354,7 +354,7 @@ u_eta_position_list: [
                           #           use_predicted_x0_reset_mechanism
 dt: 0             # instead:  planning_dt_pose, planning_dt_position
 # solve_dt: 0       # unused
-mu: []            # instead based on indexing into mu_per_pair_type
+mu: null            # instead based on indexing into mu_per_pair_type
 num_contacts: 0   # instead based on summing index of resolve_contacts_to_lists
 # Instead for the below, index into their _list versions.
 g_gamma: []

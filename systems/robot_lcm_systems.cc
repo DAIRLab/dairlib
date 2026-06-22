@@ -79,23 +79,51 @@ RobotOutputReceiver::RobotOutputReceiver(
 
 void RobotOutputReceiver::CopyOutput(const Context<double>& context,
                                      OutputVector<double>* output) const {
+
   const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
   const auto& state_msg = input->get_value<dairlib::lcmt_robot_output>();
-
+  
   VectorXd positions = VectorXd::Zero(num_positions_);
   for (int i = 0; i < state_msg.num_positions; i++) {
-    int j = position_index_map_.at(state_msg.position_names[i]);
+    auto it = position_index_map_.find(state_msg.position_names[i]);
+  std::cout << "=== position_index_map keys ===\n";
+for (const auto& [k, v] : position_index_map_) {
+  std::cout << k << "\n";
+}
+if (it == position_index_map_.end()) {
+  std::cerr << "[RobotOutputReceiver] missing position key: "
+            << state_msg.position_names[i] << std::endl;
+  throw std::runtime_error("missing position key");
+
+  
+}
+int j = it->second;
     positions(j - positions_start_idx_) = state_msg.position[i];
   }
   VectorXd velocities = VectorXd::Zero(num_velocities_);
   for (int i = 0; i < state_msg.num_velocities; i++) {
-    int j = velocity_index_map_.at(state_msg.velocity_names[i]);
+    
+    auto it = velocity_index_map_.find(state_msg.velocity_names[i]);
+  for (const auto& [k, v] : velocity_index_map_) {
+  std::cout << k << "\n";
+}
+if (it == velocity_index_map_.end()) {
+  std::cerr << "[RobotOutputReceiver] missing velocity key: " << state_msg.velocity_names[i] << std::endl;
+  throw std::runtime_error("missing velocity key");
+}
+int j = it->second;
     velocities(j - velocities_start_idx_) = state_msg.velocity[i];
   }
   VectorXd efforts = VectorXd::Zero(num_efforts_);
   for (int i = 0; i < state_msg.num_efforts; i++) {
-    int j = effort_index_map_.at(state_msg.effort_names[i]);
+    
+    auto it = effort_index_map_.find(state_msg.effort_names[i]);
+if (it == effort_index_map_.end()) {
+  std::cerr << "[RobotOutputReceiver] missing effort key: " << state_msg.effort_names[i] << std::endl;
+  throw std::runtime_error("missing effort key");
+}
+int j = it->second;
     efforts(j) = state_msg.effort[j];
   }
 

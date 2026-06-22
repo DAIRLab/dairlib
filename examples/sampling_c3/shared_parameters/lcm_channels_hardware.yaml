@@ -1,6 +1,7 @@
 # All messages are of type lcmt_timestamped_saved_traj unless otherwise noted.
 
 franka_state_channel: FRANKA_STATE              # lcmt_robot_output
+three_d_printer_state_channel: PRINTER_STATE   # lcmt_robot_output
 object_state_channel: OBJECT_STATE              # lcmt_object_state
 franka_input_channel: FRANKA_INPUT              # lcmt_robot_input
 

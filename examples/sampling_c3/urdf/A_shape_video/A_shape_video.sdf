@@ -7,12 +7,12 @@
         <pose>0 0 0 0 0 0</pose>
         <mass>0.05</mass>
         <inertia>
-          <ixx>4.9053607e-05</ixx>
-          <iyy>6.0624829e-05</iyy>
-          <izz>9.2649402e-05</izz>
-          <ixy>1.5683845e-06</ixy>
-          <ixz>1.023534e-06</ixz>
-          <iyz>6.9601601e-07</iyz>
+          <ixx>4.9586535e-05</ixx>
+          <iyy>6.0533609e-05</iyy>
+          <izz>9.3121088e-05</izz>
+          <ixy>1.6285883e-06</ixy>
+          <ixz>1.030854e-06</ixz>
+          <iyz>7.3376111e-07</iyz>
         </inertia>
       </inertial>
       <visual name="convex_0">
@@ -23,7 +23,7 @@
           </mesh>
         </geometry>
         <material>
-          <diffuse>0.5882352941176471 0.17254901960784313 0.7607843137254902 1</diffuse>
+          <diffuse>0.19607843137254902 0.39215686274509803 0.5882352941176471 1</diffuse>
         </material>
       </visual>
       <collision name="convex_0_volume">
@@ -49,7 +49,7 @@
           </mesh>
         </geometry>
         <material>
-          <diffuse>0.5882352941176471 0.17254901960784313 0.7607843137254902 1</diffuse>
+          <diffuse>0.19607843137254902 0.39215686274509803 0.5882352941176471 1</diffuse>
         </material>
       </visual>
       <collision name="convex_1_volume">
@@ -75,7 +75,7 @@
           </mesh>
         </geometry>
         <material>
-          <diffuse>0.5882352941176471 0.17254901960784313 0.7607843137254902 1</diffuse>
+          <diffuse>0.19607843137254902 0.39215686274509803 0.5882352941176471 1</diffuse>
         </material>
       </visual>
       <collision name="convex_2_volume">
@@ -101,7 +101,7 @@
           </mesh>
         </geometry>
         <material>
-          <diffuse>0.5882352941176471 0.17254901960784313 0.7607843137254902 1</diffuse>
+          <diffuse>0.19607843137254902 0.39215686274509803 0.5882352941176471 1</diffuse>
         </material>
       </visual>
       <collision name="convex_3_volume">
@@ -127,7 +127,7 @@
           </mesh>
         </geometry>
         <material>
-          <diffuse>0.5882352941176471 0.17254901960784313 0.7607843137254902 1</diffuse>
+          <diffuse>0.19607843137254902 0.39215686274509803 0.5882352941176471 1</diffuse>
         </material>
       </visual>
       <collision name="convex_4_volume">
@@ -153,7 +153,7 @@
           </mesh>
         </geometry>
         <material>
-          <diffuse>0.5882352941176471 0.17254901960784313 0.7607843137254902 1</diffuse>
+          <diffuse>0.19607843137254902 0.39215686274509803 0.5882352941176471 1</diffuse>
         </material>
       </visual>
       <collision name="convex_5_volume">
@@ -179,7 +179,7 @@
           </mesh>
         </geometry>
         <material>
-          <diffuse>0.5882352941176471 0.17254901960784313 0.7607843137254902 1</diffuse>
+          <diffuse>0.19607843137254902 0.39215686274509803 0.5882352941176471 1</diffuse>
         </material>
       </visual>
       <collision name="convex_6_volume">
@@ -205,7 +205,7 @@
           </mesh>
         </geometry>
         <material>
-          <diffuse>0.5882352941176471 0.17254901960784313 0.7607843137254902 1</diffuse>
+          <diffuse>0.19607843137254902 0.39215686274509803 0.5882352941176471 1</diffuse>
         </material>
       </visual>
       <collision name="convex_7_volume">
@@ -231,7 +231,7 @@
           </mesh>
         </geometry>
         <material>
-          <diffuse>0.5882352941176471 0.17254901960784313 0.7607843137254902 1</diffuse>
+          <diffuse>0.19607843137254902 0.39215686274509803 0.5882352941176471 1</diffuse>
         </material>
       </visual>
       <collision name="convex_8_volume">
@@ -257,7 +257,7 @@
           </mesh>
         </geometry>
         <material>
-          <diffuse>0.5882352941176471 0.17254901960784313 0.7607843137254902 1</diffuse>
+          <diffuse>0.19607843137254902 0.39215686274509803 0.5882352941176471 1</diffuse>
         </material>
       </visual>
       <collision name="convex_9_volume">

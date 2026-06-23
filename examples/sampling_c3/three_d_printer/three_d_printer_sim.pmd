@@ -1,13 +1,13 @@
 group "simulations" {
-    cmd "franka_sim" {
-        exec = "bazel-bin/examples/sampling_c3/franka_sim --demo_name=anything";
+    cmd "three_d_printer_sim" {
+        exec = "bazel-bin/examples/sampling_c3/three_d_printer_sim --demo_name=three_d_printer";
         host = "localhost";
     }
 }
 
 group "operator" {
     cmd "visualizer" {
-        exec = "bazel-bin/examples/sampling_c3/franka_visualizer --is_simulation=true --demo_name=anything";
+        exec = "bazel-bin/examples/sampling_c3/three_d_printer_visualizer --demo_type=simulation --demo_name=three_d_printer";
         host = "localhost";
     }
     cmd "drake-director" {
@@ -56,25 +56,25 @@ group "controllers" {
     }
 }
 script "init_experiment" {
-    stop cmd "franka_sim";
+    stop cmd "three_d_printer_sim";
     stop cmd "franka_osc";
     stop cmd "sampling_c3";
     wait ms 1000;
     start cmd "move_to_init";
-    start cmd "franka_sim";
+    start cmd "three_d_printer_sim";
     wait ms 10000;
-    stop cmd "franka_sim";
+    stop cmd "three_d_printer_sim";
     stop cmd "move_to_init";
 }
 
 script "move_to_target_joints" {
-    stop cmd "franka_sim";
+    stop cmd "three_d_printer_sim";
     stop cmd "franka_osc";
     stop cmd "sampling_c3";
     stop cmd "move_to_init";
     wait ms 1000;
     start cmd "move_to_init";
-    start cmd "franka_sim";
+    start cmd "three_d_printer_sim";
     wait ms 10000;
     start cmd "move_to_target_joints";
 }
@@ -90,7 +90,7 @@ script "start_experiment_no_logs"{
     stop cmd "start_logging";
     start cmd "multi_rewrite";
     wait ms 1000;
-    restart cmd "franka_sim";
+    restart cmd "three_d_printer_sim";
     restart cmd "franka_osc";
     restart cmd "visualizer";
     wait ms 50;
@@ -99,7 +99,7 @@ script "start_experiment_no_logs"{
 
 script "start_experiment_with_logs"{
     restart cmd "start_logging";
-    restart cmd "franka_sim";
+    restart cmd "three_d_printer_sim";
     restart cmd "franka_osc";
     restart cmd "visualizer";
     wait ms 50;
@@ -109,7 +109,7 @@ script "start_experiment_with_logs"{
 script "end_experiment"{
     stop cmd "sampling_c3";
     stop cmd "franka_osc";
-    stop cmd "franka_sim";
+    stop cmd "three_d_printer_sim";
     wait ms 10;
     stop cmd "start_logging";
 }

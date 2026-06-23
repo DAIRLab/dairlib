@@ -87,10 +87,7 @@ void RobotOutputReceiver::CopyOutput(const Context<double>& context,
   VectorXd positions = VectorXd::Zero(num_positions_);
   for (int i = 0; i < state_msg.num_positions; i++) {
     auto it = position_index_map_.find(state_msg.position_names[i]);
-  std::cout << "=== position_index_map keys ===\n";
-for (const auto& [k, v] : position_index_map_) {
-  std::cout << k << "\n";
-}
+
 if (it == position_index_map_.end()) {
   std::cerr << "[RobotOutputReceiver] missing position key: "
             << state_msg.position_names[i] << std::endl;
@@ -105,9 +102,7 @@ int j = it->second;
   for (int i = 0; i < state_msg.num_velocities; i++) {
     
     auto it = velocity_index_map_.find(state_msg.velocity_names[i]);
-  for (const auto& [k, v] : velocity_index_map_) {
-  std::cout << k << "\n";
-}
+
 if (it == velocity_index_map_.end()) {
   std::cerr << "[RobotOutputReceiver] missing velocity key: " << state_msg.velocity_names[i] << std::endl;
   throw std::runtime_error("missing velocity key");

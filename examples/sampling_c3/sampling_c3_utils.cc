@@ -233,4 +233,40 @@ std::vector<ModelInstanceIndex> AddLCSModelsToPlant(
   return obj_models;
 }
 
+std::vector<ModelInstanceIndex> AddLCSModelsTo3DPrinterPlant(
+    MultibodyPlant<double>* plant,
+    SceneGraph<double>* scene_graph,
+    std::vector<std::string> object_models,
+    const bool& include_end_effector_orientation,
+    const bool& include_walls) {
+  // Cannot currently handle end effector orientation (would just require new
+  // EE simple model with orientation DOFs).
+  DRAKE_ASSERT(!include_end_effector_orientation);
+
+  std::vector<ModelInstanceIndex> obj_models;
+
+  Parser parser_lcs(plant);
+  parser_lcs.SetAutoRenaming(true);
+  parser_lcs.AddModels(k3dEndEffectorModel);
+
+
+  for (const auto& model : object_models) {
+    obj_models.push_back(
+      parser_lcs.AddModels(FindResourceOrThrow(model))[0]
+    );
+  }
+
+  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
+  RigidTransform<double> X_W_G = RigidTransform<double>(
+      drake::math::RotationMatrix<double>(), kWorldToGroundOffset);
+  plant->WeldFrames(plant->world_frame(),
+                    plant->GetFrameByName("base_link"), X_WI);
+
+
+  return obj_models;
+}
+
+
+
+
 }   // namespace dairlib

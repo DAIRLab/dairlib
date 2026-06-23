@@ -78,7 +78,7 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> builder;
   double sim_dt = sim_params.dt;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
-  ModelInstanceIndex franka_index = AddFrankaToPlant(
+  ModelInstanceIndex franka_index = Add3DPrinterToPlant(
     &plant, &scene_graph, true, true, sampling_c3_options.include_walls);
 
   int num_objects = sim_params.object_models.size();
@@ -145,9 +145,9 @@ int DoMain(int argc, char* argv[]) {
 
   q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
   for (int i = 0; i < num_objects; i++) {
-      q.segment(7 * (i+1), 7) = sim_params.q_init_objects.at(i);
+      q.segment(3 * (i+1), 3) = sim_params.q_init_objects.at(i);
   }
-  q.tail(7) = sim_params.q_init_objects.at(num_objects - 1);
+  q.tail(3) = sim_params.q_init_objects.at(num_objects - 1);
 
   std::cout << "q: " << q.transpose() << std::endl;
 

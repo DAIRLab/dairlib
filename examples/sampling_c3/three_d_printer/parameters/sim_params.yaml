@@ -10,6 +10,6 @@ publish_efforts: true
 dt: 0.001
 realtime_rate: 1
 
-q_init_franka: [2.191, 1.1, -1.33, -2.22, 1.30, 2.02, 0.08]
-q_init_object: [0, 0, 0, 1, 0.5, 0, -0.004]
-q_init_objects: [[0.393, 0, 0, 0.92, 0.4, -0.3, 0.0]]
+q_init_franka: [0,0,0]
+q_init_object: [0, 0, 0]
+q_init_objects: [[0.393, 0, 0]]

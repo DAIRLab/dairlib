@@ -32,7 +32,7 @@ static constexpr const char* kFrontWallModel = "examples/sampling_c3/urdf/wall_f
 /// This is the offset from the Panda's link7 frame to its flange where an end
 /// effector can be attached.
 static const Eigen::Vector3d kToolAttachmentFrame = {0, 0, 0.107};
-static const Eigen::Vector3d k3dPrinterToolAttachmentFrame = {0, 0, -0.1058};
+static const Eigen::Vector3d k3dPrinterToolAttachmentFrame = {0, -0.0075, -0.1566};
 
 
 static const Eigen::Vector3d kFrankaToGroundOffset = {0, 0, -0.029};
@@ -141,6 +141,13 @@ void AddLCSModelToPlant(
 /// @param include_end_effector_orientation whether to include the end effector
 /// @param include_walls whether to add border walls to workspace
 std::vector<drake::multibody::ModelInstanceIndex> AddLCSModelsToPlant(
+    drake::multibody::MultibodyPlant<double>* plant,
+    drake::geometry::SceneGraph<double>* scene_graph = nullptr,
+    std::vector<std::string> object_models = {},
+    const bool& include_end_effector_orientation = false,
+    const bool& include_walls = false);
+
+std::vector<drake::multibody::ModelInstanceIndex> AddLCSModelsTo3DPrinterPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     std::vector<std::string> object_models = {},

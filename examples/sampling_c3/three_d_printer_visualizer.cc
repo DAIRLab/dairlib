@@ -73,7 +73,7 @@ using drake::systems::DiagramBuilder;
 
 SamplingC3ControllerParams controller_params;
 
-DEFINE_string(demo_type, "visualize", "Whether to run the visualizer or the sim. Options are 'visualizer' and 'simulator' and 'hardware'");
+DEFINE_string(demo_type, "visualize", "Whether to run the visualizer or the sim. Options are 'visualizer' and 'simulation' and 'hardware'");
 DEFINE_string(demo_name, "three_d_printer",
               "Name for the demo, used when building filepaths for output.");
 

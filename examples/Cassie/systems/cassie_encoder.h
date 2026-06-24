@@ -40,15 +40,9 @@ static std::map<std::string, int> drive_encoder_resolutions = {
     {"toe_right", CASSIE_ENC_RES_HIGH}};
 
 static std::map<std::string, int> drive_gear_ratios = {
-    {"hip_roll_left", 25},
-    {"hip_yaw_left", 25},
-    {"hip_pitch_left", 16},
-    {"knee_left", 16},
-    {"toe_left", 50},
-    {"hip_roll_right", 25},
-    {"hip_yaw_right", 25},
-    {"hip_pitch_right", 16},
-    {"knee_right", 16},
+    {"hip_roll_left", 25}, {"hip_yaw_left", 25},    {"hip_pitch_left", 16},
+    {"knee_left", 16},     {"toe_left", 50},        {"hip_roll_right", 25},
+    {"hip_yaw_right", 25}, {"hip_pitch_right", 16}, {"knee_right", 16},
     {"toe_right", 50}};
 
 static std::map<std::string, int> joint_encoder_resolutions = {
@@ -77,7 +71,7 @@ class CassieEncoder final : public drake::systems::LeafSystem<double> {
     int drive_pos_index;
     int drive_vel_index;
     int drive_encoder_resolution;  // ticks per rotation
-    int gear_ratio;  // ticks per rotation
+    int gear_ratio;                // ticks per rotation
     int x[DRIVE_FILTER_NB];
   };
   struct JointFilter {

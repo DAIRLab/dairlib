@@ -1,7 +1,8 @@
 #include "examples/impact_invariant_control/impact_aware_time_based_fsm.h"
 
-#include <dairlib/lcmt_radio_out.hpp>
 #include <iostream>
+
+#include <dairlib/lcmt_radio_out.hpp>
 
 using drake::systems::BasicVector;
 using drake::systems::Context;
@@ -31,9 +32,9 @@ ImpactTimeBasedFiniteStateMachine::ImpactTimeBasedFiniteStateMachine(
               &ImpactTimeBasedFiniteStateMachine::CalcNearImpact)
           .get_index();
   clock_port_ = this->DeclareVectorOutputPort(
-          "clock", BasicVector<double>(1),
-          &ImpactTimeBasedFiniteStateMachine::CalcClock)
-      .get_index();
+                        "clock", BasicVector<double>(1),
+                        &ImpactTimeBasedFiniteStateMachine::CalcClock)
+                    .get_index();
   radio_port_ =
       this->DeclareAbstractInputPort("lcmt_radio_out",
                                      drake::Value<dairlib::lcmt_radio_out>{})
@@ -88,8 +89,8 @@ void ImpactTimeBasedFiniteStateMachine::CalcNearImpact(
   if (current_time >= t0_) {
     for (int i = 0; i < impact_states_.size(); ++i) {
       double blend_window = blend_func_ == kSigmoid
-                            ? 1.5 * near_impact_threshold_
-                            : near_impact_threshold_;
+                                ? 1.5 * near_impact_threshold_
+                                : near_impact_threshold_;
       if (abs(remainder - impact_times_[i]) < blend_window) {
         if (remainder < impact_times_[i]) {
           near_impact->SetAlpha(alpha_func(remainder - impact_times_[i], tau_,
@@ -142,8 +143,8 @@ void ImpactTimeBasedFiniteStateMachine::CalcContactScheduler(
       (n_periods - 1) * period_ + accu_state_durations_[3];
   contact_timing->get_mutable_value()(5) =
       (n_periods - 1) * period_ + accu_state_durations_[3] +
-          (accu_state_durations_[2] - accu_state_durations_[0]) +
-          (accu_state_durations_[4] - accu_state_durations_[3]);
+      (accu_state_durations_[2] - accu_state_durations_[0]) +
+      (accu_state_durations_[4] - accu_state_durations_[3]);
 }
 
 }  // namespace dairlib

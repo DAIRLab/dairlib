@@ -1,3 +1,4 @@
+import argparse
 import sys, os, re, trimesh
 from ruamel.yaml import YAML
 from sampling_generation.controller_sdf_generation import make_sdf
@@ -90,6 +91,15 @@ def choose_2(num_objects: int) -> int:
     return int(num_objects * (num_objects - 1) // 2)
 
 
+def object_artifacts_exist(output_dir: str, base_name: str) -> bool:
+    paths = [
+        os.path.join(output_dir, f"{base_name}.obj"),
+        os.path.join(output_dir, f"{base_name}.sdf"),
+        os.path.join(output_dir, f"{base_name}_controller.sdf"),
+    ]
+    return all(os.path.isfile(p) for p in paths)
+
+
 yaml_path = (
     "examples/sampling_c3/anything/parameters/sampling_c3_controller_params.yaml"
 )
@@ -110,16 +120,25 @@ def process_obj(
     repos_yaml_path: str,
     samp_c3_options_yaml_path: str,
     index: int,
+    force_recreate_sdf: bool = False,
 ):
     print(f"\nProcessing object: {base_name}")
     output_dir = os.path.join(urdf_dir, base_name)
     os.makedirs(output_dir, exist_ok=True)
 
+    obj_file_in_output = os.path.join(output_dir, f"{base_name}.obj")
+    if not force_recreate_sdf and object_artifacts_exist(output_dir, base_name):
+        print(f"Skipping {base_name}: OBJ and SDF files already exist")
+        min_z = get_min_z_from_obj(obj_file_in_output)
+        max_z = get_max_z_from_obj(obj_file_in_output)
+        print(f"✅ {base_name} → min_z={min_z:.6f}, max_z={max_z:.6f}")
+        return
+
     obj_file = os.path.join(urdf_dir, f"{base_name}.obj")
     if not os.path.isfile(obj_file):
-        obj_file = os.path.join(output_dir, f"{base_name}.obj")
+        obj_file = obj_file_in_output
 
-    is_coarse = coarsify_obj(obj_file)
+    coarsify_obj(obj_file)
 
     # Create SDF file paths
     controller_sdf_path = os.path.join(output_dir, f"{base_name}_controller.sdf")
@@ -454,7 +473,7 @@ def update_progress_params(progress_yaml: dict):
     )
 
 
-def main():
+def main(force_recreate_sdf: bool = False):
     # Config paths
     controller_yaml_path = (
         "examples/sampling_c3/anything/parameters/sampling_c3_controller_params.yaml"
@@ -495,6 +514,7 @@ def main():
             repos_yaml_path,
             samp_c3_options_yaml_path,
             i,
+            force_recreate_sdf,
         )
 
     # Load YAMLs once to pre-size vectors
@@ -579,4 +599,13 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(
+        description="Generate OBJ/SDF artifacts and rewrite sampling C3 YAML configs."
+    )
+    parser.add_argument(
+        "--recreate-sdf",
+        action="store_true",
+        help="Regenerate OBJ and SDF files even if they already exist",
+    )
+    args = parser.parse_args()
+    main(force_recreate_sdf=args.recreate_sdf)

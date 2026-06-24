@@ -1,10 +1,11 @@
-/**This system is used by the osc diagram to read an end effector trajectory 
- * from an lcm message and pass it onto the OSC class. It allows for teleop to 
+/**This system is used by the osc diagram to read an end effector trajectory
+ * from an lcm message and pass it onto the OSC class. It allows for teleop to
  * track the current end effector position or a neutral position based on the
  * teleop_neutral_pose flag. */
 #pragma once
 
 #include <drake/multibody/plant/multibody_plant.h>
+
 #include "systems/framework/output_vector.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -16,11 +17,10 @@ class EndEffectorPositionTrajectoryGenerator
     : public drake::systems::LeafSystem<double> {
  public:
   EndEffectorPositionTrajectoryGenerator(
-    const drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>* context,
-    const Eigen::VectorXd& neutral_pose,
-    bool teleop_neutral_pose,
-    const std::string& end_effector_name);
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::systems::Context<double>* context,
+      const Eigen::VectorXd& neutral_pose, bool teleop_neutral_pose,
+      const std::string& end_effector_name);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -42,12 +42,12 @@ class EndEffectorPositionTrajectoryGenerator
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
   void CalcNeutralPoseBasedTraj(
-    const drake::systems::Context<double>& context,
-    drake::trajectories::Trajectory<double>* traj) const;
+      const drake::systems::Context<double>& context,
+      drake::trajectories::Trajectory<double>* traj) const;
 
   void CalcPoseShiftingTraj(
-    const drake::systems::Context<double>& context,
-    drake::trajectories::Trajectory<double>* traj) const;
+      const drake::systems::Context<double>& context,
+      drake::trajectories::Trajectory<double>* traj) const;
 
   drake::systems::InputPortIndex state_port_;
   drake::systems::InputPortIndex trajectory_port_;

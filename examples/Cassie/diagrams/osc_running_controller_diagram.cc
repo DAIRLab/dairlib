@@ -64,7 +64,8 @@ namespace controllers {
 
 OSCRunningControllerDiagram::OSCRunningControllerDiagram(
     drake::multibody::MultibodyPlant<double>& plant,
-    const string& osc_running_gains_filename, const string& osqp_settings_filename)
+    const string& osc_running_gains_filename,
+    const string& osqp_settings_filename)
     : plant_(&plant),
       pos_map(multibody::MakeNameToPositionsMap(plant)),
       vel_map(multibody::MakeNameToVelocitiesMap(plant)),
@@ -155,7 +156,7 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant, plant_context.get(), plant_context.get(), true);
+      plant, plant_context.get(), true);
   auto radio_parser = builder.AddSystem<systems::RadioParser>();
   auto failure_aggregator =
       builder.AddSystem<systems::ControllerFailureAggregator>(
@@ -163,11 +164,12 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
 
   /**** OSC setup ****/
   /// REGULARIZATION COSTS
-  osc->SetAccelerationCostWeights(osc_running_gains.w_accel * osc_running_gains.W_acceleration);
+  osc->SetAccelerationCostWeights(osc_running_gains.w_accel *
+                                  osc_running_gains.W_acceleration);
   osc->SetInputSmoothingCostWeights(osc_running_gains.w_input_reg *
-      osc_running_gains.W_input_regularization);
+                                    osc_running_gains.W_input_regularization);
   osc->SetInputCostWeights(osc_running_gains.w_input *
-      osc_running_gains.W_input_regularization);
+                           osc_running_gains.W_input_regularization);
   osc->SetLambdaContactRegularizationWeight(
       osc_running_gains.w_lambda * osc_running_gains.W_lambda_c_regularization);
   osc->SetLambdaHolonomicRegularizationWeight(
@@ -179,14 +181,22 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   // Contact information for OSC
   osc->SetContactFriction(osc_running_gains.mu);
 
-  osc->AddStateAndContactPoint(RunningFsmState::kLeftStance,
-                               &left_toe_evaluator);
-  osc->AddStateAndContactPoint(RunningFsmState::kLeftStance,
-                               &left_heel_evaluator);
-  osc->AddStateAndContactPoint(RunningFsmState::kRightStance,
-                               &right_toe_evaluator);
-  osc->AddStateAndContactPoint(RunningFsmState::kRightStance,
-                               &right_heel_evaluator);
+  osc->AddContactPoint("left_toe",
+                       std::unique_ptr<multibody::WorldPointEvaluator<double>>(
+                           &left_toe_evaluator),
+                       {RunningFsmState::kLeftStance});
+  osc->AddContactPoint("left_heel",
+                       std::unique_ptr<multibody::WorldPointEvaluator<double>>(
+                           &left_heel_evaluator),
+                       {RunningFsmState::kLeftStance});
+  osc->AddContactPoint("right_toe",
+                       std::unique_ptr<multibody::WorldPointEvaluator<double>>(
+                           &right_toe_evaluator),
+                       {RunningFsmState::kRightStance});
+  osc->AddContactPoint("right_heel",
+                       std::unique_ptr<multibody::WorldPointEvaluator<double>>(
+                           &right_heel_evaluator),
+                       {RunningFsmState::kRightStance});
 
   // Fix the springs in the dynamics
   evaluators.add_evaluator(&left_fixed_knee_spring);
@@ -196,8 +206,9 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   evaluators.add_evaluator(&left_loop);
   evaluators.add_evaluator(&right_loop);
 
-
-  osc->AddKinematicConstraint(&evaluators);
+  osc->AddKinematicConstraint(
+      std::unique_ptr<const multibody::KinematicEvaluatorSet<double>>(
+          &evaluators));
 
   /**** Tracking Data *****/
 
@@ -208,8 +219,8 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
       osc_running_gains.vel_scale_trans_lateral);
 
   auto pelvis_trans_traj_generator =
-      builder.AddSystem<PelvisTransTrajGenerator>(
-          plant, plant_context.get(), feet_contact_points);
+      builder.AddSystem<PelvisTransTrajGenerator>(plant, plant_context.get(),
+                                                  feet_contact_points);
   pelvis_trans_traj_generator->SetSLIPParams(
       osc_running_gains.rest_length, osc_running_gains.rest_length_offset);
   auto l_foot_traj_generator = builder.AddSystem<FootTrajGenerator>(
@@ -261,8 +272,8 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
   right_foot_tracking_data->AddStateAndPointToTrack(
       RunningFsmState::kLeftFlight, "toe_right");
 
-  left_foot_tracking_data->AddStateAndPointToTrack(
-      RunningFsmState::kLeftFlight, "toe_left");
+  left_foot_tracking_data->AddStateAndPointToTrack(RunningFsmState::kLeftFlight,
+                                                   "toe_left");
   right_foot_tracking_data->AddStateAndPointToTrack(
       RunningFsmState::kRightFlight, "toe_right");
 
@@ -274,17 +285,17 @@ OSCRunningControllerDiagram::OSCRunningControllerDiagram(
       "right_hip_traj", osc_running_gains.K_p_swing_foot,
       osc_running_gains.K_d_swing_foot, osc_running_gains.W_swing_foot, plant,
       plant);
-  left_hip_tracking_data->AddStateAndPointToTrack(
-      RunningFsmState::kRightStance, "pelvis");
-  right_hip_tracking_data->AddStateAndPointToTrack(
-      RunningFsmState::kLeftStance, "pelvis");
-  right_hip_tracking_data->AddStateAndPointToTrack(
-      RunningFsmState::kLeftFlight, "pelvis");
-  left_hip_tracking_data->AddStateAndPointToTrack(
-      RunningFsmState::kRightFlight, "pelvis");
+  left_hip_tracking_data->AddStateAndPointToTrack(RunningFsmState::kRightStance,
+                                                  "pelvis");
+  right_hip_tracking_data->AddStateAndPointToTrack(RunningFsmState::kLeftStance,
+                                                   "pelvis");
+  right_hip_tracking_data->AddStateAndPointToTrack(RunningFsmState::kLeftFlight,
+                                                   "pelvis");
+  left_hip_tracking_data->AddStateAndPointToTrack(RunningFsmState::kRightFlight,
+                                                  "pelvis");
 
-  left_hip_tracking_data->AddStateAndPointToTrack(
-      RunningFsmState::kLeftFlight, "pelvis");
+  left_hip_tracking_data->AddStateAndPointToTrack(RunningFsmState::kLeftFlight,
+                                                  "pelvis");
   right_hip_tracking_data->AddStateAndPointToTrack(
       RunningFsmState::kRightFlight, "pelvis");
 

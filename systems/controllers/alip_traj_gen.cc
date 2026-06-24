@@ -164,9 +164,9 @@ ALIPTrajGenerator::ConstructAlipComTraj(
   // We add stance_foot_pos(2) to desired COM height to account for state
   // drifting
   double max_height_diff_per_step = 0.05;
-  double final_height = std::clamp(
-      desired_com_height_ + stance_foot_pos(2),
-      CoM(2) - max_height_diff_per_step, CoM(2) + max_height_diff_per_step);
+  double final_height = std::clamp(desired_com_height_ + stance_foot_pos(2),
+                                   CoM(2) - max_height_diff_per_step,
+                                   CoM(2) + max_height_diff_per_step);
   //  double final_height = desired_com_height_ + stance_foot_pos(2);
   Y(2, 0) = final_height;
   Y(2, 1) = final_height;
@@ -263,8 +263,8 @@ void ALIPTrajGenerator::CalcComTrajFromCurrent(
   double timestamp = robot_output->get_timestamp();
   double start_time = timestamp;
   double end_time = prev_event_time(0) + unordered_state_durations_[mode_index];
-  start_time = std::clamp(
-      start_time, -std::numeric_limits<double>::infinity(), end_time - 0.001);
+  start_time = std::clamp(start_time, -std::numeric_limits<double>::infinity(),
+                          end_time - 0.001);
 
   Vector3d CoM, L, stance_foot_pos;
   CalcAlipState(robot_output->GetState(), mode_index, &CoM, &L,
@@ -303,8 +303,8 @@ void ALIPTrajGenerator::CalcAlipTrajFromCurrent(
   double timestamp = robot_output->get_timestamp();
   double start_time = timestamp;
   double end_time = prev_event_time(0) + unordered_state_durations_[mode_index];
-  start_time = std::clamp(
-      start_time, -std::numeric_limits<double>::infinity(), end_time - 0.001);
+  start_time = std::clamp(start_time, -std::numeric_limits<double>::infinity(),
+                          end_time - 0.001);
 
   // Assign traj
   auto exp_pp_traj = (ExponentialPlusPiecewisePolynomial<double>*)dynamic_cast<

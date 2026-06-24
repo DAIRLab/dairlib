@@ -1,4 +1,5 @@
 #include "examples/Cassie/cassie_fixed_point_solver.h"
+
 #include <iostream>
 
 #include "multibody/kinematic/kinematic_evaluator_set.h"
@@ -75,7 +76,6 @@ void CassieFixedPointSolver(
   evaluators.add_evaluator(&right_heel_evaluator);
 
   auto program = multibody::MultibodyProgram(plant);
-
 
   auto positions_map = multibody::MakeNameToPositionsMap(plant);
   auto q = program.AddPositionVariables();
@@ -328,7 +328,6 @@ void CassieInitStateSolver(
   auto kinematic_constraints =
       program.AddHolonomicConstraint(evaluators, q, v, u, lambda);
   program.AddJointLimitConstraints(q);
-
 
   auto vel_map = multibody::MakeNameToVelocitiesMap(plant);
   int n_v = plant.num_velocities();

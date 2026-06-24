@@ -10,11 +10,11 @@ contact_model: 'anitescu'   # 'stewart_and_trinkle' or 'anitescu'.
 warm_start: false
 scale_lcs: true
 end_on_qp_step: false
-# use_robust_formulation: false
 solve_time_filter_alpha: 0.95
 publish_frequency: 0
 penalize_input_change: false  # Penalize (u-u_prev) instead of u.
 num_friction_directions: 2
+planar_normal_direction: [0, 0, 1]  # If treating as planar contact, this is the normal direction.
 spring_stiffness: 0.0  # Not used in C3+.
 
 N: 5
@@ -33,6 +33,7 @@ robot_radius_limits: [0.25, 0.75]
 workspace_margins: 0.02
 u_horizontal_limits: [-50, 50]
 u_vertical_limits: [-50, 50]
+ee_velocity_limits: [-0.5, 0.5]
 
 ### Whether to use a predicted EE location for each mode.
 use_predicted_x0_c3: true
@@ -40,21 +41,32 @@ use_predicted_x0_repos: true
 use_predicted_x0_reset_mechanism: true  # Resets if prediction is too far.
 
 ### Jack demo specific parameters:
-# Contact pairs include a number of (ee-ground, ee-jack, jack-ground).
+planar_demo: false
+
+# Contact pairs include a number of (ee-ground, ee-jack, jack-ground, jack-walls).
 mu_per_pair_type: [0.4165, 1, 0.4615]   # match URDFs with (2mu1*mu2)/(mu1+mu2)
-resolve_contacts_to_lists: [[0, 1, 3],
-                            [0, 3, 3],
-                            [1, 1, 3],
-                            [1, 3, 3],
-                            [0, 1, 4],
-                            [0, 3, 6],
-                            [0, 2, 3]]
+resolve_contacts_to_lists: [[0, 1, 3, 0],
+                            [0, 3, 3, 0],
+                            [1, 1, 3, 0],
+                            [1, 3, 3, 0],
+                            [0, 1, 4, 0],
+                            [1, 3, 6, 0],
+                            [0, 3, 6, 0],
+                            [0, 2, 3, 0]]
+resolve_as_planar_contacts_list: [0, 0, 0]
+
 # Index into this list to choose number of contacts for C3 solve and cost.
-num_contacts_index: 0
+num_contacts_index: 1
 num_contacts_index_for_cost: 5
 
 planning_dt_position: 0.1
 planning_dt_pose: 0.05
+
+lcs_dt_resolution: 4
+nominal_ee_accel: 10
+
+include_walls: false
+include_back_wall: false # if include_walls is true, then include_back_wall is ignored
 
 ### Cost parameters
 ### If list of lists, then index into them with num_contact_index(_for_cost).
@@ -354,7 +366,7 @@ u_eta_position_list: [
                           #           use_predicted_x0_reset_mechanism
 dt: 0             # instead:  planning_dt_pose, planning_dt_position
 # solve_dt: 0       # unused
-mu: []            # instead based on indexing into mu_per_pair_type
+dt_cost: 0
 num_contacts: 0   # instead based on summing index of resolve_contacts_to_lists
 # Instead for the below, index into their _list versions.
 g_gamma: []

@@ -1,34 +1,31 @@
+#include "systems/trajectory_optimization/dircon_position_data.h"
+
 #include <limits>
 #include <vector>
 
-#include "systems/trajectory_optimization/dircon_position_data.h"
-
 namespace dairlib {
 
+using drake::MatrixX;
+using drake::VectorX;
+using drake::multibody::Body;
+using drake::multibody::MultibodyPlant;
+using drake::systems::Context;
+using Eigen::Matrix2d;
+using Eigen::Matrix3d;
+using Eigen::MatrixXd;
 using Eigen::Vector2d;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
-using Eigen::Matrix3d;
-using Eigen::Matrix2d;
-using Eigen::MatrixXd;
-using drake::multibody::MultibodyPlant;
-using drake::systems::Context;
-using drake::multibody::Body;
-using drake::VectorX;
-using drake::MatrixX;
 
 template <typename T>
 DirconPositionData<T>::DirconPositionData(const MultibodyPlant<T>& plant,
-                                          const Body<T>& body,
-                                          Vector3d pt,
-                                          bool isXZ,
-                                          Vector3d surface_normal)
+                                          const Body<T>& body, Vector3d pt,
+                                          bool isXZ, Vector3d surface_normal)
     : DirconKinematicData<T>(plant, isXZ ? 2 : 3),
       body_(body),
       pt_(pt),
       isXZ_(isXZ) {
-  TXZ_ << 1, 0, 0,
-      0, 0, 1;
+  TXZ_ << 1, 0, 0, 0, 0, 1;
 
   Vector3d z_hat(0, 0, 1);
   surface_normal.normalize();
@@ -39,8 +36,7 @@ DirconPositionData<T>::DirconPositionData(const MultibodyPlant<T>& plant,
 }
 
 template <typename T>
-DirconPositionData<T>::~DirconPositionData() {
-}
+DirconPositionData<T>::~DirconPositionData() {}
 
 template <typename T>
 void DirconPositionData<T>::updateConstraint(const Context<T>& context) {
@@ -52,16 +48,18 @@ void DirconPositionData<T>::updateConstraint(const Context<T>& context) {
   VectorX<T> pt_cast = pt_.template cast<T>();
   const drake::multibody::Frame<T>& world = this->plant_.world_frame();
 
-  this->plant_.CalcPointsPositions(context, body_.body_frame(), pt_cast,
-                                   world, &pt_transform);
+  this->plant_.CalcPointsPositions(context, body_.body_frame(), pt_cast, world,
+                                   &pt_transform);
   this->plant_.CalcJacobianTranslationalVelocity(
-      context, drake::multibody::JacobianWrtVariable::kV,
-      body_.body_frame(), pt_cast, world, world, &J3d);
+      context, drake::multibody::JacobianWrtVariable::kV, body_.body_frame(),
+      pt_cast, world, world, &J3d);
 
-  MatrixX<T> J3d_times_v = this->plant_.CalcBiasSpatialAcceleration(
-      context, drake::multibody::JacobianWrtVariable::kV,
-      body_.body_frame(), pt_cast,
-      world, world).translational();
+  MatrixX<T> J3d_times_v =
+      this->plant_
+          .CalcBiasSpatialAcceleration(
+              context, drake::multibody::JacobianWrtVariable::kV,
+              body_.body_frame(), pt_cast, world, world)
+          .translational();
 
   if (isXZ_) {
     this->c_ = TXZ_and_ground_incline_ * pt_transform;
@@ -92,8 +90,8 @@ void DirconPositionData<T>::addFixedNormalFrictionConstraints(double mu) {
     A(2, 1) = 1;
     Vector3d lb = Vector3d::Zero();
     Vector3d ub = Vector3d::Constant(std::numeric_limits<double>::infinity());
-    auto force_constraint = std::make_shared<drake::solvers::LinearConstraint>(
-        A, lb, ub);
+    auto force_constraint =
+        std::make_shared<drake::solvers::LinearConstraint>(A, lb, ub);
     this->force_constraints_.push_back(force_constraint);
 
   } else {

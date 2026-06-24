@@ -6,7 +6,7 @@ namespace dairlib {
 /// Utility method to solve for a fixed point for Cassie
 /// This is a very narrow method, but could be useful across different
 /// Cassie examples
-/// @param plant 
+/// @param plant
 /// @param height The pelvis height to solve for
 /// @param mu Coefficient of friction
 /// @param min_normal_force Minimum normal force at each contact point
@@ -28,7 +28,7 @@ void CassieFixedPointSolver(
 
 /// Utility method to solve for loop constraints for Cassie for a neutral
 /// position
-/// @param plant 
+/// @param plant
 /// @param q Pointer to the resulting position
 /// @param u Pointer to the resulting actuation input
 /// @param lambda Pointer to the constraint force, though not that useful

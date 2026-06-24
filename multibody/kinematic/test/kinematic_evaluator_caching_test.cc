@@ -71,19 +71,19 @@ void TestEvaluatorSet(const KinematicEvaluatorSet<double> evaluators) {
   VectorXd q, v;
 
   cout << "***** baseline tests (" << std::to_string(N) << ") *****" << endl;
-  auto start =  my_clock::now();
+  auto start = my_clock::now();
   for (int i = 0; i < N; i++) {
     Eigen::MatrixXd M(plant.num_velocities(), plant.num_velocities());
     q = Eigen::VectorXd::Random(plant.num_positions());
     plant.SetPositions(context.get(), q);
     evaluators.plant().CalcMassMatrix(*context, &M);
   }
-  auto stop =  my_clock::now();
+  auto stop = my_clock::now();
   auto duration =
-    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  cout << "M:\t" << (1.0*duration.count())/N << endl;
+      std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "M:\t" << (1.0 * duration.count()) / N << endl;
 
-  start =  my_clock::now();
+  start = my_clock::now();
   for (int i = 0; i < N; i++) {
     q = Eigen::VectorXd::Random(plant.num_positions());
     v = Eigen::VectorXd::Random(plant.num_velocities());
@@ -92,12 +92,12 @@ void TestEvaluatorSet(const KinematicEvaluatorSet<double> evaluators) {
     evaluators.plant().CalcMassMatrix(*context, &M);
     auto res = M.llt();
   }
-  stop =  my_clock::now();
+  stop = my_clock::now();
   duration =
-    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  cout << "M.llt:\t" << (1.0*duration.count())/N << endl;
+      std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "M.llt:\t" << (1.0 * duration.count()) / N << endl;
 
-  start =  my_clock::now();
+  start = my_clock::now();
   for (int i = 0; i < N; i++) {
     q = Eigen::VectorXd::Random(plant.num_positions());
     v = Eigen::VectorXd::Random(plant.num_velocities());
@@ -106,12 +106,12 @@ void TestEvaluatorSet(const KinematicEvaluatorSet<double> evaluators) {
     VectorXd C(plant.num_velocities());
     plant.CalcBiasTerm(*context, &C);
   }
-  stop =  my_clock::now();
+  stop = my_clock::now();
   duration =
-    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  cout << "C:\t" << (1.0*duration.count())/N << endl;
+      std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "C:\t" << (1.0 * duration.count()) / N << endl;
 
-  start =  my_clock::now();
+  start = my_clock::now();
   for (int i = 0; i < N; i++) {
     q = Eigen::VectorXd::Random(plant.num_positions());
     v = Eigen::VectorXd::Random(plant.num_velocities());
@@ -122,34 +122,34 @@ void TestEvaluatorSet(const KinematicEvaluatorSet<double> evaluators) {
     Eigen::MatrixXd M(plant.num_velocities(), plant.num_velocities());
     evaluators.plant().CalcMassMatrix(*context, &M);
   }
-  stop =  my_clock::now();
+  stop = my_clock::now();
   duration =
-    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  cout << "C,M:\t" << (1.0*duration.count())/N << endl;
+      std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "C,M:\t" << (1.0 * duration.count()) / N << endl;
 
-  start =  my_clock::now();
+  start = my_clock::now();
   for (int i = 0; i < N; i++) {
     q = Eigen::VectorXd::Random(plant.num_positions());
     plant.SetPositions(context.get(), q);
     auto tmp = evaluators.EvalFull(*context);
   }
-  stop =  my_clock::now();
+  stop = my_clock::now();
   duration =
-    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  cout << "phi:\t" << (1.0*duration.count())/N << endl;
+      std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "phi:\t" << (1.0 * duration.count()) / N << endl;
 
-  start =  my_clock::now();
+  start = my_clock::now();
   for (int i = 0; i < N; i++) {
     q = Eigen::VectorXd::Random(plant.num_positions());
     plant.SetPositions(context.get(), q);
     auto tmp = evaluators.EvalFullJacobian(*context);
   }
-  stop =  my_clock::now();
+  stop = my_clock::now();
   duration =
-    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  cout << "J:\t" << (1.0*duration.count())/N << endl;
+      std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "J:\t" << (1.0 * duration.count()) / N << endl;
 
-  start =  my_clock::now();
+  start = my_clock::now();
   for (int i = 0; i < N; i++) {
     q = Eigen::VectorXd::Random(plant.num_positions());
     v = Eigen::VectorXd::Random(plant.num_velocities());
@@ -157,26 +157,25 @@ void TestEvaluatorSet(const KinematicEvaluatorSet<double> evaluators) {
     plant.SetVelocities(context.get(), v);
     auto tmp = evaluators.EvalFullJacobianDotTimesV(*context);
   }
-  stop =  my_clock::now();
+  stop = my_clock::now();
   duration =
-    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  cout << "Jdotv:\t" << (1.0*duration.count())/N << endl;
+      std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "Jdotv:\t" << (1.0 * duration.count()) / N << endl;
 
-
-  start =  my_clock::now();
+  start = my_clock::now();
   for (int i = 0; i < N; i++) {
     q = Eigen::VectorXd::Random(plant.num_positions());
     v = Eigen::VectorXd::Random(plant.num_velocities());
     plant.SetPositions(context.get(), q);
     plant.SetVelocities(context.get(), v);
   }
-  stop =  my_clock::now();
+  stop = my_clock::now();
   duration =
-    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  cout << "set qv:\t" << (1.0*duration.count())/N << endl;
+      std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "set qv:\t" << (1.0 * duration.count()) / N << endl;
 
- cout << "***** 2X tests (" << std::to_string(N) << ") *****" << endl;
-  start =  my_clock::now();
+  cout << "***** 2X tests (" << std::to_string(N) << ") *****" << endl;
+  start = my_clock::now();
   for (int i = 0; i < N; i++) {
     Eigen::MatrixXd M(plant.num_velocities(), plant.num_velocities());
     q = Eigen::VectorXd::Random(plant.num_positions());
@@ -184,12 +183,12 @@ void TestEvaluatorSet(const KinematicEvaluatorSet<double> evaluators) {
     evaluators.plant().CalcMassMatrix(*context, &M);
     evaluators.plant().CalcMassMatrix(*context, &M);
   }
-  stop =  my_clock::now();
+  stop = my_clock::now();
   duration =
-    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  cout << "M:\t" << (1.0*duration.count())/N << endl;
+      std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "M:\t" << (1.0 * duration.count()) / N << endl;
 
-  start =  my_clock::now();
+  start = my_clock::now();
   for (int i = 0; i < N; i++) {
     q = Eigen::VectorXd::Random(plant.num_positions());
     v = Eigen::VectorXd::Random(plant.num_velocities());
@@ -199,36 +198,36 @@ void TestEvaluatorSet(const KinematicEvaluatorSet<double> evaluators) {
     plant.CalcBiasTerm(*context, &C);
     plant.CalcBiasTerm(*context, &C);
   }
-  stop =  my_clock::now();
+  stop = my_clock::now();
   duration =
-    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  cout << "C:\t" << (1.0*duration.count())/N << endl;
+      std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "C:\t" << (1.0 * duration.count()) / N << endl;
 
-  start =  my_clock::now();
+  start = my_clock::now();
   for (int i = 0; i < N; i++) {
     q = Eigen::VectorXd::Random(plant.num_positions());
     plant.SetPositions(context.get(), q);
     auto tmp = evaluators.EvalFull(*context);
     tmp = evaluators.EvalFull(*context);
   }
-  stop =  my_clock::now();
+  stop = my_clock::now();
   duration =
-    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  cout << "phi:\t" << (1.0*duration.count())/N << endl;
+      std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "phi:\t" << (1.0 * duration.count()) / N << endl;
 
-  start =  my_clock::now();
+  start = my_clock::now();
   for (int i = 0; i < N; i++) {
     q = Eigen::VectorXd::Random(plant.num_positions());
     plant.SetPositions(context.get(), q);
     auto tmp = evaluators.EvalFullJacobian(*context);
     tmp = evaluators.EvalFullJacobian(*context);
   }
-  stop =  my_clock::now();
+  stop = my_clock::now();
   duration =
-    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  cout << "J:\t" << (1.0*duration.count())/N << endl;
+      std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "J:\t" << (1.0 * duration.count()) / N << endl;
 
-  start =  my_clock::now();
+  start = my_clock::now();
   for (int i = 0; i < N; i++) {
     q = Eigen::VectorXd::Random(plant.num_positions());
     v = Eigen::VectorXd::Random(plant.num_velocities());
@@ -237,25 +236,25 @@ void TestEvaluatorSet(const KinematicEvaluatorSet<double> evaluators) {
     auto tmp = evaluators.EvalFullJacobianDotTimesV(*context);
     tmp = evaluators.EvalFullJacobianDotTimesV(*context);
   }
-  stop =  my_clock::now();
+  stop = my_clock::now();
   duration =
-    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  cout << "Jdotv:\t" << (1.0*duration.count())/N << endl;
+      std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "Jdotv:\t" << (1.0 * duration.count()) / N << endl;
 
   cout << "***** sequence tests (" << std::to_string(N) << ") *****" << endl;
-  start =  my_clock::now();
+  start = my_clock::now();
   for (int i = 0; i < N; i++) {
     q = Eigen::VectorXd::Random(plant.num_positions());
     plant.SetPositions(context.get(), q);
     auto tmp = evaluators.EvalFull(*context);
     auto tmpJ = evaluators.EvalFullJacobian(*context);
   }
-  stop =  my_clock::now();
+  stop = my_clock::now();
   duration =
-    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  cout << "phi,J:\t" << (1.0*duration.count())/N << endl;
+      std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "phi,J:\t" << (1.0 * duration.count()) / N << endl;
 
-  start =  my_clock::now();
+  start = my_clock::now();
   for (int i = 0; i < N; i++) {
     q = Eigen::VectorXd::Random(plant.num_positions());
     v = Eigen::VectorXd::Random(plant.num_velocities());
@@ -265,13 +264,14 @@ void TestEvaluatorSet(const KinematicEvaluatorSet<double> evaluators) {
     auto tmpJ = evaluators.EvalFullJacobian(*context);
     auto tmpJdotV = evaluators.EvalFullJacobianDotTimesV(*context);
   }
-  stop =  my_clock::now();
+  stop = my_clock::now();
   duration =
-    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  cout << "all:\t" << (1.0*duration.count())/N << endl;
+      std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "all:\t" << (1.0 * duration.count()) / N << endl;
 
-  cout << "***** sequence tests resetting state (" << std::to_string(N) << ") *****" << endl;
-  start =  my_clock::now();
+  cout << "***** sequence tests resetting state (" << std::to_string(N)
+       << ") *****" << endl;
+  start = my_clock::now();
   for (int i = 0; i < N; i++) {
     q = Eigen::VectorXd::Random(plant.num_positions());
     plant.SetPositions(context.get(), q);
@@ -279,12 +279,12 @@ void TestEvaluatorSet(const KinematicEvaluatorSet<double> evaluators) {
     plant.SetPositions(context.get(), q);
     auto tmpJ = evaluators.EvalFullJacobian(*context);
   }
-  stop =  my_clock::now();
+  stop = my_clock::now();
   duration =
-    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  cout << "phi,J:\t" << (1.0*duration.count())/N << endl;
+      std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "phi,J:\t" << (1.0 * duration.count()) / N << endl;
 
-  start =  my_clock::now();
+  start = my_clock::now();
   for (int i = 0; i < N; i++) {
     q = Eigen::VectorXd::Random(plant.num_positions());
     v = Eigen::VectorXd::Random(plant.num_velocities());
@@ -294,16 +294,16 @@ void TestEvaluatorSet(const KinematicEvaluatorSet<double> evaluators) {
     plant.SetVelocities(context.get(), v);
     auto tmpJdotV = evaluators.EvalFullJacobianDotTimesV(*context);
   }
-  stop =  my_clock::now();
+  stop = my_clock::now();
   duration =
-    std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  cout << "all:\t" << (1.0*duration.count())/N << endl;
+      std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  cout << "all:\t" << (1.0 * duration.count()) / N << endl;
 }
 
 int DoMain(int argc, char* argv[]) {
-  srand((unsigned int) time(0));
+  srand((unsigned int)time(0));
   drake::logging::set_log_level("err");  // ignore warnings about joint limit
-  
+
   std::string filename = "examples/Cassie/urdf/cassie_fixed_springs.urdf";
   // Build plant
   drake::multibody::MultibodyPlant<double> plant(0);
@@ -317,9 +317,9 @@ int DoMain(int argc, char* argv[]) {
   // Add loop closures
   auto left_loop = LeftLoopClosureEvaluator(plant);
   auto right_loop = RightLoopClosureEvaluator(plant);
-  
 
-  cout << "STARTING EVALUATION TESTS. ALL TIMES AVG TIME IN MICROSECONDS." << endl;
+  cout << "STARTING EVALUATION TESTS. ALL TIMES AVG TIME IN MICROSECONDS."
+       << endl;
   cout << endl << "SINGLE EVALUATOR." << endl;
   evaluators.add_evaluator(&left_loop);
   TestEvaluatorSet(evaluators);
@@ -329,8 +329,6 @@ int DoMain(int argc, char* argv[]) {
   TestEvaluatorSet(evaluators);
   return 0;
 }
-
-
 
 }  // namespace multibody
 }  // namespace dairlib

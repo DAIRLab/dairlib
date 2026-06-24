@@ -64,6 +64,5 @@ class LcmOrientationTrajectoryReceiver
   const std::string trajectory_name_;
 };
 
-
 }  // namespace systems
 }  // namespace dairlib

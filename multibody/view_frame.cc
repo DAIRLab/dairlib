@@ -5,7 +5,7 @@ using Eigen::Vector3d;
 
 namespace dairlib::multibody {
 
-template<typename T>
+template <typename T>
 ViewFrame<T>::~ViewFrame(){};
 
 /**** WorldYawViewFrame ****/

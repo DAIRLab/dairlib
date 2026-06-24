@@ -1,9 +1,11 @@
 #pragma once
 
 #include <memory>
+
 #include <drake/common/eigen_types.h>
 
 #include "systems/framework/output_vector.h"
+
 #include "drake/common/drake_copyable.h"
 #include "drake/systems/framework/leaf_system.h"
 
@@ -13,8 +15,8 @@ namespace systems {
 /// this class is copied from drake/systems/primitives/Passthrough
 /// with the modification that it adds random noise to the values it is
 /// passing through
-class GaussianNoisePassThrough final : public
-    drake::systems::LeafSystem<double> {
+class GaussianNoisePassThrough final
+    : public drake::systems::LeafSystem<double> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(GaussianNoisePassThrough)
 
@@ -24,12 +26,11 @@ class GaussianNoisePassThrough final : public
   /// @param num_inputs the number of inputs
   /// @param pos_variance covariance matrix for the generalized position
   /// @param vel_variance covariance matrix for the generalized velocities
-  explicit GaussianNoisePassThrough(int num_positions,
-                                    int num_velocities,
+  explicit GaussianNoisePassThrough(int num_positions, int num_velocities,
                                     int num_inputs,
                                     const Eigen::MatrixXd& pos_variance,
                                     const Eigen::MatrixXd& vel_variance);
-  
+
   ~GaussianNoisePassThrough() override {}
 
   /// Returns the sole input port.

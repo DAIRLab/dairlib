@@ -2,7 +2,6 @@
 
 #include "drake/common/yaml/yaml_read_archive.h"
 
-
 struct FrankaDrakeLcmDriverChannels {
   std::string franka_status_channel;
   std::string franka_command_channel;

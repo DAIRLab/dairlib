@@ -1,24 +1,23 @@
 #include "solvers/optimization_utils.h"
-#include <iostream>
 
 #include <iostream>
 
-using Eigen::MatrixXd;
-using Eigen::VectorXd;
-using drake::solvers::Constraint;
-using drake::solvers::Binding;
-using drake::solvers::MathematicalProgram;
 using drake::AutoDiffVecXd;
-using drake::math::InitializeAutoDiff;
 using drake::math::ExtractGradient;
 using drake::math::ExtractValue;
+using drake::math::InitializeAutoDiff;
+using drake::solvers::Binding;
+using drake::solvers::Constraint;
+using drake::solvers::MathematicalProgram;
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
 
 namespace dairlib {
 namespace solvers {
 
-bool CheckGenericConstraints(const MathematicalProgram& prog,
-    const drake::solvers::MathematicalProgramResult& result,
-    double tol) {
+bool CheckGenericConstraints(
+    const MathematicalProgram& prog,
+    const drake::solvers::MathematicalProgramResult& result, double tol) {
   bool allSatisfied = true;
   for (auto const& binding : prog.generic_constraints()) {
     auto y = result.EvalBinding(binding);
@@ -26,8 +25,8 @@ bool CheckGenericConstraints(const MathematicalProgram& prog,
     bool isSatisfied = (y.array() >= c->lower_bound().array() - tol).all() &&
                        (y.array() <= c->upper_bound().array() + tol).all();
     if (!isSatisfied) {
-      std::cout << "Constraint violation: " <<
-          c->get_description() << std::endl;
+      std::cout << "Constraint violation: " << c->get_description()
+                << std::endl;
       MatrixXd tmp(y.size(), 3);
       tmp << c->lower_bound(), y, c->upper_bound();
       std::cout << tmp << std::endl;
@@ -38,8 +37,7 @@ bool CheckGenericConstraints(const MathematicalProgram& prog,
 }
 
 double SecondOrderCost(const MathematicalProgram& prog, const VectorXd& x_nom,
-    MatrixXd* Q, VectorXd* w, double eps) {
-
+                       MatrixXd* Q, VectorXd* w, double eps) {
   int num_vars = prog.num_vars();
   *Q = Eigen::MatrixXd::Zero(num_vars, num_vars);
   *w = Eigen::MatrixXd::Zero(num_vars, 1);
@@ -49,8 +47,7 @@ double SecondOrderCost(const MathematicalProgram& prog, const VectorXd& x_nom,
   for (auto const& binding : prog.GetAllCosts()) {
     // evaluate cost
     auto variables = binding.variables();
-    if (variables.size() == 0)
-      continue;
+    if (variables.size() == 0) continue;
     AutoDiffVecXd y_val =
         InitializeAutoDiff(VectorXd::Zero(1), variables.size());
     VectorXd x_binding(variables.size());
@@ -89,11 +86,10 @@ double SecondOrderCost(const MathematicalProgram& prog, const VectorXd& x_nom,
   return c;
 }
 
-
 // Evaluate all constraints and construct a linearization of them
 void LinearizeConstraints(const MathematicalProgram& prog, const VectorXd& x,
-    VectorXd* y, MatrixXd* A, VectorXd* lb, VectorXd* ub) {
-
+                          VectorXd* y, MatrixXd* A, VectorXd* lb,
+                          VectorXd* ub) {
   int num_constraints = 0;
   int num_vars = prog.num_vars();
 
@@ -131,8 +127,8 @@ void LinearizeConstraints(const MathematicalProgram& prog, const VectorXd& x,
 
     y->segment(constraint_index, n) = ExtractValue(y_val);
     for (int i = 0; i < variables.size(); i++) {
-      A->block(constraint_index,
-          prog.FindDecisionVariableIndex(variables(i)), n, 1) = dx.col(i);
+      A->block(constraint_index, prog.FindDecisionVariableIndex(variables(i)),
+               n, 1) = dx.col(i);
     }
     constraint_index += n;
   }
@@ -141,7 +137,7 @@ void LinearizeConstraints(const MathematicalProgram& prog, const VectorXd& x,
 /// Helper method, returns a vector of given length
 /// [start, start+1, ..., (start + length -1)]
 VectorXd NVec(int start, int length) {
-    VectorXd ret(length);
+  VectorXd ret(length);
   for (int i = 0; i < length; i++) {
     ret(i) = i + start;
   }
@@ -149,14 +145,14 @@ VectorXd NVec(int start, int length) {
 }
 
 VectorXd GetConstraintRows(const MathematicalProgram& prog,
-    const Binding<Constraint>& c) {
+                           const Binding<Constraint>& c) {
   int n = 0;
   auto constraints = prog.GetAllConstraints();
   for (auto const& binding : constraints) {
     if (c.evaluator() == binding.evaluator() &&
         c.variables() == binding.variables()) {
-    int num_constraints = c.evaluator()->num_constraints();
-    return NVec(n, num_constraints);
+      int num_constraints = c.evaluator()->num_constraints();
+      return NVec(n, num_constraints);
     }
     n += binding.evaluator()->num_constraints();
   }

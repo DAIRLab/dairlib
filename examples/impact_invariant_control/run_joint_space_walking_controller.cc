@@ -123,7 +123,7 @@ int DoMain(int argc, char* argv[]) {
           FLAGS_channel_u, &lcm, TriggerTypeSet({TriggerType::kForced})));
   auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant, plant_context.get(), plant_context.get(), true);
+      plant, plant_context.get(), true);
   auto osc_debug_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
           "OSC_DEBUG_WALKING", &lcm, TriggerTypeSet({TriggerType::kForced})));
@@ -147,8 +147,14 @@ int DoMain(int argc, char* argv[]) {
       plant, foot_contact_disp, plant.GetBodyByName("right_foot").body_frame(),
       Matrix3d::Identity(), Vector3d::Zero(), {0, 2});
 
-  osc->AddStateAndContactPoint(0, &left_foot_evaluator);
-  osc->AddStateAndContactPoint(1, &right_foot_evaluator);
+  osc->AddContactPoint("left_foot",
+                       std::unique_ptr<multibody::WorldPointEvaluator<double>>(
+                           &left_foot_evaluator),
+                       {0});
+  osc->AddContactPoint("right_foot",
+                       std::unique_ptr<multibody::WorldPointEvaluator<double>>(
+                           &right_foot_evaluator),
+                       {1});
 
   // Create maps for joints
   map<string, int> pos_map_wo_spr = multibody::MakeNameToPositionsMap(plant);
@@ -179,8 +185,7 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(joint_trajs[joint_idx]->get_output_port(),
                     osc->get_input_port_tracking_data(joint_name + "_traj"));
   }
-  osc->SetOsqpSolverOptionsFromYaml(
-      FLAGS_osqp_settings);
+  osc->SetOsqpSolverOptionsFromYaml(FLAGS_osqp_settings);
   // Build OSC problem
   osc->Build();
   std::cout << "Built OSC" << std::endl;
@@ -202,7 +207,8 @@ int DoMain(int argc, char* argv[]) {
                   command_sender->get_input_port(0));
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
-  builder.Connect(osc->get_output_port_osc_debug(), osc_debug_pub->get_input_port());
+  builder.Connect(osc->get_output_port_osc_debug(),
+                  osc_debug_pub->get_input_port());
 
   // Run lcm-driven simulation
   // Create the diagram

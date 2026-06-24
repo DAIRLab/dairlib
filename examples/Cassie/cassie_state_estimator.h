@@ -107,7 +107,8 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
       Eigen::Vector3d pelvis_vel = Eigen::Vector3d::Zero()) const;
   void setPreviousImuMeasurement(drake::systems::Context<double>* context,
                                  const Eigen::VectorXd& imu_value) const;
-  void SetSpringDeflectionThresholds(double knee_spring_threshold, double ankle_spring_threshold) {
+  void SetSpringDeflectionThresholds(double knee_spring_threshold,
+                                     double ankle_spring_threshold) {
     knee_spring_threshold_ctrl_ = knee_spring_threshold;
     knee_spring_threshold_ekf_ = knee_spring_threshold;
     ankle_spring_threshold_ctrl_ = ankle_spring_threshold;
@@ -118,7 +119,8 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   }
 
   // Copy joint state from cassie_out_t to an OutputVector
-  void AssignNonFloatingBaseStateToOutputVector(const cassie_out_t& cassie_out,
+  void AssignNonFloatingBaseStateToOutputVector(
+      const cassie_out_t& cassie_out,
       systems::OutputVector<double>* output) const;
 
   // Currently, `DoCalcNextUpdateTime` seems to be the only gateway of adding
@@ -135,11 +137,14 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   void set_next_message_time(double t) { next_message_time_ = t; };
 
  private:
-  void AssignImuValueToOutputVector(const cassie_out_t& cassie_out,
+  void AssignImuValueToOutputVector(
+      const cassie_out_t& cassie_out,
       systems::OutputVector<double>* output) const;
-  void AssignActuationFeedbackToOutputVector(const cassie_out_t& cassie_out,
+  void AssignActuationFeedbackToOutputVector(
+      const cassie_out_t& cassie_out,
       systems::OutputVector<double>* output) const;
-  void AssignFloatingBaseStateToOutputVector(const Eigen::VectorXd& state_est,
+  void AssignFloatingBaseStateToOutputVector(
+      const Eigen::VectorXd& state_est,
       systems::OutputVector<double>* output) const;
 
   drake::systems::EventStatus Update(
@@ -231,15 +236,14 @@ class CassieStateEstimator : public drake::systems::LeafSystem<double> {
   double ankle_spring_threshold_ctrl_ = -0.01;
   double ankle_spring_threshold_ekf_ = -0.01;
   const double w_soft_constraint_ = 100;  // Soft constraint cost
-  double contact_force_threshold_ = 60;  // Soft constraint cost
+  double contact_force_threshold_ = 60;   // Soft constraint cost
 
   // flag for testing and tuning
   std::unique_ptr<drake::systems::Context<double>> context_gt_;
   bool test_with_ground_truth_state_;
   bool print_info_to_terminal_;
   mutable int hardware_test_mode_ = 0;
-  std::unique_ptr<int> counter_for_testing_ =
-      std::make_unique<int>(0);
+  std::unique_ptr<int> counter_for_testing_ = std::make_unique<int>(0);
 
   // Timestamp from unprocessed message
   double next_message_time_ = -std::numeric_limits<double>::infinity();

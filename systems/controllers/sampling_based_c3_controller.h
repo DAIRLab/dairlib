@@ -14,6 +14,7 @@
 #include "c3/core/solver_options_io.h"
 #include "c3/multibody/lcs_factory.h"
 #include "c3/multibody/lcs_factory_options.h"
+#include "c3/systems/framework/c3_output.h"
 #include "common/find_resource.h"
 #include "common/update_context.h"
 #include "dairlib/lcmt_sampling_c3_debug.hpp"
@@ -25,7 +26,6 @@
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "examples/sampling_c3/parameter_headers/sampling_params.h"
 #include "lcm/lcm_trajectory.h"
-#include "solvers/c3_output.h"
 #include "systems/controllers/face.h"
 #include "systems/framework/timestamped_vector.h"
 
@@ -196,14 +196,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
  private:
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
       C3CostComputationType cost_type, const c3::LCS& lcs_for_cost,
-      const c3::C3::CostMatrices& c3_cost,
-      const std::vector<VectorXd> x_desired,
-      const std::vector<Eigen::VectorXd> z_fin, bool force_tracking_disabled,
-      int num_objects, bool print_cost_breakdown, bool verbose) const;
-  std::pair<std::vector<Eigen::VectorXd>, std::vector<Eigen::VectorXd>>
-  SimulatePDControl(const c3::LCS& lcs_for_cost,
-                    const std::vector<Eigen::VectorXd> z_fin, int num_objects,
-                    bool force_tracking_disabled, bool verbose) const;
+      const c3::C3::CostMatrices& cost_mats,
+      const std::shared_ptr<c3::C3>& c3_object,
+      const bool& force_tracking_disabled, int num_objects,
+      const bool& print_cost_breakdown) const;
   /// Function for computing one control loop
   drake::systems::EventStatus ComputePlan(
       const drake::systems::Context<double>& context,
@@ -263,10 +259,16 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   void ResetProgressMetrics() const;
 
+  void ResetSampleBuffers() const;
+
+  void IncludeEEOrientationTargetIfEnabled(
+      LcmTrajectory* lcm_trajectory, const Eigen::Vector3d& ee_position,
+      const Eigen::VectorXd& timestamps) const;
+
   /// Output port functions
   void OutputC3SolutionCurrPlan(
       const drake::systems::Context<double>& context,
-      dairlib::C3Output::C3Solution* c3_solution) const;
+      c3::systems::C3Output::C3Solution* c3_solution) const;
   void OutputC3SolutionCurrPlanActor(
       const drake::systems::Context<double>& context,
       dairlib::lcmt_timestamped_saved_traj* output) const;
@@ -275,14 +277,14 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       dairlib::lcmt_timestamped_saved_traj* output) const;
   void OutputC3IntermediatesCurrPlan(
       const drake::systems::Context<double>& context,
-      dairlib::C3Output::C3Intermediates* c3_intermediates) const;
+      c3::systems::C3Output::C3Intermediates* c3_intermediates) const;
   void OutputLCSContactJacobianCurrPlan(
       const drake::systems::Context<double>& context,
-      std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*
-          lcs_contact_jacobian) const;
+      std::vector<c3::multibody::LCSContactDescription>*
+          lcs_contact_descriptions) const;
   void OutputC3SolutionBestPlan(
       const drake::systems::Context<double>& context,
-      dairlib::C3Output::C3Solution* c3_solution) const;
+      c3::systems::C3Output::C3Solution* c3_solution) const;
   void OutputC3SolutionBestPlanActor(
       const drake::systems::Context<double>& context,
       dairlib::lcmt_timestamped_saved_traj* output) const;
@@ -291,11 +293,11 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       dairlib::lcmt_timestamped_saved_traj* output) const;
   void OutputC3IntermediatesBestPlan(
       const drake::systems::Context<double>& context,
-      dairlib::C3Output::C3Intermediates* c3_intermediates) const;
+      c3::systems::C3Output::C3Intermediates* c3_intermediates) const;
   void OutputLCSContactJacobianBestPlan(
       const drake::systems::Context<double>& context,
-      std::pair<Eigen::MatrixXd, std::vector<Eigen::VectorXd>>*
-          lcs_contact_jacobian) const;
+      std::vector<c3::multibody::LCSContactDescription>*
+          lcs_contact_descriptions) const;
   void OutputDynamicallyFeasibleCurrPlanActor(
       const drake::systems::Context<double>& context,
       dairlib::lcmt_timestamped_saved_traj*
@@ -393,12 +395,12 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       contact_pairs_;
   c3::multibody::ContactModel contact_model_;
 
-  SamplingC3ControllerParams controller_params_;
-  SamplingC3Options sampling_c3_options_;
-  SamplingParams sampling_params_;
-  SamplingC3RepositionParams reposition_params_;
-  SamplingC3ProgressParams progress_params_;
-  SamplingC3GoalParams goal_params_;
+  const SamplingC3ControllerParams controller_params_;
+  const SamplingC3Options sampling_c3_options_;
+  const SamplingParams sampling_params_;
+  const SamplingC3RepositionParams reposition_params_;
+  const SamplingC3ProgressParams progress_params_;
+  const SamplingC3GoalParams goal_params_;
   drake::solvers::SolverOptions solver_options_ =
       drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(
           "solvers/osqp_options_default.yaml")
@@ -417,11 +419,17 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   double solve_time_filter_constant_;
   drake::systems::DiscreteStateIndex plan_start_time_index_;
 
+  const bool adaptive_ee_tilt_;
+  double max_ee_dist_from_workspace_center_;
+  Eigen::Vector3d workspace_center_;
+
   /// TODO:  There are many mutable class variables, which is not best practice
   /// in the Drake systems framework.  These could be converted to discrete
   /// state variables.
-  mutable double dt_ = 0.1;
-  mutable double dt_cost_ = 0.02;
+  mutable double dt_;
+
+  Eigen::VectorXd Kp_for_cost_;
+  Eigen::VectorXd Kd_for_cost_;
 
   mutable std::vector<Eigen::MatrixXd> Q_;
   mutable std::vector<Eigen::MatrixXd> R_;

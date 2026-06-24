@@ -20,9 +20,16 @@ num_additional_samples_c3: 2
 
 # Sample buffer parameters.
 consider_best_buffer_sample_when_leaving_c3: true
-N_sample_buffer: 100
+N_sample_buffer: 400
 pos_error_sample_retention: 0.005
 ang_error_sample_retention: 0.087  # 0.087 rad = 5 deg
+
+# Unsuccessful sample buffer parameters.
+avoid_choosing_unsuccessful_samples: true
+N_unsuccessful_sample_buffer: 20
+unsuccessful_pos_error_sample_retention: 0.006
+unsuccessful_ang_error_sample_retention: 0.05  # 0.0349 rad = 2 deg
+unsuccessful_radius: 0.01
 
 # Shared across multiple sampling strategies.
 sampling_radius: 0.10  # kRadiallySymmetric, kRandomOnCircle, kRandomOnSphere
@@ -44,9 +51,15 @@ grid_y_limits: [-0.16, 0.16]
 min_sampling_radius: 0.07
 max_sampling_radius: 0.10
 
+# kMeshNormal parameters
 buffer_distance: 0.05
 max_attempts: 100
+barycentric_bias: 0
 
 z_height: -0.004568184999999999
 
-barycentric_bias: 0  
+gen_planar_samples: false # true = projects all samples to z_height
+ee_z_close: false # true = require ee to be close to sampling z-height before
+                  # entering c3
+sample_on_wall: true
+c3_min_clearance: 0.01

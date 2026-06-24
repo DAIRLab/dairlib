@@ -82,10 +82,10 @@ namespace dairlib {
 
 void setKinematicConstraints(Dircon<double>& trajopt,
                              const MultibodyPlant<double>& plant);
-void SetInitialGuessFromTrajectory(
-    Dircon<double>& trajopt,
-    const MultibodyPlant<double>& plant, const string& filepath,
-    bool same_knot_points = false);
+void SetInitialGuessFromTrajectory(Dircon<double>& trajopt,
+                                   const MultibodyPlant<double>& plant,
+                                   const string& filepath,
+                                   bool same_knot_points = false);
 vector<string> createStateNameVectorFromMap(const map<string, int>& pos_map,
                                             const map<string, int>& vel_map,
                                             const map<string, int>& act_map);
@@ -357,9 +357,9 @@ void setKinematicConstraints(Dircon<double>& trajopt,
   // position constraints
   prog.AddBoundingBoxConstraint(-0.25, 0.25, x0(pos_map.at("base_x")));
   prog.AddLinearConstraint(x0(pos_map.at("base_x")) + FLAGS_stride_length ==
-                              xf(pos_map.at("base_x")));
+                           xf(pos_map.at("base_x")));
   prog.AddBoundingBoxConstraint(start_height, start_height,
-                                   x0(pos_map.at("base_z")));
+                                x0(pos_map.at("base_z")));
   //  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("base_y")) <= 0.05);
   //  trajopt.AddConstraintToAllKnotPoints(x(pos_map.at("base_y")) >= -0.05);
   // initial fb orientation constraint
@@ -371,21 +371,21 @@ void setKinematicConstraints(Dircon<double>& trajopt,
 
   // periodicity constraint
   prog.AddLinearConstraint(x0(pos_map.at("base_y")) ==
-                              -xf(pos_map.at("base_y")));
+                           -xf(pos_map.at("base_y")));
   prog.AddLinearConstraint(x0(pos_map.at("base_z")) ==
-                              xf(pos_map.at("base_z")));
+                           xf(pos_map.at("base_z")));
   prog.AddLinearConstraint(x0(n_q + vel_map.at("base_wx")) ==
-                              xf(n_q + vel_map.at("base_wx")));
+                           xf(n_q + vel_map.at("base_wx")));
   prog.AddLinearConstraint(x0(n_q + vel_map.at("base_wy")) ==
-                              -xf(n_q + vel_map.at("base_wy")));
+                           -xf(n_q + vel_map.at("base_wy")));
   prog.AddLinearConstraint(x0(n_q + vel_map.at("base_wz")) ==
-                              xf(n_q + vel_map.at("base_wz")));
+                           xf(n_q + vel_map.at("base_wz")));
   prog.AddLinearConstraint(x0(n_q + vel_map.at("base_vx")) ==
-                              xf(n_q + vel_map.at("base_vx")));
+                           xf(n_q + vel_map.at("base_vx")));
   prog.AddLinearConstraint(x0(n_q + vel_map.at("base_vy")) ==
-                              -xf(n_q + vel_map.at("base_vy")));
+                           -xf(n_q + vel_map.at("base_vy")));
   prog.AddLinearConstraint(x0(n_q + vel_map.at("base_vz")) ==
-                              xf(n_q + vel_map.at("base_vz")));
+                           xf(n_q + vel_map.at("base_vz")));
 
   // create joint/motor names
   vector<std::pair<string, string>> l_r_pairs{
@@ -412,9 +412,8 @@ void setKinematicConstraints(Dircon<double>& trajopt,
   for (const auto& l_r_pair : l_r_pairs) {
     // Symmetry constraints
     for (const auto& sym_joint_name : sym_joint_names) {
-      prog.AddLinearConstraint(
-          x0(pos_map[sym_joint_name + l_r_pair.first]) ==
-          xf(pos_map[sym_joint_name + l_r_pair.second]));
+      prog.AddLinearConstraint(x0(pos_map[sym_joint_name + l_r_pair.first]) ==
+                               xf(pos_map[sym_joint_name + l_r_pair.second]));
       prog.AddLinearConstraint(
           x0(n_q + vel_map.at(sym_joint_name + l_r_pair.first + "dot")) ==
           xf(n_q + vel_map.at(sym_joint_name + l_r_pair.second + "dot")));
@@ -426,9 +425,8 @@ void setKinematicConstraints(Dircon<double>& trajopt,
     }
     // Asymmetry constraints
     for (const auto& asy_joint_name : asy_joint_names) {
-      prog.AddLinearConstraint(
-          x0(pos_map[asy_joint_name + l_r_pair.first]) ==
-          -xf(pos_map[asy_joint_name + l_r_pair.second]));
+      prog.AddLinearConstraint(x0(pos_map[asy_joint_name + l_r_pair.first]) ==
+                               -xf(pos_map[asy_joint_name + l_r_pair.second]));
       prog.AddLinearConstraint(
           x0(n_q + vel_map.at(asy_joint_name + l_r_pair.first + "dot")) ==
           -xf(n_q + vel_map.at(asy_joint_name + l_r_pair.second + "dot")));
@@ -456,7 +454,7 @@ void setKinematicConstraints(Dircon<double>& trajopt,
   for (int i = 0; i < trajopt.N(); i++) {
     auto ui = trajopt.input(i);
     prog.AddBoundingBoxConstraint(VectorXd::Constant(n_u, -200),
-                                     VectorXd::Constant(n_u, +200), ui);
+                                  VectorXd::Constant(n_u, +200), ui);
   }
 
   std::cout << "Foot placement constraints: " << std::endl;

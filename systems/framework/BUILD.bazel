@@ -29,7 +29,7 @@ cc_test(
     deps = [
         ":vector",
         "@drake//:drake_shared_library",
-        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -42,7 +42,7 @@ cc_test(
     deps = [
         ":vector",
         "@drake//:drake_shared_library",
-        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 

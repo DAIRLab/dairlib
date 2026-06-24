@@ -1,5 +1,6 @@
-#include "drake/common/yaml/yaml_read_archive.h"
 #include "systems/controllers/osc/osc_gains.h"
+
+#include "drake/common/yaml/yaml_read_archive.h"
 
 using Eigen::MatrixXd;
 

@@ -2,13 +2,13 @@
 
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/control_utils.h"
+#include "systems/filters/s2s_kalman_filter.h"
 #include "systems/framework/output_vector.h"
 
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"
-#include "systems/filters/s2s_kalman_filter.h"
 
 namespace dairlib {
 namespace systems {
@@ -21,7 +21,6 @@ namespace systems {
 /// There is also a port which, along with predicted x and y CoM positions,
 /// outputs Lx and Ly predictions using the ALIP model. The state order for
 /// this trajectory is [x_com, y_com, Lx, Ly]^T
-
 
 /// Constructor inputs:
 ///  @param plant, the MultibodyPlant
@@ -44,7 +43,8 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
       const std::vector<double>& unordered_state_durations,
       const std::vector<std::vector<std::pair<
           const Eigen::Vector3d, const drake::multibody::Frame<double>&>>>&
-      contact_points_in_each_state, const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R);
+          contact_points_in_each_state,
+      const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R);
 
   // Input port getters
   const drake::systems::InputPort<double>& get_input_port_state() const {
@@ -54,13 +54,12 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
     return this->get_input_port(fsm_port_);
   }
   const drake::systems::InputPort<double>& get_input_port_touchdown_time()
-  const {
+      const {
     return this->get_input_port(touchdown_time_port_);
   }
 
   // Output port getters
-  const drake::systems::OutputPort<double>& get_output_port_alip_state()
-  const {
+  const drake::systems::OutputPort<double>& get_output_port_alip_state() const {
     return this->get_output_port(output_port_alip_state_);
   }
   const drake::systems::OutputPort<double>& get_output_port_com() const {
@@ -68,7 +67,6 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
   }
 
  private:
-
   drake::systems::EventStatus UnrestrictedUpdate(
       const drake::systems::Context<double>& context,
       drake::systems::State<double>* state) const;
@@ -91,11 +89,13 @@ class ALIPTrajGenerator : public drake::systems::LeafSystem<double> {
                          double start_time,
                          double end_time_of_this_fsm_state) const;
 
-  void CalcComTrajFromCurrent(const drake::systems::Context<double>& context,
-                           drake::trajectories::Trajectory<double>* traj) const;
+  void CalcComTrajFromCurrent(
+      const drake::systems::Context<double>& context,
+      drake::trajectories::Trajectory<double>* traj) const;
 
-  void CalcAlipTrajFromCurrent(const drake::systems::Context<double>& context,
-                               drake::trajectories::Trajectory<double>* traj) const;
+  void CalcAlipTrajFromCurrent(
+      const drake::systems::Context<double>& context,
+      drake::trajectories::Trajectory<double>* traj) const;
 
   Eigen::MatrixXd CalcA(double com_z) const;
 

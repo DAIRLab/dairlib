@@ -59,7 +59,8 @@ int DoMain() {
   auto pelvis_frame = &plant.GetBodyByName("pelvis").body_frame();
   auto world = &plant.world_frame();
 
-  DirconTrajectory dircon_traj(plant, FLAGS_folder_path + FLAGS_trajectory_name);
+  DirconTrajectory dircon_traj(plant,
+                               FLAGS_folder_path + FLAGS_trajectory_name);
   PiecewisePolynomial<double> state_traj =
       dircon_traj.ReconstructStateTrajectory();
 
@@ -329,16 +330,16 @@ int DoMain() {
     lhip_traj_block.traj_name = "left_hip_trajectory" + std::to_string(mode);
     lhip_traj_block.datapoints = all_l_hip_points[mode];
     lhip_traj_block.time_vector = all_times[mode];
-    lhip_traj_block.datatypes = {"lhip_x",    "lhip_y",    "lhip_z",
-                                 "lhip_xdot", "lhip_ydot", "lhip_zdot",
+    lhip_traj_block.datatypes = {"lhip_x",     "lhip_y",     "lhip_z",
+                                 "lhip_xdot",  "lhip_ydot",  "lhip_zdot",
                                  "lhip_xddot", "lhip_yddot", "lhip_zddot"};
 
     auto rhip_traj_block = LcmTrajectory::Trajectory();
     rhip_traj_block.traj_name = "right_hip_trajectory" + std::to_string(mode);
     rhip_traj_block.datapoints = all_r_hip_points[mode];
     rhip_traj_block.time_vector = all_times[mode];
-    rhip_traj_block.datatypes = {"rhip_x",    "rhip_y",    "rhip_z",
-                                 "rhip_xdot", "rhip_ydot", "rhip_zdot",
+    rhip_traj_block.datatypes = {"rhip_x",     "rhip_y",     "rhip_z",
+                                 "rhip_xdot",  "rhip_ydot",  "rhip_zdot",
                                  "rhip_xddot", "rhip_yddot", "rhip_zddot"};
 
     auto pelvis_traj_block = LcmTrajectory::Trajectory();

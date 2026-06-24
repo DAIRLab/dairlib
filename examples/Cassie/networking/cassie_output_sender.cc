@@ -1,6 +1,6 @@
-#include <algorithm>
 #include "examples/Cassie/networking/cassie_output_sender.h"
 
+#include <algorithm>
 
 namespace dairlib {
 namespace systems {
@@ -10,15 +10,14 @@ using drake::systems::LeafSystem;
 
 void copy_elmo(const elmo_out_t& input, lcmt_elmo_out* output);
 void copy_leg(const cassie_leg_out_t& input, lcmt_cassie_leg_out* output);
-template <typename T> void copy_vector(const T* input, T* output, int size);
+template <typename T>
+void copy_vector(const T* input, T* output, int size);
 
 CassieOutputSender::CassieOutputSender() {
-  this->DeclareAbstractInputPort("cassie_out_t",
-      drake::Value<cassie_out_t>{});
+  this->DeclareAbstractInputPort("cassie_out_t", drake::Value<cassie_out_t>{});
   this->DeclareAbstractOutputPort("lcmt_cassie_out",
-      &CassieOutputSender::Output);
+                                  &CassieOutputSender::Output);
 }
-
 
 // Utility methods for copying data
 void copy_elmo(const elmo_out_t& input, lcmt_elmo_out* output) {
@@ -31,7 +30,6 @@ void copy_elmo(const elmo_out_t& input, lcmt_elmo_out* output) {
   output->torqueLimit = input.torqueLimit;
   output->gearRatio = input.gearRatio;
 }
-
 
 void copy_leg(const cassie_leg_out_t& input, lcmt_cassie_leg_out* output) {
   copy_elmo(input.hipRollDrive, &output->hipRollDrive);
@@ -58,10 +56,11 @@ void copy_vector(const T* input, T* output, int size) {
 }
 
 void CassieOutputSender::Output(const Context<double>& context,
-                                     lcmt_cassie_out* output) const {
-  // std::cout << "CassieOutputSender::Output t:" <<  context.get_time() << std::endl;
+                                lcmt_cassie_out* output) const {
+  // std::cout << "CassieOutputSender::Output t:" <<  context.get_time() <<
+  // std::endl;
   const cassie_out_t& cassie_out =
-    EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
+      EvalAbstractInput(context, 0)->get_value<cassie_out_t>();
   // using the time from the context
   output->utime = context.get_time() * 1e6;
 
@@ -77,14 +76,12 @@ void CassieOutputSender::Output(const Context<double>& context,
   output->pelvis.targetPc.cpuTemperature =
       cassie_out.pelvis.targetPc.cpuTemperature;
 
-  output->pelvis.battery.dataGood =
-      cassie_out.pelvis.battery.dataGood;
+  output->pelvis.battery.dataGood = cassie_out.pelvis.battery.dataGood;
   output->pelvis.battery.stateOfCharge =
       cassie_out.pelvis.battery.stateOfCharge;
-  output->pelvis.battery.current =
-      cassie_out.pelvis.battery.current;
-  copy_vector(cassie_out.pelvis.battery.voltage,
-              output->pelvis.battery.voltage, 12);
+  output->pelvis.battery.current = cassie_out.pelvis.battery.current;
+  copy_vector(cassie_out.pelvis.battery.voltage, output->pelvis.battery.voltage,
+              12);
   copy_vector(cassie_out.pelvis.battery.temperature,
               output->pelvis.battery.temperature, 4);
 
@@ -92,15 +89,12 @@ void CassieOutputSender::Output(const Context<double>& context,
       cassie_out.pelvis.radio.radioReceiverSignalGood;
   output->pelvis.radio.receiverMedullaSignalGood =
       cassie_out.pelvis.radio.receiverMedullaSignalGood;
-  copy_vector(cassie_out.pelvis.radio.channel,
-              output->pelvis.radio.channel, 16);
+  copy_vector(cassie_out.pelvis.radio.channel, output->pelvis.radio.channel,
+              16);
 
-  output->pelvis.vectorNav.dataGood =
-      cassie_out.pelvis.vectorNav.dataGood;
-  output->pelvis.vectorNav.vpeStatus =
-      cassie_out.pelvis.vectorNav.vpeStatus;
-  output->pelvis.vectorNav.pressure =
-      cassie_out.pelvis.vectorNav.pressure;
+  output->pelvis.vectorNav.dataGood = cassie_out.pelvis.vectorNav.dataGood;
+  output->pelvis.vectorNav.vpeStatus = cassie_out.pelvis.vectorNav.vpeStatus;
+  output->pelvis.vectorNav.pressure = cassie_out.pelvis.vectorNav.pressure;
   output->pelvis.vectorNav.temperature =
       cassie_out.pelvis.vectorNav.temperature;
   copy_vector(cassie_out.pelvis.vectorNav.magneticField,
@@ -121,8 +115,7 @@ void CassieOutputSender::Output(const Context<double>& context,
   copy_leg(cassie_out.leftLeg, &output->leftLeg);
   copy_leg(cassie_out.rightLeg, &output->rightLeg);
 
-  copy_vector(cassie_out.messages,
-              output->messages, 4);
+  copy_vector(cassie_out.messages, output->messages, 4);
   output->isCalibrated = cassie_out.isCalibrated;
 }
 

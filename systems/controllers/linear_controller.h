@@ -1,29 +1,28 @@
 #pragma once
 
-#include "drake/systems/framework/leaf_system.h"
 #include "systems/framework/output_vector.h"
 
-using Eigen::VectorXd;
-using Eigen::MatrixXd;
-using drake::systems::LeafSystem;
+#include "drake/systems/framework/leaf_system.h"
+
 using drake::systems::Context;
+using drake::systems::LeafSystem;
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
 
 static constexpr double kMaxError = 1.0;
 
-namespace dairlib{
+namespace dairlib {
 namespace systems {
 
 class LinearController : public LeafSystem<double> {
  public:
   LinearController(int num_positions, int num_velocities, int num_inputs);
 
-  const drake::systems::InputPort<double>& get_input_port_config()
-      const {
+  const drake::systems::InputPort<double>& get_input_port_config() const {
     return this->get_input_port(config_input_port_);
   }
 
-  const drake::systems::InputPort<double>& get_input_port_output()
-      const {
+  const drake::systems::InputPort<double>& get_input_port_output() const {
     return this->get_input_port(output_input_port_);
   }
 
@@ -41,35 +40,34 @@ class LinearController : public LeafSystem<double> {
 /// Implementation of TimestampedVector to store, set, and get a linear
 /// controller configuration
 class LinearConfig : public TimestampedVector<double> {
-  public:
-    LinearConfig(int num_states, int num_inputs) :
-        TimestampedVector<double>(num_states * num_inputs + num_states),
-        num_states_(num_states), num_inputs_(num_inputs) {};
+ public:
+  LinearConfig(int num_states, int num_inputs)
+      : TimestampedVector<double>(num_states * num_inputs + num_states),
+        num_states_(num_states),
+        num_inputs_(num_inputs){};
 
-    //Getters and setters
-    VectorXd GetDesiredState() const {return desired_state_;};
+  // Getters and setters
+  VectorXd GetDesiredState() const { return desired_state_; };
 
-    MatrixXd GetK() const {return K_;};
+  MatrixXd GetK() const { return K_; };
 
-    void SetDesiredState(VectorXd desired_state) {
-      desired_state_ = desired_state;
-    }
+  void SetDesiredState(VectorXd desired_state) {
+    desired_state_ = desired_state;
+  }
 
-    void SetK(MatrixXd K) {
-      K_ = K;
-    }
+  void SetK(MatrixXd K) { K_ = K; }
 
-  private:
-    LinearConfig* DoClone() const override {
-      return new LinearConfig(num_states_, num_inputs_);
-    }
+ private:
+  LinearConfig* DoClone() const override {
+    return new LinearConfig(num_states_, num_inputs_);
+  }
 
-    int num_states_;
-    int num_inputs_;
+  int num_states_;
+  int num_inputs_;
 
-    VectorXd desired_state_;
-    MatrixXd K_;
+  VectorXd desired_state_;
+  MatrixXd K_;
 };
 
-}
-}
+}  // namespace systems
+}  // namespace dairlib

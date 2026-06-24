@@ -1,26 +1,26 @@
-#include <memory>
-#include <iostream>
 #include <chrono>
+#include <iostream>
+#include <memory>
 
 #include <gflags/gflags.h>
 
+#include "multibody/multibody_utils.h"
+#include "multibody/visualization_utils.h"
+#include "systems/trajectory_optimization/dircon_distance_data.h"
+#include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
+#include "systems/trajectory_optimization/dircon_opt_constraints.h"
+#include "systems/trajectory_optimization/hybrid_dircon.h"
+
+#include "drake/common/find_resource.h"
+#include "drake/multibody/parsing/parser.h"
+#include "drake/solvers/constraint.h"
+#include "drake/solvers/mathematical_program.h"
 #include "drake/solvers/snopt_solver.h"
+#include "drake/solvers/solve.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/primitives/trajectory_source.h"
-#include "drake/solvers/mathematical_program.h"
-#include "drake/solvers/constraint.h"
-#include "drake/multibody/parsing/parser.h"
-#include "drake/solvers/solve.h"
-
-#include "drake/common/find_resource.h"
-#include "systems/trajectory_optimization/dircon_distance_data.h"
-#include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
-#include "systems/trajectory_optimization/hybrid_dircon.h"
-#include "systems/trajectory_optimization/dircon_opt_constraints.h"
-#include "multibody/multibody_utils.h"
-#include "multibody/visualization_utils.h"
 
 /// Simple example using DirconDistanceData. Starting from an acrobot, adds
 /// a distance constraint between the base and a point on the lower link. This
@@ -29,23 +29,22 @@
 /// Runs DIRCON from a given initial condition.
 namespace dairlib {
 namespace {
-using drake::multibody::MultibodyPlant;
 using drake::geometry::SceneGraph;
 using drake::multibody::Body;
+using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
-using Eigen::Vector3d;
 using drake::trajectories::PiecewisePolynomial;
+using Eigen::Vector3d;
 using std::vector;
-using systems::trajectory_optimization::HybridDircon;
 using systems::trajectory_optimization::DirconDynamicConstraint;
+using systems::trajectory_optimization::DirconKinConstraintType;
 using systems::trajectory_optimization::DirconKinematicConstraint;
 using systems::trajectory_optimization::DirconOptions;
-using systems::trajectory_optimization::DirconKinConstraintType;
-
+using systems::trajectory_optimization::HybridDircon;
 
 // Fixed path to double pendulum SDF model.
 static const char* const kDoublePendulumSdfPath =
-  "drake/examples/acrobot/Acrobot.urdf";
+    "drake/examples/acrobot/Acrobot.urdf";
 
 void runDircon() {
   const std::string sdf_path =
@@ -58,9 +57,8 @@ void runDircon() {
 
   parser.AddModels(sdf_path);
 
-  plant.WeldFrames(
-      plant.world_frame(), plant.GetFrameByName("base_link"),
-      drake::math::RigidTransform<double>());
+  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base_link"),
+                   drake::math::RigidTransform<double>());
 
   plant.Finalize();
 
@@ -73,8 +71,8 @@ void runDircon() {
   pt2 << -1, 0, 0;
   double distance = .7;
 
-  auto distanceConstraint = DirconDistanceData<double>(plant, base, pt1,
-      lower_link, pt2, distance);
+  auto distanceConstraint =
+      DirconDistanceData<double>(plant, base, pt1, lower_link, pt2, distance);
 
   std::vector<DirconKinematicData<double>*> constraints;
   constraints.push_back(&distanceConstraint);
@@ -95,12 +93,12 @@ void runDircon() {
   std::vector<DirconOptions> options_list;
   options_list.push_back(options);
 
-  auto trajopt = std::make_shared<HybridDircon<double>>(plant,
-      timesteps, min_dt, max_dt, dataset_list, options_list);
+  auto trajopt = std::make_shared<HybridDircon<double>>(
+      plant, timesteps, min_dt, max_dt, dataset_list, options_list);
 
   const double R = 10;  // Cost on input effort
   auto u = trajopt->input();
-  trajopt->AddRunningCost(u.transpose()*R*u);
+  trajopt->AddRunningCost(u.transpose() * R * u);
 
   auto x0 = trajopt->initial_state();
   trajopt->prog().AddLinearConstraint(x0(0) == 1);
@@ -109,8 +107,8 @@ void runDircon() {
   const auto result = Solve(trajopt->prog(), trajopt->prog().initial_guess());
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
-  std::cout << "Solve time:" << elapsed.count() <<std::endl;
-  std::cout << "Cost:" << result.get_optimal_cost() <<std::endl;
+  std::cout << "Solve time:" << elapsed.count() << std::endl;
+  std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
 
   if (result.is_success()) {
     std::cout << "Success." << std::endl;
@@ -137,6 +135,4 @@ void runDircon() {
 }  // namespace
 }  // namespace dairlib
 
-int main(int argc, char* argv[]) {
-  dairlib::runDircon();
-}
+int main(int argc, char* argv[]) { dairlib::runDircon(); }

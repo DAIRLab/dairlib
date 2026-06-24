@@ -84,6 +84,6 @@ cc_test(
         "@drake//systems/analysis:simulator",
         "@drake//systems/framework",
         "@gflags",
-        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )

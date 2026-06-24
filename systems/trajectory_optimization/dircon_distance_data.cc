@@ -2,31 +2,30 @@
 
 namespace dairlib {
 
-using Eigen::Vector2d;
-using Eigen::Vector3d;
-using Eigen::Matrix3d;
-using Eigen::Matrix2d;
+using drake::MatrixX;
+using drake::Vector3;
+using drake::VectorX;
+using drake::multibody::Body;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
-using drake::multibody::Body;
-using drake::VectorX;
-using drake::Vector3;
-using drake::MatrixX;
+using Eigen::Matrix2d;
+using Eigen::Matrix3d;
+using Eigen::Vector2d;
+using Eigen::Vector3d;
 
 template <typename T>
-DirconDistanceData<T>::DirconDistanceData(const MultibodyPlant<T>& plant,
-      const Body<T>& body1, const Vector3d pt1, const Body<T>& body2,
-      const Vector3d pt2, const double distance) :
-    DirconKinematicData<T>(plant, 1),
-    body1_(body1),
-    body2_(body2),
-    pt1_(pt1),
-    pt2_(pt2),
-    distance_(distance) {}
+DirconDistanceData<T>::DirconDistanceData(
+    const MultibodyPlant<T>& plant, const Body<T>& body1, const Vector3d pt1,
+    const Body<T>& body2, const Vector3d pt2, const double distance)
+    : DirconKinematicData<T>(plant, 1),
+      body1_(body1),
+      body2_(body2),
+      pt1_(pt1),
+      pt2_(pt2),
+      distance_(distance) {}
 
 template <typename T>
-DirconDistanceData<T>::~DirconDistanceData() {
-}
+DirconDistanceData<T>::~DirconDistanceData() {}
 
 template <typename T>
 void DirconDistanceData<T>::updateConstraint(const Context<T>& context) {
@@ -40,15 +39,17 @@ void DirconDistanceData<T>::updateConstraint(const Context<T>& context) {
   Vector3<T> pt1_cast = pt1_.template cast<T>();
 
   this->plant_.CalcPointsPositions(context, body1_.body_frame(), pt1_cast,
-      world, &pt1_transform);
+                                   world, &pt1_transform);
   this->plant_.CalcJacobianTranslationalVelocity(
-      context, drake::multibody::JacobianWrtVariable::kV,
-      body1_.body_frame(), pt1_cast, world, world, &J1);
+      context, drake::multibody::JacobianWrtVariable::kV, body1_.body_frame(),
+      pt1_cast, world, world, &J1);
 
   MatrixX<T> J1_times_v =
-      this->plant_.CalcBiasSpatialAcceleration(
-          context, drake::multibody::JacobianWrtVariable::kV,
-          body1_.body_frame(), pt1_cast, world, world).translational();
+      this->plant_
+          .CalcBiasSpatialAcceleration(
+              context, drake::multibody::JacobianWrtVariable::kV,
+              body1_.body_frame(), pt1_cast, world, world)
+          .translational();
 
   Vector3<T> pt2_transform(3);
   MatrixX<T> J2(3, this->plant_.num_velocities());
@@ -56,16 +57,17 @@ void DirconDistanceData<T>::updateConstraint(const Context<T>& context) {
   VectorX<T> pt2_cast = pt2_.template cast<T>();
 
   this->plant_.CalcPointsPositions(context, body2_.body_frame(), pt2_cast,
-      world, &pt2_transform);
+                                   world, &pt2_transform);
   this->plant_.CalcJacobianTranslationalVelocity(
-      context, drake::multibody::JacobianWrtVariable::kV,
-      body2_.body_frame(), pt2_cast, world, world, &J2);
-
+      context, drake::multibody::JacobianWrtVariable::kV, body2_.body_frame(),
+      pt2_cast, world, world, &J2);
 
   MatrixX<T> J2dot_times_v =
-      this->plant_.CalcBiasSpatialAcceleration(
-          context, drake::multibody::JacobianWrtVariable::kV,
-          body2_.body_frame(), pt2_cast, world, world).translational();
+      this->plant_
+          .CalcBiasSpatialAcceleration(
+              context, drake::multibody::JacobianWrtVariable::kV,
+              body2_.body_frame(), pt2_cast, world, world)
+          .translational();
 
   // Constraint is ||r1-r2||^2  - d^2, to keep it differentiable everywhere
   // J is then 2*(r1-r2)^T * (J1 - J2)
@@ -76,10 +78,10 @@ void DirconDistanceData<T>::updateConstraint(const Context<T>& context) {
   // And cdot = J*v (as usual)
   VectorX<T> pt_delta = pt1_transform - pt2_transform;
   this->c_(0) = pt_delta.squaredNorm() - distance_ * distance_;
-  this->J_ = 2*pt_delta.transpose()*(J1 - J2);
-  this->Jdotv_ = 2*pt_delta.transpose()*(J1_times_v - J2dot_times_v);
-  this->Jdotv_(0) += 2*(((J1 - J2)*v)).squaredNorm();
-  this->cdot_ = this->J_*v;
+  this->J_ = 2 * pt_delta.transpose() * (J1 - J2);
+  this->Jdotv_ = 2 * pt_delta.transpose() * (J1_times_v - J2dot_times_v);
+  this->Jdotv_(0) += 2 * (((J1 - J2) * v)).squaredNorm();
+  this->cdot_ = this->J_ * v;
 }
 
 // Explicitly instantiates on the most common scalar types.

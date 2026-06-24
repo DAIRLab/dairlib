@@ -9,12 +9,11 @@ SimulatorDrift::SimulatorDrift(
     : plant_(plant), drift_mean_(drift_mean), drift_cov_(drift_cov) {
   DRAKE_ASSERT(drift_mean_.size() == drift_cov_.cols());
   DRAKE_ASSERT(drift_mean_.size() == plant.num_positions());
-  state_port_ =
-      this->DeclareVectorInputPort("x, u, t",
-                                   OutputVector<double>(plant_.num_positions(),
+  state_port_ = this->DeclareVectorInputPort(
+                        "x, u, t", OutputVector<double>(plant_.num_positions(),
                                                         plant_.num_velocities(),
                                                         plant_.num_actuators()))
-          .get_index();
+                    .get_index();
 
   DeclarePerStepDiscreteUpdateEvent(&SimulatorDrift::DiscreteVariableUpdate);
   accumulated_drift_index_ =

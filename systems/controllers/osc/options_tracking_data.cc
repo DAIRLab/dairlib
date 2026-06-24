@@ -1,4 +1,5 @@
 #include "options_tracking_data.h"
+
 #include "common/eigen_utils.h"
 
 #include "drake/common/trajectories/piecewise_quaternion.h"
@@ -23,7 +24,8 @@ OptionsTrackingData::OptionsTrackingData(
     const MultibodyPlant<double>& plant_wo_spr)
     : OscTrackingData(name, n_y, n_ydot, K_p, K_d, W, plant_w_spr,
                       plant_wo_spr) {
-  yddot_cmd_lb_ = std::numeric_limits<double>::lowest() * VectorXd::Ones(n_ydot_);
+  yddot_cmd_lb_ =
+      std::numeric_limits<double>::lowest() * VectorXd::Ones(n_ydot_);
   yddot_cmd_ub_ = std::numeric_limits<double>::max() * VectorXd::Ones(n_ydot_);
 }
 
@@ -195,7 +197,8 @@ void OptionsTrackingData::SetTimerVaryingFeedForwardAccelMultiplier(
   ff_accel_multiplier_traj_ = ff_accel_multiplier_traj;
 }
 
-void OptionsTrackingData::SetCmdAccelerationBounds(const Eigen::VectorXd& lb, const Eigen::VectorXd& ub){
+void OptionsTrackingData::SetCmdAccelerationBounds(const Eigen::VectorXd& lb,
+                                                   const Eigen::VectorXd& ub) {
   DRAKE_DEMAND(lb.size() == n_ydot_);
   DRAKE_DEMAND(ub.size() == n_ydot_);
   yddot_cmd_lb_ = lb;

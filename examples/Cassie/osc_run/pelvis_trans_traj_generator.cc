@@ -42,7 +42,7 @@ PelvisTransTrajGenerator::PelvisTransTrajGenerator(
       context_(context),
       world_(plant_.world_frame()),
       pelvis_(plant_.GetBodyByName("pelvis")),
-      feet_contact_points_(feet_contact_points){
+      feet_contact_points_(feet_contact_points) {
   this->set_name("pelvis_trans_traj_generator");
   // Input/Output Setup
   state_port_ = this->DeclareVectorInputPort(

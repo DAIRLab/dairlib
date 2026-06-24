@@ -1,26 +1,26 @@
 
+#include <dairlib/lcmt_franka_target_joint_position.hpp>
 #include <dairlib/lcmt_radio_out.hpp>
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
-#include <dairlib/lcmt_franka_target_joint_position.hpp>
 #include <gflags/gflags.h>
 
 #include "common/eigen_utils.h"
-#include "examples/sampling_c3/sampling_c3_utils.h"
-#include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/osc_params.h"
-#include "systems/controllers/osc/end_effector_force.h"
-#include "systems/controllers/osc/end_effector_orientation.h"
-#include "systems/controllers/osc/end_effector_position.h"
+#include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
+#include "examples/sampling_c3/sampling_c3_utils.h"
 #include "joint_trajectory_generator.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/gravity_compensator.h"
+#include "systems/controllers/osc/end_effector_force.h"
+#include "systems/controllers/osc/end_effector_orientation.h"
+#include "systems/controllers/osc/end_effector_position.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
 #include "systems/controllers/osc/operational_space_control.h"
 #include "systems/framework/lcm_driven_loop.h"
-#include "systems/robot_lcm_systems.h"
 #include "systems/franka_target_joint_position_receiver.h"
+#include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/lcm_trajectory_systems.h"
 
@@ -52,7 +52,6 @@ using std::string;
 
 using systems::controllers::JointSpaceTrackingData;
 
-
 DEFINE_bool(is_simulation, true, "True for simulation, false for hardware");
 DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
@@ -64,17 +63,18 @@ int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
 
   // Load parameters.
-  std::string controller_params_path = "examples/sampling_c3/" +
-    FLAGS_demo_name + "/parameters/sampling_c3_controller_params.yaml";
+  std::string controller_params_path =
+      "examples/sampling_c3/" + FLAGS_demo_name +
+      "/parameters/sampling_c3_controller_params.yaml";
   SamplingC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
           controller_params_path);
   SamplingC3OSCParams osc_params =
       drake::yaml::LoadYamlFile<SamplingC3OSCParams>(
           controller_params.osc_params_file);
-  std::string lcm_channels_file = FLAGS_is_simulation ?
-      controller_params.lcm_channels_simulation_file :
-      controller_params.lcm_channels_hardware_file;
+  std::string lcm_channels_file =
+      FLAGS_is_simulation ? controller_params.lcm_channels_simulation_file
+                          : controller_params.lcm_channels_hardware_file;
   SamplingC3LcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(lcm_channels_file);
   drake::solvers::SolverOptions solver_options =
@@ -105,7 +105,7 @@ int DoMain(int argc, char* argv[]) {
   auto osc_command_sender =
       builder.AddSystem<systems::RobotCommandSender>(plant);
   auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant, plant_context.get(), plant_context.get(), false);
+      plant, plant_context.get(), false);
   if (osc_params.publish_debug_info) {
     auto osc_debug_pub =
         builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
@@ -143,7 +143,8 @@ int DoMain(int argc, char* argv[]) {
 
   osc->SetAccelerationCostWeights(osc_params.W_acceleration);
   osc->SetInputCostWeights(osc_params.W_input_regularization);
-  osc->SetInputSmoothingCostWeights(osc_params.W_input_smoothing_regularization);
+  osc->SetInputSmoothingCostWeights(
+      osc_params.W_input_smoothing_regularization);
 
   osc->SetContactFriction(osc_params.mu);
   osc->SetOsqpSolverOptions(solver_options);
@@ -152,7 +153,8 @@ int DoMain(int argc, char* argv[]) {
 
   if (osc_params.cancel_gravity_compensation) {
     if (FLAGS_is_simulation) {
-      std::cerr<<"Sim OSC needs cancel_gravity_compensation: false"<<std::endl;
+      std::cerr << "Sim OSC needs cancel_gravity_compensation: false"
+                << std::endl;
       return -1;
     }
     auto gravity_compensator =
@@ -164,7 +166,8 @@ int DoMain(int argc, char* argv[]) {
                     franka_command_sender->get_input_port());
   } else {
     if (!FLAGS_is_simulation) {
-      std::cerr<<"HW OSC needs cancel_gravity_compensation: true"<<std::endl;
+      std::cerr << "HW OSC needs cancel_gravity_compensation: true"
+                << std::endl;
       return -1;
     }
     builder.Connect(osc->get_output_port_osc_command(),
@@ -185,8 +188,8 @@ int DoMain(int argc, char* argv[]) {
   // Add the target joint position receiver
   auto target_joint_position_receiver =
       builder.AddSystem<systems::FrankaTargetJointPositionReceiver>();
-  auto target_joint_position_subscriber =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_franka_target_joint_position>(
+  auto target_joint_position_subscriber = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_franka_target_joint_position>(
           lcm_channel_params.franka_target_joint_position_channel, &lcm));
 
   // Connect the target joint position receiver

@@ -111,12 +111,12 @@ std::vector<std::pair<T, MatrixX<T>>> HydroelasticGeomCollider<T>::DoEval(
 
   const auto& contact_surfaces = query_object.ComputeContactSurfaces(
       HydroelasticContactRepresentation::kPolygon);
-//  auto contact_info = drake::multibody::internal::HydroelasticContactInfoAndBodySpatialForces<T>(
-//      plant_.num_bodies());
-//  plant_.CalcHydroelasticContactForces(context, &contact_info);
+  //  auto contact_info =
+  //  drake::multibody::internal::HydroelasticContactInfoAndBodySpatialForces<T>(
+  //      plant_.num_bodies());
+  //  plant_.CalcHydroelasticContactForces(context, &contact_info);
   std::vector<std::pair<T, MatrixX<T>>> contact_data;
-  std::set<drake::SortedPair<drake::geometry::GeometryId>>
-      geom_pairs_with_data;
+  std::set<drake::SortedPair<drake::geometry::GeometryId>> geom_pairs_with_data;
   for (auto& contact_surface : contact_surfaces) {
     std::cout << "body M name: "
               << plant_
@@ -185,22 +185,22 @@ std::vector<std::pair<T, MatrixX<T>>> HydroelasticGeomCollider<T>::DoEval(
               << std::endl;
     int n_cols = (wrt == JacobianWrtVariable::kV) ? plant_.num_velocities()
                                                   : plant_.num_positions();
-//    Matrix<double, 3, Eigen::Dynamic> Jv_WCa(3, n_cols);
+    //    Matrix<double, 3, Eigen::Dynamic> Jv_WCa(3, n_cols);
     Matrix<double, 6, Eigen::Dynamic> Js_V_ABp_E(6, n_cols);
-    plant_.CalcJacobianSpatialVelocity(context, wrt, frameM, contact_surface_signed_distance_pair.p_ACa,
-                                             plant_.world_frame(),
-                                             plant_.world_frame(), &Js_V_ABp_E);
-    plant_.CalcJacobianSpatialVelocity(context, wrt, frameM, contact_surface_signed_distance_pair.p_ACa,
-                                       plant_.world_frame(),
-                                       plant_.world_frame(), &Js_V_ABp_E);
-    contact_data.push_back(std::pair<T, MatrixX<T>>(contact_surface_signed_distance_pair.distance, Js_V_ABp_E));
-    geom_pairs_with_data.insert(
-        drake::SortedPair<drake::geometry::GeometryId>(contact_surface.id_M(),
-                                                       contact_surface.id_N()));
+    plant_.CalcJacobianSpatialVelocity(
+        context, wrt, frameM, contact_surface_signed_distance_pair.p_ACa,
+        plant_.world_frame(), plant_.world_frame(), &Js_V_ABp_E);
+    plant_.CalcJacobianSpatialVelocity(
+        context, wrt, frameM, contact_surface_signed_distance_pair.p_ACa,
+        plant_.world_frame(), plant_.world_frame(), &Js_V_ABp_E);
+    contact_data.push_back(std::pair<T, MatrixX<T>>(
+        contact_surface_signed_distance_pair.distance, Js_V_ABp_E));
+    geom_pairs_with_data.insert(drake::SortedPair<drake::geometry::GeometryId>(
+        contact_surface.id_M(), contact_surface.id_N()));
   }
 
-  for (auto &contact_pair : contact_pairs_){
-    if (geom_pairs_with_data.find(contact_pair) == geom_pairs_with_data.end()){
+  for (auto& contact_pair : contact_pairs_) {
+    if (geom_pairs_with_data.find(contact_pair) == geom_pairs_with_data.end()) {
       auto geometry_id_M = contact_pair.first();
       auto geometry_id_N = contact_pair.second();
       const SignedDistancePair<T> signed_distance_pair =
@@ -213,10 +213,10 @@ std::vector<std::pair<T, MatrixX<T>>> HydroelasticGeomCollider<T>::DoEval(
 
       const Vector3d& p_ACa =
           inspector.GetPoseInFrame(geometry_id_M).template cast<T>() *
-              signed_distance_pair.p_ACa;
+          signed_distance_pair.p_ACa;
       const Vector3d& p_BCb =
           inspector.GetPoseInFrame(geometry_id_N).template cast<T>() *
-              signed_distance_pair.p_BCb;
+          signed_distance_pair.p_BCb;
 
       int n_cols = (wrt == JacobianWrtVariable::kV) ? plant_.num_velocities()
                                                     : plant_.num_positions();
@@ -235,7 +235,8 @@ std::vector<std::pair<T, MatrixX<T>>> HydroelasticGeomCollider<T>::DoEval(
 
       // Standard case
       auto J = force_basis * R_WC.matrix().transpose() * (Jv_WCa - Jv_WCb);
-      contact_data.push_back(std::pair<T, MatrixX<T>>(signed_distance_pair.distance, J));
+      contact_data.push_back(
+          std::pair<T, MatrixX<T>>(signed_distance_pair.distance, J));
     }
   }
 }

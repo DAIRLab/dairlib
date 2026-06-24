@@ -299,7 +299,7 @@ cc_test(
         "//examples/Cassie:cassie_urdf",
         "//multibody:multibody_solvers",
         "@drake//:drake_shared_library",
-        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 

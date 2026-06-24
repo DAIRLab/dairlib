@@ -1,6 +1,7 @@
 #pragma once
 
 #include "systems/framework/output_vector.h"
+
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/framework/leaf_system.h"

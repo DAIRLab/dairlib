@@ -28,5 +28,7 @@ sphere_radius: 0.12
 circle_radius: 0.20
 circle_height: 0.00
 
+max_tilt_angle: 20
+
 # Piecewise-linear-specific parameters.
 pwl_waypoint_height: 0.06

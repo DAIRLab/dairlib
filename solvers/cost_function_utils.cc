@@ -3,16 +3,15 @@ namespace dairlib {
 
 namespace solvers {
 
-using Eigen::VectorXd;
 using drake::AutoDiffXd;
 using drake::VectorX;
 using drake::solvers::VectorXDecisionVariable;
+using Eigen::VectorXd;
 
 template <typename T>
 void AddPositiveWorkCost(
     dairlib::systems::trajectory_optimization::Dircon<T>& trajopt,
-    const drake::multibody::MultibodyPlant<T>& plant,
-    double W) {
+    const drake::multibody::MultibodyPlant<T>& plant, double W) {
   for (int mode = 0; mode < trajopt.num_modes(); ++mode) {
     int mode_start = trajopt.get_mode_start(mode);
     int mode_end = trajopt.get_mode_start(mode) + trajopt.mode_length(mode) - 1;
@@ -32,9 +31,9 @@ void AddPositiveWorkCost(
       variables.segment(1 + 2 * n_v + n_u, n_u) =
           trajopt.input_vars(mode, i + 1 - mode_start);
       trajopt.prog().AddCost(
-          std::make_shared<PositiveMechanicalWork<T>>(n_v, plant.num_actuators(),
-                                 plant.MakeActuationMatrix(), W,
-                                 "pos_work_cost_" + std::to_string(i)),
+          std::make_shared<PositiveMechanicalWork<T>>(
+              n_v, plant.num_actuators(), plant.MakeActuationMatrix(), W,
+              "pos_work_cost_" + std::to_string(i)),
           variables);
     }
   }
@@ -79,7 +78,8 @@ void PositiveMechanicalWork<T>::EvaluateCost(
   T zero = T();
   for (int joint_idx = 0; joint_idx < n_u_; ++joint_idx) {
     cost += std::max(actuated_velocities_i(joint_idx) * u_i(joint_idx), zero);
-    cost += std::max(actuated_velocities_ip1(joint_idx) * u_ip1(joint_idx), zero);
+    cost +=
+        std::max(actuated_velocities_ip1(joint_idx) * u_ip1(joint_idx), zero);
     // cost += sigmoid(actuated_velocities_i(joint_idx) * u_i(joint_idx));
     // cost += sigmoid(actuated_velocities_ip1(joint_idx) *u_ip1(joint_idx));
   }
@@ -93,9 +93,9 @@ void PositiveMechanicalWork<T>::EvaluateCost(
 template void AddPositiveWorkCost(
     dairlib::systems::trajectory_optimization::Dircon<double>& trajopt,
     const drake::multibody::MultibodyPlant<double>& plant, double W);
-//template void AddPositiveWorkCost(
-//    dairlib::systems::trajectory_optimization::Dircon<AutoDiffXd>& trajopt,
-//    const drake::multibody::MultibodyPlant<AutoDiffXd>& plant);
+// template void AddPositiveWorkCost(
+//     dairlib::systems::trajectory_optimization::Dircon<AutoDiffXd>& trajopt,
+//     const drake::multibody::MultibodyPlant<AutoDiffXd>& plant);
 
 }  // namespace solvers
 }  // namespace dairlib

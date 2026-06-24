@@ -29,7 +29,7 @@ template <typename T>
 class KinematicEvaluator {
  public:
   explicit KinematicEvaluator(const drake::multibody::MultibodyPlant<T>& plant,
-      int length);
+                              int length);
 
   virtual ~KinematicEvaluator() = default;
 

@@ -66,6 +66,10 @@ void LcmTrajectoryReceiver::OutputTrajectory(
           trajectory_block.time_vector,
           trajectory_block.datapoints.topRows(
               trajectory_block.datapoints.rows() / 2));
+      //      *casted_traj = PiecewisePolynomial<double>::CubicHermite(
+      //          trajectory_block.time_vector,
+      //          trajectory_block.datapoints.topRows(3),
+      //          trajectory_block.datapoints.bottomRows(3));
     }
   } else {
     *casted_traj = PiecewisePolynomial<double>();
@@ -111,6 +115,7 @@ void LcmOrientationTrajectoryReceiver::OutputTrajectory(
       throw std::out_of_range("");
     }
     const auto& trajectory_block = lcm_traj.GetTrajectory(trajectory_name_);
+    // std::cout << trajectory_block.time_vector << std::endl;
 
     std::vector<Eigen::Quaternion<double>> quaternion_datapoints;
     for (int i = 0; i < trajectory_block.datapoints.cols(); ++i) {

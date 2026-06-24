@@ -240,7 +240,8 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
 
   // Compute footstep location (use LIPM to derive neutral point)
   double omega = sqrt(9.81 / (CoM_pos_pred(2) - stance_foot_pos(2)));
-  //  double T = duration_map_.at(int(fsm_state(0)));  // This was the old code for ROM MPC
+  //  double T = duration_map_.at(int(fsm_state(0)));  // This was the old code
+  //  for ROM MPC
   double T = duration_map_.at(int(fsm_state(0))) + double_support_duration_;
   if (wrt_com_in_local_frame_) {
     // v_i is CoM_vel_pred_local_start_of_next_stride
@@ -317,9 +318,9 @@ void SwingFootTrajGenerator::CalcFootStepAndStanceFootHeight(
     }
     *x_fs += shift_foothold_dir * footstep_offset_;
 
-    *x_fs = ImposeHalfplaneGuard(*x_fs, !is_right_support, approx_pelvis_yaw,
-                                 CoM_pos_pred.head<2>(), stance_foot_pos.head<2>(),
-                                 center_line_offset_);
+    *x_fs = ImposeHalfplaneGuard(
+        *x_fs, !is_right_support, approx_pelvis_yaw, CoM_pos_pred.head<2>(),
+        stance_foot_pos.head<2>(), center_line_offset_);
 
     // Cap by the step length
     *x_fs = ImposeStepLengthGuard(*x_fs, CoM_pos_pred.head<2>(),

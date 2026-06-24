@@ -1,5 +1,7 @@
 #include "robot_lcm_systems.h"
 
+#include <iostream>
+
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "multibody/multibody_utils.h"
@@ -34,7 +36,7 @@ RobotOutputReceiver::RobotOutputReceiver(
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
   model_instance_ =
-      drake::multibody::ModelInstanceIndex(111111);  // CHANGE BACK AFTER DEBUG
+      drake::multibody::ModelInstanceIndex(DEFAULT_MODEL_INSTANCE_INDEX);
 
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
@@ -145,7 +147,8 @@ void RobotOutputReceiver::InitializeSubscriberPositions(
   }
 
   // Set quaternion w = 1, assumes drake quaternion ordering of wxyz
-  if (model_instance_ != drake::multibody::ModelInstanceIndex(111111)) {
+  if (model_instance_ !=
+      drake::multibody::ModelInstanceIndex(DEFAULT_MODEL_INSTANCE_INDEX)) {
     if (plant.HasUniqueFreeBaseBody(model_instance_)) {
       state_msg.position.at(0) = 1;
     }
@@ -316,7 +319,7 @@ ObjectStateReceiver::ObjectStateReceiver(
   position_index_map_ = multibody::MakeNameToPositionsMap(plant);
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
   model_instance_ =
-      drake::multibody::ModelInstanceIndex(-1);  // CHANGE BACK AFTER DEBUG
+      drake::multibody::ModelInstanceIndex(DEFAULT_MODEL_INSTANCE_INDEX);
 
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
@@ -410,7 +413,8 @@ void ObjectStateReceiver::InitializeSubscriberPositions(
   }
 
   // Set quaternion w = 1, assumes drake quaternion ordering of wxyz
-  if (model_instance_ != drake::multibody::ModelInstanceIndex(-1)) {
+  if (model_instance_ !=
+      drake::multibody::ModelInstanceIndex(DEFAULT_MODEL_INSTANCE_INDEX)) {
     if (plant.HasUniqueFreeBaseBody(model_instance_)) {
       state_msg.position.at(0) = 1;
     }
@@ -440,7 +444,7 @@ ObjectStateSender::ObjectStateSender(
   velocity_index_map_ = multibody::MakeNameToVelocitiesMap(plant);
 
   model_instance_ =
-      drake::multibody::ModelInstanceIndex(-1);  // CHANGE BACK AFTER DEBUG
+      drake::multibody::ModelInstanceIndex(DEFAULT_MODEL_INSTANCE_INDEX);
   positions_start_idx_ = 0;
   velocities_start_idx_ = 0;
 

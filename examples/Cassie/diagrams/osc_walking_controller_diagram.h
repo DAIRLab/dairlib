@@ -59,7 +59,8 @@ class OSCWalkingControllerDiagram final
   }
 
   /// @return the output port for the controller torques.
-  const drake::systems::OutputPort<double>& get_output_port_robot_input() const {
+  const drake::systems::OutputPort<double>& get_output_port_robot_input()
+      const {
     return this->get_output_port(control_output_port_index_);
   }
 
@@ -74,9 +75,7 @@ class OSCWalkingControllerDiagram final
     return this->get_output_port(controller_failure_port_index_);
   }
 
-  drake::multibody::MultibodyPlant<double>& get_plant() {
-    return *plant_;
-  }
+  drake::multibody::MultibodyPlant<double>& get_plant() { return *plant_; }
 
  private:
   drake::multibody::MultibodyPlant<double>* plant_;
@@ -130,12 +129,12 @@ class OSCWalkingControllerDiagram final
   std::vector<double> left_right_support_state_durations;
   std::vector<double> swing_ft_gain_multiplier_breaks;
   std::vector<drake::MatrixX<double>> swing_ft_gain_multiplier_samples;
-//  drake::trajectories::PiecewisePolynomial<double>
-//      swing_ft_gain_multiplier_gain_multiplier;
+  //  drake::trajectories::PiecewisePolynomial<double>
+  //      swing_ft_gain_multiplier_gain_multiplier;
   std::vector<double> swing_ft_accel_gain_multiplier_breaks;
   std::vector<drake::MatrixX<double>> swing_ft_accel_gain_multiplier_samples;
-//  std::shared_ptr<drake::trajectories::Trajectory<double>>
-//      swing_ft_accel_gain_multiplier_gain_multiplier;
+  //  std::shared_ptr<drake::trajectories::Trajectory<double>>
+  //      swing_ft_accel_gain_multiplier_gain_multiplier;
 
   multibody::KinematicEvaluatorSet<double> evaluators;
 

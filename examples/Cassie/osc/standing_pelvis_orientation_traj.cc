@@ -59,9 +59,8 @@ void StandingPelvisOrientationTraj::CalcTraj(
       this->EvalInputValue<dairlib::lcmt_radio_out>(context, radio_port_);
   VectorXd q = robot_output->GetPositions();
   plant_.SetPositions(context_, q);
-  auto* casted_traj =
-      (PiecewiseQuaternionSlerp<double>*)dynamic_cast<PiecewiseQuaternionSlerp<double>*>(
-          traj);
+  auto* casted_traj = (PiecewiseQuaternionSlerp<double>*)dynamic_cast<
+      PiecewiseQuaternionSlerp<double>*>(traj);
   Vector3d pt_0;
   Vector3d pt_1;
   Vector3d pt_2;
@@ -83,7 +82,7 @@ void StandingPelvisOrientationTraj::CalcTraj(
   rpy << radio_out->channel[1], radio_out->channel[2],
       drake::math::wrap_to(
           0.5 * (atan2(l_foot(1), l_foot(0)) + atan2(r_foot(1), r_foot(0))),
-          -M_PI/4, M_PI/4) +
+          -M_PI / 4, M_PI / 4) +
           radio_out->channel[3];
 
   target_orientation_filter_->Update(rpy);

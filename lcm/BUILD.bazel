@@ -58,7 +58,7 @@ cc_test(
     deps = [
         ":lcm_trajectory_saver",
         "@drake//:drake_shared_library",
-        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 

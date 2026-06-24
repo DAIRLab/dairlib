@@ -80,32 +80,32 @@ typedef struct {
   uint64_T im;
 } cuint64_T;
 
-#define MAX_int8_T                     ((int8_T)(127))
-#define MIN_int8_T                     ((int8_T)(-128))
-#define MAX_uint8_T                    ((uint8_T)(255))
-#define MIN_uint8_T                    ((uint8_T)(0))
-#define MAX_int16_T                    ((int16_T)(32767))
-#define MIN_int16_T                    ((int16_T)(-32768))
-#define MAX_uint16_T                   ((uint16_T)(65535))
-#define MIN_uint16_T                   ((uint16_T)(0))
-#define MAX_int32_T                    ((int32_T)(2147483647))
-#define MIN_int32_T                    ((int32_T)(-2147483647-1))
-#define MAX_uint32_T                   ((uint32_T)(0xFFFFFFFFU))
-#define MIN_uint32_T                   ((uint32_T)(0))
-#define MAX_int64_T                    ((int64_T)(9223372036854775807L))
-#define MIN_int64_T                    ((int64_T)(-9223372036854775807L-1L))
-#define MAX_uint64_T                   ((uint64_T)(0xFFFFFFFFFFFFFFFFUL))
-#define MIN_uint64_T                   ((uint64_T)(0UL))
+#define MAX_int8_T ((int8_T)(127))
+#define MIN_int8_T ((int8_T)(-128))
+#define MAX_uint8_T ((uint8_T)(255))
+#define MIN_uint8_T ((uint8_T)(0))
+#define MAX_int16_T ((int16_T)(32767))
+#define MIN_int16_T ((int16_T)(-32768))
+#define MAX_uint16_T ((uint16_T)(65535))
+#define MIN_uint16_T ((uint16_T)(0))
+#define MAX_int32_T ((int32_T)(2147483647))
+#define MIN_int32_T ((int32_T)(-2147483647 - 1))
+#define MAX_uint32_T ((uint32_T)(0xFFFFFFFFU))
+#define MIN_uint32_T ((uint32_T)(0))
+#define MAX_int64_T ((int64_T)(9223372036854775807L))
+#define MIN_int64_T ((int64_T)(-9223372036854775807L - 1L))
+#define MAX_uint64_T ((uint64_T)(0xFFFFFFFFFFFFFFFFUL))
+#define MIN_uint64_T ((uint64_T)(0UL))
 #if !defined(__cplusplus) && !defined(__true_false_are_keywords)
-#  ifndef false
-#   define false                       (0U)
-#  endif
-
-#  ifndef true
-#   define true                        (1U)
-#  endif
+#ifndef false
+#define false (0U)
 #endif
 
-#define TMW_NAME_LENGTH_MAX            64
+#ifndef true
+#define true (1U)
+#endif
+#endif
+
+#define TMW_NAME_LENGTH_MAX 64
 #endif
 #endif

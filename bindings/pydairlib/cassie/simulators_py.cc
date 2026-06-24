@@ -3,10 +3,9 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include "examples/Cassie/diagrams/cassie_sim_diagram.h"
 
 #include "drake/bindings/pydrake/pydrake_pybind.h"
-
-#include "examples/Cassie/diagrams/cassie_sim_diagram.h"
 
 namespace py = pybind11;
 
@@ -21,18 +20,16 @@ PYBIND11_MODULE(simulators, m) {
 
   using py_rvp = py::return_value_policy;
 
-  py::class_<CassieSimDiagram,
-             drake::systems::Diagram<double>>(m, "CassieSimDiagram")
-      .def(py::init(
-               [](drake::multibody::MultibodyPlant<double>& plant,
-                      const std::string& urdf, bool visualize, double mu,
-                      double stiffness, double dissipation_rate) {
-                return std::make_unique<CassieSimDiagram>(
-                   make_unowned_shared_ptr_from_raw(&plant), urdf, visualize,
-                      mu);
-            }),
-           py::arg("plant"), py::arg("urdf"), py::arg("visualize"), py::arg("mu"), py::arg("stiffness"),
-           py::arg("dissipation_rate"))
+  py::class_<CassieSimDiagram, drake::systems::Diagram<double>>(
+      m, "CassieSimDiagram")
+      .def(py::init([](drake::multibody::MultibodyPlant<double>& plant,
+                       const std::string& urdf, bool visualize, double mu,
+                       double stiffness, double dissipation_rate) {
+             return std::make_unique<CassieSimDiagram>(
+                 make_unowned_shared_ptr_from_raw(&plant), urdf, visualize, mu);
+           }),
+           py::arg("plant"), py::arg("urdf"), py::arg("visualize"),
+           py::arg("mu"), py::arg("stiffness"), py::arg("dissipation_rate"))
       .def("get_plant", &CassieSimDiagram::get_plant,
            py_rvp::reference_internal)
       .def("get_input_port_actuation",

@@ -12,7 +12,7 @@ scale_lcs: true
 end_on_qp_step: false
 solve_time_filter_alpha: 0.95
 publish_frequency: 0
-penalize_input_change: true  # Penalize (u-u_prev) instead of u.
+penalize_input_change: false  # Penalize (u-u_prev) instead of u.
 num_friction_directions: 2
 planar_normal_direction: [0, 0, 1]  # If treating as planar contact, this is the normal direction.
 spring_stiffness: 0.0  # Not used in C3+.
@@ -41,6 +41,8 @@ use_predicted_x0_repos: true
 use_predicted_x0_reset_mechanism: false  # Resets if prediction is too far.
 
 ### Anything demo specific parameters:
+planar_demo: true
+
 # Contact pairs include a number of
 #   1. ee-ground
 #   2. ee-object
@@ -158,7 +160,6 @@ u_eta_position_list: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
 dt: 0             # instead:  planning_dt_pose, planning_dt_position
 # solve_dt: 0       # unused
 dt_cost: 0
-mu: []            # instead based on indexing into mu_per_pair_type
 num_contacts: 0   # instead based on summing index of resolve_contacts_to_lists
 # Instead for the below, index into their _list versions.
 g_gamma: []

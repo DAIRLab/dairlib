@@ -1,6 +1,6 @@
 #include "lcm_visualization_systems.h"
 
-#include <dairlib/lcmt_c3_forces.hpp>
+#include <c3/lcmt_contact_forces.hpp>
 #include <dairlib/lcmt_c3_state.hpp>
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
 
@@ -326,7 +326,7 @@ LcmForceDrawer::LcmForceDrawer(
 
   force_trajectory_input_port_ =
       this->DeclareAbstractInputPort("lcmt_c3_forces",
-                                     drake::Value<dairlib::lcmt_c3_forces>{})
+                                     drake::Value<c3::lcmt_contact_forces>{})
           .get_index();
 
   meshcat_->SetProperty(force_path_, "visible", true, 0);
@@ -371,17 +371,22 @@ drake::systems::EventStatus LcmForceDrawer::DrawForce(
       lcm_traj.GetTrajectory(force_trajectory_name_);
   const auto& actor_trajectory_block =
       lcm_traj.GetTrajectory(actor_trajectory_name_);
+  Eigen::VectorXd force_time_vector =
+      PopulateTimeVectorOfLcmTrajectoryIfUnspecified(
+          force_trajectory_block.time_vector);
   auto force_trajectory = PiecewisePolynomial<double>::FirstOrderHold(
       force_trajectory_block.time_vector, force_trajectory_block.datapoints);
   VectorXd pose;
+  Eigen::VectorXd actor_time_vector =
+      PopulateTimeVectorOfLcmTrajectoryIfUnspecified(
+          actor_trajectory_block.time_vector);
   if (actor_trajectory_block.datapoints.rows() == 3) {
     auto trajectory = PiecewisePolynomial<double>::FirstOrderHold(
         actor_trajectory_block.time_vector, actor_trajectory_block.datapoints);
     pose = trajectory.value(robot_time);
   } else {
     auto trajectory = PiecewisePolynomial<double>::CubicHermite(
-        actor_trajectory_block.time_vector,
-        actor_trajectory_block.datapoints.topRows(3),
+        actor_time_vector, actor_trajectory_block.datapoints.topRows(3),
         actor_trajectory_block.datapoints.bottomRows(3));
     pose = trajectory.value(robot_time);
   }
@@ -426,12 +431,12 @@ drake::systems::EventStatus LcmForceDrawer::DrawForce(
 drake::systems::EventStatus LcmForceDrawer::DrawForces(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
-  if (this->EvalInputValue<dairlib::lcmt_c3_forces>(
+  if (this->EvalInputValue<c3::lcmt_contact_forces>(
               context, force_trajectory_input_port_)
           ->utime < 1e-3) {
     return drake::systems::EventStatus::Succeeded();
   }
-  const auto& c3_forces = this->EvalInputValue<dairlib::lcmt_c3_forces>(
+  const auto& c3_forces = this->EvalInputValue<c3::lcmt_contact_forces>(
       context, force_trajectory_input_port_);
 
   // Don't needlessly update

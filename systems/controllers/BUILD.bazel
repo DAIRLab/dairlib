@@ -6,7 +6,6 @@ cc_library(
     name = "controllers",
     deps = [
         ":controllers_all",
-        ":c3_systems",
         ":sampling_c3_controller",
         ":pd_config_lcm",
         ":lipm_traj_gen",

@@ -9,9 +9,6 @@ cc_library(
         ":default_osc_options",
     ],
     deps = [
-        ":c3",
-        ":c3_output",
-        ":lcs",
         ":constraints",
         ":solver_options_io",
         ":fast_osqp_solver",

@@ -129,10 +129,10 @@ int DoMain(int argc, char* argv[]) {
   // All demos include the end effector and ground.
   drake::geometry::GeometryId ee_contact_points =
       plant_lcs.GetCollisionGeometriesForBody(
-          plant_lcs.GetBodyByName("ee"))[0];
+          plant_lcs.GetBodyByName("ee_link"))[0];
   drake::geometry::GeometryId ground_geoms =
       plant_lcs.GetCollisionGeometriesForBody(
-          plant_lcs.GetBodyByName("ground"))[0];
+          plant_lcs.GetBodyByName("base_link"))[0];
   contact_geoms["EE"] = ee_contact_points;
   contact_geoms["GROUND"] = ground_geoms;
   std::vector<SortedPair<GeometryId>> ee_ground_contact{
@@ -341,6 +341,77 @@ int DoMain(int argc, char* argv[]) {
         object_object_contact_pairs.push_back(std::move(convex_piece_pairs));
       }
     }
+  } 
+  else if (FLAGS_demo_name == "three_d_printer") {
+    
+
+    std::vector<std::vector<GeometryId>> all_object_geoms;
+    for (int i = 0; i < controller_params.base_names.size();
+         i++) {  // exclude ee/ground
+      std::string body_name = controller_params.base_names.at(i);
+      const std::vector<drake::geometry::GeometryId>& object_geoms =
+          plant_lcs.GetCollisionGeometriesForBody(
+              plant_lcs.GetBodyByName(body_name));
+
+      // Each object must contain at least 4 collision geometries:
+      // 1. The main body: it can be a single mesh or decomposed into multiple
+      // convex pieces
+      // 2. 3 spheres on the top left, top right, and bottom of the object
+      DRAKE_DEMAND(object_geoms.size() >= 4);
+      const auto& top_left_sphere_geoms =
+          plant_lcs.GetCollisionGeometriesForBody(
+              plant_lcs.GetBodyByName(body_name))[object_geoms.size() - 3];
+      const auto& top_right_sphere_geoms =
+          plant_lcs.GetCollisionGeometriesForBody(
+              plant_lcs.GetBodyByName(body_name))[object_geoms.size() - 2];
+      const auto& bottom_sphere_geoms = plant_lcs.GetCollisionGeometriesForBody(
+          plant_lcs.GetBodyByName(body_name))[object_geoms.size() - 1];
+      contact_geoms["TOP_LEFT_SPHERE_" + std::to_string(i)] =
+          top_left_sphere_geoms;
+      contact_geoms["TOP_RIGHT_SPHERE_" + std::to_string(i)] =
+          top_right_sphere_geoms;
+      contact_geoms["BOTTOM_SPHERE_" + std::to_string(i)] = bottom_sphere_geoms;
+
+      const std::vector<drake::geometry::GeometryId>
+          object_geoms_without_spheres =
+              std::vector<drake::geometry::GeometryId>(object_geoms.begin(),
+                                                       object_geoms.end() - 3);
+
+      
+
+      for (int j = 0; j < object_geoms.size() - 3; j++) {
+        ee_contact_pairs.push_back(
+            SortedPair(contact_geoms["EE"], object_geoms[j]));
+      }
+      all_object_geoms.push_back(object_geoms_without_spheres);
+
+      ground_object_contact_pairs.push_back(
+          SortedPair(contact_geoms["TOP_LEFT_SPHERE_" + std::to_string(i)],
+                     contact_geoms["GROUND"]));
+      ground_object_contact_pairs.push_back(
+          SortedPair(contact_geoms["TOP_RIGHT_SPHERE_" + std::to_string(i)],
+                     contact_geoms["GROUND"]));
+      ground_object_contact_pairs.push_back(
+          SortedPair(contact_geoms["BOTTOM_SPHERE_" + std::to_string(i)],
+                     contact_geoms["GROUND"]));
+    }
+
+    // Object-object contact pairs (excluding end effector), each pair of
+    // convex pieces for each pair of objects
+    for (int i = 0; i + 1 < controller_params.num_objects; i++) {
+      for (int j = i + 1; j < controller_params.num_objects; j++) {
+        std::vector<SortedPair<GeometryId>> convex_piece_pairs;
+        const std::vector<GeometryId>& object_1_geoms = all_object_geoms.at(i);
+        const std::vector<GeometryId>& object_2_geoms = all_object_geoms.at(j);
+
+        for (const auto& g1 : object_1_geoms) {
+          for (const auto& g2 : object_2_geoms) {
+            convex_piece_pairs.emplace_back(g1, g2);
+          }
+        }
+        object_object_contact_pairs.push_back(std::move(convex_piece_pairs));
+      }
+    }
   } else {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
   }
@@ -367,7 +438,7 @@ int DoMain(int argc, char* argv[]) {
             lcm_channel_params.object_state_channels.at(i), &lcm)));
   }
   auto franka_state_receiver =
-      builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
+      builder.AddSystem<systems::RobotOutputReceiver>(plant_three_d_printer);
 
   std::vector<systems::ObjectStateReceiver*> object_state_receivers;
   for (int i = 0; i < object_indices.size(); ++i) {
@@ -382,7 +453,7 @@ int DoMain(int argc, char* argv[]) {
 
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
-          plant_franka, franka_context.get(), plant_object,
+          plant_three_d_printer, three_d_printer_context.get(), plant_object,
           object_context.get(), kEndEffectorName,
           controller_params.object_body_name,
           controller_params.include_end_effector_orientation,
@@ -402,7 +473,12 @@ int DoMain(int argc, char* argv[]) {
     target_generator = std::make_unique<systems::SamplingC3GoalGeneratorPlanar>(
         plant_object, controller_params.goal_params, object_indices);
 
-  } else {
+  } else if (FLAGS_demo_name == "three_d_printer") {
+    target_generator = std::make_unique<systems::SamplingC3GoalGeneratorPlanar>(
+        plant_object, controller_params.goal_params, object_indices);
+
+  }
+   else {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
   }
   auto* control_target = builder.AddSystem(std::move(target_generator));

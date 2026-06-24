@@ -1,7 +1,9 @@
-
 #include <dairlib/lcmt_radio_out.hpp>
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
 #include <gflags/gflags.h>
+
+#include <iostream>
+#include <limits>
 
 #include "common/eigen_utils.h"
 #include "examples/sampling_c3/sampling_c3_utils.h"
@@ -56,222 +58,404 @@ using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
 
-DEFINE_bool(is_simulation, true, "True for simulation, false for hardware");
-DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
+DEFINE_bool(is_simulation, true,
+            "True for simulation, false for hardware");
+DEFINE_string(lcm_url,
+              "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
-DEFINE_string(demo_name, "jacktoy",
+DEFINE_string(demo_name,
+              "jacktoy",
               "Demo within sampling_c3; used to find controller params file");
 
 int DoMain(int argc, char* argv[]) {
+  std::cout << "\n========== STARTING OSC CONTROLLER ==========\n"
+            << std::endl;
+
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  std::cout << "[DEBUG] demo_name      = "
+            << FLAGS_demo_name << std::endl;
+  std::cout << "[DEBUG] is_simulation = "
+            << FLAGS_is_simulation << std::endl;
+  std::cout << "[DEBUG] lcm_url       = "
+            << FLAGS_lcm_url << std::endl;
+
   drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
 
-  // Load parameters.
-  std::string controller_params_path = "examples/sampling_c3/" +
-    FLAGS_demo_name + "/parameters/sampling_c3_controller_params.yaml";
+  std::cout << "[DEBUG] DrakeLcm created."
+            << std::endl;
+
+  // ------------------------------------------------------------------------
+  // Load parameters
+  // ------------------------------------------------------------------------
+
+  std::string controller_params_path =
+      "examples/sampling_c3/" +
+      FLAGS_demo_name +
+      "/parameters/sampling_c3_controller_params.yaml";
+
+  std::cout << "\n========== LOADING PARAMETERS =========="
+            << std::endl;
+
+  std::cout << "[DEBUG] controller params file:\n  "
+            << controller_params_path << std::endl;
+
   SamplingC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
           controller_params_path);
+
+  std::cout << "[DEBUG] Controller params loaded."
+            << std::endl;
+
+  std::cout << "[DEBUG] osc params file:\n  "
+            << controller_params.osc_params_file
+            << std::endl;
+
   SamplingC3OSCParams osc_params =
       drake::yaml::LoadYamlFile<SamplingC3OSCParams>(
           controller_params.osc_params_file);
-  std::string lcm_channels_file = FLAGS_is_simulation ?
-      controller_params.lcm_channels_simulation_file :
-      controller_params.lcm_channels_hardware_file;
+
+  std::cout << "[DEBUG] OSC params loaded."
+            << std::endl;
+
+  std::string lcm_channels_file =
+      FLAGS_is_simulation
+          ? controller_params.lcm_channels_simulation_file
+          : controller_params.lcm_channels_hardware_file;
+
+  std::cout << "[DEBUG] LCM channel file:\n  "
+            << lcm_channels_file << std::endl;
+
   SamplingC3LcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(lcm_channels_file);
+      drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(
+          lcm_channels_file);
+
+  std::cout << "[DEBUG] LCM channel params loaded."
+            << std::endl;
+
+  std::cout << "[DEBUG] Loading solver settings:\n  "
+            << controller_params.osc_qp_settings_file
+            << std::endl;
+
   drake::solvers::SolverOptions solver_options =
-      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
-          FindResourceOrThrow(controller_params.osc_qp_settings_file))
-          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+      drake::yaml::LoadYamlFile<
+          solvers::SolverOptionsFromYaml>(
+          FindResourceOrThrow(
+              controller_params.osc_qp_settings_file))
+          .GetAsSolverOptions(
+              drake::solvers::OsqpSolver::id());
 
-  // Create a Franka-only plant.
+  std::cout << "[DEBUG] Solver options loaded."
+            << std::endl;
+
+  // ------------------------------------------------------------------------
+  // Build plant
+  // ------------------------------------------------------------------------
+
+  std::cout << "\n========== BUILDING PLANT =========="
+            << std::endl;
+
   drake::multibody::MultibodyPlant<double> plant(0.0);
-  AddFrankaToPlant(&plant);
-  plant.Finalize();
-  auto plant_context = plant.CreateDefaultContext();
 
-  // Piece together the diagram.
+  Add3DPrinterToPlant(&plant);
+
+  std::cout << "[DEBUG] 3D printer added."
+            << std::endl;
+
+  plant.Finalize();
+
+  std::cout << "[DEBUG] Plant finalized."
+            << std::endl;
+
+  std::cout << "[DEBUG] nq = "
+            << plant.num_positions()
+            << std::endl;
+
+  std::cout << "[DEBUG] nv = "
+            << plant.num_velocities()
+            << std::endl;
+
+  std::cout << "[DEBUG] nu = "
+            << plant.num_actuated_dofs()
+            << std::endl;
+
+  auto plant_context =
+      plant.CreateDefaultContext();
+
+  std::cout << "[DEBUG] Default context created."
+            << std::endl;
+
+  // ------------------------------------------------------------------------
+  // Diagram
+  // ------------------------------------------------------------------------
+
+  std::cout << "\n========== BUILDING DIAGRAM =========="
+            << std::endl;
+
   DiagramBuilder<double> builder;
 
-  auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
-  auto end_effector_trajectory_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.tracking_trajectory_actor_channel, &lcm));
+  auto state_receiver =
+      builder.AddSystem<systems::RobotOutputReceiver>(
+          plant);
+
+  std::cout << "[DEBUG] Added RobotOutputReceiver."
+            << std::endl;
+
+  std::cout << "[DEBUG] Tracking trajectory channel: "
+            << lcm_channel_params
+                   .tracking_trajectory_actor_channel
+            << std::endl;
+
+  auto end_effector_trajectory_sub =
+      builder.AddSystem(
+          LcmSubscriberSystem::Make<
+              dairlib::lcmt_timestamped_saved_traj>(
+              lcm_channel_params
+                  .tracking_trajectory_actor_channel,
+              &lcm));
+
   auto end_effector_position_receiver =
-      builder.AddSystem<systems::LcmTrajectoryReceiver>(
+      builder.AddSystem<
+          systems::LcmTrajectoryReceiver>(
           "end_effector_position_target");
-  auto end_effector_force_receiver =
-      builder.AddSystem<systems::LcmTrajectoryReceiver>(
-          "end_effector_force_target");
-  auto end_effector_orientation_receiver =
-      builder.AddSystem<systems::LcmOrientationTrajectoryReceiver>(
-          "end_effector_orientation_target");
+
+  std::cout << "[DEBUG] Added trajectory receiver."
+            << std::endl;
+
+  std::cout << "[DEBUG] Robot command channel: "
+            << lcm_channel_params
+                   .three_d_printer_input_channel
+            << std::endl;
+
   auto franka_command_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          lcm_channel_params.franka_input_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
+      builder.AddSystem(
+          LcmPublisherSystem::Make<
+              dairlib::lcmt_robot_output>(
+              lcm_channel_params
+                  .three_d_printer_input_channel,
+              &lcm,
+              TriggerTypeSet(
+                  {TriggerType::kForced})));
+
+  std::cout << "[DEBUG] OSC command channel: "
+            << lcm_channel_params
+                   .three_d_printer_osc_channel
+            << std::endl;
+
   auto osc_command_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          lcm_channel_params.osc_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
+      builder.AddSystem(
+          LcmPublisherSystem::Make<
+              dairlib::lcmt_robot_output>(
+              lcm_channel_params
+                  .three_d_printer_osc_channel,
+              &lcm,
+              TriggerTypeSet(
+                  {TriggerType::kForced})));
+
   auto franka_command_sender =
-      builder.AddSystem<systems::RobotCommandSender>(plant);
+      builder.AddSystem<
+          systems::RobotCommandSender>(
+          plant);
+
   auto osc_command_sender =
-      builder.AddSystem<systems::RobotCommandSender>(plant);
+      builder.AddSystem<
+          systems::RobotCommandSender>(
+          plant);
+
+  std::cout << "[DEBUG] Added command senders."
+            << std::endl;
+
   auto end_effector_trajectory =
-      builder.AddSystem<EndEffectorPositionTrajectoryGenerator>(
-          plant, plant_context.get(), osc_params.neutral_position,
-          osc_params.teleop_neutral_position, kEndEffectorName);
+      builder.AddSystem<
+          EndEffectorPositionTrajectoryGenerator>(
+          plant,
+          plant_context.get(),
+          osc_params.neutral_position,
+          osc_params.teleop_neutral_position,
+          kEndEffectorName);
+
+  std::cout << "[DEBUG] Added EndEffectorPositionTrajectoryGenerator."
+            << std::endl;
+
+  std::cout << "[DEBUG] neutral_position = "
+            << osc_params.neutral_position.transpose()
+            << std::endl;
+
+
+
   end_effector_trajectory->SetRemoteControlParameters(
-      osc_params.neutral_position, osc_params.x_scale,
-      osc_params.y_scale, osc_params.z_scale);
-  auto end_effector_orientation_trajectory =
-      builder.AddSystem<EndEffectorOrientationTrajectoryGenerator>();
-  end_effector_orientation_trajectory->SetTrackOrientation(
-      osc_params.track_end_effector_orientation);
-  auto end_effector_force_trajectory =
-      builder.AddSystem<EndEffectorForceTrajectoryGenerator>();
-  auto radio_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
-          lcm_channel_params.radio_channel, &lcm));
-  auto osc = builder.AddSystem<systems::controllers::OperationalSpaceControl>(
-      plant, plant_context.get(), false);
-  if (osc_params.publish_debug_info) {
-    auto osc_debug_pub =
-        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_osc_output>(
-            lcm_channel_params.osc_debug_channel, &lcm,
-            TriggerTypeSet({TriggerType::kForced})));
-    builder.Connect(osc->get_output_port_osc_debug(),
-                    osc_debug_pub->get_input_port());
-  }
+      osc_params.neutral_position,
+      osc_params.x_scale,
+      osc_params.y_scale,
+      osc_params.z_scale);
+
+  std::cout << "[DEBUG] x_scale = "
+            << osc_params.x_scale
+            << std::endl;
+
+  std::cout << "[DEBUG] y_scale = "
+            << osc_params.y_scale
+            << std::endl;
+
+  std::cout << "[DEBUG] z_scale = "
+            << osc_params.z_scale
+            << std::endl;
 
   auto end_effector_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
-          "end_effector_target", osc_params.K_p_end_effector,
-          osc_params.K_d_end_effector, osc_params.W_end_effector,
-          plant, plant);
-  end_effector_position_tracking_data->AddPointToTrack(kEndEffectorName);
-  const VectorXd& end_effector_acceleration_limits =
-      osc_params.end_effector_acceleration * Vector3d::Ones();
-  end_effector_position_tracking_data->SetCmdAccelerationBounds(
-      -end_effector_acceleration_limits, end_effector_acceleration_limits);
-  auto mid_link_position_tracking_data_for_rel =
-      std::make_unique<JointSpaceTrackingData>(
-          "panda_joint2_target", osc_params.K_p_mid_link,
-          osc_params.K_d_mid_link, osc_params.W_mid_link, plant,
+          "end_effector_target",
+          osc_params.K_p_end_effector,
+          osc_params.K_d_end_effector,
+          osc_params.W_end_effector,
+          plant,
           plant);
-  mid_link_position_tracking_data_for_rel->AddJointToTrack("panda_joint2",
-                                                           "panda_joint2dot");
 
-  auto end_effector_force_tracking_data =
-      std::make_unique<ExternalForceTrackingData>(
-          "end_effector_force", osc_params.W_ee_lambda, plant, plant,
-          kEndEffectorName, Vector3d::Zero());
+  std::cout << "[DEBUG] Created tracking data."
+            << std::endl;
 
-  auto end_effector_orientation_tracking_data =
-      std::make_unique<RotTaskSpaceTrackingData>(
-          "end_effector_orientation_target",
-          osc_params.K_p_end_effector_rot,
-          osc_params.K_d_end_effector_rot,
-          osc_params.W_end_effector_rot, plant, plant);
-  end_effector_orientation_tracking_data->AddFrameToTrack(kEndEffectorName);
-  Eigen::VectorXd orientation_target = Eigen::VectorXd::Zero(4);
-  orientation_target(0) = 1;
-  osc->AddTrackingData(std::move(end_effector_position_tracking_data));
-  // Since the Franka has 7 joints to control a 6 DOF EE command, add an
-  // additional tracking objective for joint 2 at a good configuration for the
-  // sampling C3 experiments.  1.1 joint target empirically works well.
-  osc->AddConstTrackingData(std::move(mid_link_position_tracking_data_for_rel),
-                            1.1 * VectorXd::Ones(1));
-  osc->AddTrackingData(std::move(end_effector_orientation_tracking_data));
-  osc->AddForceTrackingData(std::move(end_effector_force_tracking_data));
-  osc->SetAccelerationCostWeights(osc_params.W_acceleration);
-  osc->SetInputCostWeights(osc_params.W_input_regularization);
-  osc->SetInputSmoothingCostWeights(osc_params.W_input_smoothing_regularization);
-  if (osc_params.enforce_acceleration_constraints) {
-    osc->EnableAccelerationConstraints();
-  } else {
-    osc->DisableAccelerationConstraints();
-  }
-  osc->SetContactFriction(osc_params.mu);
-  osc->SetOsqpSolverOptions(solver_options);
+  std::cout << "[DEBUG] Kp = "
+            << osc_params.K_p_end_effector
+            << std::endl;
 
-  osc->Build();
+  std::cout << "[DEBUG] Kd = "
+            << osc_params.K_d_end_effector
+            << std::endl;
 
-  if (osc_params.cancel_gravity_compensation) {
-    if (FLAGS_is_simulation) {
-      std::cerr<<"Sim OSC needs cancel_gravity_compensation: false"<<std::endl;
-      return -1;
-      return -1;
-    }
-    auto gravity_compensator =
-        builder.AddSystem<systems::GravityCompensationRemover>(plant,
-                                                               *plant_context);
-    builder.Connect(osc->get_output_port_osc_command(),
-                    gravity_compensator->get_input_port());
-    builder.Connect(gravity_compensator->get_output_port(),
-                    franka_command_sender->get_input_port());
-  } else {
-    if (!FLAGS_is_simulation) {
-      std::cerr<<"HW OSC needs cancel_gravity_compensation: true"<<std::endl;
-      return -1;
-    }
-    builder.Connect(osc->get_output_port_osc_command(),
-                    franka_command_sender->get_input_port(0));
-  }
+  std::cout << "[DEBUG] Weight = "
+            << osc_params.W_end_effector
+            << std::endl;
 
-  builder.Connect(radio_sub->get_output_port(0),
-                  end_effector_trajectory->get_input_port_radio());
-  builder.Connect(radio_sub->get_output_port(0),
-                  end_effector_orientation_trajectory->get_input_port_radio());
-  builder.Connect(radio_sub->get_output_port(0),
-                  end_effector_force_trajectory->get_input_port_radio());
-  builder.Connect(franka_command_sender->get_output_port(),
-                  franka_command_pub->get_input_port());
-  builder.Connect(osc_command_sender->get_output_port(),
-                  osc_command_pub->get_input_port());
-  builder.Connect(osc->get_output_port_osc_command(),
-                  osc_command_sender->get_input_port(0));
+  end_effector_position_tracking_data
+      ->AddPointToTrack(kEndEffectorName);
 
-  builder.Connect(state_receiver->get_output_port(0),
-                  osc->get_input_port_robot_output());
-  builder.Connect(end_effector_trajectory_sub->get_output_port(),
-                  end_effector_position_receiver->get_input_port_trajectory());
-  builder.Connect(end_effector_trajectory_sub->get_output_port(),
-                  end_effector_force_receiver->get_input_port_trajectory());
+  const VectorXd&
+      end_effector_acceleration_limits =
+          osc_params.end_effector_acceleration *
+          Vector3d::Ones();
+
+  std::cout << "[DEBUG] Acceleration limits = "
+            << end_effector_acceleration_limits.transpose()
+            << std::endl;
+
+  end_effector_position_tracking_data
+      ->SetCmdAccelerationBounds(
+          -end_effector_acceleration_limits,
+          end_effector_acceleration_limits);
+
+  // ------------------------------------------------------------------------
+  // Connections
+  // ------------------------------------------------------------------------
+
+  std::cout << "\n========== CONNECTING SYSTEMS =========="
+            << std::endl;
+
+  builder.Connect(
+      franka_command_sender->get_output_port(),
+      franka_command_pub->get_input_port());
+
+  std::cout << "[DEBUG] Connected franka command sender."
+            << std::endl;
+
+  builder.Connect(
+      osc_command_sender->get_output_port(),
+      osc_command_pub->get_input_port());
+
+  std::cout << "[DEBUG] Connected osc command sender."
+            << std::endl;
+
   builder.Connect(
       end_effector_trajectory_sub->get_output_port(),
-      end_effector_orientation_receiver->get_input_port_trajectory());
-  builder.Connect(end_effector_position_receiver->get_output_port(0),
-                  end_effector_trajectory->get_input_port_trajectory());
-  builder.Connect(state_receiver->get_output_port(0),
-                  end_effector_trajectory->get_input_port_state());
+      end_effector_position_receiver
+          ->get_input_port_trajectory());
+
+  std::cout << "[DEBUG] Connected trajectory subscriber."
+            << std::endl;
+
   builder.Connect(
-      end_effector_orientation_receiver->get_output_port(0),
-      end_effector_orientation_trajectory->get_input_port_trajectory());
-  builder.Connect(end_effector_trajectory->get_output_port(0),
-                  osc->get_input_port_tracking_data("end_effector_target"));
+      end_effector_position_receiver
+          ->get_output_port(0),
+      end_effector_trajectory
+          ->get_input_port_trajectory());
+
   builder.Connect(
-      end_effector_orientation_trajectory->get_output_port(0),
-      osc->get_input_port_tracking_data("end_effector_orientation_target"));
-  builder.Connect(end_effector_force_receiver->get_output_port(0),
-                  end_effector_force_trajectory->get_input_port_trajectory());
-  builder.Connect(end_effector_force_trajectory->get_output_port(0),
-                  osc->get_input_port_tracking_data("end_effector_force"));
+      state_receiver->get_output_port(0),
+      end_effector_trajectory
+          ->get_input_port_state());
+
+  std::cout << "[DEBUG] Connected trajectory generator inputs."
+            << std::endl;
+
+  builder.Connect(
+      end_effector_trajectory->get_output_port(0),
+      osc_command_sender->get_input_port(0));
+
+  builder.Connect(
+      end_effector_trajectory->get_output_port(0),
+      franka_command_sender->get_input_port(0));
+
+  std::cout << "[DEBUG] Connected trajectory outputs."
+            << std::endl;
+
+  // ------------------------------------------------------------------------
+  // Build
+  // ------------------------------------------------------------------------
+
+  std::cout << "\n========== BUILDING DIAGRAM =========="
+            << std::endl;
 
   auto owned_diagram = builder.Build();
-  std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
-  shared_diagram->set_name(("sampling_c3_franka_osc_controller"));
+
+  std::cout << "[DEBUG] Diagram built."
+            << std::endl;
+
+  std::shared_ptr<Diagram<double>> shared_diagram =
+      std::move(owned_diagram);
+
+  shared_diagram->set_name(
+      "sampling_c3_three_d_printer_osc_controller");
+
+  std::cout << "[DEBUG] Diagram name set."
+            << std::endl;
+
   DrawAndSaveDiagramGraph(*shared_diagram);
-  // Run lcm-driven simulation
-  systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &lcm, shared_diagram, state_receiver,
-      lcm_channel_params.franka_state_channel, true);
+
+  std::cout << "[DEBUG] Diagram graph saved."
+            << std::endl;
+
+  // ------------------------------------------------------------------------
+  // LCM Loop
+  // ------------------------------------------------------------------------
+
+  std::cout << "\n========== STARTING LCM LOOP =========="
+            << std::endl;
+
+  std::cout << "[DEBUG] State channel = "
+            << lcm_channel_params
+                   .three_d_printer_state_channel
+            << std::endl;
+
+  systems::LcmDrivenLoop<dairlib::lcmt_robot_output>
+      loop(
+          &lcm,
+          shared_diagram,
+          state_receiver,
+          lcm_channel_params
+              .three_d_printer_state_channel,
+          true);
+
+  std::cout << "[DEBUG] Entering loop.Simulate()"
+            << std::endl;
+
   loop.Simulate();
+
+  std::cout << "[DEBUG] loop.Simulate() returned"
+            << std::endl;
+
   return 0;
 }
 
 }  // namespace dairlib
 
-int main(int argc, char* argv[]) { return dairlib::DoMain(argc, argv); }
+int main(int argc, char* argv[]) {
+  return dairlib::DoMain(argc, argv);
+}

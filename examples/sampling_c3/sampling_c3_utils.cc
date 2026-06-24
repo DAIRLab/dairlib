@@ -248,6 +248,7 @@ std::vector<ModelInstanceIndex> AddLCSModelsTo3DPrinterPlant(
   Parser parser_lcs(plant);
   parser_lcs.SetAutoRenaming(true);
   parser_lcs.AddModels(k3dEndEffectorModel);
+  parser_lcs.AddModels(kBaseModel);
 
 
   for (const auto& model : object_models) {

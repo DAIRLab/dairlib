@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<robot name="sovol_sv08_simple">
+
+  <!--
+    Base:
+
+    Overall printer size from online specs:
+    X = 0.55 m
+    Y = 0.537 m
+    Z = 0.575 m
+  -->
+  <link name="base_link">
+    <inertial>
+      <origin xyz="0.175 0.175 -0.05" rpy="0 0 0"/>
+      <mass value="15.0"/>
+      <inertia
+        ixx="0.50" ixy="0.0" ixz="0.0"
+        iyy="0.50" iyz="0.0"
+        izz="0.50"/>
+    </inertial>
+
+    <visual>
+      <origin xyz="0.175 0.175 -0.05" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.55 0.537 0.0596"/>
+      </geometry>
+      <material name="dark_gray">
+        <color rgba="0.25 0.25 0.25 1.0"/>
+      </material>
+    </visual>
+
+    <collision>
+      <origin xyz="0.175 0.175 -0.05" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.55 0.537 0.0596"/>
+      </geometry>
+    </collision>
+  </link>
+
+</robot>

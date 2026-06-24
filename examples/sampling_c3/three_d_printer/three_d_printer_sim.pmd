@@ -43,21 +43,21 @@ group "operator" {
 
 group "controllers" {    
     cmd "move_to_init" {
-        exec = "bazel-bin/examples/sampling_c3/franka_joint_osc_controller --is_simulation=true --demo_name=anything";
+        exec = "bazel-bin/examples/sampling_c3/three_d_printer_joint_osc_controller --is_simulation=true --demo_name=three_d_printer";
         host = "localhost";
     }
-    cmd "franka_osc" {
-        exec = "bazel-bin/examples/sampling_c3/franka_osc_controller --is_simulation=true --demo_name=anything";
+    cmd "three_d_printer_osc" {
+        exec = "bazel-bin/examples/sampling_c3/three_d_printer_osc_controller --is_simulation=true --demo_name=three_d_printer";
         host = "localhost";
     }
     cmd "sampling_c3" {
-        exec = "bazel-bin/examples/sampling_c3/franka_sampling_c3_controller --is_simulation=true --demo_name=anything";
+        exec = "bazel-bin/examples/sampling_c3/three_d_printer_sampling_c3_controller --is_simulation=true --demo_name=three_d_printer";
         host = "localhost";
     }
 }
 script "init_experiment" {
     stop cmd "three_d_printer_sim";
-    stop cmd "franka_osc";
+    stop cmd "three_d_printer_osc";
     stop cmd "sampling_c3";
     wait ms 1000;
     start cmd "move_to_init";
@@ -69,7 +69,7 @@ script "init_experiment" {
 
 script "move_to_target_joints" {
     stop cmd "three_d_printer_sim";
-    stop cmd "franka_osc";
+    stop cmd "three_d_printer_osc";
     stop cmd "sampling_c3";
     stop cmd "move_to_init";
     wait ms 1000;
@@ -91,7 +91,7 @@ script "start_experiment_no_logs"{
     start cmd "multi_rewrite";
     wait ms 1000;
     restart cmd "three_d_printer_sim";
-    restart cmd "franka_osc";
+    restart cmd "three_d_printer_osc";
     restart cmd "visualizer";
     wait ms 50;
     restart cmd "sampling_c3";
@@ -100,7 +100,7 @@ script "start_experiment_no_logs"{
 script "start_experiment_with_logs"{
     restart cmd "start_logging";
     restart cmd "three_d_printer_sim";
-    restart cmd "franka_osc";
+    restart cmd "three_d_printer_osc";
     restart cmd "visualizer";
     wait ms 50;
     restart cmd "sampling_c3";
@@ -108,7 +108,7 @@ script "start_experiment_with_logs"{
 
 script "end_experiment"{
     stop cmd "sampling_c3";
-    stop cmd "franka_osc";
+    stop cmd "three_d_printer_osc";
     stop cmd "three_d_printer_sim";
     wait ms 10;
     stop cmd "start_logging";

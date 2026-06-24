@@ -22,6 +22,8 @@ static constexpr const char* kEndEffectorSimpleModel =
 static constexpr const char* kEndEffectorName = "end_effector_tip";
 static constexpr const char* kGroundModel =
   "examples/sampling_c3/urdf/ground.urdf";
+static constexpr const char* kBaseModel =
+  "examples/sampling_c3/urdf/3d_Printer/3_d_printer_bed.urdf";
 static constexpr const char* kPlatformModel =
   "examples/sampling_c3/urdf/platform.urdf";
 

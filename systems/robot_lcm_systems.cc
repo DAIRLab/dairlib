@@ -610,6 +610,41 @@ void RobotCommandSender::OutputCommand(
   }
 }
 
+ThreeDPrinterCommandSender::ThreeDPrinterCommandSender(
+    const drake::multibody::MultibodyPlant<double>& plant) {
+  num_actuators_ = plant.num_actuators();
+  actuator_index_map_ = multibody::MakeNameToActuatorsMap(plant);
+
+  for (JointActuatorIndex i(0); i < plant.num_actuators(); ++i) {
+    ordered_actuator_names_.push_back(plant.get_joint_actuator(i).name());
+  }
+
+  this->DeclareVectorInputPort("u, t",
+                               TimestampedVector<double>(num_actuators_));
+  this->DeclareAbstractOutputPort("lcmt_robot_output",
+                                  &ThreeDPrinterCommandSender::OutputCommand);
+}
+
+void ThreeDPrinterCommandSender::OutputCommand(
+    const Context<double>& context,
+    dairlib::lcmt_robot_output* input_msg) const {
+  const TimestampedVector<double>* command =
+      (TimestampedVector<double>*)this->EvalVectorInput(context, 0);
+
+  input_msg->utime = command->get_timestamp() * 1e6;
+  input_msg->num_efforts = num_actuators_;
+  input_msg->effort_names.resize(num_actuators_);
+  input_msg->efforts.resize(num_actuators_);
+  for (int i = 0; i < num_actuators_; i++) {
+    input_msg->effort_names[i] = ordered_actuator_names_[i];
+    if (std::isnan(command->GetAtIndex(i))) {
+      input_msg->efforts[i] = 0;
+    } else {
+      input_msg->efforts[i] = command->GetAtIndex(i);
+    }
+  }
+}
+
 SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
     drake::systems::DiagramBuilder<double>* builder,
     const MultibodyPlant<double>& plant,

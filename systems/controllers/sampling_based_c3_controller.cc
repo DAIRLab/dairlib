@@ -77,18 +77,25 @@ SamplingC3Controller::SamplingC3Controller(
       N_(sampling_c3_options_.N),
       verbose_(verbose) {
   this->set_name("sampling_c3_controller");
+  std::cout << "[SamplingC3Controller] Constructor starting..." << std::endl;
+  std::cout << "[SamplingC3Controller] verbose mode = " << verbose_ << std::endl;
 
   // Build C3Options from SamplingC3Options.
+  std::cout << "[SamplingC3Controller] Building C3Options from SamplingC3Options..." << std::endl;
   C3Options c3_options =
       sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_);
+  std::cout << "[SamplingC3Controller] C3Options built successfully (gamma=" << c3_options.gamma << ")" << std::endl;
 
   DRAKE_DEMAND(sampling_c3_options_.lcs_dt_resolution > 0);
+  std::cout << "[SamplingC3Controller] Setting dt to position mode planning_dt_position..." << std::endl;
   dt_ =
       sampling_c3_options_.planning_dt_position;  // Initialize dt_ to position
                                                   // mode's dt by default.
+  std::cout << "[SamplingC3Controller] dt_ = " << dt_ << " (position mode)" << std::endl;
 
   // Initialize Q_ and R_ to proper size.  Values don't matter because the
   // values get rewritten at the beginning of every control loop.
+  std::cout << "[SamplingC3Controller] Initializing Q_ and R_ cost matrices (N=" << N_ << ")..." << std::endl;
   double discount_factor = 1;
   for (int i = 0; i < N_; ++i) {
     Q_.push_back(discount_factor * c3_options.Q);
@@ -96,13 +103,16 @@ SamplingC3Controller::SamplingC3Controller(
     discount_factor *= c3_options.gamma;
   }
   Q_.push_back(discount_factor * c3_options.Q);
+  std::cout << "[SamplingC3Controller] Q_ and R_ initialized. Q_.size()=" << Q_.size() << ", R_.size()=" << R_.size() << std::endl;
 
   DRAKE_DEMAND(Q_.size() == N_ + 1);
   DRAKE_DEMAND(R_.size() == N_);
+  std::cout << "[SamplingC3Controller] Computing plant dimensions..." << std::endl;
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
   n_u_ = plant_.num_actuators();
   n_x_ = n_q_ + n_v_;
+  std::cout << "[SamplingC3Controller] Plant dims: n_q=" << n_q_ << ", n_v=" << n_v_ << ", n_u=" << n_u_ << ", n_x=" << n_x_ << std::endl;
 
   if (verbose_) {
     std::cout << "resolution: " << sampling_c3_options_.lcs_dt_resolution
@@ -122,25 +132,32 @@ SamplingC3Controller::SamplingC3Controller(
   }
   solve_time_filter_constant_ = sampling_c3_options_.solve_time_filter_alpha;
 
+  std::cout << "[SamplingC3Controller] Validating contact configuration..." << std::endl;
   DRAKE_DEMAND(sampling_c3_options_.num_contacts.has_value());
   DRAKE_DEMAND(
       sampling_c3_options_.num_friction_directions_per_contact.has_value());
+  std::cout << "[SamplingC3Controller] Computing n_lambda (contact force dimensions)..." << std::endl;
   n_lambda_ = LCSFactory::GetNumContactVariables(
       c3::multibody::GetContactModelMap().at(
           controller_params_.sampling_c3_options.contact_model),
       sampling_c3_options_.num_contacts.value(),
       sampling_c3_options_.num_friction_directions_per_contact.value());
+  std::cout << "[SamplingC3Controller] n_lambda_ = " << n_lambda_ << std::endl;
 
   // Placeholder LCS will have correct size as it's already determined by the
   // contact model.
+  std::cout << "[SamplingC3Controller] Creating placeholder LCS..." << std::endl;
   auto lcs_placeholder =
       LCS::CreatePlaceholderLCS(n_x_, n_u_, n_lambda_, sampling_c3_options_.N,
                                 sampling_c3_options_.planning_dt_position);
+  std::cout << "[SamplingC3Controller] Placeholder LCS created." << std::endl;
 
   auto x_desired_placeholder =
       std::vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
 
+  std::cout << "[SamplingC3Controller] Initializing C3 solvers with projection type: " << sampling_c3_options_.projection_type << std::endl;
   if (sampling_c3_options_.projection_type == "MIQP") {
+    std::cout << "[SamplingC3Controller] Creating MIQP solver instances (3 copies)... 1" << std::endl;
     c3_curr_plan_ = std::make_unique<C3MIQP>(lcs_placeholder,
                                              C3::CostMatrices(Q_, R_, G_, U_),
                                              x_desired_placeholder, c3_options);
@@ -151,6 +168,9 @@ SamplingC3Controller::SamplingC3Controller(
         lcs_placeholder, C3::CostMatrices(Q_, R_, G_, U_),
         x_desired_placeholder, c3_options);
   } else if (sampling_c3_options_.projection_type == "QP") {
+    std::cout << "[SamplingC3Controller] Creating QP solver instances (3 copies)... 2" << std::endl;
+
+  
     c3_curr_plan_ = std::make_unique<C3QP>(lcs_placeholder,
                                            C3::CostMatrices(Q_, R_, G_, U_),
                                            x_desired_placeholder, c3_options);
@@ -161,6 +181,28 @@ SamplingC3Controller::SamplingC3Controller(
                                              C3::CostMatrices(Q_, R_, G_, U_),
                                              x_desired_placeholder, c3_options);
   } else if (sampling_c3_options_.projection_type == "C3+") {
+    std::cout << "[SamplingC3Controller] Creating C3+ solver instances (3 copies)... 3" << std::endl;
+    // Debug: Print all key variables at this point
+  std::cout << "[DEBUG] === Variables after solver initialization ===" << std::endl;
+  std::cout << "[DEBUG] Projection type: " << sampling_c3_options_.projection_type << std::endl;
+  std::cout << "[DEBUG] Horizon N: " << N_ << std::endl;
+  std::cout << "[DEBUG] Plant dimensions: n_q=" << n_q_ << ", n_v=" << n_v_ << ", n_u=" << n_u_ << ", n_x=" << n_x_ << std::endl;
+  std::cout << "[DEBUG] Contact dimensions: n_lambda=" << n_lambda_ << std::endl;
+  std::cout << "[DEBUG] Solver z-dimension: n_z=" << n_z_ << std::endl;
+  std::cout << "[DEBUG] Q_ size: " << Q_.size() << " (should be N+1=" << (N_+1) << ")" << std::endl;
+  std::cout << "[DEBUG] R_ size: " << R_.size() << " (should be N=" << N_ << ")" << std::endl;
+  std::cout << "[DEBUG] G_ size: " << G_.size() << ", each with rows=" << G_[0].rows() << ", cols=" << G_[0].cols() << std::endl;
+  std::cout << "[DEBUG] U_ size: " << U_.size() << ", each with rows=" << U_[0].rows() << ", cols=" << U_[0].cols() << std::endl;
+  std::cout << "[DEBUG] Q_[0] dims: " << Q_[0].rows() << "x" << Q_[0].cols() << std::endl;
+  std::cout << "[DEBUG] R_[0] dims: " << R_[0].rows() << "x" << R_[0].cols() << std::endl;
+  std::cout << "[DEBUG] c3_options.gamma (discount factor): " << c3_options.gamma << std::endl;
+  std::cout << "[DEBUG] sampling_c3_options_.N: " << sampling_c3_options_.N << std::endl;
+  std::cout << "[DEBUG] sampling_c3_options_.planning_dt_position: " << sampling_c3_options_.planning_dt_position << std::endl;
+  std::cout << "[DEBUG] dt_: " << dt_ << std::endl;
+  std::cout << "[DEBUG] solve_time_filter_constant_: " << solve_time_filter_constant_ << std::endl;
+  std::cout << "[DEBUG] max_num_samples_: " << max_num_samples_ << std::endl;
+  std::cout << "[DEBUG] verbose_: " << verbose_ << std::endl;
+  std::cout << "[DEBUG] === End variable debug dump ===" << std::endl;
     c3_curr_plan_ = std::make_unique<C3Plus>(lcs_placeholder,
                                              C3::CostMatrices(Q_, R_, G_, U_),
                                              x_desired_placeholder, c3_options);
@@ -174,33 +216,45 @@ SamplingC3Controller::SamplingC3Controller(
     std::cerr << ("Unknown projection type") << std::endl;
     DRAKE_THROW_UNLESS(false);
   }
+  std::cout << "[SamplingC3Controller] C3 solver initialization complete." << std::endl;
   n_z_ = c3_curr_plan_->GetZSize();
+  std::cout << "[SamplingC3Controller] Solver z-dimension (n_z_) = " << n_z_ << std::endl;
+  
 
   // Input ports.
+  std::cout << "[SamplingC3Controller] Declaring input ports..." << std::endl;
   radio_port_ =
       this->DeclareAbstractInputPort("lcmt_radio_out",
                                      drake::Value<dairlib::lcmt_radio_out>{})
           .get_index();
+  std::cout << "[SamplingC3Controller] Declared radio input port (index " << radio_port_ << ")" << std::endl;
   lcs_state_input_port_ =
       this->DeclareVectorInputPort("x_lcs", TimestampedVector<double>(n_x_))
           .get_index();
+  std::cout << "[SamplingC3Controller] Declared lcs_state input port (index " << lcs_state_input_port_ << ")" << std::endl;
   target_input_port_ =
       this->DeclareVectorInputPort("x_lcs_des", n_x_).get_index();
+  std::cout << "[SamplingC3Controller] Declared target input port (index " << target_input_port_ << ")" << std::endl;
   final_target_input_port_ =
       this->DeclareVectorInputPort("x_lcs_final_des", n_x_).get_index();
+  std::cout << "[SamplingC3Controller] Declared final_target input port (index " << final_target_input_port_ << ")" << std::endl;
 
   // Output ports.
+  std::cout << "[SamplingC3Controller] Creating output port structures..." << std::endl;
   auto c3_solution = C3Output::C3Solution();
   c3_solution.x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
   c3_solution.lambda_sol_ = MatrixXf::Zero(n_lambda_, N_);
   c3_solution.u_sol_ = MatrixXf::Zero(n_u_, N_);
   c3_solution.time_vector_ = VectorXf::Zero(N_);
+  std::cout << "[SamplingC3Controller] C3Solution output structure created (N=" << N_ << ")" << std::endl;
   auto c3_intermediates = C3Output::C3Intermediates();
   c3_intermediates.z_ = MatrixXf::Zero(n_z_, N_);
   c3_intermediates.w_ = MatrixXf::Zero(n_z_, N_);
+  std::cout << "[SamplingC3Controller] C3Intermediates output structure created (n_z=" << n_z_ << ")" << std::endl;
   c3_intermediates.delta_ = MatrixXf::Zero(n_z_, N_);
   c3_intermediates.time_vector_ = VectorXf::Zero(N_);
   auto lcs_contact_descriptions = std::vector<LCSContactDescription>();
+  std::cout << "[SamplingC3Controller] Declaring output ports for current/best/buffer plans..." << std::endl;
 
   // Since the num_additional_samples_repos means the additional samples
   // to generate in addition to the prev_repositioning_target_, add 1.
@@ -280,6 +334,7 @@ SamplingC3Controller::SamplingC3Controller(
           .get_index();
 
   // Execution trajectory output ports.
+  std::cout << "[SamplingC3Controller] Declaring execution trajectory output ports..." << std::endl;
   c3_traj_execute_actor_port_ =
       this->DeclareAbstractOutputPort(
               "c3_traj_execute_actor", dairlib::lcmt_timestamped_saved_traj(),
@@ -333,6 +388,7 @@ SamplingC3Controller::SamplingC3Controller(
   // This port will output all samples except the current location.
   // all_sample_locations_port_ does not include the current location. So
   // index 0 is the first sample.
+  std::cout << "[SamplingC3Controller] Declaring sample location and cost output ports..." << std::endl;
   all_sample_locations_port_ =
       this->DeclareAbstractOutputPort(
               "all_sample_locations", dairlib::lcmt_timestamped_saved_traj(),
@@ -348,6 +404,7 @@ SamplingC3Controller::SamplingC3Controller(
 
   // A debug output port to publish information about the internals of the
   // sampling-based controller.
+  std::cout << "[SamplingC3Controller] Declaring debug output port..." << std::endl;
   debug_lcmt_port_ =
       this->DeclareAbstractOutputPort("sampling_c3_debug",
                                       dairlib::lcmt_sampling_c3_debug(),
@@ -355,6 +412,7 @@ SamplingC3Controller::SamplingC3Controller(
           .get_index();
 
   // Sample buffer related ouput ports.
+  std::cout << "[SamplingC3Controller] Initializing sample and unsuccessful sample buffers..." << std::endl;
   sample_buffer_ = MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
   sample_costs_buffer_ = -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
   sample_buffer_configurations_port_ =
@@ -390,17 +448,22 @@ SamplingC3Controller::SamplingC3Controller(
           .get_index();
 
   plan_start_time_index_ = DeclareDiscreteState(1);
+  std::cout << "[SamplingC3Controller] Initializing state vectors..." << std::endl;
   x_pred_curr_plan_ = VectorXd::Zero(n_x_);
   x_from_last_control_loop_ = VectorXd::Zero(n_x_);
   x_pred_from_last_control_loop_ = VectorXd::Zero(n_x_);
   x_final_target_ = VectorXd::Zero(n_x_);
+  std::cout << "[SamplingC3Controller] State vectors initialized." << std::endl;
 
   ResetProgressMetrics();
+  std::cout << "[SamplingC3Controller] Progress metrics reset." << std::endl;
 
   DeclareForcedDiscreteUpdateEvent(&SamplingC3Controller::ComputePlan);
+  std::cout << "[SamplingC3Controller] Discrete update event declared." << std::endl;
 
   // Set Kp and Kd vectors for cost computation.  These are only used for
   // certain cost computation types.
+  std::cout << "[SamplingC3Controller] Setting Kp and Kd for PD rollout cost computation..." << std::endl;
   Kp_for_cost_ = VectorXd::Zero(n_x_);
   Kp_for_cost_(0) = sampling_c3_options_.Kp_for_ee_pd_rollout[0];
   Kp_for_cost_(1) = sampling_c3_options_.Kp_for_ee_pd_rollout[1];
@@ -409,16 +472,20 @@ SamplingC3Controller::SamplingC3Controller(
   Kd_for_cost_(n_q_ + 0) = sampling_c3_options_.Kd_for_ee_pd_rollout[0];
   Kd_for_cost_(n_q_ + 1) = sampling_c3_options_.Kd_for_ee_pd_rollout[1];
   Kd_for_cost_(n_q_ + 2) = sampling_c3_options_.Kd_for_ee_pd_rollout[2];
+  std::cout << "[SamplingC3Controller] Kp/Kd vectors configured." << std::endl;
 
   // Set parallelization settings.
+  std::cout << "[SamplingC3Controller] Configuring OpenMP thread settings..." << std::endl;
   omp_set_dynamic(0);  // Explicitly disable dynamic teams.
   omp_set_nested(1);   // Enable nested threading.
   if (sampling_c3_options_.num_outer_threads == 0) {
     // Interpret setting number of threads to zero as a request to use all
     // machine's threads.
     num_threads_to_use_ = omp_get_max_threads();
+    std::cout << "[SamplingC3Controller] Thread count set to auto (all available): " << num_threads_to_use_ << std::endl;
   } else {
     num_threads_to_use_ = sampling_c3_options_.num_outer_threads;
+    std::cout << "[SamplingC3Controller] Thread count set to: " << num_threads_to_use_ << std::endl;
   }
 
   if (verbose_) {
@@ -430,6 +497,7 @@ SamplingC3Controller::SamplingC3Controller(
   if (sampling_params_.sampling_strategy == SamplingStrategy::kMeshNormal ||
       sampling_params_.sampling_strategy ==
           SamplingStrategy::kMeshNormalMultiObject) {
+    std::cout << "[SamplingC3Controller] Loading mesh files for surface sampling..." << std::endl;
     std::vector<std::string> mesh_paths;
     for (std::string base_name : controller_params_.base_names) {
       std::string path =
@@ -443,6 +511,7 @@ SamplingC3Controller::SamplingC3Controller(
 
     // N OBJECTS
     // Store faces and bins for each object
+    std::cout << "[SamplingC3Controller] Processing " << mesh_paths.size() << " mesh files..." << std::endl;
 
     for (const std::string& mesh_path : mesh_paths) {
       drake::geometry::TriangleSurfaceMesh<double>* mesh =
@@ -486,7 +555,11 @@ SamplingC3Controller::SamplingC3Controller(
       face_bins_per_object_.push_back(std::move(object_bins));
       total_area_per_object_.push_back(cumulative_area);
     }
+    std::cout << "[SamplingC3Controller] Mesh loading complete. Processed " << total_area_per_object_.size() << " objects." << std::endl;
+  } else {
+    std::cout << "[SamplingC3Controller] Not using mesh-based sampling strategy." << std::endl;
   }
+  std::cout << "[SamplingC3Controller] Constructor complete! Controller ready for operation." << std::endl;
 }
 
 // This function relies on the previously computed z_fin from Solve.

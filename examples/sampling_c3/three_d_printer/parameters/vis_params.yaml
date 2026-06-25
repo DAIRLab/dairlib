@@ -3,7 +3,7 @@ object_vis_model: examples/sampling_c3/urdf/nut/nut.sdf
 object_vis_models: [examples/sampling_c3/urdf/push_t_white/push_t_white.sdf]
 visualizer_publish_rate: 30
 
-camera_pose: [1.5, 0, 0.6]
+camera_pose: [0, -1.0, 0.6]
 camera_target: [0.5, 0, 0.5]
 
 visualize_c3_workspace: false

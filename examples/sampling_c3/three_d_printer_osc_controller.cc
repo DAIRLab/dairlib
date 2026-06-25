@@ -326,7 +326,10 @@ int DoMain(int argc, char* argv[]) {
             << std::endl;
 
   end_effector_position_tracking_data
-      ->AddPointToTrack(kEndEffectorName);
+      ->AddPointToTrack(k3dEndEffectorName);
+      
+  std::cout << "[DEBUG] added point to track: " << k3dEndEffectorName
+            << std::endl;
 
   const VectorXd&
       end_effector_acceleration_limits =

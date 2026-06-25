@@ -247,7 +247,7 @@ std::vector<ModelInstanceIndex> AddLCSModelsTo3DPrinterPlant(
 
   Parser parser_lcs(plant);
   parser_lcs.SetAutoRenaming(true);
-  parser_lcs.AddModels(k3dEndEffectorModel);
+  parser_lcs.AddModels(k3dEndEffectorSimpleModel);
   parser_lcs.AddModels(kBaseModel);
 
 
@@ -262,6 +262,8 @@ std::vector<ModelInstanceIndex> AddLCSModelsTo3DPrinterPlant(
       drake::math::RotationMatrix<double>(), kWorldToGroundOffset);
   plant->WeldFrames(plant->world_frame(),
                     plant->GetFrameByName("base_link"), X_WI);
+  plant->WeldFrames(plant->world_frame(),
+                    plant->GetFrameByName("ground"), X_W_G);
 
 
   return obj_models;

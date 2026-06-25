@@ -3,7 +3,7 @@
 franka_state_channel: FRANKA_STATE_SIMULATION
 three_d_printer_state_channel: PRINTER_STATE_SIMULATION   # lcmt_robot_output
 object_state_channel: OBJECT_STATE_SIMULATION   # lcmt_object_state
-object_state_channels: [OBJECT_G_shape_video_STATE_SIMULATION, OBJECT_R_shape_texture_STATE_SIMULATION, OBJECT_A_shape_video_STATE_SIMULATION, OBJECT_S_shape_texture_STATE_SIMULATION] # lcmt_object_state
+object_state_channels: [OBJECT_G_shape_video_STATE_SIMULATION]                                                                                                                          # lcmt_object_state
 franka_input_channel: FRANKA_INPUT              # lcmt_robot_input
 three_d_printer_input_channel: PRINTER_INPUT      # lcmt_robot_output (this is the input to the 3d printer, which is a robot output message)
 

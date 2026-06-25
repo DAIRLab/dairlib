@@ -9,7 +9,7 @@
     Y = 0.537 m
     Z = 0.575 m
   -->
-  <link name="base_link">
+  <link name="ground">
     <inertial>
       <origin xyz="0.175 0.175 -0.05" rpy="0 0 0"/>
       <mass value="15.0"/>

@@ -209,6 +209,16 @@ class RobotCommandSender : public drake::systems::LeafSystem<double> {
   std::map<std::string, int> actuator_index_map_;
 };
 
+class ThreeDPrinterCommandSender : public RobotCommandSender {
+ public:
+  explicit ThreeDPrinterCommandSender(
+      const drake::multibody::MultibodyPlant<double>& plant);
+
+ private:
+  void OutputCommand(const drake::systems::Context<double>& context,
+                     dairlib::lcmt_robot_output* output) const;
+};
+
 ///
 /// Convenience method to add and connect leaf systems for controlling
 /// a MultibodyPlant via LCM. Makes two primary connections:

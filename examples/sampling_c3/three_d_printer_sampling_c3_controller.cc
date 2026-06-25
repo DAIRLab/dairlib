@@ -65,7 +65,10 @@ DEFINE_string(demo_name, "jacktoy",
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  std::cout << "Debug: Parsed command line flags." << std::endl;
   drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
+  std::cout << "Debug: Initialized Drake LCM with URL " << FLAGS_lcm_url
+            << std::endl;
 
   // Load parameters.
   std::string controller_params_path =
@@ -74,19 +77,27 @@ int DoMain(int argc, char* argv[]) {
   SamplingC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
           controller_params_path);
+  std::cout << "Debug: Loaded controller params from "
+            << controller_params_path << std::endl;
   std::string lcm_channels_file =
       FLAGS_is_simulation ? controller_params.lcm_channels_simulation_file
                           : controller_params.lcm_channels_hardware_file;
   SamplingC3LcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(lcm_channels_file);
+  std::cout << "Debug: Loaded LCM channels from " << lcm_channels_file
+            << std::endl;
   SamplingC3Options sampling_c3_options =
       drake::yaml::LoadYamlFile<SamplingC3Options>(
           controller_params.sampling_c3_options_file);
+  std::cout << "Debug: Loaded sampling C3 options from "
+            << controller_params.sampling_c3_options_file << std::endl;
 
   // Create a Franka-only plant (no need to add walls to this).
   MultibodyPlant<double> plant_three_d_printer(0.0);
+  std::cout << "Debug: Creating Franka-only plant." << std::endl;
   Add3DPrinterToPlant(&plant_three_d_printer, nullptr, true, true, false);
   plant_three_d_printer.Finalize();
+  std::cout << "Debug: Finalized Franka-only plant." << std::endl;
   auto three_d_printer_context = plant_three_d_printer.CreateDefaultContext();
 
   // Create an object-only plant.
@@ -101,11 +112,15 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> plant_lcs_builder;
   auto [plant_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
+  std::cout << "Debug: Created LCS plant and scene graph builder." << std::endl;
   std::vector<ModelInstanceIndex> object_indices_lcs = AddLCSModelsTo3DPrinterPlant(
       &plant_lcs, &scene_graph, controller_params.object_models,
       controller_params.include_end_effector_orientation,
       sampling_c3_options.include_walls);
+  std::cout << "Debug: Added LCS models for " << object_indices_lcs.size()
+            << " objects." << std::endl;
   plant_lcs.Finalize();
+  std::cout << "Debug: Finalized LCS plant." << std::endl;
 
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_lcs_autodiff =
       drake::systems::System<double>::ToAutoDiffXd(plant_lcs);
@@ -121,6 +136,7 @@ int DoMain(int argc, char* argv[]) {
   Eigen::VectorXd x_pos = plant_lcs.GetPositionsAndVelocities(*context);
 
   // Build the contact pairs based on the demo.
+  std::cout << "Debug: Starting contact pair construction." << std::endl;
   std::vector<std::vector<SortedPair<GeometryId>>> contact_pairs;
   std::vector<SortedPair<GeometryId>> ee_contact_pairs;
   std::vector<SortedPair<GeometryId>> ground_object_contact_pairs;
@@ -129,10 +145,10 @@ int DoMain(int argc, char* argv[]) {
   // All demos include the end effector and ground.
   drake::geometry::GeometryId ee_contact_points =
       plant_lcs.GetCollisionGeometriesForBody(
-          plant_lcs.GetBodyByName("ee_link"))[0];
+          plant_lcs.GetBodyByName("end_effector_simple"))[0];
   drake::geometry::GeometryId ground_geoms =
       plant_lcs.GetCollisionGeometriesForBody(
-          plant_lcs.GetBodyByName("base_link"))[0];
+          plant_lcs.GetBodyByName("ground"))[0];
   contact_geoms["EE"] = ee_contact_points;
   contact_geoms["GROUND"] = ground_geoms;
   std::vector<SortedPair<GeometryId>> ee_ground_contact{
@@ -144,6 +160,7 @@ int DoMain(int argc, char* argv[]) {
   std::vector<std::vector<SortedPair<GeometryId>>> wall_object_contact_pairs;
 
   if (FLAGS_demo_name == "jacktoy") {
+    std::cout << "Debug: Building contact pairs for demo jacktoy." << std::endl;
     drake::geometry::GeometryId capsule1_geoms =
         plant_lcs.GetCollisionGeometriesForBody(
             plant_lcs.GetBodyByName("capsule_1"))[0];
@@ -203,6 +220,7 @@ int DoMain(int argc, char* argv[]) {
     ground_object_contact_pairs.push_back(SortedPair(
         contact_geoms["CAPSULE_3_SPHERE_2"], contact_geoms["GROUND"]));
   } else if (FLAGS_demo_name == "push_t") {
+    std::cout << "Debug: Building contact pairs for demo push_t." << std::endl;
     drake::geometry::GeometryId vertical_geoms =
         plant_lcs.GetCollisionGeometriesForBody(
             plant_lcs.GetBodyByName("vertical_link"))[0];
@@ -238,6 +256,7 @@ int DoMain(int argc, char* argv[]) {
     ground_object_contact_pairs.push_back(
         SortedPair(contact_geoms["BOTTOM_SPHERE"], contact_geoms["GROUND"]));
   } else if (FLAGS_demo_name == "anything") {
+    std::cout << "Debug: Building contact pairs for demo anything." << std::endl;
     if (sampling_c3_options.include_walls) {
       drake::geometry::GeometryId left_wall_geoms =
           plant_lcs.GetCollisionGeometriesForBody(
@@ -343,7 +362,7 @@ int DoMain(int argc, char* argv[]) {
     }
   } 
   else if (FLAGS_demo_name == "three_d_printer") {
-    
+    std::cout << "Debug: Building contact pairs for demo three_d_printer." << std::endl;
 
     std::vector<std::vector<GeometryId>> all_object_geoms;
     for (int i = 0; i < controller_params.base_names.size();
@@ -425,14 +444,24 @@ int DoMain(int argc, char* argv[]) {
   for (const auto& wall_obj_pair : wall_object_contact_pairs) {
     contact_pairs.push_back(wall_obj_pair);
   }
+  std::cout << "Debug: Contact pairs assembled: ee_ground="
+            << ee_ground_contact.size() << " ee_object="
+            << ee_contact_pairs.size() << " ground_object="
+            << ground_object_contact_pairs.size() << " object_object="
+            << object_object_contact_pairs.size() << " wall_object="
+            << wall_object_contact_pairs.size() << std::endl;
 
   // Piece together the diagram.
+  std::cout << "Debug: Starting diagram construction." << std::endl;
   DiagramBuilder<double> builder;
 
   assert(lcm_channel_params.object_state_channels.size() ==
          controller_params.num_objects);
   std::vector<LcmSubscriberSystem*> object_state_subs;
   for (int i = 0; i < controller_params.num_objects; ++i) {
+    std::cout << "Debug: Adding LCM subscriber for object " << i
+              << " channel " << lcm_channel_params.object_state_channels.at(i)
+              << std::endl;
     object_state_subs.push_back(
         builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
             lcm_channel_params.object_state_channels.at(i), &lcm)));
@@ -459,6 +488,7 @@ int DoMain(int argc, char* argv[]) {
           controller_params.include_end_effector_orientation,
           controller_params.base_names);
 
+  std::cout << "Debug: Preparing target generator." << std::endl;
   std::cout << "Before target generator" << std::endl;
   // Select the target generator based on the demo.
   std::unique_ptr<systems::SamplingC3GoalGenerator> target_generator;
@@ -510,6 +540,7 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.target_generator_info_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
+  std::cout << "Debug: Setting up target muxes." << std::endl;
   std::cout << "Before muxes" << std::endl;
 
   // Port 0 ee target
@@ -520,6 +551,8 @@ int DoMain(int argc, char* argv[]) {
   std::vector<const OutputPort<double>*> output_ports_object_target =
       control_target->get_output_ports_object_target();
   for (int i = 0; i < controller_params.num_objects; i++) {
+    std::cout << "Debug: Connecting object target output " << i
+              << " to target state mux input " << (i + 1) << std::endl;
     builder.Connect(*(output_ports_object_target.at(i)),
                     target_state_mux->get_input_port(i + 1));
   }
@@ -533,6 +566,9 @@ int DoMain(int argc, char* argv[]) {
   std::vector<const OutputPort<double>*> output_ports_object_velocity_target =
       control_target->get_output_ports_object_velocity_target();
   for (int i = 0; i < controller_params.num_objects; i++) {
+    std::cout << "Debug: Connecting object velocity target " << i
+              << " to target state mux input "
+              << (i + controller_params.num_objects + 2) << std::endl;
     builder.Connect(*(output_ports_object_velocity_target.at(i)),
                     target_state_mux->get_input_port(
                         i + controller_params.num_objects + 2));
@@ -565,9 +601,11 @@ int DoMain(int argc, char* argv[]) {
   }
 
   // Sampling C3 controller.
+  std::cout << "Debug: Adding SamplingC3Controller system." << std::endl;
   auto controller = builder.AddSystem<systems::SamplingC3Controller>(
       plant_lcs, &plant_lcs_context, *plant_lcs_autodiff,
       plant_lcs_context_ad.get(), contact_pairs, controller_params);
+  std::cout << "Debug: Done Adding SamplingC3Controller system." << std::endl;  
 
   // Systems for publishing the current and best planned trajectories.
   auto actor_trajectory_sender_curr_plan = builder.AddSystem(
@@ -813,6 +851,7 @@ int DoMain(int argc, char* argv[]) {
       controller->get_output_port_unsuccessful_sample_buffer_costs(),
       unsuccessful_sample_buffer_sender->get_input_port_sample_costs());
 
+  std::cout << "Debug: Finalizing diagram build." << std::endl;
   std::cout << "Before drawandsave" << std::endl;
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("sampling_c3_controller_" + FLAGS_demo_name));
@@ -825,6 +864,7 @@ int DoMain(int argc, char* argv[]) {
   // https://github.com/DAIRLab/dairlib/pull/366 for more details.
   int lcm_buffer_size = 200;
   std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
+  std::cout << "Debug: Created shared diagram, constructing LCM loop." << std::endl;
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, shared_diagram, franka_state_receiver,
       lcm_channel_params.franka_state_channel, true, lcm_buffer_size);
@@ -839,6 +879,7 @@ int DoMain(int argc, char* argv[]) {
     }
     return true;
   });
+  std::cout << "Debug: Completed LCM subscriptions wait." << std::endl;
   std::cout << "After LcmHandleSubscriptionsUntil" << std::endl;
   loop.Simulate();
   return 0;

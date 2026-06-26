@@ -75,25 +75,31 @@ void FrankaKinematics::ComputeLCSState(
   const OutputVector<double>* franka_output =
       (OutputVector<double>*)this->EvalVectorInput(context, franka_state_port_);
 
-  std::vector<const StateVector<double>*> object_outputs;
+  // Collect raw BasicVector pointers — do not cast to StateVector, as the
+  // upstream may be a ConstantVectorSource (BasicVector) rather than a true
+  // StateVector, making the StateVector metadata (num_positions_ etc.) invalid.
+  std::vector<const drake::systems::BasicVector<double>*> object_outputs;
   for (int i = 0; i < num_objects_; i++) {
-    object_outputs.push_back((StateVector<double>*)this->EvalVectorInput(
-        context, object_state_ports_.at(i)));
+    object_outputs.push_back(this->EvalVectorInput(context, object_state_ports_.at(i)));
   }
 
   VectorXd q_franka = franka_output->GetPositions();
   VectorXd v_franka = franka_output->GetVelocities();
 
-  int nq = object_outputs[0]->GetPositions().size();
-  int nv = object_outputs[0]->GetVelocities().size();
+  // Use class-member dimension counts (set from the plant in the constructor)
+  // instead of relying on StateVector metadata which may not be present.
+  const int nq = num_object_positions_;
+  const int nv = num_object_velocities_;
 
   // Preallocate total vectors
   VectorXd q_objects(num_objects_ * nq);
   VectorXd v_objects(num_objects_ * nv);
 
   for (int i = 0; i < num_objects_; i++) {
-    q_objects.segment(i * nq, nq) = object_outputs.at(i)->GetPositions();
-    v_objects.segment(i * nv, nv) = object_outputs.at(i)->GetVelocities();
+    // Layout of the port value: [positions(nq), velocities(nv), timestamp(1)]
+    const VectorXd raw = object_outputs.at(i)->CopyToVector();
+    q_objects.segment(i * nq, nq) = raw.head(nq);
+    v_objects.segment(i * nv, nv) = raw.segment(nq, nv);
   }
 
   multibody::SetPositionsIfNew<double>(franka_plant_, q_franka,

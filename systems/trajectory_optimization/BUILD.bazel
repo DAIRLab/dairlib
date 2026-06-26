@@ -76,6 +76,15 @@ cc_binary(
     ],
 )
 
+cc_library(
+    name = "trajectory_optimization",
+    deps = [
+        ":dircon",
+        ":dircon_kinematic_data",
+        ":lcm_trajectory_systems",
+    ],
+)
+
 filegroup(
     name = "headers",
     srcs = glob([

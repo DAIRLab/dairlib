@@ -867,7 +867,7 @@ int DoMain(int argc, char* argv[]) {
   std::cout << "Debug: Created shared diagram, constructing LCM loop." << std::endl;
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, shared_diagram, franka_state_receiver,
-      lcm_channel_params.franka_state_channel, true, lcm_buffer_size);
+      lcm_channel_params.three_d_printer_state_channel, true, lcm_buffer_size);
   std::cout << "constructed loop" << std::endl;
 
   LcmHandleSubscriptionsUntil(&lcm, [&]() {

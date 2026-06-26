@@ -1,5 +1,5 @@
-#include "robot_lcm_systems.h"
 #include <iostream>
+#include "robot_lcm_systems.h"
 
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -9,6 +9,11 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/discrete_time_delay.h"
+#include "drake/common/schema/rotation.h"
+#include "drake/geometry/rgba.h"
+#include "drake/common/trajectories/trajectory.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
+
 
 namespace dairlib {
 namespace systems {
@@ -20,6 +25,8 @@ using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
+using drake::trajectories::Trajectory;
+using drake::trajectories::PiecewisePolynomial;
 using Eigen::VectorXd;
 using std::string;
 using systems::OutputVector;
@@ -572,6 +579,34 @@ void RobotInputReceiver::CopyInputOut(const Context<double>& context,
   output->set_timestamp(input_msg.utime * 1.0e-6);
 }
 
+
+///// FIX THIS VERY BROKEN
+
+ThreeDPrinterInputReceiver::ThreeDPrinterInputReceiver(
+    const drake::multibody::MultibodyPlant<double>& plant) {
+  this->DeclareAbstractInputPort("lcmt_robot_input",
+                                 drake::Value<dairlib::lcmt_robot_output>{});
+  this->DeclareVectorOutputPort(
+      "u, t", TimestampedVector<double>(num_actuators_),
+      &ThreeDPrinterInputReceiver::CopyInputOut, {all_sources_ticket()});
+}
+
+void ThreeDPrinterInputReceiver::CopyInputOut(const Context<double>& context,
+                                      TimestampedVector<double>* output) const {
+  const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
+  DRAKE_ASSERT(input != nullptr);
+  const auto& input_msg = input->get_value<dairlib::lcmt_robot_input>();
+
+  VectorXd input_vector = VectorXd::Zero(num_actuators_);
+
+  for (int i = 0; i < input_msg.num_efforts; i++) {
+    int j = actuator_index_map_.at(input_msg.effort_names[i]);
+    input_vector(j) = input_msg.efforts[i];
+  }
+  output->SetDataVector(input_vector);
+  output->set_timestamp(input_msg.utime * 1.0e-6);
+}
+
 /*--------------------------------------------------------------------------*/
 // methods implementation for RobotCommandSender.
 
@@ -612,36 +647,80 @@ void RobotCommandSender::OutputCommand(
 
 ThreeDPrinterCommandSender::ThreeDPrinterCommandSender(
     const drake::multibody::MultibodyPlant<double>& plant) {
-  num_actuators_ = plant.num_actuators();
-  actuator_index_map_ = multibody::MakeNameToActuatorsMap(plant);
+  // Declare an abstract input port that matches the trajectory output type.
+  PiecewisePolynomial<double> empty_pp(Eigen::VectorXd::Zero(3));
+  Trajectory<double>& traj_inst = empty_pp;
 
-  for (JointActuatorIndex i(0); i < plant.num_actuators(); ++i) {
-    ordered_actuator_names_.push_back(plant.get_joint_actuator(i).name());
-  }
+this->DeclareAbstractInputPort(
+    "trajectory",
+    drake::Value<Trajectory<double>>(traj_inst));
 
-  this->DeclareVectorInputPort("u, t",
-                               TimestampedVector<double>(num_actuators_));
   this->DeclareAbstractOutputPort("lcmt_robot_output",
                                   &ThreeDPrinterCommandSender::OutputCommand);
 }
 
 void ThreeDPrinterCommandSender::OutputCommand(
     const Context<double>& context,
-    dairlib::lcmt_robot_output* input_msg) const {
-  const TimestampedVector<double>* command =
-      (TimestampedVector<double>*)this->EvalVectorInput(context, 0);
+    dairlib::lcmt_robot_output* output_msg) const {
+  // Get the trajectory from the abstract input port
+  const auto& base =
+    get_input_port(0).Eval<Trajectory<double>>(context);
 
-  input_msg->utime = command->get_timestamp() * 1e6;
-  input_msg->num_efforts = num_actuators_;
-  input_msg->effort_names.resize(num_actuators_);
-  input_msg->efforts.resize(num_actuators_);
-  for (int i = 0; i < num_actuators_; i++) {
-    input_msg->effort_names[i] = ordered_actuator_names_[i];
-    if (std::isnan(command->GetAtIndex(i))) {
-      input_msg->efforts[i] = 0;
+const auto& trajectory =
+    dynamic_cast<const PiecewisePolynomial<double>&>(base);
+
+  // Get current time from context
+  double current_time = context.get_time();
+  
+  // Evaluate trajectory at current time to get end effector position
+  VectorXd desired_position = trajectory.value(current_time);
+  
+  // Evaluate trajectory derivative at current time to get velocities
+  VectorXd desired_velocity = trajectory.EvalDerivative(current_time, 1);
+  
+  // Initialize the output message
+  output_msg->utime = current_time * 1e6;
+  
+  // Set up position names and values for x, y, z
+  output_msg->num_positions = desired_position.size();
+  output_msg->position_names.resize(desired_position.size());
+  output_msg->position.resize(desired_position.size());
+  
+  // Use standard coordinate names
+  std::vector<std::string> coord_names = {"x", "y", "z"};
+  
+  for (int i = 0; i < static_cast<int>(desired_position.size()); i++) {
+    if (i < static_cast<int>(coord_names.size())) {
+      output_msg->position_names[i] = coord_names[i];
     } else {
-      input_msg->efforts[i] = command->GetAtIndex(i);
+      output_msg->position_names[i] = "coord_" + std::to_string(i);
     }
+    output_msg->position[i] = desired_position(i);
+  }
+  
+  // Set up velocity names and values from trajectory derivative
+  output_msg->num_velocities = desired_velocity.size();
+  output_msg->velocity_names.resize(desired_velocity.size());
+  output_msg->velocity.resize(desired_velocity.size());
+  
+  std::vector<std::string> velocity_names = {"x_vel", "y_vel", "z_vel"};
+  
+  for (int i = 0; i < static_cast<int>(desired_velocity.size()); i++) {
+    if (i < static_cast<int>(velocity_names.size())) {
+      output_msg->velocity_names[i] = velocity_names[i];
+    } else {
+      output_msg->velocity_names[i] = "vel_" + std::to_string(i);
+    }
+    output_msg->velocity[i] = desired_velocity(i);
+  }
+  
+  output_msg->num_efforts = 0;
+  output_msg->effort_names.resize(0);
+  output_msg->effort.resize(0);
+  
+  // Zero out IMU accelerations
+  for (int i = 0; i < 3; ++i) {
+    output_msg->imu_accel[i] = 0.0;
   }
 }
 
@@ -655,6 +734,62 @@ SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
   // Create LCM input for actuators
   auto input_sub =
       builder->AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
+          actuator_channel, lcm));
+  auto input_receiver = builder->AddSystem<RobotInputReceiver>(plant);
+  auto passthrough = builder->AddSystem<SubvectorPassThrough>(
+      input_receiver->get_output_port(0).size(), 0,
+      plant.get_actuation_input_port().size());
+  builder->Connect(*input_sub, *input_receiver);
+  builder->Connect(*input_receiver, *passthrough);
+
+  // Create LCM output for state and efforts
+  auto state_pub =
+      builder->AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+          state_channel, lcm, 1.0 / publish_rate));
+  auto state_sender = builder->AddSystem<RobotOutputSender>(
+      plant, model_instance_index, publish_efforts);
+
+  builder->Connect(plant.get_state_output_port(model_instance_index),
+                   state_sender->get_input_port_state());
+
+  // Add delay, if used, and associated connections
+  if (actuator_delay > 0) {
+    auto discrete_time_delay =
+        builder->AddSystem<drake::systems::DiscreteTimeDelay>(
+            1.0 / publish_rate, actuator_delay * publish_rate,
+            plant.num_actuators());
+    builder->Connect(*passthrough, *discrete_time_delay);
+    builder->Connect(discrete_time_delay->get_output_port(),
+                     plant.get_actuation_input_port());
+
+    if (publish_efforts) {
+      builder->Connect(discrete_time_delay->get_output_port(),
+                       state_sender->get_input_port_effort());
+    }
+  } else {
+    builder->Connect(passthrough->get_output_port(),
+                     plant.get_actuation_input_port());
+    if (publish_efforts) {
+      builder->Connect(passthrough->get_output_port(),
+                       state_sender->get_input_port_effort());
+    }
+  }
+
+  builder->Connect(*state_sender, *state_pub);
+
+  return passthrough;
+}
+
+SubvectorPassThrough<double>* Add3dPrinterActuationReceiverAndStateSenderLcm(
+    drake::systems::DiagramBuilder<double>* builder,
+    const MultibodyPlant<double>& plant,
+    drake::systems::lcm::LcmInterfaceSystem* lcm, std::string actuator_channel,
+    std::string state_channel, double publish_rate,
+    drake::multibody::ModelInstanceIndex model_instance_index,
+    bool publish_efforts, double actuator_delay) {
+  // Create LCM input for actuators
+  auto input_sub =
+      builder->AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
           actuator_channel, lcm));
   auto input_receiver = builder->AddSystem<RobotInputReceiver>(plant);
   auto passthrough = builder->AddSystem<SubvectorPassThrough>(

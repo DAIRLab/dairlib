@@ -209,7 +209,7 @@ class RobotCommandSender : public drake::systems::LeafSystem<double> {
   std::map<std::string, int> actuator_index_map_;
 };
 
-class ThreeDPrinterCommandSender : public RobotCommandSender {
+class ThreeDPrinterCommandSender : public drake::systems::LeafSystem<double> {
  public:
   explicit ThreeDPrinterCommandSender(
       const drake::multibody::MultibodyPlant<double>& plant);

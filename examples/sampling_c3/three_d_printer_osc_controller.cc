@@ -227,7 +227,7 @@ int DoMain(int argc, char* argv[]) {
                    .three_d_printer_input_channel
             << std::endl;
 
-  auto franka_command_pub =
+  auto three_d_printer_command_pub =
       builder.AddSystem(
           LcmPublisherSystem::Make<
               dairlib::lcmt_robot_output>(
@@ -252,53 +252,17 @@ int DoMain(int argc, char* argv[]) {
               TriggerTypeSet(
                   {TriggerType::kForced})));
 
-  auto franka_command_sender =
+  auto three_d_printer_command_sender =
       builder.AddSystem<
-          systems::RobotCommandSender>(
+          systems::ThreeDPrinterCommandSender>(
           plant);
 
   auto osc_command_sender =
       builder.AddSystem<
-          systems::RobotCommandSender>(
+          systems::ThreeDPrinterCommandSender>(
           plant);
 
   std::cout << "[DEBUG] Added command senders."
-            << std::endl;
-
-  auto end_effector_trajectory =
-      builder.AddSystem<
-          EndEffectorPositionTrajectoryGenerator>(
-          plant,
-          plant_context.get(),
-          osc_params.neutral_position,
-          osc_params.teleop_neutral_position,
-          kEndEffectorName);
-
-  std::cout << "[DEBUG] Added EndEffectorPositionTrajectoryGenerator."
-            << std::endl;
-
-  std::cout << "[DEBUG] neutral_position = "
-            << osc_params.neutral_position.transpose()
-            << std::endl;
-
-
-
-  end_effector_trajectory->SetRemoteControlParameters(
-      osc_params.neutral_position,
-      osc_params.x_scale,
-      osc_params.y_scale,
-      osc_params.z_scale);
-
-  std::cout << "[DEBUG] x_scale = "
-            << osc_params.x_scale
-            << std::endl;
-
-  std::cout << "[DEBUG] y_scale = "
-            << osc_params.y_scale
-            << std::endl;
-
-  std::cout << "[DEBUG] z_scale = "
-            << osc_params.z_scale
             << std::endl;
 
   auto end_effector_position_tracking_data =
@@ -353,10 +317,10 @@ int DoMain(int argc, char* argv[]) {
             << std::endl;
 
   builder.Connect(
-      franka_command_sender->get_output_port(),
-      franka_command_pub->get_input_port());
+      three_d_printer_command_sender->get_output_port(),
+      three_d_printer_command_pub->get_input_port());
 
-  std::cout << "[DEBUG] Connected franka command sender."
+  std::cout << "[DEBUG] Connected three_d_printer command sender."
             << std::endl;
 
   builder.Connect(
@@ -374,27 +338,21 @@ int DoMain(int argc, char* argv[]) {
   std::cout << "[DEBUG] Connected trajectory subscriber."
             << std::endl;
 
-  builder.Connect(
-      end_effector_position_receiver
-          ->get_output_port(0),
-      end_effector_trajectory
-          ->get_input_port_trajectory());
 
-  builder.Connect(
-      state_receiver->get_output_port(0),
-      end_effector_trajectory
-          ->get_input_port_state());
+
 
   std::cout << "[DEBUG] Connected trajectory generator inputs."
             << std::endl;
 
   builder.Connect(
-      end_effector_trajectory->get_output_port(0),
+      end_effector_position_receiver
+          ->get_output_port(0),
       osc_command_sender->get_input_port(0));
 
   builder.Connect(
-      end_effector_trajectory->get_output_port(0),
-      franka_command_sender->get_input_port(0));
+      end_effector_position_receiver
+          ->get_output_port(0),
+      three_d_printer_command_sender->get_input_port(0));
 
   std::cout << "[DEBUG] Connected trajectory outputs."
             << std::endl;

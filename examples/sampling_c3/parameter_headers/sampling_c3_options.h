@@ -131,7 +131,7 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
   LCSFactoryOptions lcs_factory_options_position;
 
   template <typename Archive>
-  void Serialize(Archive* a) {
+  void Serialize(Archive* a, const bool& skip_setting_options = false) {
     C3Options::Serialize(a);
     LCSFactoryOptions::Serialize(a);
     a->Visit(DRAKE_NVP(projection_type));
@@ -267,14 +267,16 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
                                         num_friction_directions.value());
 
     // Create C3 options for both pose and position tracking.
-    std::cout
-        << "Setting C3 and LCS factory options for pose and position tracking."
-        << std::endl;
-    SetCommonOptions(&c3_options_pose, &lcs_factory_options_pose);
-    SetPoseTrackingOptions(&c3_options_pose, &lcs_factory_options_pose);
-    SetCommonOptions(&c3_options_position, &lcs_factory_options_position);
-    SetPositionTrackingOptions(&c3_options_position,
-                               &lcs_factory_options_position);
+    if (!skip_setting_options) {
+      std::cout << "Setting C3 and LCS factory options for pose and position "
+                   "tracking."
+                << std::endl;
+      SetCommonOptions(&c3_options_pose, &lcs_factory_options_pose);
+      SetPoseTrackingOptions(&c3_options_pose, &lcs_factory_options_pose);
+      SetCommonOptions(&c3_options_position, &lcs_factory_options_position);
+      SetPositionTrackingOptions(&c3_options_position,
+                                 &lcs_factory_options_position);
+    }
   }
 
   virtual C3Options GetC3Options(const bool& is_pose_tracking) const {
@@ -428,6 +430,7 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     c3_options->u_u = u_u;
 
     // Only applicable for C3+
+    std::cout << "PROJECTION TYPE: " << projection_type << std::endl;
     if (projection_type == "C3+") {
       c3_options->g_eta_slack = g_eta_slack_list[num_contacts_index];
       c3_options->g_eta_n = g_eta_n_list[num_contacts_index];

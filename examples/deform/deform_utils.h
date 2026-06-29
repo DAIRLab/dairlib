@@ -19,7 +19,7 @@ namespace dairlib {
 using drake::multibody::CoulombFriction;
 
 /// Constants.
-/// Robot models.
+/// Deformable example models.
 static constexpr const char* kHandModel =
     "package://drake_models/allegro_hand_description/urdf/"
     "allegro_hand_description_right.urdf";
@@ -45,6 +45,8 @@ static constexpr const char* kGroundFrankaModel =
 static constexpr const char* kPlatformModel =
     "examples/deform/models/platform.urdf";
 static constexpr const char* kBoxModel = "examples/deform/models/box.urdf";
+static constexpr const char* kEndEffectorSimpleModel =
+    "examples/sampling_c3/urdf/end_effector_simple_model.urdf";
 inline const Eigen::VectorXd kQInitFranka =
     (Eigen::VectorXd(7) << 2.19, 0.8, -1.7, -2.4, 0.95, 2.02, 0.08).finished();
 
@@ -115,6 +117,21 @@ void SetDefaultSpringDamperPositions(
     drake::multibody::MultibodyPlant<double>* plant,
     const std::vector<drake::multibody::ModelInstanceIndex>& point_indices,
     const SpringDamperModelParams& spring_damper_params);
+
+/// Add LCS models to the plant for the deformable graph network demo.  This
+/// adds the floating spherical EE, deformable nodes, a ground, and optionally
+/// a box.
+std::vector<drake::multibody::ModelInstanceIndex>
+AddLCSModelsForDeformableToPlant(
+    drake::multibody::MultibodyPlant<double>* plant,
+    drake::geometry::SceneGraph<double>* scene_graph, const int& n_nodes,
+    const bool& include_box);
+
+/// Add the deformable LCS model to the plant for the deformable graph network
+/// demo.  This adds the deformable nodes.
+std::vector<drake::multibody::ModelInstanceIndex> AddDeformableLCSModelToPlant(
+    drake::multibody::MultibodyPlant<double>* plant,
+    drake::geometry::SceneGraph<double>* scene_graph, const int& n_nodes);
 
 /// Returns the robot and object ModelInstanceIndexs added to the plant.
 std::vector<drake::multibody::ModelInstanceIndex> AddLCSModelsToPlant(

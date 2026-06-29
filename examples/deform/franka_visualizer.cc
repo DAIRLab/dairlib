@@ -12,7 +12,7 @@
 #include "common/find_resource.h"
 #include "examples/deform/deform_utils.h"
 #include "examples/deform/elastoplastic_model_interpreter.h"
-#include "examples/deform/parameter_headers/deform_settings.h"
+#include "examples/deform/parameter_headers/deform_controller_params.h"
 #include "examples/deform/parameter_headers/elastoplastic_sc3_options.h"
 #include "examples/deform/parameter_headers/lcm_channels.h"
 #include "examples/deform/parameter_headers/reduced_model_params.h"
@@ -64,19 +64,21 @@ int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Load parameters.
-  DeformSettings deform_settings = drake::yaml::LoadYamlFile<DeformSettings>(
-      "examples/deform/parameters/deform_settings.yaml");
+  DeformControllerParams deform_controller_params =
+      drake::yaml::LoadYamlFile<DeformControllerParams>(
+          "examples/deform/parameters/deform_controller_params.yaml");
   DeformVisualizerParams vis_params =
       drake::yaml::LoadYamlFile<DeformVisualizerParams>(
-          deform_settings.vis_params_file);
+          deform_controller_params.vis_params_file);
   std::string lcm_channels_file =
-      FLAGS_is_simulation ? deform_settings.lcm_channels_simulation_file
-                          : deform_settings.lcm_channels_hardware_file;
+      FLAGS_is_simulation
+          ? deform_controller_params.lcm_channels_simulation_file
+          : deform_controller_params.lcm_channels_hardware_file;
   DeformLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<DeformLcmChannels>(lcm_channels_file);
   ReducedModelParams reduced_model_params =
       drake::yaml::LoadYamlFile<ReducedModelParams>(
-          deform_settings.reduced_model_params_file);
+          deform_controller_params.reduced_model_params_file);
 
   DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();

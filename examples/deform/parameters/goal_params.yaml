@@ -1,0 +1,62 @@
+# TODO @bibit:
+#  - write fixed target
+#
+# Goal mode options (defined as GoalMode enum in
+# examples/sampling_c3/parameter_headers/goal_params.h):
+#   0. kRandom:               randomly generate a new goal.
+#   1. kOrientationSequence:  keep position goal the same, and cycle through a
+#                             sequence of orientations.
+#   2. kFixedGoal:            keep the same goal.
+#
+# Note that for the deformable example, not all of these goal modes are valid.
+# For now, only kFixedGoal is implemented.
+goal_mode: 2
+
+### Parameters used for multiple goal modes.
+# Success thresholds for position and orientation.
+node_success_threshold: 0.02
+
+# Lookahead parameters to define a sub-goal for C3.
+lookahead_step_size: 0.15   # meters
+
+# Initial goal (and only goal for fixed goal mode).
+# The initial configuration of the dough is roughly:
+# Based on the simulation initial conditions:
+#   x:  0.35 to 0.41
+#   y:  0.22 to 0.28
+#   z:  0.12 to 0.18
+#  [[0.41, 0.28, 0.18],  +++
+#   [0.35, 0.28, 0.18],  -++
+#   [0.35, 0.22, 0.18],  --+
+#   [0.41, 0.22, 0.18],  +-+
+#   [0.41, 0.28, 0.12],  ++-
+#   [0.35, 0.28, 0.12],  -+-
+#   [0.35, 0.22, 0.12],  ---
+#   [0.41, 0.22, 0.12]]  +--
+# Actual reported from simulation (the dough falls and flattens a bit, but also
+# seems to be smaller in x and y -- must be because it gets rounder):
+#   x:  ~0.352 to ~0.407
+#   y:  ~0.221 to ~0.277
+#   z:  ~0.104 to ~0.141
+#  [[0.407, 0.277, 0.152],  +++
+#   [0.352, 0.278, 0.144],  -++
+#   [0.352, 0.221, 0.145],  --+
+#   [0.410, 0.221, 0.145],  +-+
+#   [0.407, 0.280, 0.104],  ++-
+#   [0.351, 0.279, 0.106],  -+-
+#   [0.350, 0.220, 0.104],  ---
+#   [0.409, 0.220, 0.102]]  +--
+fixed_node_targets_vector: [[0.46, 0.33, 0.145],
+                            [0.41, 0.33, 0.145],
+                            [0.41, 0.28, 0.145],
+                            [0.46, 0.28, 0.145],
+                            [0.46, 0.33, 0.106],
+                            [0.41, 0.33, 0.106],
+                            [0.41, 0.28, 0.106],
+                            [0.46, 0.28, 0.106]]
+ee_target_z_offset_above_object: 0.06   # defines EE goal w.r.t. highest node
+
+# Random-specific parameters.
+random_goal_x_limits: [0.5, 0.51]
+random_goal_y_limits: [-0.30, 0.30]
+random_goal_radius_limits: [0.5, 0.52]

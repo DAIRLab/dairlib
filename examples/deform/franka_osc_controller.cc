@@ -5,7 +5,7 @@
 
 #include "common/eigen_utils.h"
 #include "examples/deform/deform_utils.h"
-#include "examples/deform/parameter_headers/deform_settings.h"
+#include "examples/deform/parameter_headers/deform_controller_params.h"
 #include "examples/deform/parameter_headers/lcm_channels.h"
 #include "examples/deform/parameter_headers/osc_params.h"
 #include "lcm/lcm_trajectory.h"
@@ -64,18 +64,20 @@ int DoMain(int argc, char* argv[]) {
   drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
 
   // Load parameters.
-  DeformSettings deform_settings = drake::yaml::LoadYamlFile<DeformSettings>(
-      "examples/deform/parameters/deform_settings.yaml");
+  DeformControllerParams deform_controller_params =
+      drake::yaml::LoadYamlFile<DeformControllerParams>(
+          "examples/deform/parameters/deform_controller_params.yaml");
   DeformOSCParams osc_params = drake::yaml::LoadYamlFile<DeformOSCParams>(
-      deform_settings.osc_params_file);
+      deform_controller_params.osc_params_file);
   std::string lcm_channels_file =
-      FLAGS_is_simulation ? deform_settings.lcm_channels_simulation_file
-                          : deform_settings.lcm_channels_hardware_file;
+      FLAGS_is_simulation
+          ? deform_controller_params.lcm_channels_simulation_file
+          : deform_controller_params.lcm_channels_hardware_file;
   DeformLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<DeformLcmChannels>(lcm_channels_file);
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
-          FindResourceOrThrow(deform_settings.osc_qp_settings_file))
+          FindResourceOrThrow(deform_controller_params.osc_qp_settings_file))
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   // Create a Franka-only plant.
@@ -90,7 +92,7 @@ int DoMain(int argc, char* argv[]) {
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   auto end_effector_trajectory_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.actor_traj_channel, &lcm));
+          lcm_channel_params.tracking_trajectory_actor_channel, &lcm));
   auto end_effector_position_receiver =
       builder.AddSystem<systems::LcmTrajectoryReceiver>(
           "end_effector_position_target");

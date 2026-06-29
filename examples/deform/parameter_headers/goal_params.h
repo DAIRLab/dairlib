@@ -43,6 +43,11 @@ struct ElastoPlasticGoalParams {
     a->Visit(DRAKE_NVP(random_goal_y_limits));
     a->Visit(DRAKE_NVP(random_goal_radius_limits));
 
+    // For now only the fixed goal mode is implemented.
+    // TODO @bibit:  Consider implementing a new goal mode for randomized
+    // deformable targets.
+    DRAKE_DEMAND(goal_mode == GoalMode::kFixedGoal);
+
     fixed_node_targets.resize(fixed_node_targets_vector.size() * 3);
     Eigen::Vector3d sum_node_targets;
     for (size_t i = 0; i < fixed_node_targets_vector.size(); ++i) {

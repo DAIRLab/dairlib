@@ -165,7 +165,7 @@ int do_main(int argc, char* argv[]) {
       vis_params.visualize_c3_plan_robot) {
     auto c3_plan_sub =
         builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_output>(
-            lcm_channel_params.c3_debug_output_channel, lcm));
+            lcm_channel_params.c3_debug_output_curr_channel, lcm));
 
     std::string object_model;
     if (FLAGS_demo == "1d") {
@@ -188,7 +188,7 @@ int do_main(int argc, char* argv[]) {
   if (vis_params.visualize_c3_forces) {
     auto c3_forces_sub =
         builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_forces>(
-            lcm_channel_params.c3_force_channel, lcm));
+            lcm_channel_params.c3_force_curr_channel, lcm));
     auto c3_forces_drawer = builder.AddSystem<dairlib::systems::LcmForceDrawer>(
         meshcat, "end_effector_position_target", "end_effector_force_target",
         "lcs_force_trajectory");

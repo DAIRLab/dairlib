@@ -1,9 +1,0 @@
-deform_c3_options_file: ERROR
-reduced_model_params_file: examples/deform/parameters/reduced_model_params.yaml
-sim_params_file: ERROR
-vis_params_file: examples/deform/parameters/demo_franka/vis_params.yaml
-osc_params_file: examples/deform/parameters/osc_params.yaml
-osc_qp_settings_file: examples/deform/parameters/osc_qp_settings.yaml
-franka_driver_channels_file: common/parameters/franka_drake_lcm_driver_channels.yaml
-lcm_channels_hardware_file: ERROR
-lcm_channels_simulation_file: examples/deform/parameters/lcm_channels_sim.yaml

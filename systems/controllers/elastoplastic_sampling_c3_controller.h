@@ -4,6 +4,7 @@
 #include "dairlib/lcmt_elastoplastic_network.hpp"
 #include "examples/deform/parameter_headers/deform_controller_params.h"
 #include "examples/deform/parameter_headers/elastoplastic_sc3_options.h"
+#include "examples/deform/parameter_headers/goal_params.h"
 #include "systems/controllers/sampling_based_c3_controller.h"
 
 namespace dairlib {
@@ -83,7 +84,8 @@ class ElastoPlasticSC3Controller : public SamplingC3Controller {
   const int n_lambda_internal_;
   const int n_nodes_;
   const std::vector<drake::geometry::GeometryId> internal_contact_geometries_;
-  ElastoPlasticSC3Options elastoplastic_sc3_options_;
+  const ElastoPlasticGoalParams goal_params_;
+  const ElastoPlasticSC3Options elastoplastic_sc3_options_;
 
   // Variables specific for elastoplastic controller that replace the parent
   // class's variables of similar purposes.

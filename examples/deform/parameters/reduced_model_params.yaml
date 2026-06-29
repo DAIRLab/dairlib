@@ -3,14 +3,16 @@
 #   0. kSupportDirections:  grabs support points along specified directions.
 reduction_type: 0
 
-# Parameters for support_directions type reduction.
+## Parameters for support_directions type reduction.
 support_directions_vec: [[1, 1,  1], [-1, 1,  1], [-1, -1,  1], [1, -1,  1],
                          [1, 1, -1], [-1, 1, -1], [-1, -1, -1], [1, -1, -1]]
 tetrahedra_vec: [[2, 5, 6, 7],
                  [0, 2, 3, 7],
                  [0, 2, 5, 7],
                  [0, 1, 2, 5],
-                 [0, 4, 5, 7]]  # results in 18 connections
+                 [0, 4, 5, 7]]  # results in 18 unique connections:
+                                # 12 for the wireframe of a cube,
+                                # +6 for a diagonal on each cube face.
 
 ## Parameters for all reduction types.
 

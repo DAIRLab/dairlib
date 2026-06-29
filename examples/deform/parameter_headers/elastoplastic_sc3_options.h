@@ -13,48 +13,48 @@
 using c3::ElastoPlasticContactPairConfig;
 using c3::ElastoPlasticLCSFactoryOptions;
 using c3::multibody::DeformationModel;
+using c3::multibody::GetDeformationModelMapFromString;
 using c3::multibody::GetDeformationModelMapToString;
 
 struct ElastoPlasticSC3Options : SamplingC3Options {
   DeformationModel deformation_model;
 
   // Only applicable for internal contacts.
-  int num_internal_contacts_index;
-  int num_internal_contacts_index_for_cost;
-  std::vector<std::vector<double>> g_internal_slack_list;
-  std::vector<std::vector<double>> g_internal_sigma_list;
-  std::vector<std::vector<double>> u_internal_slack_list;
-  std::vector<std::vector<double>> u_internal_sigma_list;
-  std::vector<std::vector<double>> g_eta_internal_slack_list;
-  std::vector<std::vector<double>> g_eta_internal_sigma_list;
-  std::vector<std::vector<double>> u_eta_internal_slack_list;
-  std::vector<std::vector<double>> u_eta_internal_sigma_list;
+  std::vector<double> g_internal_slack;
+  std::vector<double> g_internal_sigma;
+  std::vector<double> u_internal_slack;
+  std::vector<double> u_internal_sigma;
+  std::vector<double> g_eta_internal_slack;
+  std::vector<double> g_eta_internal_sigma;
+  std::vector<double> u_eta_internal_slack;
+  std::vector<double> u_eta_internal_sigma;
 
-  int num_internal_contacts;  // resolved from num_internal_contacts_index and
-                              // g_internal_slack_list.size()
+  int num_internal_contacts;  // resolved from g_internal_slack.size()
   ElastoPlasticLCSFactoryOptions ep_lcs_factory_options;
 
   // Serialize.
   template <typename Archive>
   void Serialize(Archive* a) {
-    SamplingC3Options::Serialize(a);
+    SamplingC3Options::Serialize(a, true /* skip_setting_options */);
     ENUM_DESERIALIZE(a, deformation_model);
-    a->Visit(DRAKE_NVP(num_internal_contacts_index));
-    a->Visit(DRAKE_NVP(num_internal_contacts_index_for_cost));
-    a->Visit(DRAKE_NVP(g_internal_slack_list));
-    a->Visit(DRAKE_NVP(g_internal_sigma_list));
-    a->Visit(DRAKE_NVP(u_internal_slack_list));
-    a->Visit(DRAKE_NVP(u_internal_sigma_list));
-    a->Visit(DRAKE_NVP(g_eta_internal_slack_list));
-    a->Visit(DRAKE_NVP(g_eta_internal_sigma_list));
-    a->Visit(DRAKE_NVP(u_eta_internal_slack_list));
-    a->Visit(DRAKE_NVP(u_eta_internal_sigma_list));
+    a->Visit(DRAKE_NVP(g_internal_slack));
+    a->Visit(DRAKE_NVP(g_internal_sigma));
+    a->Visit(DRAKE_NVP(u_internal_slack));
+    a->Visit(DRAKE_NVP(u_internal_sigma));
+    a->Visit(DRAKE_NVP(g_eta_internal_slack));
+    a->Visit(DRAKE_NVP(g_eta_internal_sigma));
+    a->Visit(DRAKE_NVP(u_eta_internal_slack));
+    a->Visit(DRAKE_NVP(u_eta_internal_sigma));
 
-    num_internal_contacts =
-        g_internal_slack_list[num_internal_contacts_index].size();
+    num_internal_contacts = g_internal_slack.size();
 
+    // Set the pose and postion tracking options to be the same.
     SetCommonOptions(&c3_options_pose, &lcs_factory_options_pose);
     SetElastoPlasticLCSFactoryOptions(c3_options_pose, lcs_factory_options_pose,
+                                      &ep_lcs_factory_options);
+    SetCommonOptions(&c3_options_position, &lcs_factory_options_position);
+    SetElastoPlasticLCSFactoryOptions(c3_options_position,
+                                      lcs_factory_options_position,
                                       &ep_lcs_factory_options);
   }
 
@@ -204,23 +204,15 @@ struct ElastoPlasticSC3Options : SamplingC3Options {
     SamplingC3Options::SetCommonOptions(c3_options, lcs_factory_options);
 
     // Set some elastoplastic-specific options.
-    c3_options->g_internal_slack =
-        g_internal_slack_list[num_internal_contacts_index];
-    c3_options->g_internal_sigma =
-        g_internal_sigma_list[num_internal_contacts_index];
-    c3_options->u_internal_slack =
-        u_internal_slack_list[num_internal_contacts_index];
-    c3_options->u_internal_sigma =
-        u_internal_sigma_list[num_internal_contacts_index];
+    c3_options->g_internal_slack = g_internal_slack;
+    c3_options->g_internal_sigma = g_internal_sigma;
+    c3_options->u_internal_slack = u_internal_slack;
+    c3_options->u_internal_sigma = u_internal_sigma;
     if (projection_type == "C3+") {
-      c3_options->g_eta_internal_slack =
-          g_eta_internal_slack_list[num_internal_contacts_index];
-      c3_options->g_eta_internal_sigma =
-          g_eta_internal_sigma_list[num_internal_contacts_index];
-      c3_options->u_eta_internal_slack =
-          u_eta_internal_slack_list[num_internal_contacts_index];
-      c3_options->u_eta_internal_sigma =
-          u_eta_internal_sigma_list[num_internal_contacts_index];
+      c3_options->g_eta_internal_slack = g_eta_internal_slack;
+      c3_options->g_eta_internal_sigma = g_eta_internal_sigma;
+      c3_options->u_eta_internal_slack = u_eta_internal_slack;
+      c3_options->u_eta_internal_sigma = u_eta_internal_sigma;
     }
 
     // Set the pose-specific options.

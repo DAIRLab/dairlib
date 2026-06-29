@@ -18,6 +18,7 @@ using Eigen::Matrix4d;
 using Eigen::Matrix4Xi;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
+using std::vector;
 
 /// Converts MPM points to LCM type lcmt_tetrahedra.
 MpmPointsToTetrahedra::MpmPointsToTetrahedra(
@@ -64,7 +65,7 @@ void MpmPointsToTetrahedra::OutputTetrahedraLcm(
     int n_points = material_points_lcmt->num_points;
     Matrix3Xd points = Matrix3Xd::Zero(3, n_points);
     for (int point_i = 0; point_i < n_points; point_i++) {
-      std::vector<float> point = material_points_lcmt->points[point_i];
+      vector<float> point = material_points_lcmt->points[point_i];
       for (int dim_i = 0; dim_i < 3; dim_i++) {
         points(dim_i, point_i) = point[dim_i];
       }
@@ -82,15 +83,13 @@ void MpmPointsToTetrahedra::OutputTetrahedraLcm(
   // Prepare data for LCM publishing.
   int n_reduced_points = reduced_points.cols();
   int n_tetrahedra = tetrahedra.cols();
-  std::vector<std::vector<float>> points_data(n_reduced_points,
-                                              std::vector<float>(3, 0));
+  vector<vector<float>> points_data(n_reduced_points, vector<float>(3, 0));
   for (int i = 0; i < n_reduced_points; i++) {
     for (int j = 0; j < 3; j++) {
       points_data[i][j] = reduced_points.col(i)(j);
     }
   }
-  std::vector<std::vector<int>> tetrahedra_data(n_tetrahedra,
-                                                std::vector<int>(4, 0));
+  vector<vector<int>> tetrahedra_data(n_tetrahedra, vector<int>(4, 0));
   for (int i = 0; i < n_tetrahedra; i++) {
     for (int j = 0; j < 4; j++) {
       tetrahedra_data[i][j] = tetrahedra.col(i)(j);
@@ -161,7 +160,7 @@ void TetrahedraToElastoPlasticNetwork::OutputElastoPlasticNetworkLcm(
     n_points = tetrahedra_lcmt->num_points;
     points = Matrix3Xd::Zero(3, n_points);
     for (int point_i = 0; point_i < n_points; point_i++) {
-      std::vector<float> point = tetrahedra_lcmt->points[point_i];
+      vector<float> point = tetrahedra_lcmt->points[point_i];
       for (int dim_i = 0; dim_i < 3; dim_i++) {
         points(dim_i, point_i) = point[dim_i];
       }
@@ -171,7 +170,7 @@ void TetrahedraToElastoPlasticNetwork::OutputElastoPlasticNetworkLcm(
     // tetrahedron.
     int n_tetrahedra = tetrahedra_lcmt->num_tetrahedra;
     for (int tet_i = 0; tet_i < n_tetrahedra; tet_i++) {
-      std::vector<int> tet = tetrahedra_lcmt->tetrahedra[tet_i];
+      vector<int> tet = tetrahedra_lcmt->tetrahedra[tet_i];
 
       // Compute the volume of the tetrahedron.
       Matrix4d vertices_ones = Matrix4d::Ones();
@@ -217,11 +216,9 @@ void TetrahedraToElastoPlasticNetwork::OutputElastoPlasticNetworkLcm(
   // Convert the connection graph to a list of connections, spring constants,
   // and yield forces.
   n_connections = ks_and_ls_map.size();
-  std::vector<std::vector<int>> connections_data(n_connections,
-                                                 std::vector<int>(2, 0));
-  std::vector<double> spring_constants =
-      std::vector<double>(n_connections, 0.0);
-  std::vector<double> yield_forces = std::vector<double>(n_connections, 0.0);
+  vector<vector<int>> connections_data(n_connections, vector<int>(2, 0));
+  vector<double> spring_constants = vector<double>(n_connections, 0.0);
+  vector<double> yield_forces = vector<double>(n_connections, 0.0);
   int conn_i = 0;
   for (const auto& connections_ks_ls : ks_and_ls_map) {
     connections_data[conn_i][0] = connections_ks_ls.first.first;
@@ -241,9 +238,8 @@ void TetrahedraToElastoPlasticNetwork::OutputElastoPlasticNetworkLcm(
     conn_i++;
   }
 
-  // Convert the Eigen matrices to std::vectors.
-  std::vector<std::vector<float>> points_data(n_points,
-                                              std::vector<float>(3, 0));
+  // Convert the Eigen matrices to vectors.
+  vector<vector<float>> points_data(n_points, vector<float>(3, 0));
   for (int i = 0; i < n_points; i++) {
     for (int j = 0; j < 3; j++) {
       points_data[i][j] = points.col(i)(j);

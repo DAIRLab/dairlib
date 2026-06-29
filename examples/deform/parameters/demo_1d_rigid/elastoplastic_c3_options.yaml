@@ -18,7 +18,7 @@ dt: 0.1
 N: 8
 gamma: 1.2  # discount factor on MPC costs
 
-# As alpha -> 0, any complimentarity constraint error in QP projection -> 0.
+# As alpha -> 0, any complementarity constraint error in QP projection -> 0.
 qp_projection_alpha: 0.01
 qp_projection_scaling: 1
 

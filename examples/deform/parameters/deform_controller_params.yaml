@@ -1,0 +1,20 @@
+elastoplastic_sc3_options_file: examples/deform/parameters/elastoplastic_sc3_options.yaml
+reduced_model_params_file: examples/deform/parameters/reduced_model_params.yaml
+reposition_params_file: examples/deform/parameters/reposition_params.yaml
+progress_params_file: examples/deform/parameters/progress_params.yaml
+sampling_params_file: examples/deform/parameters/sampling_params.yaml
+goal_params_file: examples/deform/parameters/goal_params.yaml
+
+sim_params_file: ERROR
+vis_params_file: examples/deform/parameters/demo_franka/vis_params.yaml
+osc_params_file: examples/deform/parameters/osc_params.yaml
+osqp_settings_file: examples/sampling_c3/shared_parameters/sampling_c3_qp_settings.yaml
+osc_qp_settings_file: examples/sampling_c3/shared_parameters/osc_qp_settings.yaml
+franka_driver_channels_file: common/parameters/franka_drake_lcm_driver_channels.yaml
+lcm_channels_hardware_file: ERROR
+lcm_channels_simulation_file: examples/deform/parameters/lcm_channels_sim.yaml
+
+
+workspace_margin: 0.03
+include_end_effector_orientation: false
+control_loop_delay_ms: 0

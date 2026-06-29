@@ -43,6 +43,7 @@ ElastoPlasticSC3Controller::ElastoPlasticSC3Controller(
     : SamplingC3Controller(
           plant, context, plant_ad, context_ad, external_contact_pair_lists,
           std::move(controller_params.sampling_c3_controller_params), verbose),
+      goal_params_(controller_params.elastoplastic_goal_params),
       internal_contact_geometries_(internal_contact_geometries),
       n_lambda_internal_(
           3 *
@@ -53,8 +54,12 @@ ElastoPlasticSC3Controller::ElastoPlasticSC3Controller(
 
   // Edit some of the work of the parent constructor.
   dt_ = elastoplastic_sc3_options_.planning_dt_pose;  // Always in pose mode.
-  G_ = vector<MatrixXd>(N_, elastoplastic_sc3_options_.G);
-  U_ = vector<MatrixXd>(N_, elastoplastic_sc3_options_.U);
+  // Use GetC3Options() (i.e. c3_options_pose) rather than the inherited
+  // C3Options::G/U, which C3Options::Serialize builds incorrectly for the
+  // elastoplastic case: it bakes g_internal_slack/sigma into g_lambda before
+  // g_u and g_eta are separated, producing a 165x165 matrix instead of 205x205.
+  G_ = vector<MatrixXd>(N_, elastoplastic_sc3_options_.GetC3Options().G);
+  U_ = vector<MatrixXd>(N_, elastoplastic_sc3_options_.GetC3Options().U);
   // Need to rebuild C3 plan objects since they use differently sized LCS.
   auto lcs_placeholder = LCS::CreatePlaceholderLCS(
       n_x_, n_u_, n_lambda_ + n_lambda_internal_, N_, dt_);

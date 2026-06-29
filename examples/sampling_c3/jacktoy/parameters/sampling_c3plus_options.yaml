@@ -20,7 +20,7 @@ spring_stiffness: 0.0  # Not used in C3+.
 N: 5
 gamma: 1.0  # discount factor on MPC costs
 
-# As alpha -> 0, any complimentarity constraint error in QP projection -> 0.
+# As alpha -> 0, any complementarity constraint error in QP projection -> 0.
 qp_projection_alpha: 0.01
 qp_projection_scaling: 1
 

@@ -53,6 +53,7 @@ cc_binary(
         "//examples/deform:deform_utils",
         "//examples/deform/parameter_headers:deform_params",
         "//examples/deform:mpm_model_reducer",
+        "//systems/controllers:elastoplastic_sampling_c3_controller",
         "//common",
         "//lcm:lcm_trajectory_saver",
         "//systems:franka_kinematics",
@@ -60,6 +61,8 @@ cc_binary(
         "//systems:system_utils",
         "//systems/framework:lcm_driven_loop",
         "@drake//:drake_shared_library",
+        "//systems/senders:sample_buffer_sender",
+        "//systems/senders:senders",
         "@gflags",
     ],
 )
@@ -161,6 +164,10 @@ cc_binary(
         "//systems/trajectory_optimization:lcm_trajectory_systems",
         "@drake//:drake_shared_library",
         "@gflags",
+    ],
+    linkopts = [
+        "-L/lib/x86_64-linux-gnu",
+        "-lopenblas",
     ],
 )
 

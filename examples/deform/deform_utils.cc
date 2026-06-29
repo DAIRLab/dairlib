@@ -15,7 +15,9 @@ using drake::geometry::ProximityProperties;
 using drake::geometry::SceneGraph;
 using drake::geometry::Shape;
 using drake::geometry::Sphere;
+using drake::math::RigidTransform;
 using drake::math::RigidTransformd;
+using drake::math::RotationMatrixd;
 using drake::multibody::DeformableModel;
 using drake::multibody::LinearSpringDamper;
 using drake::multibody::ModelInstanceIndex;
@@ -24,6 +26,7 @@ using drake::multibody::Parser;
 using drake::multibody::RigidBody;
 using drake::multibody::fem::DeformableBodyConfig;
 using Eigen::Vector3d;
+using std::vector;
 
 ModelInstanceIndex AddFrankaToPlant(MultibodyPlant<double>* plant,
                                     SceneGraph<double>* scene_graph,
@@ -151,12 +154,12 @@ void AddElasticSphereToPlant(MultibodyPlant<double>* plant,
                           resolution_hint, q_init_object);
 }
 
-std::vector<ModelInstanceIndex> AddSpringDamperModelToPlant(
+vector<ModelInstanceIndex> AddSpringDamperModelToPlant(
     MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph,
     const SpringDamperModelParams& spring_damper_params) {
   Parser parser(plant, scene_graph);
   parser.SetAutoRenaming(true);
-  std::vector<ModelInstanceIndex> point_indices;
+  vector<ModelInstanceIndex> point_indices;
 
   int n_vertices = spring_damper_params.vertex_positions.size();
   int n_springs = spring_damper_params.vertex_connections.size();
@@ -192,7 +195,7 @@ std::vector<ModelInstanceIndex> AddSpringDamperModelToPlant(
 
 void SetDefaultSpringDamperPositions(
     MultibodyPlant<double>* plant,
-    const std::vector<ModelInstanceIndex>& point_indices,
+    const vector<ModelInstanceIndex>& point_indices,
     const SpringDamperModelParams& spring_damper_params) {
   int n_vertices = spring_damper_params.vertex_positions.size();
   for (size_t i = 0; i < n_vertices; ++i) {
@@ -203,12 +206,58 @@ void SetDefaultSpringDamperPositions(
   }
 }
 
-std::vector<ModelInstanceIndex> AddLCSModelsToPlant(
-    drake::multibody::MultibodyPlant<double>* plant,
-    drake::geometry::SceneGraph<double>* scene_graph, const std::string& demo) {
+vector<ModelInstanceIndex> AddLCSModelsForDeformableToPlant(
+    MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph,
+    const int& n_nodes, const bool& include_box) {
+  Parser parser_lcs(plant);
+  parser_lcs.SetAutoRenaming(true);
+  parser_lcs.AddModels(kEndEffectorSimpleModel);
+  parser_lcs.AddModels(kGroundModel);
+
+  vector<ModelInstanceIndex> node_model_indices =
+      AddDeformableLCSModelToPlant(plant, scene_graph, n_nodes);
+
+  RigidTransformd X_WI = RigidTransformd::Identity();
+  RigidTransformd X_W_G =
+      RigidTransformd(RotationMatrixd(), kWorldToGroundOffset);
+  plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("base_link"),
+                    X_WI);
+  plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("ground"),
+                    X_W_G);
+
+  if (include_box) {
+    parser_lcs.AddModels(FindResourceOrThrow(kBoxModel));
+    RigidTransformd X_WB = RigidTransformd(kWorldToBoxOffset);
+    plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("box"), X_WB);
+  }
+
+  return node_model_indices;
+}
+
+vector<ModelInstanceIndex> AddDeformableLCSModelToPlant(
+    MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph,
+    const int& n_nodes) {
+  Parser parser_lcs(plant);
+  parser_lcs.SetAutoRenaming(true);
+
+  vector<ModelInstanceIndex> node_model_indices;
+  for (int i = 0; i < n_nodes; ++i) {
+    node_model_indices.push_back(parser_lcs.AddModels(kPointModel)[0]);
+    plant->WeldFrames(
+        plant->world_frame(),
+        plant->GetFrameByName("origin_link", node_model_indices[i]),
+        RigidTransformd());
+  }
+
+  return node_model_indices;
+}
+
+vector<ModelInstanceIndex> AddLCSModelsToPlant(MultibodyPlant<double>* plant,
+                                               SceneGraph<double>* scene_graph,
+                                               const std::string& demo) {
   Parser parser_lcs(plant, scene_graph);
   parser_lcs.SetAutoRenaming(true);
-  std::vector<ModelInstanceIndex> model_indices;
+  vector<ModelInstanceIndex> model_indices;
 
   if (demo == "1d" || demo == "1d_rigid") {
     ModelInstanceIndex robot_idx = parser_lcs.AddModels(kEndEffector1DModel)[0];

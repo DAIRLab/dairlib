@@ -293,7 +293,6 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   const SamplingParams sampling_params_;
   const SamplingC3ProgressParams progress_params_;
-  const SamplingC3GoalParams goal_params_;
   const SamplingC3RepositionParams reposition_params_;
 
   // Keep track of current C3 execution's best seen cost (some of these
@@ -499,6 +498,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex unsuccessful_sample_buffer_costs_port_;
 
   const SamplingC3Options sampling_c3_options_;
+  const SamplingC3GoalParams goal_params_;
 
   int max_num_samples_;
 

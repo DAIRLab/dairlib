@@ -5,7 +5,7 @@
     <color rgba="0.0 0.6 0.6 1.0"/>
   </material>
 
-  <link name="base_link" />
+  <link name="origin_link" />
 
   <link name="pt">
     <inertial>
@@ -37,7 +37,7 @@
   <link name="pt_fake_y" />
   
   <joint name="x" type="prismatic">
-    <parent link="base_link"/>
+    <parent link="origin_link"/>
     <child link="pt_fake_x"/>
     <axis xyz="1 0 0"/>
   </joint>

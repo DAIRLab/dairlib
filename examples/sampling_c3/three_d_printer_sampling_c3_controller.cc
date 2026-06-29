@@ -483,7 +483,7 @@ int DoMain(int argc, char* argv[]) {
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_three_d_printer, three_d_printer_context.get(), plant_object,
-          object_context.get(), kEndEffectorName,
+          object_context.get(), k3dEndEffectorName,
           controller_params.object_body_name,
           controller_params.include_end_effector_orientation,
           controller_params.base_names);

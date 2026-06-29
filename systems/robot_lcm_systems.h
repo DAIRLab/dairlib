@@ -192,6 +192,22 @@ class RobotInputReceiver : public drake::systems::LeafSystem<double> {
   std::map<std::string, int> actuator_index_map_;
 };
 
+class ThreeDPrinterInputReceiver : public drake::systems::LeafSystem<double> {
+ public:
+  explicit ThreeDPrinterInputReceiver(
+      const drake::multibody::MultibodyPlant<double>& plant);
+
+ private:
+  void CopyInputOut(const drake::systems::Context<double>& context,
+                    TimestampedVector<double>* output) const;
+
+  int num_positions_;
+  int num_velocities_;
+
+  std::unordered_map<std::string, int> position_index_map_;
+  std::unordered_map<std::string, int> velocity_index_map_;
+};
+
 /// Receives the output of a controller, and outputs it as an LCM
 /// message with type lcm_robot_u. Its output port is usually connected to
 /// an LcmPublisherSystem to publish the messages it generates.
@@ -248,6 +264,18 @@ SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
     std::string state_channel, double publish_rate,
     drake::multibody::ModelInstanceIndex model_instance_index,
     bool publish_efforts = true, double actuator_delay = 0);
+
+
+drake::systems::LeafSystem<double>* Add3dPrinterStateReceiverAndStateSenderLcm(
+    drake::systems::DiagramBuilder<double>* builder,
+    const drake::multibody::MultibodyPlant<double>& plant,
+    drake::systems::lcm::LcmInterfaceSystem* lcm,
+    std::string state_input_channel,
+    std::string state_output_channel,
+    double publish_rate,
+    drake::multibody::ModelInstanceIndex model_instance_index,
+    bool publish_efforts);
+    
 
 }  // namespace systems
 }  // namespace dairlib

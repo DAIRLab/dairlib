@@ -1548,6 +1548,22 @@ void SamplingC3Controller::ClampEndEffectorAcceleration(
 // stops.
 void SamplingC3Controller::CheckForWorkspaceLimitViolations(
     const TimestampedVector<double>* lcs_x_curr) const {
+
+  Eigen::Vector3d p = lcs_x_curr->get_data().segment(0,3);
+
+  for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
+    auto limit = sampling_c3_options_.workspace_limits[i];
+
+    double lhs = p.dot(limit.head<3>());
+    double rhs = limit[3];
+
+    std::cout << "Workspace limit " << i << std::endl;
+    std::cout << "EE position: " << p.transpose() << std::endl;
+    std::cout << "Plane: " << limit.transpose() << std::endl;
+    std::cout << "lhs = " << lhs << ", rhs = " << rhs << std::endl;
+
+    DRAKE_DEMAND(lhs > rhs);
+}
   // xyz checks
   for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
     DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 3).transpose() *

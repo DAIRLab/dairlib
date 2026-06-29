@@ -26,7 +26,7 @@ qp_projection_scaling: 1
 
 ### Limits
 # Workspace limits specified as linear constraints [x, y, z, lb, ub]
-workspace_limits: [[1, 0, 0, 0.23, 0.8], [0, 1, 0, -0.507, 0.507], [0, 0, 1, -0.04, 0.3]]  # for big object like egg carton, x limits should be [0.23, 0.8]
+workspace_limits: [[1, 0, 0, 0.15, 0.15], [0, 1, 0, 0.1, 0.15], [0, 0, 1, -0.15, 0.15]]  # for big object like egg carton, x limits should be [0.23, 0.8]
 # Table is x = 0.075 -> 0.71, y = -0.457 -> 0.457
 
 robot_radius_limits: [0.28, 0.75]  # for big object like egg carton, the limits should be [0.23, 0.75]

@@ -19,6 +19,7 @@
 #include <drake/visualization/visualization_config_functions.h>
 #include <gflags/gflags.h>
 
+#include <drake/systems/framework/diagram_builder.h>
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
 #include "examples/sampling_c3/sampling_c3_utils.h"
@@ -28,6 +29,7 @@
 #include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
 #include "multibody/multibody_utils.h"
 #include "systems/robot_lcm_systems.h"
+#include "systems/system_utils.h"
 
 namespace dairlib {
 
@@ -40,6 +42,7 @@ using drake::multibody::ModelInstanceIndex;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::systems::Context;
+using drake::systems::Diagram;
 using drake::systems::DiagramBuilder;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
@@ -47,6 +50,7 @@ using drake::trajectories::PiecewisePolynomial;
 using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
 using systems::AddActuationRecieverAndStateSenderLcm;
+using systems::Add3dPrinterStateReceiverAndStateSenderLcm;
 
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
@@ -180,32 +184,30 @@ int DoMain(int argc, char* argv[]) {
   // --------------------------------------------------------------------------
   // LCM
   // --------------------------------------------------------------------------
+std::cout << "\n========== SETTING UP LCM =========="
+          << std::endl;
 
-  std::cout << "\n========== SETTING UP LCM =========="
-            << std::endl;
+drake::lcm::DrakeLcm drake_lcm(FLAGS_lcm_url);
 
-  drake::lcm::DrakeLcm drake_lcm(FLAGS_lcm_url);
+auto lcm =
+    builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
+        &drake_lcm);
 
-  auto lcm =
-      builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
-          &drake_lcm);
+std::cout << "[DEBUG] LCM interface system created."
+          << std::endl;
 
-  std::cout << "[DEBUG] LCM interface system created."
-            << std::endl;
+dairlib::systems::Add3dPrinterStateReceiverAndStateSenderLcm(
+    &builder,
+    plant,
+    lcm,
+    lcm_channel_params.three_d_printer_input_channel,
+    lcm_channel_params.three_d_printer_state_channel,
+    sim_params.franka_publish_rate,
+    franka_index,
+    sim_params.publish_efforts);
 
-  AddActuationRecieverAndStateSenderLcm(
-      &builder,
-      plant,
-      lcm,
-      lcm_channel_params.three_d_printer_input_channel,
-      lcm_channel_params.three_d_printer_state_channel,
-      sim_params.franka_publish_rate,
-      franka_index,
-      sim_params.publish_efforts,
-      sim_params.actuator_delay);
-
-  std::cout << "[DEBUG] Robot LCM systems connected."
-            << std::endl;
+std::cout << "[DEBUG] 3D printer LCM systems connected."
+          << std::endl;
 
   // --------------------------------------------------------------------------
   // Object publishers
@@ -283,6 +285,9 @@ int DoMain(int argc, char* argv[]) {
 
   std::cout << "[DEBUG] Diagram built."
             << std::endl;
+
+  diagram->set_name(("three_d_printer_sim"));
+  DrawAndSaveDiagramGraph(*diagram);
 
   drake::systems::Simulator<double> simulator(*diagram);
 

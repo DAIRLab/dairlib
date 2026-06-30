@@ -6,7 +6,7 @@
     <color rgba="0.6 0.0 0.0 1.0"/>
   </material>
 
-  <link name="base_link" />
+  <link name="base_ee_link" />
 
   <link name="end_effector_simple">
     <inertial>
@@ -37,7 +37,7 @@
   <link name="end_effector_simple_fake_y" />
   
   <joint name="end_effector_simple_to_base_x" type="prismatic">
-    <parent link="base_link"/>
+    <parent link="base_ee_link"/>
     <child link="end_effector_simple_fake_x"/>
     <axis xyz="1 0 0"/>
   </joint>

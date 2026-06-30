@@ -292,6 +292,9 @@ void RobotOutputSender::Output(const Context<double>& context,
   // using the time from the context
   state_msg->utime = context.get_time() * 1e6;
 
+  std::cout << "[RobotOutputSender] publishing positions=" << num_positions_
+            << " velocities=" << num_velocities_ << std::endl;
+
   state_msg->num_positions = num_positions_;
   state_msg->num_velocities = num_velocities_;
   state_msg->position_names.resize(num_positions_);
@@ -589,9 +592,9 @@ ThreeDPrinterInputReceiver::ThreeDPrinterInputReceiver(
       "lcmt_robot_output",
       drake::Value<dairlib::lcmt_robot_output>{});
 
-  this->DeclareVectorOutputPort(
+    this->DeclareVectorOutputPort(
       "x",
-      TimestampedVector<double>(num_positions_ + num_velocities_),
+      BasicVector<double>(6),
       &ThreeDPrinterInputReceiver::CopyInputOut,
       {all_sources_ticket()});
 
@@ -600,27 +603,24 @@ ThreeDPrinterInputReceiver::ThreeDPrinterInputReceiver(
 
 void ThreeDPrinterInputReceiver::CopyInputOut(
     const Context<double>& context,
-    TimestampedVector<double>* output) const {
+    BasicVector<double>* output) const {
 
   const auto& msg =
       this->EvalAbstractInput(context, 0)
           ->get_value<dairlib::lcmt_robot_output>();
 
-  VectorXd x = VectorXd::Zero(num_positions_ + num_velocities_);
-
-  for (int i = 0; i < msg.num_positions; ++i) {
-    x(position_index_map_.at(msg.position_names[i])) =
-        msg.position[i];
+  VectorXd x = VectorXd::Zero(6);
+  for (int i = 0; i < 3 && i < msg.num_positions; ++i) {
+    x[i] = msg.position[i];
   }
 
-  for (int i = 0; i < msg.num_velocities; ++i) {
-    x(num_positions_ +
-      velocity_index_map_.at(msg.velocity_names[i])) =
-        msg.velocity[i];
+  for (int i = 0; i < 3 && i < msg.num_velocities; ++i) {
+    x[3 + i] = msg.velocity[i];
   }
 
-  output->SetDataVector(x);
-  output->set_timestamp(msg.utime * 1e-6);
+  for (int i = 0; i < 6; ++i) {
+    output->SetAtIndex(i, x[i]);
+  }
 }
 
 
@@ -819,15 +819,61 @@ drake::systems::LeafSystem<double>* Add3dPrinterStateReceiverAndStateSenderLcm(
 
   builder->Connect(*input_sub, *state_receiver);
 
+    // Choose a model instance for the end-effector whose state size is 6
+    // (3 positions + 3 velocities). Prefer the named instance if available,
+    // otherwise search for one with the expected size.
+    drake::multibody::ModelInstanceIndex ee_model_instance =
+        drake::multibody::ModelInstanceIndex(DEFAULT_MODEL_INSTANCE_INDEX);
+    bool found = false;
+    if (plant.HasModelInstanceNamed("end_effector_simple")) {
+      ee_model_instance = plant.GetModelInstanceByName("end_effector_simple");
+      int np = plant.num_positions(ee_model_instance);
+      int nv = plant.num_velocities(ee_model_instance);
+      if (np + nv == 6) {
+        found = true;
+      }
+    }
+    if (!found) {
+      // Search for any model instance with total state size 6.
+      for (drake::multibody::ModelInstanceIndex mi(0);
+           mi < plant.num_model_instances(); ++mi) {
+        int np = plant.num_positions(mi);
+        int nv = plant.num_velocities(mi);
+        if (np + nv == 6) {
+          ee_model_instance = mi;
+          found = true;
+          break;
+        }
+      }
+    }
+
+    if (!found) {
+      std::cerr << "[robot_lcm_systems] Warning: could not find a model "
+                << "instance with total state size 6; using default instance."
+                << std::endl;
+    } else {
+      std::cout << "[robot_lcm_systems] Connecting EE desired-state to model "
+                << plant.GetModelInstanceName(ee_model_instance)
+                << " (positions=" << plant.num_positions(ee_model_instance)
+                << ", velocities=" << plant.num_velocities(ee_model_instance)
+                << ")" << std::endl;
+    }
+
+    builder->Connect(state_receiver->get_output_port(),
+                     plant.get_desired_state_input_port(ee_model_instance));
+
   // Publish the simulated state.
   auto state_pub =
       builder->AddSystem(
           LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
               state_output_channel, lcm, 1.0 / publish_rate));
 
-  auto state_sender =
+    // Publish only the end-effector model instance state (EE-only), not the
+    // full printer model instance, so the published `lcmt_robot_output` has
+    // the EE positions/velocities (expected total size 6).
+    auto state_sender =
       builder->AddSystem<RobotOutputSender>(
-          plant, model_instance_index, publish_efforts);
+        plant, ee_model_instance, publish_efforts);
 
   builder->Connect(
       plant.get_state_output_port(model_instance_index),

@@ -1551,21 +1551,20 @@ void SamplingC3Controller::CheckForWorkspaceLimitViolations(
 
   Eigen::Vector3d p = lcs_x_curr->get_data().segment(0,3);
 
-  for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
-    auto limit = sampling_c3_options_.workspace_limits[i];
 
-    double lhs = p.dot(limit.head<3>());
+  // xyz checks
+  for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
+        auto limit = sampling_c3_options_.workspace_limits[i];
+
+    double lhs = lcs_x_curr->get_data().segment(0, 3).transpose() *
+                 sampling_c3_options_.workspace_limits[i].segment(0, 3);
     double rhs = limit[3];
 
     std::cout << "Workspace limit " << i << std::endl;
-    std::cout << "EE position: " << p.transpose() << std::endl;
+    std::cout << "EE position: " << lcs_x_curr->get_data().segment(0, 3).transpose() << std::endl;
     std::cout << "Plane: " << limit.transpose() << std::endl;
     std::cout << "lhs = " << lhs << ", rhs = " << rhs << std::endl;
 
-    DRAKE_DEMAND(lhs > rhs);
-}
-  // xyz checks
-  for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
     DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 3).transpose() *
                      sampling_c3_options_.workspace_limits[i].segment(0, 3) >
                  sampling_c3_options_.workspace_limits[i][3]);
@@ -1574,6 +1573,9 @@ void SamplingC3Controller::CheckForWorkspaceLimitViolations(
                  sampling_c3_options_.workspace_limits[i][4]);
   }
   // radius checks
+  std::cout << "Robot radius checks:" << std::endl;
+  std::cout << "EE position: " << std::pow(lcs_x_curr->get_data()[0], 2) + std::pow(lcs_x_curr->get_data()[1], 2) << std::endl;
+  std::cout << "Robot radius limits: " << sampling_c3_options_.robot_radius_limits[0] << ", " << sampling_c3_options_.robot_radius_limits[1] << std::endl;
   DRAKE_DEMAND(std::pow(lcs_x_curr->get_data()[0], 2) +
                    std::pow(lcs_x_curr->get_data()[1], 2) >
                std::pow(sampling_c3_options_.robot_radius_limits[0], 2));
@@ -1678,6 +1680,16 @@ vector<SortedPair<GeometryId>> SamplingC3Controller::GetResolvedContactPairs(
   std::vector<SortedPair<GeometryId>> resolved_contacts;
   resolved_contacts.clear();
 
+  std::cout << "[SamplingC3Controller] contact_geoms.size() = "
+            << contact_geoms.size() << std::endl;
+  std::cout << "[SamplingC3Controller] resolve_contacts_to_list.size() = "
+            << resolve_contacts_to_list.size() << std::endl;
+  std::cout << "[SamplingC3Controller] resolve_contacts_to_list values:";
+  for (size_t i = 0; i < resolve_contacts_to_list.size(); ++i) {
+    std::cout << " " << resolve_contacts_to_list[i];
+  }
+  std::cout << std::endl;
+
   // contact_geoms represents contact pair groups, where each group may contain
   // contact pairs between two objects, or between one object and multiple
   // objects eg. the end-effector and multiple objects in the environment.
@@ -1687,17 +1699,41 @@ vector<SortedPair<GeometryId>> SamplingC3Controller::GetResolvedContactPairs(
   // resolve_contacts_to_list for that group, and add those to the
   // resolved_contacts list.
   for (int i = 0; i < contact_geoms.size(); i++) {
+    std::cout << "[SamplingC3Controller] contact group " << i
+              << ": candidate count=" << contact_geoms[i].size()
+              << ", requested=" << resolve_contacts_to_list[i]
+              << std::endl;
     DRAKE_DEMAND(contact_geoms[i].size() >= resolve_contacts_to_list[i]);
 
     const auto& candidates = contact_geoms[i];
     const int num_to_select = resolve_contacts_to_list[i];
 
     auto active_contacts = LCSFactory::GetNClosestContactPairs(
-        plant, context, contact_geoms[i], num_to_select);
+        plant, context, candidates, num_to_select);
+    std::cout << "[SamplingC3Controller] selected " << active_contacts.size()
+              << " active contacts for group " << i << std::endl;
+    if (active_contacts.size() != static_cast<size_t>(num_to_select)) {
+      std::cout << "[SamplingC3Controller] WARNING group " << i
+                << " requested " << num_to_select << " but got "
+                << active_contacts.size() << std::endl;
+    }
+    std::cout << "[SamplingC3Controller] resolved_contacts before insert = "
+              << resolved_contacts.size() << std::endl;
     if (!active_contacts.empty()) {
       resolved_contacts.insert(resolved_contacts.end(), active_contacts.begin(),
                                active_contacts.end());
     }
+    std::cout << "[SamplingC3Controller] resolved_contacts after insert = "
+              << resolved_contacts.size() << std::endl;
+  }
+  std::cout << "[SamplingC3Controller] total resolved contacts: "
+            << resolved_contacts.size() << std::endl;
+  std::cout << "[SamplingC3Controller] requested total contacts: " << n_contacts
+            << std::endl;
+  if (resolved_contacts.size() != static_cast<size_t>(n_contacts)) {
+    std::cout << "[SamplingC3Controller] FINAL COUNT MISMATCH: expected "
+              << n_contacts << " but got " << resolved_contacts.size()
+              << std::endl;
   }
   DRAKE_DEMAND(resolved_contacts.size() == n_contacts);
   return resolved_contacts;

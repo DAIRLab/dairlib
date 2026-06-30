@@ -15,6 +15,7 @@
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
+#include "drake/systems/framework/basic_vector.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
 
 namespace dairlib {
@@ -199,7 +200,7 @@ class ThreeDPrinterInputReceiver : public drake::systems::LeafSystem<double> {
 
  private:
   void CopyInputOut(const drake::systems::Context<double>& context,
-                    TimestampedVector<double>* output) const;
+                    drake::systems::BasicVector<double>* output) const;
 
   int num_positions_;
   int num_velocities_;

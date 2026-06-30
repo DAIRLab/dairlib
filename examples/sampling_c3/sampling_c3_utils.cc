@@ -71,13 +71,13 @@ ModelInstanceIndex Add3DPrinterToPlant(MultibodyPlant<double>* plant,
                     plant->GetFrameByName("base_link"), X_WI);
 
   if (include_ee) {
-    parser.AddModels(FindResourceOrThrow(k3dEndEffectorModel));
+    parser.AddModels(k3dEndEffectorSimpleModel);
     RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(
         drake::math::RollPitchYaw<double>(0, 0, 0)),
       k3dPrinterToolAttachmentFrame);
     plant->WeldFrames(plant->GetFrameByName("x_carriage"),
-                      plant->GetFrameByName("ee_link"), T_EE_W);
+                      plant->GetFrameByName("base_ee_link"), T_EE_W);
     }
 
   return franka_index;

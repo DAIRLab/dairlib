@@ -219,7 +219,7 @@ std::cout << "base_name = "
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   auto three_d_printer_state_receiver =
-      builder.AddSystem<RobotOutputReceiver>(plant, franka_index);
+      builder.AddSystem<RobotOutputReceiver>(plant_franka);
 
   // Duplicating object state reciever for each object
   std::vector<ObjectStateReceiver*> object_state_receivers;
@@ -231,6 +231,9 @@ std::cout << "base_name = "
   auto three_d_printer_passthrough = builder.AddSystem<SubvectorPassThrough>(
       three_d_printer_state_receiver->get_output_port(0).size(), 0,
       plant.num_positions(franka_index));
+  auto ee_passthrough = builder.AddSystem<SubvectorPassThrough>(
+      three_d_printer_state_receiver->get_output_port(0).size(),
+      plant.num_positions(franka_index), plant.num_positions(franka_index0));
   auto robot_time_passthrough = builder.AddSystem<SubvectorPassThrough>(
       three_d_printer_state_receiver->get_output_port(0).size(),
       three_d_printer_state_receiver->get_output_port(0).size() - 1, 1);
@@ -243,7 +246,8 @@ std::cout << "base_name = "
         plant.num_positions(object_indices_plant.at(i))));
   }
 
-  std::vector<int> input_sizes = {plant.num_positions(franka_index)};
+    std::vector<int> input_sizes = {plant.num_positions(franka_index),
+                                                                    plant.num_positions(franka_index0)};
   for (ModelInstanceIndex obj_index : object_indices_plant) {
     input_sizes.push_back(plant.num_positions(obj_index));
   }
@@ -253,7 +257,7 @@ std::cout << "base_name = "
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_object,
-          object_context.get(), kEndEffectorName,
+          object_context.get(), k3dEndEffectorName,
           controller_params.object_body_name, false,
           controller_params.base_names);
 
@@ -621,7 +625,8 @@ std::cout << "base_name = "
 
   builder.Connect(three_d_printer_passthrough->get_output_port(),
                   mux->get_input_port(0));
-  for (int i = 1; i <= tray_passthroughs.size(); i++) {
+    builder.Connect(ee_passthrough->get_output_port(), mux->get_input_port(1));
+    for (int i = 2; i <= tray_passthroughs.size() + 1; i++) {
     builder.Connect(tray_passthroughs.at(i - 1)->get_output_port(),
                     mux->get_input_port(i));
   }
@@ -630,6 +635,7 @@ std::cout << "base_name = "
       to_pose->get_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
   builder.Connect(*three_d_printer_state_receiver, *three_d_printer_passthrough);
+    builder.Connect(*three_d_printer_state_receiver, *ee_passthrough);
   builder.Connect(*three_d_printer_state_receiver, *robot_time_passthrough);
 
   for (int i = 0; i < object_state_receivers.size(); i++) {

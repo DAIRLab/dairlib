@@ -219,7 +219,7 @@ std::cout << "base_name = "
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   auto three_d_printer_state_receiver =
-      builder.AddSystem<RobotOutputReceiver>(plant_franka);
+      builder.AddSystem<RobotOutputReceiver>(plant, franka_index);
 
   // Duplicating object state reciever for each object
   std::vector<ObjectStateReceiver*> object_state_receivers;
@@ -231,9 +231,9 @@ std::cout << "base_name = "
   auto three_d_printer_passthrough = builder.AddSystem<SubvectorPassThrough>(
       three_d_printer_state_receiver->get_output_port(0).size(), 0,
       plant.num_positions(franka_index));
-  auto ee_passthrough = builder.AddSystem<SubvectorPassThrough>(
-      three_d_printer_state_receiver->get_output_port(0).size(),
-      plant.num_positions(franka_index), plant.num_positions(franka_index0));
+//   auto ee_passthrough = builder.AddSystem<SubvectorPassThrough>(
+//       three_d_printer_state_receiver->get_output_port(0).size(),
+//       plant.num_positions(franka_index), plant.num_positions(franka_index0));
   auto robot_time_passthrough = builder.AddSystem<SubvectorPassThrough>(
       three_d_printer_state_receiver->get_output_port(0).size(),
       three_d_printer_state_receiver->get_output_port(0).size() - 1, 1);
@@ -246,8 +246,9 @@ std::cout << "base_name = "
         plant.num_positions(object_indices_plant.at(i))));
   }
 
-    std::vector<int> input_sizes = {plant.num_positions(franka_index),
-                                                                    plant.num_positions(franka_index0)};
+    std::vector<int> input_sizes = {plant.num_positions(franka_index)//,
+                                                                    //plant.num_positions(franka_index0)
+                                                                };
   for (ModelInstanceIndex obj_index : object_indices_plant) {
     input_sizes.push_back(plant.num_positions(obj_index));
   }
@@ -625,17 +626,28 @@ std::cout << "base_name = "
 
   builder.Connect(three_d_printer_passthrough->get_output_port(),
                   mux->get_input_port(0));
-    builder.Connect(ee_passthrough->get_output_port(), mux->get_input_port(1));
-    for (int i = 2; i <= tray_passthroughs.size() + 1; i++) {
+    //builder.Connect(ee_passthrough->get_output_port(), mux->get_input_port(1));
+    std::cout << "tray_passthroughs.size() = "
+          << tray_passthroughs.size() << std::endl;
+    std::cout << "object_state_receivers.size() = "
+          << object_state_receivers.size() << std::endl;
+
+for (int i = 1; i <= tray_passthroughs.size(); i++) {
+    if (i - 1 >= tray_passthroughs.size()) {
+        continue;   // or break;
+    }
+
     builder.Connect(tray_passthroughs.at(i - 1)->get_output_port(),
                     mux->get_input_port(i));
-  }
+}
+
+  std::cout << "mux->get_num_input_ports() = "  << std::endl;
   builder.Connect(*mux, *to_pose);
   builder.Connect(
       to_pose->get_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
   builder.Connect(*three_d_printer_state_receiver, *three_d_printer_passthrough);
-    builder.Connect(*three_d_printer_state_receiver, *ee_passthrough);
+   // builder.Connect(*three_d_printer_state_receiver, *ee_passthrough);
   builder.Connect(*three_d_printer_state_receiver, *robot_time_passthrough);
 
   for (int i = 0; i < object_state_receivers.size(); i++) {
@@ -651,28 +663,29 @@ std::cout << "base_name = "
 
   auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
       &builder, scene_graph, meshcat, std::move(params));
-
+  std::cout << "maybe here? "  << std::endl;
   auto diagram = builder.Build();
   diagram->set_name(("sampling_c3_visualizer_" + FLAGS_demo_name));
   DrawAndSaveDiagramGraph(*diagram);
   auto context = diagram->CreateDefaultContext();
-
+  std::cout << "maybe here?? "  << std::endl;
   auto& three_d_printer_state_sub_context =
       diagram->GetMutableSubsystemContext(*three_d_printer_state_sub, context.get());
-
+  std::cout << "maybe here??? "  << std::endl;
   std::vector<drake::systems::Context<double>*> object_state_sub_contexts;
   for (int i = 0; i < object_state_receivers.size(); i++) {
     object_state_sub_contexts.push_back(&diagram->GetMutableSubsystemContext(
         *(object_state_subs.at(i)), context.get()));
   }
-
+  std::cout << "maybe here???? "  << std::endl;
   three_d_printer_state_receiver->InitializeSubscriberPositions(
       plant, three_d_printer_state_sub_context);
-  for (int i = 0; i < object_state_receivers.size(); i++) {
+  std::cout << object_state_receivers.size() << " object state receivers" << std::endl;
+      for (int i = 0; i < object_state_receivers.size(); i++) {
     object_state_receivers.at(i)->InitializeSubscriberPositions(
         plant, *object_state_sub_contexts.at(i));
   }
-
+  std::cout << "maybe here! "  << std::endl;
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice
   auto simulator =

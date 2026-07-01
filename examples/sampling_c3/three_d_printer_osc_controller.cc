@@ -288,7 +288,10 @@ int DoMain(int argc, char* argv[]) {
   std::cout << "[DEBUG] Weight = "
             << osc_params.W_end_effector
             << std::endl;
-
+  std::cout << "Tracking body: " << k3dEndEffectorName << std::endl;
+std::cout << "HasBodyNamed? "
+          << plant.HasBodyNamed(k3dEndEffectorName)
+          << std::endl;
   end_effector_position_tracking_data
       ->AddPointToTrack(k3dEndEffectorName);
       

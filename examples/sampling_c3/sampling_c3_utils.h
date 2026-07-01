@@ -22,7 +22,7 @@ static constexpr const char* k3dEndEffectorSimpleModel =
 static constexpr const char* kEndEffectorSimpleModel =
   "examples/sampling_c3/urdf/end_effector_simple_model.urdf";
 static constexpr const char* kEndEffectorName = "end_effector_tip";
-static constexpr const char* k3dEndEffectorName = "ee_link";
+static constexpr const char* k3dEndEffectorName = "base_ee_link";
 static constexpr const char* kGroundModel =
   "examples/sampling_c3/urdf/ground.urdf";
 static constexpr const char* kBaseModel =

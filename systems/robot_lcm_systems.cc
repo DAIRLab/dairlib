@@ -146,51 +146,139 @@ int j = it->second;
 void RobotOutputReceiver::InitializeSubscriberPositions(
     const MultibodyPlant<double>& plant,
     drake::systems::Context<double>& context) const {
+
+  std::cout << "\n==========================================" << std::endl;
+  std::cout << "InitializeSubscriberPositions()" << std::endl;
+  std::cout << "==========================================" << std::endl;
+
   auto& state_msg = context.get_mutable_abstract_state<lcmt_robot_output>(0);
 
   // using the time from the context
   state_msg.utime = context.get_time() * 1e6;
 
+  std::cout << "Extracting ordered names..." << std::endl;
+
   std::vector<std::string> ordered_position_names =
       multibody::ExtractOrderedNamesFromMap(position_index_map_,
                                             positions_start_idx_);
+
   std::vector<std::string> ordered_velocity_names =
       multibody::ExtractOrderedNamesFromMap(velocity_index_map_,
                                             velocities_start_idx_);
+
   std::vector<std::string> ordered_effort_names =
       multibody::ExtractOrderedNamesFromMap(effort_index_map_);
 
+  std::cout << "num_positions_              = " << num_positions_ << std::endl;
+  std::cout << "num_velocities_             = " << num_velocities_ << std::endl;
+
+  std::cout << "ordered_position_names.size = "
+            << ordered_position_names.size() << std::endl;
+  std::cout << "ordered_velocity_names.size = "
+            << ordered_velocity_names.size() << std::endl;
+  std::cout << "ordered_effort_names.size   = "
+            << ordered_effort_names.size() << std::endl;
+
   state_msg.num_positions = num_positions_;
   state_msg.num_velocities = num_velocities_;
+
+  std::cout << "Resizing vectors..." << std::endl;
+
   state_msg.position_names.resize(num_positions_);
   state_msg.velocity_names.resize(num_velocities_);
   state_msg.position.resize(num_positions_);
-  state_msg.velocity.resize(num_positions_);
+  state_msg.velocity.resize(num_velocities_);
+
+  std::cout << "position_names.size() = "
+            << state_msg.position_names.size() << std::endl;
+  std::cout << "velocity_names.size() = "
+            << state_msg.velocity_names.size() << std::endl;
+  std::cout << "position.size()       = "
+            << state_msg.position.size() << std::endl;
+  std::cout << "velocity.size()       = "
+            << state_msg.velocity.size() << std::endl;
+
+  std::cout << "\nInitializing positions..." << std::endl;
 
   for (int i = 0; i < num_positions_; i++) {
+    std::cout << "  position[" << i << "]" << std::endl;
+
+    if (i >= ordered_position_names.size()) {
+      std::cout << "  ERROR: ordered_position_names out of bounds!"
+                << std::endl;
+    }
+
     state_msg.position_names[i] = ordered_position_names[i];
     state_msg.position[i] = 0;
   }
 
+  std::cout << "Finished position initialization." << std::endl;
+
   // Set quaternion w = 1, assumes drake quaternion ordering of wxyz
+  std::cout << "\nInitializing quaternion..." << std::endl;
+
   if (model_instance_ !=
       drake::multibody::ModelInstanceIndex(DEFAULT_MODEL_INSTANCE_INDEX)) {
+
+    std::cout << "Specific model instance." << std::endl;
+
     if (plant.HasUniqueFreeBaseBody(model_instance_)) {
+      const auto& body = plant.GetUniqueFreeBaseBodyOrThrow(model_instance_);
+
+      std::cout << "floating_positions_start = "
+                << body.floating_positions_start() << std::endl;
+
       state_msg.position.at(0) = 1;
     }
+
   } else {
+
+    std::cout << "Default model instance." << std::endl;
+
     for (const auto& body_idx : plant.GetFloatingBaseBodies()) {
       const auto& body = plant.get_body(body_idx);
+
+      std::cout << "Body: " << body.name()
+                << " quaternion=" << body.has_quaternion_dofs()
+                << std::endl;
+
       if (body.has_quaternion_dofs()) {
+        std::cout << "Setting quaternion at index "
+                  << body.floating_positions_start() << std::endl;
+
         state_msg.position.at(body.floating_positions_start()) = 1;
       }
     }
   }
 
+  std::cout << "\nInitializing velocities..." << std::endl;
+
   for (int i = 0; i < num_velocities_; i++) {
+
+    std::cout << "  velocity[" << i << "]"
+              << "  velocity.size()=" << state_msg.velocity.size()
+              << "  velocity_names.size()="
+              << state_msg.velocity_names.size()
+              << "  ordered_velocity_names.size()="
+              << ordered_velocity_names.size()
+              << std::endl;
+
+    if (i >= state_msg.velocity.size()) {
+      std::cout << "  ERROR: velocity vector out of bounds!" << std::endl;
+    }
+
+    if (i >= ordered_velocity_names.size()) {
+      std::cout << "  ERROR: ordered_velocity_names out of bounds!"
+                << std::endl;
+    }
+
     state_msg.velocity[i] = 0;
     state_msg.velocity_names[i] = ordered_velocity_names[i];
   }
+
+  std::cout << "Finished velocity initialization." << std::endl;
+  std::cout << "InitializeSubscriberPositions() complete." << std::endl;
+  std::cout << "==========================================\n" << std::endl;
 }
 
 /*--------------------------------------------------------------------------*/

@@ -261,7 +261,7 @@ std::vector<ModelInstanceIndex> AddLCSModelsTo3DPrinterPlant(
   RigidTransform<double> X_W_G = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), kWorldToGroundOffset);
   plant->WeldFrames(plant->world_frame(),
-                    plant->GetFrameByName("base_link"), X_WI);
+                    plant->GetFrameByName("base_ee_link"), X_WI);
   plant->WeldFrames(plant->world_frame(),
                     plant->GetFrameByName("ground"), X_W_G);
 

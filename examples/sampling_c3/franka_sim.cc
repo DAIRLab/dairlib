@@ -26,6 +26,7 @@
 #include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
 #include "multibody/multibody_utils.h"
 #include "systems/robot_lcm_systems.h"
+#include "systems/system_utils.h"
 
 namespace dairlib {
 
@@ -131,6 +132,9 @@ int DoMain(int argc, char* argv[]) {
   }
 
   auto diagram = builder.Build();
+
+  diagram->set_name(("sampling_c3_sim_" + FLAGS_demo_name));
+  DrawAndSaveDiagramGraph(*diagram);
 
   drake::systems::Simulator<double> simulator(*diagram);
 

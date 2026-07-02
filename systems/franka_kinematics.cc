@@ -66,8 +66,19 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
       include_end_effector_orientation_(include_end_effector_orientation),
       object_names_(object_names) {
 
+  std::cout << "[FrankaKinematics] Constructor called." << std::endl;
+  std::cout << "  end_effector_name = " << end_effector_name_ << std::endl;
+  std::cout << "  object_name = " << object_name_ << std::endl;
+  std::cout << "  include_end_effector_orientation = "
+            << include_end_effector_orientation_ << std::endl;
+  std::cout << "  object_names.size() = " << object_names_.size() << std::endl;
+
   num_objects_ = object_names_.size();
+  std::cout << "  num_objects_ = " << num_objects_ << std::endl;
+
   this->set_name("franka_kinematics");
+  std::cout << "  System name set to franka_kinematics." << std::endl;
+
   franka_state_port_ =
       this->DeclareVectorInputPort(
               "x_franka", OutputVector<double>(franka_plant.num_positions(),
@@ -75,19 +86,45 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
                                                franka_plant.num_actuators()))
           .get_index();
 
+  std::cout << "  Declared franka_state_port_ = "
+            << franka_state_port_ << std::endl;
+  std::cout << "    franka num_positions = "
+            << franka_plant.num_positions() << std::endl;
+  std::cout << "    franka num_velocities = "
+            << franka_plant.num_velocities() << std::endl;
+  std::cout << "    franka num_actuators = "
+            << franka_plant.num_actuators() << std::endl;
+
   for (int i = 0; i < num_objects_; i++) {
     std::string port_name = "x_object_" + std::to_string(i);
+
+    std::cout << "  Declaring object input port " << i
+              << " with name \"" << port_name << "\"" << std::endl;
+
     object_state_ports_.push_back(
         this->DeclareVectorInputPort(
               port_name, StateVector<double>(7, 6))
           .get_index()
     );
-  } 
+
+    std::cout << "    -> port index = "
+              << object_state_ports_.back() << std::endl;
+  }
 
   num_end_effector_positions_ = 3 + include_end_effector_orientation_ * 3;
   num_object_positions_ = object_plant.num_positions();
   num_end_effector_velocities_ = 3 + include_end_effector_orientation_ * 3;
   num_object_velocities_ = object_plant.num_velocities();
+
+  std::cout << "  num_end_effector_positions_ = "
+            << num_end_effector_positions_ << std::endl;
+  std::cout << "  num_object_positions_ = "
+            << num_object_positions_ << std::endl;
+  std::cout << "  num_end_effector_velocities_ = "
+            << num_end_effector_velocities_ << std::endl;
+  std::cout << "  num_object_velocities_ = "
+            << num_object_velocities_ << std::endl;
+
   lcs_state_port_ =
       this->DeclareVectorOutputPort(
               "x_lcs",
@@ -96,6 +133,10 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
                   num_end_effector_velocities_, num_object_velocities_),
               &FrankaKinematics::ComputeLCSState)
           .get_index();
+
+  std::cout << "  Declared lcs_state_port_ = "
+            << lcs_state_port_ << std::endl;
+  std::cout << "[FrankaKinematics] Constructor complete." << std::endl;
 }
 
 void FrankaKinematics::ComputeLCSState(

@@ -66,18 +66,45 @@ ModelInstanceIndex Add3DPrinterToPlant(MultibodyPlant<double>* plant,
   parser.SetAutoRenaming(true);
 
   ModelInstanceIndex franka_index = parser.AddModelsFromUrl(k3DPrinterModel)[0];
+  std::optional<ModelInstanceIndex> printer_model_instance{franka_index};
+
+  plant->AddJointActuator("x_axis_actuator",
+                          plant->GetJointByName("x_axis_joint",
+                                               printer_model_instance));
+  plant->AddJointActuator("y_axis_actuator",
+                          plant->GetJointByName("y_axis_joint",
+                                               printer_model_instance));
+  plant->AddJointActuator("z_axis_actuator",
+                          plant->GetJointByName("z_axis_joint",
+                                               printer_model_instance));
+
+    if (plant->time_step() > 0.0) {
+      const drake::multibody::PdControllerGains x_gains{250.0, 25.0};
+      plant->get_mutable_joint_actuator(
+        plant->GetJointActuatorByName("x_axis_actuator").index())
+      .set_controller_gains(x_gains);
+      const drake::multibody::PdControllerGains y_gains{250.0, 25.0};
+      plant->get_mutable_joint_actuator(
+        plant->GetJointActuatorByName("y_axis_actuator").index())
+      .set_controller_gains(y_gains);
+      const drake::multibody::PdControllerGains z_gains{250.0, 25.0};
+      plant->get_mutable_joint_actuator(
+        plant->GetJointActuatorByName("z_axis_actuator").index())
+      .set_controller_gains(z_gains);
+    }
+
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   plant->WeldFrames(plant->world_frame(),
                     plant->GetFrameByName("base_link"), X_WI);
 
   if (include_ee) {
-    parser.AddModels(k3dEndEffectorSimpleModel);
+    parser.AddModels(k3dEndEffectorModel);
     RigidTransform<double> T_EE_W = RigidTransform<double>(
       drake::math::RotationMatrix<double>(
         drake::math::RollPitchYaw<double>(0, 0, 0)),
       k3dPrinterToolAttachmentFrame);
     plant->WeldFrames(plant->GetFrameByName("x_carriage"),
-                      plant->GetFrameByName("base_ee_link"), T_EE_W);
+                      plant->GetFrameByName("ee_link"), T_EE_W);
     }
 
   return franka_index;

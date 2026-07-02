@@ -375,53 +375,75 @@ RobotOutputSender::RobotOutputSender(
 /// Populate a state message with all states
 void RobotOutputSender::Output(const Context<double>& context,
                                dairlib::lcmt_robot_output* state_msg) const {
-  const auto state = this->EvalVectorInput(context, state_input_port_);
+  std::cout << "[1]" << std::endl;
+const auto state = this->EvalVectorInput(context, state_input_port_);
 
-  // using the time from the context
-  state_msg->utime = context.get_time() * 1e6;
+std::cout << "[2] state size = " << state->size() << std::endl;
 
-  std::cout << "[RobotOutputSender] publishing positions=" << num_positions_
-            << " velocities=" << num_velocities_ << std::endl;
+state_msg->utime = context.get_time() * 1e6;
 
-  state_msg->num_positions = num_positions_;
-  state_msg->num_velocities = num_velocities_;
-  state_msg->position_names.resize(num_positions_);
-  state_msg->velocity_names.resize(num_velocities_);
-  state_msg->position.resize(num_positions_);
-  state_msg->velocity.resize(num_velocities_);
+std::cout << "[3]" << std::endl;
 
-  for (int i = 0; i < num_positions_; i++) {
+state_msg->num_positions = num_positions_;
+state_msg->num_velocities = num_velocities_;
+
+std::cout << "[4]" << std::endl;
+
+state_msg->position_names.resize(num_positions_);
+state_msg->velocity_names.resize(num_velocities_);
+state_msg->position.resize(num_positions_);
+state_msg->velocity.resize(num_velocities_);
+
+std::cout << "[5]" << std::endl;
+
+for (int i = 0; i < num_positions_; i++) {
+    std::cout << "pos loop " << i << std::endl;
+
     state_msg->position_names[i] = ordered_position_names_[i];
-    if (std::isnan(state->GetAtIndex(i))) {
-      state_msg->position[i] = 0;
-    } else {
-      state_msg->position[i] = state->GetAtIndex(i);
-    }
-  }
-  for (int i = 0; i < num_velocities_; i++) {
+
+    std::cout << "assigned name" << std::endl;
+
+    double q = state->GetAtIndex(i);
+
+    std::cout << "q=" << q << std::endl;
+
+    state_msg->position[i] = std::isnan(q) ? 0 : q;
+}
+
+std::cout << "[6]" << std::endl;
+
+for (int i = 0; i < num_velocities_; i++) {
+    std::cout << "vel loop " << i << std::endl;
+
     state_msg->velocity[i] = state->GetAtIndex(num_positions_ + i);
+
+    std::cout << "assigned velocity" << std::endl;
+
     state_msg->velocity_names[i] = ordered_velocity_names_[i];
-  }
+}
 
-  if (publish_efforts_) {
-    const auto efforts = this->EvalVectorInput(context, effort_input_port_);
+std::cout << "[7]" << std::endl;
 
-    state_msg->num_efforts = num_efforts_;
-    state_msg->effort_names.resize(num_efforts_);
-    state_msg->effort.resize(num_efforts_);
+  // if (publish_efforts_) {
+  //   const auto efforts = this->EvalVectorInput(context, effort_input_port_);
 
-    for (int i = 0; i < num_efforts_; i++) {
-      state_msg->effort[i] = efforts->GetAtIndex(i);
-      state_msg->effort_names[i] = ordered_effort_names_[i];
-    }
-  }
+  //   state_msg->num_efforts = num_efforts_;
+  //   state_msg->effort_names.resize(num_efforts_);
+  //   state_msg->effort.resize(num_efforts_);
 
+  //   for (int i = 0; i < num_efforts_; i++) {
+  //     state_msg->effort[i] = efforts->GetAtIndex(i);
+  //     state_msg->effort_names[i] = ordered_effort_names_[i];
+  //   }
+  // }
+std::cout << "[8]" << std::endl;
   if (publish_imu_) {
     const auto imu = this->EvalVectorInput(context, imu_input_port_);
     for (int i = 0; i < 3; ++i) {
       state_msg->imu_accel[i] = imu->get_value()[i];
     }
   }
+std::cout << "[9]" << std::endl;
 }
 
 ObjectStateReceiver::ObjectStateReceiver(
@@ -964,7 +986,7 @@ drake::systems::LeafSystem<double>* Add3dPrinterStateReceiverAndStateSenderLcm(
         plant, ee_model_instance, publish_efforts);
 
   builder->Connect(
-      plant.get_state_output_port(model_instance_index),
+      plant.get_state_output_port(ee_model_instance),
       state_sender->get_input_port_state());
 
   builder->Connect(*state_sender, *state_pub);

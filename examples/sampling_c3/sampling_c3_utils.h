@@ -22,7 +22,7 @@ static constexpr const char* k3dEndEffectorSimpleModel =
 static constexpr const char* kEndEffectorSimpleModel =
   "examples/sampling_c3/urdf/end_effector_simple_model.urdf";
 static constexpr const char* kEndEffectorName = "end_effector_tip";
-static constexpr const char* k3dEndEffectorName = "base_ee_link";
+static constexpr const char* k3dEndEffectorName = "ee_link";
 static constexpr const char* kGroundModel =
   "examples/sampling_c3/urdf/ground.urdf";
 static constexpr const char* kBaseModel =
@@ -37,7 +37,7 @@ static constexpr const char* kFrontWallModel = "examples/sampling_c3/urdf/wall_f
 /// This is the offset from the Panda's link7 frame to its flange where an end
 /// effector can be attached.
 static const Eigen::Vector3d kToolAttachmentFrame = {0, 0, 0.107};
-static const Eigen::Vector3d k3dPrinterToolAttachmentFrame = {0, -0.0075, -0.1566};
+static const Eigen::Vector3d k3dPrinterToolAttachmentFrame = {0, -0.0075, -0.0546};
 
 
 static const Eigen::Vector3d kFrankaToGroundOffset = {0, 0, -0.029};

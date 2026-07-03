@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <dairlib/lcmt_object_state.hpp>
+#include <Eigen/Core>
 
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -229,11 +230,15 @@ class RobotCommandSender : public drake::systems::LeafSystem<double> {
 class ThreeDPrinterCommandSender : public drake::systems::LeafSystem<double> {
  public:
   explicit ThreeDPrinterCommandSender(
-      const drake::multibody::MultibodyPlant<double>& plant);
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const Eigen::Vector3d& target_offset = Eigen::Vector3d::Zero());
 
  private:
   void OutputCommand(const drake::systems::Context<double>& context,
                      dairlib::lcmt_robot_output* output) const;
+
+  Eigen::Vector3d target_offset_;
+  Eigen::VectorXd default_position_;
 };
 
 ///

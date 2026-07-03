@@ -123,6 +123,8 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
   std::vector<Eigen::VectorXd>
       workspace_limits;      ///< Workspace boundaries as vectors.
   double workspace_margins;  ///< Margins to be maintained within the workspace.
+  std::vector<Eigen::VectorXd>
+      head_workspace_limits;  ///< Workspace boundaries for the head as vectors.
   std::vector<double>
       ee_velocity_limits;  ///< Limits for end-effector velocities.
 
@@ -219,6 +221,7 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     a->Visit(DRAKE_NVP(u_vertical_limits));
     a->Visit(DRAKE_NVP(workspace_limits));
     a->Visit(DRAKE_NVP(workspace_margins));
+    a->Visit(DRAKE_NVP(head_workspace_limits));
     a->Visit(DRAKE_NVP(ee_velocity_limits));
 
     DRAKE_ASSERT(num_friction_directions.has_value());

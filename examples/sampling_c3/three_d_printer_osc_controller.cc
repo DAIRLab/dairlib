@@ -66,6 +66,12 @@ DEFINE_string(lcm_url,
 DEFINE_string(demo_name,
               "jacktoy",
               "Demo within sampling_c3; used to find controller params file");
+DEFINE_double(printer_target_offset_x, 0.0,
+              "Printer target offset along x, in meters");
+DEFINE_double(printer_target_offset_y, 0.0075,
+              "Printer target offset along y, in meters");
+DEFINE_double(printer_target_offset_z, 0.107,
+              "Printer target offset along z, in meters");
 
 int DoMain(int argc, char* argv[]) {
   std::cout << "\n========== STARTING OSC CONTROLLER ==========\n"
@@ -79,6 +85,11 @@ int DoMain(int argc, char* argv[]) {
             << FLAGS_is_simulation << std::endl;
   std::cout << "[DEBUG] lcm_url       = "
             << FLAGS_lcm_url << std::endl;
+    std::cout << "[DEBUG] printer_target_offset = ["
+                        << FLAGS_printer_target_offset_x << ", "
+                        << FLAGS_printer_target_offset_y << ", "
+                        << FLAGS_printer_target_offset_z << "]"
+                        << std::endl;
 
   drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
 
@@ -255,7 +266,10 @@ int DoMain(int argc, char* argv[]) {
   auto three_d_printer_command_sender =
       builder.AddSystem<
           systems::ThreeDPrinterCommandSender>(
-          plant);
+          plant,
+          Vector3d(FLAGS_printer_target_offset_x,
+                   FLAGS_printer_target_offset_y,
+                   FLAGS_printer_target_offset_z));
 
   auto osc_command_sender =
       builder.AddSystem<

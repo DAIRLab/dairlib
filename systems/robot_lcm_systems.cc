@@ -375,26 +375,26 @@ RobotOutputSender::RobotOutputSender(
 /// Populate a state message with all states
 void RobotOutputSender::Output(const Context<double>& context,
                                dairlib::lcmt_robot_output* state_msg) const {
-  std::cout << "[1]" << std::endl;
+
 const auto state = this->EvalVectorInput(context, state_input_port_);
 
-std::cout << "[2] state size = " << state->size() << std::endl;
+
 
 state_msg->utime = context.get_time() * 1e6;
 
-std::cout << "[3]" << std::endl;
+
 
 state_msg->num_positions = num_positions_;
 state_msg->num_velocities = num_velocities_;
 
-std::cout << "[4]" << std::endl;
+
 
 state_msg->position_names.resize(num_positions_);
 state_msg->velocity_names.resize(num_velocities_);
 state_msg->position.resize(num_positions_);
 state_msg->velocity.resize(num_velocities_);
 
-std::cout << "[5]" << std::endl;
+
 
 for (int i = 0; i < num_positions_; i++) {
     std::cout << "pos loop " << i << std::endl;
@@ -410,8 +410,6 @@ for (int i = 0; i < num_positions_; i++) {
     state_msg->position[i] = std::isnan(q) ? 0 : q;
 }
 
-std::cout << "[6]" << std::endl;
-
 for (int i = 0; i < num_velocities_; i++) {
     std::cout << "vel loop " << i << std::endl;
 
@@ -422,7 +420,7 @@ for (int i = 0; i < num_velocities_; i++) {
     state_msg->velocity_names[i] = ordered_velocity_names_[i];
 }
 
-std::cout << "[7]" << std::endl;
+
 
   // if (publish_efforts_) {
   //   const auto efforts = this->EvalVectorInput(context, effort_input_port_);
@@ -436,14 +434,14 @@ std::cout << "[7]" << std::endl;
   //     state_msg->effort_names[i] = ordered_effort_names_[i];
   //   }
   // }
-std::cout << "[8]" << std::endl;
+
   if (publish_imu_) {
     const auto imu = this->EvalVectorInput(context, imu_input_port_);
     for (int i = 0; i < 3; ++i) {
       state_msg->imu_accel[i] = imu->get_value()[i];
     }
   }
-std::cout << "[9]" << std::endl;
+
 }
 
 ObjectStateReceiver::ObjectStateReceiver(
@@ -774,7 +772,9 @@ void RobotCommandSender::OutputCommand(
 }
 
 ThreeDPrinterCommandSender::ThreeDPrinterCommandSender(
-    const drake::multibody::MultibodyPlant<double>& plant) {
+  const drake::multibody::MultibodyPlant<double>& plant,
+  const Eigen::Vector3d& target_offset)
+  : target_offset_(target_offset) {
   // Declare an abstract input port that matches the trajectory output type.
   PiecewisePolynomial<double> empty_pp(Eigen::VectorXd::Zero(3));
   Trajectory<double>& traj_inst = empty_pp;
@@ -799,10 +799,21 @@ const auto& trajectory =
 
   // Get current time from context
   double current_time = context.get_time();
-  
-  // Evaluate trajectory at current time to get end effector position
-  VectorXd desired_position = trajectory.value(current_time);
-  
+  VectorXd default_position_ = VectorXd::Zero(3);
+  default_position_ << 0.175, 0.175, 0.175;  // Default position if trajectory is empty
+
+  VectorXd desired_position;
+
+  if (trajectory.start_time() < 1e-3) {
+    desired_position = default_position_;
+  } else {
+    desired_position = trajectory.value(current_time);
+  }
+
+  //std::cout << "Desired position before offset: " << desired_position.transpose() << std::endl;
+  desired_position += target_offset_;
+  //std::cout << "Desired position after offset: " << desired_position.transpose() << std::endl;
+
   // Evaluate trajectory derivative at current time to get velocities
   VectorXd desired_velocity = trajectory.EvalDerivative(current_time, 1);
   

@@ -831,7 +831,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       lcs_x_curr->get_timestamp();
 
   // Check for workspace limit violations; if any, the controller stops.
-  CheckForWorkspaceLimitViolations(lcs_x_curr);
+
+  //Temporary fix - this will break franka sim
+  Check3dPrinterForWorkspaceLimitViolations(lcs_x_curr);
 
   // Compute the current position and orientation errors.
   current_position_error_ = 0;
@@ -1560,10 +1562,10 @@ void SamplingC3Controller::CheckForWorkspaceLimitViolations(
                  sampling_c3_options_.workspace_limits[i].segment(0, 3);
     double rhs = limit[3];
 
-    std::cout << "Workspace limit " << i << std::endl;
-    std::cout << "EE position: " << lcs_x_curr->get_data().segment(0, 3).transpose() << std::endl;
-    std::cout << "Plane: " << limit.transpose() << std::endl;
-    std::cout << "lhs = " << lhs << ", rhs = " << rhs << std::endl;
+    // std::cout << "Workspace limit " << i << std::endl;
+    // std::cout << "EE position: " << lcs_x_curr->get_data().segment(0, 3).transpose() << std::endl;
+    // std::cout << "Plane: " << limit.transpose() << std::endl;
+    // std::cout << "lhs = " << lhs << ", rhs = " << rhs << std::endl;
 
     DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 3).transpose() *
                      sampling_c3_options_.workspace_limits[i].segment(0, 3) >
@@ -1573,9 +1575,9 @@ void SamplingC3Controller::CheckForWorkspaceLimitViolations(
                  sampling_c3_options_.workspace_limits[i][4]);
   }
   // radius checks
-  std::cout << "Robot radius checks:" << std::endl;
-  std::cout << "EE position: " << std::pow(lcs_x_curr->get_data()[0], 2) + std::pow(lcs_x_curr->get_data()[1], 2) << std::endl;
-  std::cout << "Robot radius limits: " << sampling_c3_options_.robot_radius_limits[0] << ", " << sampling_c3_options_.robot_radius_limits[1] << std::endl;
+  // std::cout << "Robot radius checks:" << std::endl;
+  // std::cout << "EE position: " << std::pow(lcs_x_curr->get_data()[0], 2) + std::pow(lcs_x_curr->get_data()[1], 2) << std::endl;
+  // std::cout << "Robot radius limits: " << sampling_c3_options_.robot_radius_limits[0] << ", " << sampling_c3_options_.robot_radius_limits[1] << std::endl;
   DRAKE_DEMAND(std::pow(lcs_x_curr->get_data()[0], 2) +
                    std::pow(lcs_x_curr->get_data()[1], 2) >
                std::pow(sampling_c3_options_.robot_radius_limits[0], 2));
@@ -1584,6 +1586,60 @@ void SamplingC3Controller::CheckForWorkspaceLimitViolations(
                std::pow(sampling_c3_options_.robot_radius_limits[1], 2));
 }
 
+void SamplingC3Controller::Check3dPrinterForWorkspaceLimitViolations(
+    const TimestampedVector<double>* lcs_x_curr) const {
+
+  Eigen::Vector3d p = lcs_x_curr->get_data().segment(0,3);
+
+
+  // xyz checks
+  for (int i = 0; i < sampling_c3_options_.workspace_limits.size() - 1; ++i) {
+        auto limit = sampling_c3_options_.workspace_limits[i];
+    double lhs = lcs_x_curr->get_data().segment(0, 3).transpose() *
+                 sampling_c3_options_.workspace_limits[i].segment(0, 3);
+    double rhs = limit[3];
+
+    // std::cout << "Workspace limit " << i << std::endl;
+    // std::cout << "EE position: " << lcs_x_curr->get_data().segment(0, 3).transpose() << std::endl;
+    // std::cout << "Plane: " << limit.transpose() << std::endl;
+    // std::cout << "lhs = " << lhs << ", rhs = " << rhs << std::endl;
+
+    DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 3).transpose() *
+                     sampling_c3_options_.workspace_limits[i].segment(0, 3) >
+                 sampling_c3_options_.workspace_limits[i][3]);
+    DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 3).transpose() *
+                     sampling_c3_options_.workspace_limits[i].segment(0, 3) <
+                 sampling_c3_options_.workspace_limits[i][4]);
+  }
+
+  auto limit = sampling_c3_options_.workspace_limits[2];
+      double lhs = lcs_x_curr->get_data().segment(0, 3).transpose() *
+                 sampling_c3_options_.workspace_limits[2].segment(0, 3);
+    double rhs = limit[3];
+
+    // std::cout << "Workspace limit " << "2" << std::endl;
+    // std::cout << "EE position: " << lcs_x_curr->get_data().segment(0, 3).transpose() << std::endl;
+    // std::cout << "Plane: " << limit.transpose() << std::endl;
+    // std::cout << "lhs = " << lhs << ", rhs = " << rhs << std::endl;
+
+    DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 3).transpose() *
+                     sampling_c3_options_.workspace_limits[2].segment(0, 3) - 0.107 >
+                 sampling_c3_options_.workspace_limits[2][3]);
+    DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 3).transpose() *
+                     sampling_c3_options_.workspace_limits[2].segment(0, 3) - 0.107 <
+                 sampling_c3_options_.workspace_limits[2][4]);
+
+  // radius checks
+  // std::cout << "Robot radius checks:" << std::endl;
+  // std::cout << "EE position: " << std::pow(lcs_x_curr->get_data()[0], 2) + std::pow(lcs_x_curr->get_data()[1], 2) << std::endl;
+  // std::cout << "Robot radius limits: " << sampling_c3_options_.robot_radius_limits[0] << ", " << sampling_c3_options_.robot_radius_limits[1] << std::endl;
+  DRAKE_DEMAND(std::pow(lcs_x_curr->get_data()[0], 2) +
+                   std::pow(lcs_x_curr->get_data()[1], 2) >
+               std::pow(sampling_c3_options_.robot_radius_limits[0], 2));
+  DRAKE_DEMAND(std::pow(lcs_x_curr->get_data()[0], 2) +
+                   std::pow(lcs_x_curr->get_data()[1], 2) <
+               std::pow(sampling_c3_options_.robot_radius_limits[1], 2));
+}
 // Update the cost matrices (Q_, R_, G_, U_) in preparation for C3 solves.
 // Handle quaternion-dependent cost if enabled.
 void SamplingC3Controller::UpdateCostMatrices(
@@ -1680,15 +1736,7 @@ vector<SortedPair<GeometryId>> SamplingC3Controller::GetResolvedContactPairs(
   std::vector<SortedPair<GeometryId>> resolved_contacts;
   resolved_contacts.clear();
 
-  std::cout << "[SamplingC3Controller] contact_geoms.size() = "
-            << contact_geoms.size() << std::endl;
-  std::cout << "[SamplingC3Controller] resolve_contacts_to_list.size() = "
-            << resolve_contacts_to_list.size() << std::endl;
-  std::cout << "[SamplingC3Controller] resolve_contacts_to_list values:";
-  for (size_t i = 0; i < resolve_contacts_to_list.size(); ++i) {
-    std::cout << " " << resolve_contacts_to_list[i];
-  }
-  std::cout << std::endl;
+  
 
   // contact_geoms represents contact pair groups, where each group may contain
   // contact pairs between two objects, or between one object and multiple
@@ -1699,10 +1747,7 @@ vector<SortedPair<GeometryId>> SamplingC3Controller::GetResolvedContactPairs(
   // resolve_contacts_to_list for that group, and add those to the
   // resolved_contacts list.
   for (int i = 0; i < contact_geoms.size(); i++) {
-    std::cout << "[SamplingC3Controller] contact group " << i
-              << ": candidate count=" << contact_geoms[i].size()
-              << ", requested=" << resolve_contacts_to_list[i]
-              << std::endl;
+    
     DRAKE_DEMAND(contact_geoms[i].size() >= resolve_contacts_to_list[i]);
 
     const auto& candidates = contact_geoms[i];
@@ -1710,31 +1755,31 @@ vector<SortedPair<GeometryId>> SamplingC3Controller::GetResolvedContactPairs(
 
     auto active_contacts = LCSFactory::GetNClosestContactPairs(
         plant, context, candidates, num_to_select);
-    std::cout << "[SamplingC3Controller] selected " << active_contacts.size()
-              << " active contacts for group " << i << std::endl;
+    // std::cout << "[SamplingC3Controller] selected " << active_contacts.size()
+    //           << " active contacts for group " << i << std::endl;
     if (active_contacts.size() != static_cast<size_t>(num_to_select)) {
-      std::cout << "[SamplingC3Controller] WARNING group " << i
-                << " requested " << num_to_select << " but got "
-                << active_contacts.size() << std::endl;
+      // std::cout << "[SamplingC3Controller] WARNING group " << i
+      //           << " requested " << num_to_select << " but got "
+      //           << active_contacts.size() << std::endl;
     }
-    std::cout << "[SamplingC3Controller] resolved_contacts before insert = "
-              << resolved_contacts.size() << std::endl;
+    // std::cout << "[SamplingC3Controller] resolved_contacts before insert = "
+    //           << resolved_contacts.size() << std::endl;
     if (!active_contacts.empty()) {
       resolved_contacts.insert(resolved_contacts.end(), active_contacts.begin(),
                                active_contacts.end());
     }
-    std::cout << "[SamplingC3Controller] resolved_contacts after insert = "
-              << resolved_contacts.size() << std::endl;
+    // std::cout << "[SamplingC3Controller] resolved_contacts after insert = "
+    //           << resolved_contacts.size() << std::endl;
   }
-  std::cout << "[SamplingC3Controller] total resolved contacts: "
-            << resolved_contacts.size() << std::endl;
-  std::cout << "[SamplingC3Controller] requested total contacts: " << n_contacts
-            << std::endl;
-  if (resolved_contacts.size() != static_cast<size_t>(n_contacts)) {
-    std::cout << "[SamplingC3Controller] FINAL COUNT MISMATCH: expected "
-              << n_contacts << " but got " << resolved_contacts.size()
-              << std::endl;
-  }
+  // std::cout << "[SamplingC3Controller] total resolved contacts: "
+  //           << resolved_contacts.size() << std::endl;
+  // std::cout << "[SamplingC3Controller] requested total contacts: " << n_contacts
+  //           << std::endl;
+  // if (resolved_contacts.size() != static_cast<size_t>(n_contacts)) {
+  //   // std::cout << "[SamplingC3Controller] FINAL COUNT MISMATCH: expected "
+  //   //           << n_contacts << " but got " << resolved_contacts.size()
+  //   //           << std::endl;
+  // }
   DRAKE_DEMAND(resolved_contacts.size() == n_contacts);
   return resolved_contacts;
 }

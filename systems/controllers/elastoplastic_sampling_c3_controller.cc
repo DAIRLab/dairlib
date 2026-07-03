@@ -187,7 +187,7 @@ drake::systems::EventStatus ElastoPlasticSC3Controller::ComputePlan(
                                   x_lcs_des.get_value().segment(3 + 3 * i, 3))
                                      .norm();
     node_on_target.push_back(
-        (node_position_error < goal_params_.position_success_threshold));
+        (node_position_error < goal_params_.node_success_threshold));
     all_reached = all_reached && node_on_target[i];
   }
 
@@ -211,7 +211,7 @@ drake::systems::EventStatus ElastoPlasticSC3Controller::ComputePlan(
         elastoplastic_sc3_options_, plant_, context_, plant_ad_, context_ad_,
         contact_pairs_, faces_, face_bins_, faces_per_object_,
         face_bins_per_object_, total_area_per_object_, node_on_target,
-        unsuccessful_sample_buffer_, n_nodes_);
+        unsuccessful_sample_buffer_, internal_contact_geometries_);
   }
 
   // Add the previous best repositioning target to the candidate states at the

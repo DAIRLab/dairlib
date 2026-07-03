@@ -14,9 +14,10 @@ cc_library(
         "elastoplastic_model_interpreter.h",
     ],
     deps = [
-        "//lcm:lcm_trajectory_saver",
         "//common",
         "//common:find_resource",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:multipose_visualizer",
         "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
@@ -116,6 +117,7 @@ cc_binary(
         "//examples/deform:elastoplastic_model_interpreter",
         "//examples/deform:deform_utils",
         "//examples/deform/parameter_headers:deform_params",
+        "//examples/sampling_c3:c3_mode_visualizer",
         "//common",
         "//lcm:lcm_trajectory_saver",
         "//multibody:utils",
@@ -167,7 +169,6 @@ cc_binary(
     ],
     linkopts = [
         "-L/lib/x86_64-linux-gnu",
-        "-lopenblas",
     ],
 )
 

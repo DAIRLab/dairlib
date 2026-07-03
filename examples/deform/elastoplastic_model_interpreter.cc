@@ -1,12 +1,6 @@
 #include "elastoplastic_model_interpreter.h"
 
-#include <algorithm>
-#include <iostream>
-
-#include "common/eigen_utils.h"
 #include "dairlib/lcmt_elastoplastic_network.hpp"
-#include "dairlib/lcmt_saved_traj.hpp"
-#include "lcm/lcm_trajectory.h"
 
 namespace dairlib {
 namespace systems {
@@ -20,11 +14,9 @@ using Eigen::MatrixXd;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-/// TODO a better implementation would directly draw the network points instead
-/// of translating it into a saved traj and using LcmPoseDrawer.
 ElastoPlasticModelInterpreter::ElastoPlasticModelInterpreter(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
-    int n_network_points, VectorXd color)
+    int n_network_points, const std::string& node_model_file, VectorXd color)
     : meshcat_(meshcat), n_network_points_(n_network_points) {
   this->set_name("ElastoPlasticModelInterpreter");
 
@@ -41,66 +33,24 @@ ElastoPlasticModelInterpreter::ElastoPlasticModelInterpreter(
               drake::Value<dairlib::lcmt_elastoplastic_network>{})
           .get_index();
 
-  points_lcmt_timestamped_saved_traj_output_port_ =
-      this->DeclareAbstractOutputPort(
-              "lcmt_timestamped_saved_traj",
-              dairlib::lcmt_timestamped_saved_traj(),
-              &ElastoPlasticModelInterpreter::OutputReducedModelPointsLcm)
-          .get_index();
+  // Weld "base_link" to world, since each node is a translation-only (x/y/z
+  // prismatic) point relative to it rather than a floating body. Without the
+  // weld, the node model's base_link picks up an extra implicit 7-DOF
+  // floating joint, which desyncs the per-node position vector.
+  node_visualizer_ = std::make_unique<multibody::MultiposeVisualizer>(
+      node_model_file, n_network_points_,
+      Eigen::VectorXd::Constant(n_network_points_, 1.0), "base_link",
+      RigidTransformd(), meshcat, connection_path_, color, connection_path_);
 
   meshcat_->SetProperty(connection_path_, "visible", true, 0);
 
   last_update_time_index_ = this->DeclareDiscreteState(1);
 
   DeclarePerStepDiscreteUpdateEvent(
-      &ElastoPlasticModelInterpreter::DrawConnections);
+      &ElastoPlasticModelInterpreter::DrawNetwork);
 }
 
-void ElastoPlasticModelInterpreter::OutputReducedModelPointsLcm(
-    const drake::systems::Context<double>& context,
-    dairlib::lcmt_timestamped_saved_traj* output) const {
-  // Evaluate input port to get the elastoplastic network contents.
-  const auto& elastoplastic_network_lcmt =
-      this->EvalInputValue<dairlib::lcmt_elastoplastic_network>(
-          context, lcmt_elastoplastic_network_input_port_);
-
-  // Check if it's too early to output or if there are no points to draw.
-  Matrix3Xd network_points = Matrix3Xd::Zero(3, n_network_points_);
-  if ((elastoplastic_network_lcmt->utime > 1e-3) &&
-      (elastoplastic_network_lcmt->num_points > 1)) {
-    // Extract the MPM points.
-    if (n_network_points_ != elastoplastic_network_lcmt->num_points) {
-      throw std::runtime_error(
-          "ElastoPlasticModelInterpreter: mismatch in number of network "
-          "points.");
-    }
-    for (int point_i = 0; point_i < n_network_points_; point_i++) {
-      std::vector<float> point = elastoplastic_network_lcmt->points[point_i];
-      for (int dim_i = 0; dim_i < 3; dim_i++) {
-        network_points(dim_i, point_i) = point[dim_i];
-      }
-    }
-  }
-
-  // Use dummy timestamps (they have to be ascending).
-  VectorXd timestamps = VectorXd::Zero(n_network_points_);
-  for (int point_i = 0; point_i < n_network_points_; point_i++) {
-    timestamps(point_i) = point_i;
-  }
-
-  // Build the output type.
-  LcmTrajectory::Trajectory network_points_traj;
-  network_points_traj.traj_name = "network_points";
-  network_points_traj.datatypes = std::vector<std::string>(3, "double");
-  network_points_traj.datapoints = network_points;
-  network_points_traj.time_vector = timestamps.cast<double>();
-  LcmTrajectory network_point_traj({network_points_traj}, {"network_points"},
-                                   "network_points", "network_points", false);
-  output->saved_traj = network_point_traj.GenerateLcmObject();
-  output->utime = context.get_time() * 1e6;
-}
-
-drake::systems::EventStatus ElastoPlasticModelInterpreter::DrawConnections(
+drake::systems::EventStatus ElastoPlasticModelInterpreter::DrawNetwork(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
   if (this->EvalInputValue<dairlib::lcmt_elastoplastic_network>(
@@ -119,6 +69,20 @@ drake::systems::EventStatus ElastoPlasticModelInterpreter::DrawConnections(
   }
   discrete_state->get_mutable_value(last_update_time_index_)[0] =
       elastoplastic_model->utime * 1e-6;
+
+  if (elastoplastic_model->num_points != n_network_points_) {
+    throw std::runtime_error(
+        "ElastoPlasticModelInterpreter: mismatch in number of network "
+        "points.");
+  }
+  Matrix3Xd network_points = Matrix3Xd::Zero(3, n_network_points_);
+  for (int point_i = 0; point_i < n_network_points_; point_i++) {
+    for (int dim_i = 0; dim_i < 3; dim_i++) {
+      network_points(dim_i, point_i) =
+          elastoplastic_model->points[point_i][dim_i];
+    }
+  }
+  node_visualizer_->DrawPoses(network_points);
 
   for (int i = 0; i < elastoplastic_model->num_connections; ++i) {
     int vertex_i = elastoplastic_model->connections[i][0];

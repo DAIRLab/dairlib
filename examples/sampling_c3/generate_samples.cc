@@ -6,41 +6,44 @@
 
 #include "multibody/geom_geom_collider.h"
 
+namespace dairlib {
+
 using drake::AutoDiffVecXd;
 using drake::AutoDiffXd;
 using drake::SortedPair;
 using drake::geometry::FrameId;
 using drake::geometry::GeometryId;
+using drake::geometry::QueryObject;
 using drake::geometry::Shape;
 using drake::geometry::SignedDistancePair;
 using drake::geometry::Sphere;
 using drake::math::RigidTransform;
 using drake::multibody::Body;
+using drake::multibody::MultibodyPlant;
+using drake::systems::Context;
+using Eigen::Matrix3d;
+using Eigen::Quaterniond;
 using Eigen::Vector3d;
 using Eigen::VectorXd;
+using multibody::GeomGeomCollider;
+using std::vector;
 
-namespace dairlib {
 namespace systems {
 
 // Public call for generating samples.
-std::vector<Eigen::VectorXd> GenerateSampleStates(
-    const int& n_q, const int& n_v, const int& n_u,
-    const Eigen::VectorXd& x_lcs, const bool& is_doing_c3,
-    const SamplingParams& sampling_params,
-    const SamplingC3Options& sampling_c3_options,
-    drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>* context,
-    drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-    drake::systems::Context<drake::AutoDiffXd>* context_ad,
-    const std::vector<
-        std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
-        contact_geoms,
-    std::vector<Face> faces, std::vector<double> face_bins,
-    std::vector<std::vector<Face>> faces_per_object,
-    std::vector<std::vector<double>> face_bins_per_object,
-    std::vector<double> total_area_per_object,
-    std::vector<bool> object_on_target,
-    const MatrixXd& unsuccessful_sample_buffer, const int& n_deformable_nodes) {
+vector<VectorXd> GenerateSampleStates(
+    const int& n_q, const int& n_v, const int& n_u, const VectorXd& x_lcs,
+    const bool& is_doing_c3, const SamplingParams& sampling_params,
+    const SamplingC3Options& sampling_c3_options, MultibodyPlant<double>& plant,
+    Context<double>* context, MultibodyPlant<AutoDiffXd>& plant_ad,
+    Context<AutoDiffXd>* context_ad,
+    const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
+    vector<Face> faces, vector<double> face_bins,
+    vector<vector<Face>> faces_per_object,
+    vector<vector<double>> face_bins_per_object,
+    vector<double> total_area_per_object, vector<bool> object_on_target,
+    const MatrixXd& unsuccessful_sample_buffer,
+    const vector<GeometryId>& internal_contact_geoms) {
   // Determine number of samples based on mode.
   int num_samples;
   if (is_doing_c3) {
@@ -48,7 +51,7 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
   } else {
     num_samples = sampling_params.num_additional_samples_repos;
   }
-  std::vector<Eigen::VectorXd> candidate_states(num_samples);
+  vector<VectorXd> candidate_states(num_samples);
   // Initialize all candidate states to be the same as the current LCS state.
   // NOTE:  A naive step might be to set the sample EE velocities to zero, but
   // in practice this can cause undesired cost differences between the current
@@ -59,7 +62,7 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
   }
   const auto& query_port = plant.get_geometry_query_input_port();
   const auto& query_object =
-      query_port.template Eval<drake::geometry::QueryObject<double>>(*context);
+      query_port.template Eval<QueryObject<double>>(*context);
 
   // Split function calls based on sampling strategy.
   SamplingStrategy strategy = sampling_params.sampling_strategy;
@@ -97,12 +100,14 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
                                    unsuccessful_sample_buffer));
     }
   } else if (strategy == SamplingStrategy::kRandomOnSphereAroundDeformable) {
-    DRAKE_DEMAND(n_deformable_nodes > 0);
+    DRAKE_DEMAND(internal_contact_geoms.size() > 0);
+    double ee_radius = GetEERadius(query_object, contact_geoms);
+    double node_radius = GetNodeRadius(query_object, internal_contact_geoms);
     for (int i = 0; i < num_samples; i++) {
       do {
         candidate_states[i].head(3) = RandomOnSphereAroundDeformableSampling(
-            n_q, n_v, x_lcs, n_deformable_nodes,
-            sampling_params.sample_projection_clearance,
+            n_q, n_v, x_lcs, internal_contact_geoms.size(), ee_radius,
+            node_radius, sampling_params.sample_projection_clearance,
             sampling_params.min_angle_from_vertical,
             sampling_params.max_angle_from_vertical);
       } while (!SampleIsAcceptable(candidate_states[i], sampling_params,
@@ -132,7 +137,7 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
       do {
         candidate_states[i].head(3) = PerimeterSampling(
             n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad,
-            contact_geoms, sampling_params, sampling_c3_options);
+            query_object, contact_geoms, sampling_params, sampling_c3_options);
       } while (!SampleIsAcceptable(candidate_states[i], sampling_params,
                                    sampling_c3_options,
                                    unsuccessful_sample_buffer));
@@ -142,7 +147,7 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
       do {
         candidate_states[i].head(3) = ShellSampling(
             n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad,
-            contact_geoms, sampling_params, sampling_c3_options);
+            query_object, contact_geoms, sampling_params, sampling_c3_options);
       } while (!SampleIsAcceptable(candidate_states[i], sampling_params,
                                    sampling_c3_options,
                                    unsuccessful_sample_buffer));
@@ -177,7 +182,7 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
   return candidate_states;
 }
 
-bool SampleIsAcceptable(const Eigen::VectorXd& candidate_state,
+bool SampleIsAcceptable(const VectorXd& candidate_state,
                         const SamplingParams& sampling_params,
                         const SamplingC3Options& sampling_c3_options,
                         const MatrixXd& unsuccessful_samples) {
@@ -197,7 +202,7 @@ bool SampleIsAcceptable(const Eigen::VectorXd& candidate_state,
   return condition_1 && condition_2;
 }
 
-bool SampleAvoidsBadSpots(const Eigen::VectorXd& candidate_state,
+bool SampleAvoidsBadSpots(const VectorXd& candidate_state,
                           const SamplingParams& sampling_params,
                           const MatrixXd& unsuccessful_samples) {
   Vector3d ee_candidate = candidate_state.head(3);
@@ -219,17 +224,17 @@ bool SampleAvoidsBadSpots(const Eigen::VectorXd& candidate_state,
 
 // kRadiallySymmetric:  Equally spaced on perimeter of circle of fixed radius
 // and height. This generates angle offsets from world frame.
-Eigen::Vector3d RadiallySymmetricSampling(const int& n_q, const int& n_v,
-                                          const Eigen::VectorXd& x_lcs,
-                                          const int& num_samples, const int& i,
-                                          const double& sampling_radius,
-                                          const double& sampling_height) {
+Vector3d RadiallySymmetricSampling(const int& n_q, const int& n_v,
+                                   const VectorXd& x_lcs,
+                                   const int& num_samples, const int& i,
+                                   const double& sampling_radius,
+                                   const double& sampling_height) {
   // Center the sampling circle on the current object location.
   Vector3d object_xyz = x_lcs.segment(n_q - 3, 3);
   double theta = (360 / static_cast<double>(num_samples)) * (M_PI / 180);
 
   // Update the hypothetical state's EE location.
-  Eigen::Vector3d sample = Vector3d::Zero();
+  Vector3d sample = Vector3d::Zero();
   sample[0] = object_xyz[0] + sampling_radius * cos((double)i * theta);
   sample[1] = object_xyz[1] + sampling_radius * sin((double)i * theta);
   sample[2] = sampling_height;
@@ -237,10 +242,10 @@ Eigen::Vector3d RadiallySymmetricSampling(const int& n_q, const int& n_v,
 }
 
 // kRandomOnCircle:  Random on perimeter of circle of fixed radius and height.
-Eigen::Vector3d RandomOnCircleSampling(const int& n_q, const int& n_v,
-                                       const Eigen::VectorXd& x_lcs,
-                                       const double& sampling_radius,
-                                       const double& sampling_height) {
+Vector3d RandomOnCircleSampling(const int& n_q, const int& n_v,
+                                const VectorXd& x_lcs,
+                                const double& sampling_radius,
+                                const double& sampling_height) {
   // Center the sampling circle on the current object location.
   Vector3d object_xyz = x_lcs.segment(n_q - 3, 3);
 
@@ -248,7 +253,7 @@ Eigen::Vector3d RandomOnCircleSampling(const int& n_q, const int& n_v,
   double theta = RandomUniform(0, 2 * M_PI);
 
   // Update the hypothetical state's EE location.
-  Eigen::Vector3d sample = Vector3d::Zero();
+  Vector3d sample = Vector3d::Zero();
   sample[0] = object_xyz[0] + sampling_radius * cos(theta);
   sample[1] = object_xyz[1] + sampling_radius * sin(theta);
   sample[2] = sampling_height;
@@ -257,11 +262,11 @@ Eigen::Vector3d RandomOnCircleSampling(const int& n_q, const int& n_v,
 
 // kRandomOnSphere:  Random on surface of sphere of fixed radius within
 // elevation angles.
-Eigen::Vector3d RandomOnSphereSampling(const int& n_q, const int& n_v,
-                                       const Eigen::VectorXd& x_lcs,
-                                       const double& sampling_radius,
-                                       const double& min_angle_from_vertical,
-                                       const double& max_angle_from_vertical) {
+Vector3d RandomOnSphereSampling(const int& n_q, const int& n_v,
+                                const VectorXd& x_lcs,
+                                const double& sampling_radius,
+                                const double& min_angle_from_vertical,
+                                const double& max_angle_from_vertical) {
   // Center the sampling circle on the current object location.
   Vector3d object_xyz = x_lcs.segment(n_q - 3, 3);
 
@@ -271,7 +276,7 @@ Eigen::Vector3d RandomOnSphereSampling(const int& n_q, const int& n_v,
       RandomUniform(min_angle_from_vertical, max_angle_from_vertical);
 
   // Update the hypothetical state's EE location.
-  Eigen::Vector3d sample = Vector3d::Zero();
+  Vector3d sample = Vector3d::Zero();
   sample[0] =
       object_xyz[0] + sampling_radius * cos(theta) * sin(elevation_theta);
   sample[1] =
@@ -283,9 +288,10 @@ Eigen::Vector3d RandomOnSphereSampling(const int& n_q, const int& n_v,
 // kRandomOnSphereAroundDeformable:  Random on surface of sphere of adaptable
 // radius that guarantees a minimum clearance around a set of deformable network
 // nodes, within elevation angles.
-Eigen::Vector3d RandomOnSphereAroundDeformableSampling(
-    const int& n_q, const int& n_v, const Eigen::VectorXd& x_lcs,
-    const int& n_deformable_nodes, const double& sample_projection_clearance,
+Vector3d RandomOnSphereAroundDeformableSampling(
+    const int& n_q, const int& n_v, const VectorXd& x_lcs,
+    const int& n_deformable_nodes, const double& ee_radius,
+    const double& node_radius, const double& sample_projection_clearance,
     const double& min_angle_from_vertical,
     const double& max_angle_from_vertical) {
   // Get the centroid of the deformable network nodes.
@@ -296,13 +302,14 @@ Eigen::Vector3d RandomOnSphereAroundDeformableSampling(
   }
   // Set the sampling radius to be the maximum distance from the average node
   // location to any node, plus the desired clearance.
-  double sampling_radius = sample_projection_clearance;
+  double sampling_radius =
+      sample_projection_clearance + ee_radius + node_radius;
   for (int i = 0; i < n_deformable_nodes; i++) {
     Vector3d node_location = x_lcs.segment(3 + 3 * i, 3);
     double distance_to_node = (node_location - deformable_centroid).norm();
-    if (sampling_radius < distance_to_node + sample_projection_clearance) {
-      sampling_radius = distance_to_node + sample_projection_clearance;
-    }
+    sampling_radius = std::max(sampling_radius,
+                               distance_to_node + sample_projection_clearance +
+                                   ee_radius + node_radius);
   }
 
   // Generate a random theta about and elevation angle from the vertical axis.
@@ -311,7 +318,7 @@ Eigen::Vector3d RandomOnSphereAroundDeformableSampling(
       RandomUniform(min_angle_from_vertical, max_angle_from_vertical);
 
   // Update the hypothetical state's EE location.
-  Eigen::Vector3d sample = Vector3d::Zero();
+  Vector3d sample = Vector3d::Zero();
   sample[0] = deformable_centroid[0] +
               sampling_radius * cos(theta) * sin(elevation_theta);
   sample[1] = deformable_centroid[1] +
@@ -321,7 +328,7 @@ Eigen::Vector3d RandomOnSphereAroundDeformableSampling(
 }
 
 // kFixed
-Eigen::Vector3d FixedSample(const Eigen::Vector3d& fixed_sample_location) {
+Vector3d FixedSample(const Vector3d& fixed_sample_location) {
   return fixed_sample_location;
 }
 
@@ -346,19 +353,15 @@ Eigen::Vector3d FixedSample(const Eigen::Vector3d& fixed_sample_location) {
 //
 // TODO:  implement a more general perimeter strategy without requiring the
 // above assumptions.
-Eigen::Vector3d PerimeterSampling(
-    const int& n_q, const int& n_v, const int& n_u,
-    const Eigen::VectorXd& x_lcs,
-    drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>* context,
-    drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-    drake::systems::Context<drake::AutoDiffXd>* context_ad,
-    const std::vector<
-        std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
-        contact_geoms,
+Vector3d PerimeterSampling(
+    const int& n_q, const int& n_v, const int& n_u, const VectorXd& x_lcs,
+    MultibodyPlant<double>& plant, Context<double>* context,
+    MultibodyPlant<AutoDiffXd>& plant_ad, Context<AutoDiffXd>* context_ad,
+    const QueryObject<double>& query_object,
+    const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
     const SamplingParams& sampling_params,
     const SamplingC3Options sampling_c3_options) {
-  Eigen::VectorXd candidate_state = VectorXd::Zero(n_q + n_v);
+  VectorXd candidate_state = VectorXd::Zero(n_q + n_v);
   int min_distance_index = -1;
 
   // Try projecting colliding samples until one is near desired sampling height
@@ -376,11 +379,11 @@ Eigen::Vector3d PerimeterSampling(
       double z_sample = 0;
 
       // Convert to world frame using the current object state.
-      Eigen::Quaterniond quat_object(x_lcs(3), x_lcs(4), x_lcs(5), x_lcs(6));
-      Eigen::Vector3d object_position = x_lcs.segment(7, 3);
+      Quaterniond quat_object(x_lcs(3), x_lcs(4), x_lcs(5), x_lcs(6));
+      Vector3d object_position = x_lcs.segment(7, 3);
       candidate_state = x_lcs;
       candidate_state.head(3) =
-          quat_object * Eigen::Vector3d(x_sample, y_sample, z_sample) +
+          quat_object * Vector3d(x_sample, y_sample, z_sample) +
           object_position;
 
       // Project samples to specified sampling height in world frame.
@@ -390,9 +393,9 @@ Eigen::Vector3d PerimeterSampling(
         context_ad, contact_geoms, sampling_c3_options, min_distance_index));
 
     // Project the sample past the surface of the object with clearance.
-    Eigen::VectorXd projected_state = ProjectSampleOutsideObject(
+    VectorXd projected_state = ProjectSampleOutsideObject(
         candidate_state, min_distance_index, sampling_params, plant, *context,
-        contact_geoms);
+        query_object, contact_geoms);
 
     // Check the desired clearance is satisfied; otherwise try again.
     UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad,
@@ -414,7 +417,7 @@ Eigen::Vector3d PerimeterSampling(
 
     // Undo the update context.
     UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, x_lcs);
-    Eigen::Vector3d sample = projected_state.head(3);
+    Vector3d sample = projected_state.head(3);
     return sample;
   }
 }
@@ -423,19 +426,15 @@ Eigen::Vector3d PerimeterSampling(
 // light assumption that the body origin is roughly centered on its geometry.
 //
 // TODO:  this strategy is largely untested.
-Eigen::Vector3d ShellSampling(
-    const int& n_q, const int& n_v, const int& n_u,
-    const Eigen::VectorXd& x_lcs,
-    drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>* context,
-    drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-    drake::systems::Context<drake::AutoDiffXd>* context_ad,
-    const std::vector<
-        std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
-        contact_geoms,
+Vector3d ShellSampling(
+    const int& n_q, const int& n_v, const int& n_u, const VectorXd& x_lcs,
+    MultibodyPlant<double>& plant, Context<double>* context,
+    MultibodyPlant<AutoDiffXd>& plant_ad, Context<AutoDiffXd>* context_ad,
+    const QueryObject<double>& query_object,
+    const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
     const SamplingParams& sampling_params,
     const SamplingC3Options sampling_c3_options) {
-  Eigen::VectorXd candidate_state = VectorXd::Zero(n_q + n_v);
+  VectorXd candidate_state = VectorXd::Zero(n_q + n_v);
   int min_distance_index = -1;
 
   // Try projecting colliding samples until one is above minimum EE height and
@@ -472,9 +471,9 @@ Eigen::Vector3d ShellSampling(
         context_ad, contact_geoms, sampling_c3_options, min_distance_index));
 
     // Project the sample past the surface of the object with clearance.
-    Eigen::VectorXd projected_state = ProjectSampleOutsideObject(
+    VectorXd projected_state = ProjectSampleOutsideObject(
         candidate_state, min_distance_index, sampling_params, plant, *context,
-        contact_geoms);
+        query_object, contact_geoms);
 
     // Check the desired clearance is satisfied; otherwise try again.
     UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad,
@@ -492,21 +491,20 @@ Eigen::Vector3d ShellSampling(
 
     // Undo the update context.
     UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad, x_lcs);
-    Eigen::Vector3d sample = projected_state.head(3);
+    Vector3d sample = projected_state.head(3);
     return sample;
   }
 }
 
-Eigen::VectorXd MeshNormalSampling(
-    const int& n_q, const int& n_v, const int& n_u,
-    const Eigen::VectorXd& x_lcs,
-    drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>* context,
-    drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-    drake::systems::Context<drake::AutoDiffXd>* context_ad,
-    const SamplingParams& sampling_params,
-    const drake::geometry::QueryObject<double>& query_object,
-    std::vector<Face> faces, std::vector<double> face_bins) {
+VectorXd MeshNormalSampling(const int& n_q, const int& n_v, const int& n_u,
+                            const VectorXd& x_lcs,
+                            MultibodyPlant<double>& plant,
+                            Context<double>* context,
+                            MultibodyPlant<AutoDiffXd>& plant_ad,
+                            Context<AutoDiffXd>* context_ad,
+                            const SamplingParams& sampling_params,
+                            const QueryObject<double>& query_object,
+                            vector<Face> faces, vector<double> face_bins) {
   const double buffer_distance = sampling_params.buffer_distance;
   const double z_height = sampling_params.z_height;
   const int max_attempts = sampling_params.max_attempts;
@@ -514,18 +512,18 @@ Eigen::VectorXd MeshNormalSampling(
   int attempts = 0;
   double distance = 0;
 
-  Eigen::VectorXd q_vec = x_lcs.head(n_q);
-  Eigen::Vector3d object_xyz = q_vec.tail(3);
+  VectorXd q_vec = x_lcs.head(n_q);
+  Vector3d object_xyz = q_vec.tail(3);
   double trans_x = object_xyz[0];
   double trans_y = object_xyz[1];
   double trans_z = object_xyz[2];
-  Eigen::Quaterniond quat_object(q_vec[n_q - 7], q_vec[n_q - 6], q_vec[n_q - 5],
-                                 q_vec[n_q - 4]);
-  Eigen::Matrix3d R = quat_object.toRotationMatrix();
-  Eigen::Vector3d t(trans_x, trans_y, trans_z);
+  Quaterniond quat_object(q_vec[n_q - 7], q_vec[n_q - 6], q_vec[n_q - 5],
+                          q_vec[n_q - 4]);
+  Matrix3d R = quat_object.toRotationMatrix();
+  Vector3d t(trans_x, trans_y, trans_z);
 
   double total_area = 0;
-  std::vector<Face> faces_world;  // face vector in world frame
+  vector<Face> faces_world;  // face vector in world frame
   faces_world.reserve(faces.size());
 
   for (int i = 0; i < faces.size(); i++) {
@@ -560,13 +558,13 @@ Eigen::VectorXd MeshNormalSampling(
       b = 1.0 - b;
     }
     const auto& point_vector = selected_face->v;
-    Eigen::Vector3d sample_point = (1.0 - a - b) * point_vector[0] +
-                                   a * point_vector[1] + b * point_vector[2];
-    Eigen::Vector3d projected_sample_point =
+    Vector3d sample_point = (1.0 - a - b) * point_vector[0] +
+                            a * point_vector[1] + b * point_vector[2];
+    Vector3d projected_sample_point =
         sample_point + buffer_distance * selected_face->normal;
     projected_sample_point[2] = z_height;
 
-    Eigen::VectorXd candidate_state = Eigen::VectorXd::Zero(n_q + n_v);
+    VectorXd candidate_state = VectorXd::Zero(n_q + n_v);
     candidate_state.segment(0, 3) = projected_sample_point;  // ee position
     candidate_state.segment(3, 7) =
         x_lcs.segment(3, 7);  // object orientation/position
@@ -612,23 +610,17 @@ Eigen::VectorXd MeshNormalSampling(
                            std::to_string(max_attempts) + " attempts.");
 }
 
-Eigen::VectorXd MeshNormalSamplingMultiObject(
-    const int& n_q, const int& n_v, const int& n_u,
-    const Eigen::VectorXd& x_lcs,
-    drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>* context,
-    drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-    drake::systems::Context<drake::AutoDiffXd>* context_ad,
-    const std::vector<
-        std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
-        contact_geoms,
+VectorXd MeshNormalSamplingMultiObject(
+    const int& n_q, const int& n_v, const int& n_u, const VectorXd& x_lcs,
+    MultibodyPlant<double>& plant, Context<double>* context,
+    MultibodyPlant<AutoDiffXd>& plant_ad, Context<AutoDiffXd>* context_ad,
+    const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
     const SamplingParams& sampling_params,
     const SamplingC3Options& sampling_c3_options,
-    const drake::geometry::QueryObject<double>& query_object,
-    std::vector<std::vector<Face>> faces_per_object,
-    std::vector<std::vector<double>> face_bins_per_object,
-    std::vector<double> total_area_per_object,
-    std::vector<bool> object_on_target) {
+    const QueryObject<double>& query_object,
+    vector<vector<Face>> faces_per_object,
+    vector<vector<double>> face_bins_per_object,
+    vector<double> total_area_per_object, vector<bool> object_on_target) {
   const double buffer_distance = sampling_params.buffer_distance;
   const double z_height = sampling_params.z_height;
   const int max_attempts = sampling_params.max_attempts;
@@ -639,27 +631,27 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
   // std::cout << "num_objects: " << num_objects << std::endl;
 
   // Parse x_lcs into EE position and object poses
-  Eigen::Vector3d ee_position = x_lcs.head(3);
-  std::vector<Eigen::Quaterniond> object_quats;
-  std::vector<Eigen::Vector3d> object_positions;
+  Vector3d ee_position = x_lcs.head(3);
+  vector<Quaterniond> object_quats;
+  vector<Vector3d> object_positions;
 
   for (int obj_idx = 0; obj_idx < num_objects; ++obj_idx) {
     int base_idx = 3 + obj_idx * 7;
-    Eigen::Quaterniond quat_object(x_lcs[base_idx], x_lcs[base_idx + 1],
-                                   x_lcs[base_idx + 2], x_lcs[base_idx + 3]);
-    Eigen::Vector3d pos_object(x_lcs[base_idx + 4], x_lcs[base_idx + 5],
-                               x_lcs[base_idx + 6]);
+    Quaterniond quat_object(x_lcs[base_idx], x_lcs[base_idx + 1],
+                            x_lcs[base_idx + 2], x_lcs[base_idx + 3]);
+    Vector3d pos_object(x_lcs[base_idx + 4], x_lcs[base_idx + 5],
+                        x_lcs[base_idx + 6]);
     object_quats.push_back(quat_object);
     object_positions.push_back(pos_object);
   }
 
   int num_objects_selected = 0;
   double total_area_all_objects = 0.0;
-  std::vector<std::vector<Face>> faces_per_object_selected;
-  std::vector<std::vector<double>> face_bins_per_object_selected;
-  std::vector<double> total_area_per_object_selected;
-  std::vector<Eigen::Quaterniond> object_quats_selected;
-  std::vector<Eigen::Vector3d> object_positions_selected;
+  vector<vector<Face>> faces_per_object_selected;
+  vector<vector<double>> face_bins_per_object_selected;
+  vector<double> total_area_per_object_selected;
+  vector<Quaterniond> object_quats_selected;
+  vector<Vector3d> object_positions_selected;
 
   // Only consider objects not already on target
   for (int i = 0; i < object_on_target.size(); i++) {
@@ -689,10 +681,9 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
     const auto& bins = face_bins_per_object_selected[selected_object_idx];
 
     // Transform faces for selected object
-    std::vector<Face> faces_world;
-    Eigen::Matrix3d R =
-        object_quats_selected[selected_object_idx].toRotationMatrix();
-    Eigen::Vector3d t = object_positions_selected[selected_object_idx];
+    vector<Face> faces_world;
+    Matrix3d R = object_quats_selected[selected_object_idx].toRotationMatrix();
+    Vector3d t = object_positions_selected[selected_object_idx];
 
     // Select face weighted by area (area is rotation-invariant)
     std::uniform_real_distribution<double> dis_face(0.0, bins.back());
@@ -714,11 +705,11 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
       a = 1.0 - a;
       b = 1.0 - b;
     }
-    Eigen::Vector3d sample_point = (1.0 - a - b) * transformed_face.v[0] +
-                                   a * transformed_face.v[1] +
-                                   b * transformed_face.v[2];
+    Vector3d sample_point = (1.0 - a - b) * transformed_face.v[0] +
+                            a * transformed_face.v[1] +
+                            b * transformed_face.v[2];
 
-    Eigen::Vector3d projected_sample_point =
+    Vector3d projected_sample_point =
         sample_point + buffer_distance * transformed_face.normal;
 
     if (sampling_params.gen_planar_samples) {
@@ -757,7 +748,7 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
       }
     }
 
-    Eigen::VectorXd candidate_state = Eigen::VectorXd::Zero(n_q + n_v);
+    VectorXd candidate_state = VectorXd::Zero(n_q + n_v);
     candidate_state.segment(0, 3) = projected_sample_point;  // EE position
     candidate_state.segment(3, 7 * num_objects + 3 + 6 * num_objects) =
         x_lcs.segment(3, 7 * num_objects + 3 + 6 * num_objects);
@@ -821,7 +812,7 @@ int FindBin(const double* bins, int n, double x) {
   return low;
 }
 
-bool IsSampleInWorkspace(const Eigen::VectorXd& candidate_state,
+bool IsSampleInWorkspace(const VectorXd& candidate_state,
                          const SamplingC3Options& sampling_c3_options) {
   double candidate_radius =
       sqrt(std::pow(candidate_state[0], 2) + std::pow(candidate_state[1], 2));
@@ -850,48 +841,53 @@ bool IsSampleInWorkspace(const Eigen::VectorXd& candidate_state,
   return true;
 }
 
-double GetEERadiusFromPlant(
-    const drake::multibody::MultibodyPlant<double>& plant,
-    const drake::systems::Context<double>& context,
-    const std::vector<
-        std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
-        contact_geoms) {
-  const auto& query_port = plant.get_geometry_query_input_port();
-  const auto& query_object =
-      query_port.template Eval<drake::geometry::QueryObject<double>>(context);
+double GetEERadius(
+    const QueryObject<double>& query_object,
+    const vector<vector<SortedPair<GeometryId>>>& contact_geoms) {
   const auto& inspector = query_object.inspector();
 
   // Locate the EE and obtain its radius.  The first set of contact geoms has
   // the EE and ground.
   GeometryId ee_geom_id = contact_geoms.at(0).at(0).first();
-  const drake::geometry::Shape& shape = inspector.GetShape(ee_geom_id);
-  const auto* sphere = dynamic_cast<const drake::geometry::Sphere*>(&shape);
+  const Shape& shape = inspector.GetShape(ee_geom_id);
+  const auto* sphere = dynamic_cast<const Sphere*>(&shape);
   if (sphere) {
     return sphere->radius();
   }
   throw std::runtime_error("End effector geometry is not a sphere!");
 }
 
+double GetNodeRadius(const QueryObject<double>& query_object,
+                     const vector<GeometryId>& internal_contact_geoms) {
+  const auto& inspector = query_object.inspector();
+
+  // Locate one deformable node and obtain its radius.  This assumes that all
+  // deformable nodes are the same size.
+  GeometryId node_geom_id = internal_contact_geoms.at(0);
+  const Shape& shape = inspector.GetShape(node_geom_id);
+  const auto* sphere = dynamic_cast<const Sphere*>(&shape);
+  if (sphere) {
+    return sphere->radius();
+  }
+  throw std::runtime_error("Deformable node geometry is not a sphere!");
+}
+
 bool IsSampleWithinDistanceOfSurface(
     const int& n_q, const int& n_v, const int& n_u,
-    const double& clearance_distance, const Eigen::VectorXd& candidate_state,
-    drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>* context,
-    drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-    drake::systems::Context<drake::AutoDiffXd>* context_ad,
-    const std::vector<
-        std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
-        contact_geoms,
+    const double& clearance_distance, const VectorXd& candidate_state,
+    MultibodyPlant<double>& plant, Context<double>* context,
+    MultibodyPlant<AutoDiffXd>& plant_ad, Context<AutoDiffXd>* context_ad,
+    const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
     SamplingC3Options sampling_c3_options, int& min_distance_index) {
   // Update the context of the plant with the candidate state.
   UpdateContext(n_q, n_v, n_u, plant, context, plant_ad, context_ad,
                 candidate_state);
 
   // Find the closest pair if there are multiple pairs
-  std::vector<double> distances;
+  vector<double> distances;
   for (int i = 0; i < contact_geoms.at(1).size(); i++) {
     SortedPair<GeometryId> pair{(contact_geoms.at(1)).at(i)};
-    multibody::GeomGeomCollider collider(plant, pair);
+    GeomGeomCollider collider(plant, pair);
 
     auto [phi_i, J_i] = collider.EvalPolytope(
         *context, sampling_c3_options.num_friction_directions.value());
@@ -909,29 +905,25 @@ bool IsSampleWithinDistanceOfSurface(
   return min_distance <= clearance_distance - 1e-3;
 }
 
-Eigen::VectorXd ProjectSampleOutsideObject(
-    Eigen::VectorXd& candidate_state, int min_distance_index,
-    const SamplingParams& sampling_params,
-    const drake::multibody::MultibodyPlant<double>& plant,
-    const drake::systems::Context<double>& context,
-    const std::vector<
-        std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
-        contact_geoms) {
+VectorXd ProjectSampleOutsideObject(
+    VectorXd& candidate_state, int min_distance_index,
+    const SamplingParams& sampling_params, const MultibodyPlant<double>& plant,
+    const Context<double>& context, const QueryObject<double>& query_object,
+    const vector<vector<SortedPair<GeometryId>>>& contact_geoms) {
   // Compute the witness points between the penetrating sample and the object
   // surface.
-  multibody::GeomGeomCollider collider(
-      plant, contact_geoms.at(1).at(min_distance_index));
+  GeomGeomCollider collider(plant, contact_geoms.at(1).at(min_distance_index));
   auto [p_world_contact_ee, p_world_contact_obj] =
       collider.CalcWitnessPoints(context);
 
   // Get the EE radius to factor into the projection.
-  double ee_radius = GetEERadiusFromPlant(plant, context, contact_geoms);
+  double ee_radius = GetEERadius(query_object, contact_geoms);
 
   // Find vector in direction from EE to object witness points.
-  Eigen::Vector3d ee_to_obj = p_world_contact_obj - p_world_contact_ee;
-  Eigen::Vector3d ee_to_obj_normalized = ee_to_obj.normalized();
+  Vector3d ee_to_obj = p_world_contact_obj - p_world_contact_ee;
+  Vector3d ee_to_obj_normalized = ee_to_obj.normalized();
   // Add clearance to the object in the same direction.
-  Eigen::Vector3d p_world_contact_obj_clearance =
+  Vector3d p_world_contact_obj_clearance =
       p_world_contact_obj +
       (ee_radius + sampling_params.sample_projection_clearance) *
           ee_to_obj_normalized;

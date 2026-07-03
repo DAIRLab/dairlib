@@ -211,7 +211,8 @@ vector<ModelInstanceIndex> AddLCSModelsForDeformableToPlant(
     const int& n_nodes, const bool& include_box) {
   Parser parser_lcs(plant);
   parser_lcs.SetAutoRenaming(true);
-  parser_lcs.AddModels(kEndEffectorSimpleModel);
+  ModelInstanceIndex ee_model_index =
+      parser_lcs.AddModels(kEndEffectorSimpleModel)[0];
   parser_lcs.AddModels(kGroundModel);
 
   vector<ModelInstanceIndex> node_model_indices =
@@ -220,8 +221,8 @@ vector<ModelInstanceIndex> AddLCSModelsForDeformableToPlant(
   RigidTransformd X_WI = RigidTransformd::Identity();
   RigidTransformd X_W_G =
       RigidTransformd(RotationMatrixd(), kWorldToGroundOffset);
-  plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("base_link"),
-                    X_WI);
+  plant->WeldFrames(plant->world_frame(),
+                    plant->GetFrameByName("base_link", ee_model_index), X_WI);
   plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("ground"),
                     X_W_G);
 
@@ -243,10 +244,9 @@ vector<ModelInstanceIndex> AddDeformableLCSModelToPlant(
   vector<ModelInstanceIndex> node_model_indices;
   for (int i = 0; i < n_nodes; ++i) {
     node_model_indices.push_back(parser_lcs.AddModels(kPointModel)[0]);
-    plant->WeldFrames(
-        plant->world_frame(),
-        plant->GetFrameByName("origin_link", node_model_indices[i]),
-        RigidTransformd());
+    plant->WeldFrames(plant->world_frame(),
+                      plant->GetFrameByName("base_link", node_model_indices[i]),
+                      RigidTransformd());
   }
 
   return node_model_indices;

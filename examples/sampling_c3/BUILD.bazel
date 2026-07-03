@@ -41,7 +41,6 @@ cc_binary(
     ],
     linkopts = [
         "-L/lib/x86_64-linux-gnu",
-        "-lopenblas",
     ],
 )
 
@@ -71,7 +70,6 @@ cc_binary(
     ],
     linkopts = [
         "-L/lib/x86_64-linux-gnu",
-        "-lopenblas",
     ],
 )
 
@@ -121,7 +119,7 @@ cc_binary(
         "@drake_models//:franka_description",
     ],
     deps = [
-        ":c3_mode_visualizer",
+        "//examples/sampling_c3:c3_mode_visualizer",
         "//examples/sampling_c3:sampling_c3_utils",
         "//examples/sampling_c3/parameter_headers:sampling_c3_options",
         "//examples/sampling_c3/parameter_headers:lcm_channels",
@@ -144,7 +142,6 @@ cc_binary(
     ],
     linkopts = [
         "-L/lib/x86_64-linux-gnu",
-        "-lopenblas",
     ],
 )
 
@@ -227,7 +224,6 @@ cc_binary(
     ],
     linkopts = [
         "-L/lib/x86_64-linux-gnu",
-        "-lopenblas",
     ],
 )
 

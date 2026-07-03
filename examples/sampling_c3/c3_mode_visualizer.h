@@ -19,8 +19,14 @@ namespace systems {
 /// the visualizer).
 class C3ModeVisualizer : public drake::systems::LeafSystem<double> {
  public:
+  explicit C3ModeVisualizer(const int& n_lcs_state);
+
+  // Constructor that determines the size of the LCS state based on how many
+  // states are contributed by the objects, plus 6 for a 3-DoF floating EE.
   explicit C3ModeVisualizer(
-      const drake::multibody::MultibodyPlant<double>& plant);
+      const drake::multibody::MultibodyPlant<double>& object_plant)
+      : C3ModeVisualizer(object_plant.num_positions() +
+                         object_plant.num_velocities() + 6) {}
 
   // Input ports
   const drake::systems::InputPort<double>& get_input_port_is_c3_mode() const {
@@ -46,7 +52,6 @@ class C3ModeVisualizer : public drake::systems::LeafSystem<double> {
   drake::systems::InputPortIndex is_c3_mode_input_port_;
   drake::systems::InputPortIndex curr_lcs_state_;
   drake::systems::OutputPortIndex c3_mode_visualization_traj_port_;
-  const drake::multibody::MultibodyPlant<double>& plant_;
 };
 
 }  // namespace systems

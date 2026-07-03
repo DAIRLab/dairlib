@@ -3,11 +3,12 @@
 #include <string>
 #include <vector>
 
+#include <dairlib/lcmt_elastoplastic_network.hpp>
+#include <dairlib/lcmt_saved_traj.hpp>
 #include <drake/geometry/meshcat.h>
 #include <drake/systems/framework/context.h>
 #include <drake/systems/framework/discrete_values.h>
 
-#include "dairlib/lcmt_saved_traj.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multipose_visualizer.h"
 
@@ -203,6 +204,22 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
       const Eigen::VectorXd& robot_rgb = Eigen::VectorXd(),
       const bool& include_actual = false,
       const bool& include_final_target = false);
+  /// Constructor that assumes the robot is a 3 DoF end effector and there are
+  /// multiple deformable network nodes (3 DoF each).
+  explicit LcmC3TargetDrawer(
+      const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
+      const int& num_nodes, const std::string& node_model_file,
+      const std::string& robot_model_file,
+      const std::string& weld_frame_to_world = "",
+      const drake::math::RigidTransformd& object_world_offset =
+          drake::math::RigidTransformd(),
+      const drake::math::RigidTransformd& robot_world_offset =
+          drake::math::RigidTransformd(),
+      const Eigen::VectorXd& actual_rgb = Eigen::VectorXd(),
+      const Eigen::VectorXd& target_rgb = Eigen::VectorXd(),
+      const Eigen::VectorXd& final_target_rgb = Eigen::VectorXd(),
+      const bool& include_actual = false, const bool& include_target = false,
+      const bool& include_final_target = false);
 
   const drake::systems::InputPort<double>&
   get_input_port_c3_state_final_target() const {
@@ -219,6 +236,11 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
     return this->get_input_port(c3_state_actual_input_port_);
   }
 
+  const drake::systems::InputPort<double>&
+  get_input_port_lcmt_elastoplastic_network() const {
+    return this->get_input_port(lcmt_elastoplastic_network_input_port_);
+  }
+
  private:
   drake::systems::EventStatus DrawC3State(
       const drake::systems::Context<double>& context,
@@ -232,15 +254,26 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
+  drake::systems::EventStatus DrawC3StateDeformableNetwork(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+
+  void DrawDeformableNetworkState(
+      multibody::MultiposeVisualizer* multi_pose_visualizer,
+      const dairlib::lcmt_elastoplastic_network* elastoplastic_model,
+      const Eigen::VectorXd& node_locations, const std::string& meshcat_prefix,
+      const drake::geometry::Rgba& color, const double& timestamp) const;
+
   std::shared_ptr<drake::geometry::Meshcat> meshcat_;
 
   drake::systems::InputPortIndex c3_state_final_target_input_port_;
   drake::systems::InputPortIndex c3_state_target_input_port_;
   drake::systems::InputPortIndex c3_state_actual_input_port_;
-
+  drake::systems::InputPortIndex lcmt_elastoplastic_network_input_port_;
   bool draw_tray_;
   bool draw_ee_;
   int num_objects_;
+  int num_nodes_;
 
   drake::systems::DiscreteStateIndex last_update_time_index_;
 
@@ -248,6 +281,8 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
       drake::geometry::Cylinder(0.005, 0.1);
   const drake::geometry::Cylinder cylinder_for_ee_ =
       drake::geometry::Cylinder(0.0025, 0.05);
+  const drake::geometry::Cylinder cylinder_for_deformable_ =
+      drake::geometry::Cylinder(0.002, 1.0);
   const std::string c3_state_path_ = "c3_state";
   const std::string c3_final_target_object_path_ =
       "c3_state/c3_final_target_object";
@@ -255,6 +290,10 @@ class LcmC3TargetDrawer : public drake::systems::LeafSystem<double> {
   const std::string c3_actual_object_path_ = "c3_state/c3_actual_object";
   const std::string c3_target_ee_path_ = "c3_state/c3_target_ee";
   const std::string c3_actual_ee_path_ = "c3_state/c3_actual_ee";
+
+  drake::geometry::Rgba actual_color_;
+  drake::geometry::Rgba target_color_;
+  drake::geometry::Rgba final_target_color_;
 
   std::vector<std::string> c3_state_paths_;
   std::vector<std::string> c3_final_target_object_paths_;

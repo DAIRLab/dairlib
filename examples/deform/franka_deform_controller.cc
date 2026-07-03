@@ -27,6 +27,7 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/franka_kinematics.h"
 #include "systems/robot_lcm_systems.h"
+#include "systems/senders/c3_state_sender.h"
 #include "systems/senders/sample_buffer_sender.h"
 #include "systems/system_utils.h"
 
@@ -274,7 +275,54 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(desired_final_target_source->get_output_port(),
                   controller->get_input_port_final_target());
 
-  // 7) Publish the controller outputs.
+  // 7) C3 state senders:  actual, target, and final target.
+  std::vector<std::string> state_names = {"end_effector_x", "end_effector_y",
+                                          "end_effector_z"};
+  std::vector<std::string> node_pos_names = {"node_x", "node_y", "node_z"};
+  std::vector<std::string> node_vel_names = {"node_vx", "node_vy", "node_vz"};
+  for (int i = 0; i < n_internal_contact_geometries; i++) {
+    for (int j = 0; j < node_pos_names.size(); j++) {
+      std::string item = node_pos_names.at(j) + "_" + std::to_string(i);
+      state_names.push_back(item);
+    }
+  }
+  state_names.push_back("end_effector_vx");
+  state_names.push_back("end_effector_vy");
+  state_names.push_back("end_effector_vz");
+  for (int i = 0; i < n_internal_contact_geometries; i++) {
+    for (int j = 0; j < node_vel_names.size(); j++) {
+      std::string item = node_vel_names.at(j) + "_" + std::to_string(i);
+      state_names.push_back(item);
+    }
+  }
+  auto c3_state_sender = builder.AddSystem<systems::C3StateSender>(
+      plant_lcs.num_positions() + plant_lcs.num_velocities(), state_names);
+  auto c3_target_state_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
+          lcm_channel_params.c3_target_state_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto c3_actual_state_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
+          lcm_channel_params.c3_actual_state_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  auto c3_final_target_state_publisher =
+      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_c3_state>(
+          lcm_channel_params.c3_final_target_state_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));
+  builder.Connect(franka_kinematics->get_output_port_lcs_state(),
+                  c3_state_sender->get_input_port_actual_state());
+  builder.Connect(desired_target_source->get_output_port(),
+                  c3_state_sender->get_input_port_target_state());
+  builder.Connect(desired_final_target_source->get_output_port(),
+                  c3_state_sender->get_input_port_final_target_state());
+  builder.Connect(c3_state_sender->get_output_port_target_c3_state(),
+                  c3_target_state_publisher->get_input_port());
+  builder.Connect(c3_state_sender->get_output_port_final_target_c3_state(),
+                  c3_final_target_state_publisher->get_input_port());
+  builder.Connect(c3_state_sender->get_output_port_actual_c3_state(),
+                  c3_actual_state_publisher->get_input_port());
+
+  // 8) Publish the controller outputs.
   /////
   // Systems for publishing the current and best planned trajectories.
   auto actor_trajectory_sender_curr_plan = builder.AddSystem(

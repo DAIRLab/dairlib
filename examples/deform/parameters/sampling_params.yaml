@@ -42,9 +42,12 @@ unsuccessful_radius: 0.01
 # Shared across multiple sampling strategies.
 sampling_radius: 0.10  # kRadiallySymmetric, kRandomOnCircle, kRandomOnSphere
 sampling_height: 0.04  # kRadiallySymmetric, kRandomOnCircle, kRandomOnPerimeter
-sample_projection_clearance: 0.008  # kRandomOnPerimeter, kRandomOnShell
-min_angle_from_vertical: 0.2        # kRandomOnSphere, kRandomOnShell
-max_angle_from_vertical: 1.95       # kRandomOnSphere, kRandomOnShell
+sample_projection_clearance: 0.008  # kRandomOnPerimeter, kRandomOnShell,
+                                    # kRandomOnSphereAroundDeformable
+min_angle_from_vertical: 0.2        # kRandomOnSphere, kRandomOnShell,
+                                    # kRandomOnSphereAroundDeformable
+max_angle_from_vertical: 1.95       # kRandomOnSphere, kRandomOnShell,
+                                    # kRandomOnSphereAroundDeformable
 
 # kFixed parameters.
 fixed_sample_locations: [[0.45, 0.340, 0.04],    # sample 1

@@ -6,6 +6,7 @@
 #include <dairlib/lcmt_elastoplastic_network.hpp>
 #include <dairlib/lcmt_material_points.hpp>
 #include <dairlib/lcmt_robot_output.hpp>
+#include <dairlib/lcmt_sample_buffer.hpp>
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
 
@@ -17,9 +18,12 @@
 #include "examples/deform/parameter_headers/lcm_channels.h"
 #include "examples/deform/parameter_headers/reduced_model_params.h"
 #include "examples/deform/parameter_headers/visualizer_params.h"
+#include "examples/sampling_c3/c3_mode_visualizer.h"
+#include "systems/franka_kinematics.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/senders/mpm_points_to_point_cloud.h"
+#include "systems/senders/sample_buffer_to_point_cloud.h"
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/lcm_trajectory_systems.h"
 #include "systems/visualization/lcm_visualization_systems.h"
@@ -57,6 +61,7 @@ using drake::systems::Simulator;
 using drake::systems::lcm::LcmInterfaceSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
+using Eigen::Vector3d;
 
 DEFINE_bool(is_simulation, true, "True for simulation, false for hardware");
 
@@ -76,19 +81,35 @@ int do_main(int argc, char* argv[]) {
           : deform_controller_params.lcm_channels_hardware_file;
   DeformLcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<DeformLcmChannels>(lcm_channels_file);
+  ElastoPlasticSC3Options elastoplastic_sc3_options =
+      drake::yaml::LoadYamlFile<ElastoPlasticSC3Options>(
+          deform_controller_params.elastoplastic_sc3_options_file);
+  SamplingParams sampling_params = deform_controller_params.sampling_params;
   ReducedModelParams reduced_model_params =
       drake::yaml::LoadYamlFile<ReducedModelParams>(
           deform_controller_params.reduced_model_params_file);
 
+  // Get some helper variables.
+  int n_nodes = reduced_model_params.support_directions.cols();
+
+  // Start constructing the diagram.
   DiagramBuilder<double> builder;
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
 
-  // Build the visualizer plant.
-  MultibodyPlant<double> plant(0.0);
+  // Build the franka-only plant.
+  MultibodyPlant<double> plant_franka(0.0);
   ModelInstanceIndex robot_index =
-      AddFrankaToPlant(&plant, &scene_graph, true, true, true);
-  plant.Finalize();
+      AddFrankaToPlant(&plant_franka, &scene_graph, true, true, true);
+  plant_franka.Finalize();
+  auto franka_context = plant_franka.CreateDefaultContext();
+
+  // Build the deformable network plant.
+  MultibodyPlant<double> plant_deform_network(0.0);
+  vector<ModelInstanceIndex> node_indices =
+      AddDeformableLCSModelToPlant(&plant_deform_network, nullptr, n_nodes);
+  plant_deform_network.Finalize();
+  auto deform_context = plant_deform_network.CreateDefaultContext();
 
   // Add meshcat visualizer.
   MeshcatVisualizerParams params;
@@ -101,11 +122,11 @@ int do_main(int argc, char* argv[]) {
   // Note:  For some reason this plant puts the robot at the end of the position
   // vector, so connect robot passthrough to the mux's index 1 input and the
   // object passthrough to the mux's index 0 input.
-  std::vector<int> input_sizes = {// plant.num_positions(object_index),
-                                  plant.num_positions(robot_index)};
+  std::vector<int> input_sizes = {// plant_franka.num_positions(object_index),
+                                  plant_franka.num_positions(robot_index)};
   auto mux = builder.AddSystem<Multiplexer<double>>(input_sizes);
   auto to_pose =
-      builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant);
+      builder.AddSystem<MultibodyPositionToGeometryPose<double>>(plant_franka);
 
   // Visualize the robot.
   auto lcm = builder.AddSystem<LcmInterfaceSystem>();
@@ -113,10 +134,10 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
           lcm_channel_params.robot_state_channel, lcm));
   auto robot_state_receiver =
-      builder.AddSystem<RobotOutputReceiver>(plant, robot_index);
+      builder.AddSystem<RobotOutputReceiver>(plant_franka, robot_index);
   auto robot_q_passthrough = builder.AddSystem<SubvectorPassThrough>(
       robot_state_receiver->get_output_port(0).size(), 0,
-      plant.num_positions(robot_index));
+      plant_franka.num_positions(robot_index));
   // Subscriber -> receiver -> passthrough -> mux -> to_pose -> scene_graph
   builder.Connect(*robot_state_sub, *robot_state_receiver);
   builder.Connect(*robot_state_receiver, *robot_q_passthrough);
@@ -125,13 +146,145 @@ int do_main(int argc, char* argv[]) {
   builder.Connect(*mux, *to_pose);
   builder.Connect(
       to_pose->get_output_port(),
-      scene_graph.get_source_pose_port(plant.get_source_id().value()));
+      scene_graph.get_source_pose_port(plant_franka.get_source_id().value()));
+
+  // Some subscribers that are possibly used by multiple visualizations.
+  auto reduced_model_sub = builder.AddSystem(
+      LcmSubscriberSystem::Make<dairlib::lcmt_elastoplastic_network>(
+          lcm_channel_params.reduced_model_channel, lcm));
+
+  // Visualize the C3 workspace.
+  if (vis_params.visualize_c3_workspace) {
+    // Note:  There are also robot radius limits which are not visualized.
+    double width = elastoplastic_sc3_options.workspace_limits[0][4] -
+                   elastoplastic_sc3_options.workspace_limits[0][3];  // x
+    double depth = elastoplastic_sc3_options.workspace_limits[1][4] -
+                   elastoplastic_sc3_options.workspace_limits[1][3];  // y
+    double height = elastoplastic_sc3_options.workspace_limits[2][4] -
+                    elastoplastic_sc3_options.workspace_limits[2][3];  // z
+    Vector3d workspace_center = {
+        0.5 * (elastoplastic_sc3_options.workspace_limits[0][4] +
+               elastoplastic_sc3_options.workspace_limits[0][3]),
+        0.5 * (elastoplastic_sc3_options.workspace_limits[1][4] +
+               elastoplastic_sc3_options.workspace_limits[1][3]),
+        0.5 * (elastoplastic_sc3_options.workspace_limits[2][4] +
+               elastoplastic_sc3_options.workspace_limits[2][3])};
+    meshcat->SetObject("c3_workspace",
+                       drake::geometry::Box(width, depth, height),
+                       {0, 1, 0, 0.2});
+    meshcat->SetTransform("c3_workspace", RigidTransformd(workspace_center));
+  }
+
+  // Visualize the C3 states (actual, target, final target).
+  if (vis_params.visualize_c3_state || vis_params.visualize_c3_target_state ||
+      vis_params.visualize_c3_final_target_state) {
+    std::cout << "Adding C3 target state visualizer..." << std::endl;
+    auto c3_state_actual_sub =
+        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
+            lcm_channel_params.c3_actual_state_channel, lcm));
+    auto c3_state_target_sub =
+        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
+            lcm_channel_params.c3_target_state_channel, lcm));
+    auto c3_final_state_target_sub =
+        builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_c3_state>(
+            lcm_channel_params.c3_final_target_state_channel, lcm));
+    auto c3_target_drawer = builder.AddSystem<systems::LcmC3TargetDrawer>(
+        meshcat, n_nodes, vis_params.model_reduction_point_model,
+        vis_params.ee_vis_model, "base_link", RigidTransformd(),
+        RigidTransformd(), vis_params.c3_state_actual_color,
+        vis_params.c3_state_target_color,
+        vis_params.c3_state_final_target_color, vis_params.visualize_c3_state,
+        vis_params.visualize_c3_target_state,
+        vis_params.visualize_c3_final_target_state);
+    builder.Connect(c3_state_actual_sub->get_output_port(),
+                    c3_target_drawer->get_input_port_c3_state_actual());
+    builder.Connect(c3_state_target_sub->get_output_port(),
+                    c3_target_drawer->get_input_port_c3_state_target());
+    builder.Connect(c3_final_state_target_sub->get_output_port(),
+                    c3_target_drawer->get_input_port_c3_state_final_target());
+    builder.Connect(
+        reduced_model_sub->get_output_port(),
+        c3_target_drawer->get_input_port_lcmt_elastoplastic_network());
+    std::cout << "C3 target state visualizer added." << std::endl;
+  }
+
+  // Visualize the sample locations.
+  if (vis_params.visualize_sample_locations) {
+    auto sample_location_sub = builder.AddSystem(
+        LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+            lcm_channel_params.sample_locations_channel, lcm));
+    int from_buffer =
+        sampling_params.consider_best_buffer_sample_when_leaving_c3 ? 1 : 0;
+    auto sample_locations_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
+        meshcat, FindResourceOrThrow(vis_params.ee_vis_model),
+        "sample_locations", "unused_orientation_name", "samples",
+        std::max(sampling_params.num_additional_samples_c3 + from_buffer,
+                 sampling_params.num_additional_samples_repos + 1) +
+            1,
+        false, vis_params.sample_color);
+    builder.Connect(sample_location_sub->get_output_port(),
+                    sample_locations_drawer->get_input_port_trajectory());
+  }
+
+  // Visualize the sample buffer.
+  if (vis_params.visualize_sample_buffer) {
+    auto sample_buffer_sub = builder.AddSystem(
+        LcmSubscriberSystem::Make<dairlib::lcmt_sample_buffer>(
+            lcm_channel_params.sample_buffer_channel, lcm));
+    auto sample_costs_sub = builder.AddSystem(
+        LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+            lcm_channel_params.sample_costs_channel, lcm));
+    auto sample_buffer_to_point_cloud_converter =
+        builder.AddSystem<systems::PointCloudFromSampleBuffer>();
+    auto sample_buffer_point_cloud_visualizer =
+        builder.AddSystem<MeshcatPointCloudVisualizer>(meshcat,
+                                                       "sample_buffer");
+    sample_buffer_point_cloud_visualizer->set_point_size(
+        vis_params.sample_buffer_point_size);
+
+    builder.Connect(sample_buffer_sub->get_output_port(),
+                    sample_buffer_to_point_cloud_converter
+                        ->get_input_port_lcmt_sample_buffer());
+    builder.Connect(sample_buffer_to_point_cloud_converter
+                        ->get_output_port_sample_buffer_point_cloud(),
+                    sample_buffer_point_cloud_visualizer->cloud_input_port());
+    builder.Connect(sample_costs_sub->get_output_port(),
+                    sample_buffer_to_point_cloud_converter
+                        ->get_input_port_new_sample_costs());
+  }
+
+  // Visualize the C3/repositioning mode indicator.
+  if (vis_params.visualize_is_c3_mode) {
+    auto franka_kinematics = builder.AddSystem<systems::FrankaKinematics>(
+        plant_franka, franka_context.get(), &plant_deform_network,
+        deform_context.get(), kEndEffectorName, n_nodes, false);
+    auto is_c3_mode_sub = builder.AddSystem(
+        LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
+            lcm_channel_params.is_c3_mode_channel, lcm));
+    auto c3_mode_visualizer =
+        builder.AddSystem<systems::C3ModeVisualizer>(6 + 6 * n_nodes);
+    builder.Connect(robot_state_receiver->get_output_port(),
+                    franka_kinematics->get_input_port_franka_state());
+    builder.Connect(reduced_model_sub->get_output_port(),
+                    franka_kinematics->get_input_port_elastoplastic_network());
+    builder.Connect(is_c3_mode_sub->get_output_port(),
+                    c3_mode_visualizer->get_input_port_is_c3_mode());
+    builder.Connect(franka_kinematics->get_output_port(),
+                    c3_mode_visualizer->get_input_port_curr_lcs_state());
+    auto is_c3_mode_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
+        meshcat, FindResourceOrThrow(vis_params.ee_vis_model),
+        "c3_mode_visualization", "end_effector_orientation_target", "c3_mode",
+        1, false, vis_params.is_c3_mode_color);
+    builder.Connect(
+        c3_mode_visualizer->get_output_port_c3_mode_visualization_traj(),
+        is_c3_mode_drawer->get_input_port_trajectory());
+  }
 
   // Visualize the MPM object.
-  auto mpm_points_sub = builder.AddSystem(
-      LcmSubscriberSystem::Make<dairlib::lcmt_material_points>(
-          lcm_channel_params.mpm_channel, lcm));
   if (vis_params.visualize_mpm_points) {
+    auto mpm_points_sub = builder.AddSystem(
+        LcmSubscriberSystem::Make<dairlib::lcmt_material_points>(
+            lcm_channel_params.mpm_channel, lcm));
     auto mpm_points_to_point_cloud_converter =
         builder.AddSystem<systems::PointCloudFromMpmPoints>();
     auto mpm_points_point_cloud_visualizer =
@@ -149,27 +302,14 @@ int do_main(int argc, char* argv[]) {
 
   // Visualize the model reduction.
   if (vis_params.visualize_model_reduction) {
-    auto reduced_model_sub = builder.AddSystem(
-        LcmSubscriberSystem::Make<dairlib::lcmt_elastoplastic_network>(
-            lcm_channel_params.reduced_model_channel, lcm));
     auto reduced_model_interpreter =
         builder.AddSystem<dairlib::systems::ElastoPlasticModelInterpreter>(
-            meshcat, reduced_model_params.support_directions.cols(),
-            vis_params.reduced_model_color);
-    auto reduced_model_points_drawer =
-        builder.AddSystem<systems::LcmPoseDrawer>(
-            meshcat,
+            meshcat, n_nodes,
             FindResourceOrThrow(vis_params.model_reduction_point_model),
-            "network_points", "unused_orientation_name", "reduced",
-            reduced_model_params.support_directions.cols(), false,
             vis_params.reduced_model_color);
-
     builder.Connect(
         reduced_model_sub->get_output_port(),
         reduced_model_interpreter->get_input_port_lcmt_elastoplastic_network());
-    builder.Connect(reduced_model_interpreter
-                        ->get_output_port_points_lcmt_timestamped_saved_traj(),
-                    reduced_model_points_drawer->get_input_port_trajectory());
   }
 
   // Build the diagram.
@@ -181,7 +321,7 @@ int do_main(int argc, char* argv[]) {
   // Set the initial configuration of the robot.
   auto& robot_state_sub_context =
       diagram->GetMutableSubsystemContext(*robot_state_sub, context.get());
-  robot_state_receiver->InitializeSubscriberPositions(plant,
+  robot_state_receiver->InitializeSubscriberPositions(plant_franka,
                                                       robot_state_sub_context);
 
   /// Use the simulator to drive at a fixed rate

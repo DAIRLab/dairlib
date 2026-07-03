@@ -33,7 +33,7 @@ MultiposeVisualizer::MultiposeVisualizer(
     string model_file, int num_poses, const Eigen::VectorXd& alpha_scale,
     string weld_frame_to_world, const RigidTransformd& world_frame_offset,
     std::shared_ptr<Meshcat> meshcat, const std::string& pose_trace_name,
-    const Eigen::VectorXd& rgb)
+    const Eigen::VectorXd& rgb, const std::string& meshcat_path_prefix)
     : num_poses_(num_poses) {
   DRAKE_DEMAND(num_poses == alpha_scale.size());
   DiagramBuilder<double> builder;
@@ -60,6 +60,8 @@ MultiposeVisualizer::MultiposeVisualizer(
   num_config_ = plant_->num_positions(model_indices_.at(0));
   num_vel_ = plant_->num_velocities(model_indices_.at(0));
 
+  bool set_color = false;
+
   // Adjust transparency alpha values
   const auto& inspector = scene_graph->model_inspector();
 
@@ -83,8 +85,16 @@ MultiposeVisualizer::MultiposeVisualizer(
           new_alpha = std::min(new_alpha, 1.0);
           if (rgb.size() == 3) {
             phong.set(rgb(0), rgb(1), rgb(2), new_alpha);
+            if (!set_color) {
+              color_ = drake::geometry::Rgba(rgb(0), rgb(1), rgb(2));
+              set_color = true;
+            }
           } else {
             phong.set(phong.r(), phong.g(), phong.b(), new_alpha);
+            if (!set_color) {
+              color_ = drake::geometry::Rgba(rgb(0), rgb(1), rgb(2));
+              set_color = true;
+            }
           }
 
           new_props.UpdateProperty("phong", "diffuse", phong);
@@ -101,9 +111,13 @@ MultiposeVisualizer::MultiposeVisualizer(
   } else {
     meshcat_ = meshcat;
   }
+  drake::geometry::MeshcatVisualizerParams params;
+  if (!meshcat_path_prefix.empty()) {
+    params.prefix = meshcat_path_prefix;
+  }
   meshcat_visualizer_ =
       &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
-          &builder, *scene_graph, meshcat_);
+          &builder, *scene_graph, meshcat_, params);
 
   diagram_ = builder.Build();
   diagram_context_ = diagram_->CreateDefaultContext();

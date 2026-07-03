@@ -3,6 +3,7 @@
 #include <c3/lcmt_contact_forces.hpp>
 #include <dairlib/lcmt_c3_output.hpp>
 #include <dairlib/lcmt_c3_state.hpp>
+#include <dairlib/lcmt_elastoplastic_network.hpp>
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
 
 #include "common/eigen_utils.h"
@@ -32,7 +33,8 @@ LcmTrajectoryDrawer::LcmTrajectoryDrawer(
     : meshcat_(meshcat),
       trajectory_name_(std::move(trajectory_name)),
       system_name_(std::move(system_name)) {
-  this->set_name("LcmTrajectoryDrawer: " + system_name_ + trajectory_name_);
+  this->set_name("LcmTrajectoryDrawer: " + system_name_ + "_" +
+                 trajectory_name_);
   trajectory_input_port_ =
       this->DeclareAbstractInputPort(
               "lcmt_timestamped_saved_traj",
@@ -95,7 +97,8 @@ LcmPoseDrawer::LcmPoseDrawer(
       translation_trajectory_name_(translation_trajectory_name),
       orientation_trajectory_name_(orientation_trajectory_name),
       N_(num_poses) {
-  this->set_name("LcmPoseDrawer: " + system_name + translation_trajectory_name);
+  this->set_name("LcmPoseDrawer: " + system_name + "_" +
+                 translation_trajectory_name);
 
   Eigen::VectorXd alpha_scale;
   if (add_transparency) {
@@ -128,7 +131,7 @@ LcmPoseDrawer::LcmPoseDrawer(
       translation_trajectory_names_(translation_trajectory_names),
       orientation_trajectory_names_(orientation_trajectory_names),
       N_(num_poses) {
-  this->set_name("LcmPoseDrawer: " + system_name +
+  this->set_name("LcmPoseDrawer: " + system_name + "_" +
                  translation_trajectory_names.at(0));
 
   Eigen::VectorXd alpha_scale;
@@ -318,7 +321,8 @@ LcmForceDrawer::LcmForceDrawer(
       actor_trajectory_name_(std::move(actor_trajectory_name)),
       force_trajectory_name_(std::move(force_trajectory_name)),
       lcs_force_trajectory_name_(std::move(lcs_force_trajectory_name)) {
-  this->set_name("LcmForceDrawer: " + system_name + force_trajectory_name_);
+  this->set_name("LcmForceDrawer: " + system_name + "_" +
+                 force_trajectory_name_);
   actor_trajectory_input_port_ =
       this->DeclareAbstractInputPort(
               "lcmt_timestamped_saved_traj: actor",
@@ -797,6 +801,94 @@ LcmC3TargetDrawer::LcmC3TargetDrawer(
   DeclarePerStepDiscreteUpdateEvent(&LcmC3TargetDrawer::DrawC3StateGeneric);
 }
 
+LcmC3TargetDrawer::LcmC3TargetDrawer(
+    const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
+    const int& num_nodes, const std::string& node_model_file,
+    const std::string& robot_model_file, const std::string& weld_frame_to_world,
+    const RigidTransformd& object_world_offset,
+    const RigidTransformd& robot_world_offset,
+    const Eigen::VectorXd& actual_rgb, const Eigen::VectorXd& target_rgb,
+    const Eigen::VectorXd& final_target_rgb, const bool& include_actual,
+    const bool& include_target, const bool& include_final_target)
+    : meshcat_(meshcat), num_nodes_(num_nodes) {
+  this->set_name("LcmC3TargetDrawer");
+  c3_state_final_target_input_port_ =
+      this->DeclareAbstractInputPort("lcmt_c3_state: final_target",
+                                     drake::Value<dairlib::lcmt_c3_state>{})
+          .get_index();
+  c3_state_target_input_port_ =
+      this->DeclareAbstractInputPort("lcmt_c3_state: target",
+                                     drake::Value<dairlib::lcmt_c3_state>{})
+          .get_index();
+
+  c3_state_actual_input_port_ =
+      this->DeclareAbstractInputPort("lcmt_c3_state: actual",
+                                     drake::Value<dairlib::lcmt_c3_state>{})
+          .get_index();
+
+  lcmt_elastoplastic_network_input_port_ =
+      this->DeclareAbstractInputPort(
+              "lcmt_elastoplastic_network",
+              drake::Value<dairlib::lcmt_elastoplastic_network>{})
+          .get_index();
+
+  last_update_time_index_ = this->DeclareDiscreteState(1);
+
+  // Visualize actual.
+  if (include_actual) {
+    object_pose_actual_visualizer_ =
+        std::make_unique<multibody::MultiposeVisualizer>(
+            node_model_file, num_nodes,
+            Eigen::VectorXd::Constant(num_nodes, 1.0), weld_frame_to_world,
+            object_world_offset, meshcat, c3_state_path_ + "/object_actual",
+            actual_rgb, c3_actual_object_path_);
+    actual_color_ = object_pose_actual_visualizer_->GetColor();
+    actual_color_.update({}, {}, {}, 1.0);
+    robot_pose_actual_visualizer_ =
+        std::make_unique<multibody::MultiposeVisualizer>(
+            robot_model_file, 1, Eigen::VectorXd::Constant(1, 1.0),
+            weld_frame_to_world, robot_world_offset, meshcat,
+            c3_state_path_ + "/robot_actual", actual_rgb);
+  }
+
+  // Visualize target.
+  if (include_target) {
+    object_pose_target_visualizer_ =
+        std::make_unique<multibody::MultiposeVisualizer>(
+            node_model_file, num_nodes,
+            Eigen::VectorXd::Constant(num_nodes, 0.8), weld_frame_to_world,
+            object_world_offset, meshcat, c3_state_path_ + "/object_target",
+            target_rgb, c3_target_object_path_);
+    target_color_ = object_pose_target_visualizer_->GetColor();
+    target_color_.update({}, {}, {}, 0.8);
+    robot_pose_target_visualizer_ =
+        std::make_unique<multibody::MultiposeVisualizer>(
+            robot_model_file, 1, Eigen::VectorXd::Constant(1, 0.8),
+            weld_frame_to_world, robot_world_offset, meshcat,
+            c3_state_path_ + "/robot_target", target_rgb);
+  }
+
+  // Visualize final target.
+  if (include_final_target) {
+    object_pose_final_visualizer_ =
+        std::make_unique<multibody::MultiposeVisualizer>(
+            node_model_file, num_nodes,
+            Eigen::VectorXd::Constant(num_nodes, 0.5), weld_frame_to_world,
+            object_world_offset, meshcat, c3_state_path_ + "/object_final",
+            final_target_rgb, c3_final_target_object_path_);
+    final_target_color_ = object_pose_final_visualizer_->GetColor();
+    final_target_color_.update({}, {}, {}, 0.5);
+    robot_pose_final_visualizer_ =
+        std::make_unique<multibody::MultiposeVisualizer>(
+            robot_model_file, 1, Eigen::VectorXd::Constant(1, 0.5),
+            weld_frame_to_world, robot_world_offset, meshcat,
+            c3_state_path_ + "/robot_final", final_target_rgb);
+  }
+
+  DeclarePerStepDiscreteUpdateEvent(
+      &LcmC3TargetDrawer::DrawC3StateDeformableNetwork);
+}
+
 drake::systems::EventStatus LcmC3TargetDrawer::DrawC3State(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
@@ -1003,6 +1095,130 @@ drake::systems::EventStatus LcmC3TargetDrawer::DrawC3StateGeneric(
   }
 
   return drake::systems::EventStatus::Succeeded();
+}
+
+drake::systems::EventStatus LcmC3TargetDrawer::DrawC3StateDeformableNetwork(
+    const drake::systems::Context<double>& context,
+    drake::systems::DiscreteValues<double>* discrete_state) const {
+  const auto& elastoplastic_model =
+      this->EvalInputValue<dairlib::lcmt_elastoplastic_network>(
+          context, lcmt_elastoplastic_network_input_port_);
+
+  // Don't needlessly update if haven't gotten a new message.
+  if ((discrete_state->get_value(last_update_time_index_)[0] ==
+       elastoplastic_model->utime * 1e-6) ||
+      (elastoplastic_model->utime < 1e-3)) {
+    return drake::systems::EventStatus::Succeeded();
+  }
+  discrete_state->get_mutable_value(last_update_time_index_)[0] =
+      elastoplastic_model->utime * 1e-6;
+  double timestamp = context.get_time();
+
+  // 1) Actual state.
+  if (object_pose_actual_visualizer_ != nullptr) {
+    const auto* c3_actual = this->EvalInputValue<dairlib::lcmt_c3_state>(
+        context, c3_state_actual_input_port_);
+    Eigen::VectorXd actual_node_locations = Eigen::VectorXd::Zero(
+        static_cast<int>((c3_actual->state.size() - 3) / 2));
+    for (int i = 0; i < actual_node_locations.size(); ++i) {
+      actual_node_locations[i] = static_cast<double>(c3_actual->state[i + 3]);
+    }
+    DrawDeformableNetworkState(object_pose_actual_visualizer_.get(),
+                               elastoplastic_model, actual_node_locations,
+                               c3_actual_object_path_, actual_color_,
+                               timestamp);
+  }
+
+  // 2) Target state.
+  if (object_pose_target_visualizer_ != nullptr) {
+    const auto* c3_target = this->EvalInputValue<dairlib::lcmt_c3_state>(
+        context, c3_state_target_input_port_);
+    Eigen::VectorXd target_node_locations = Eigen::VectorXd::Zero(
+        static_cast<int>((c3_target->state.size() - 3) / 2));
+    for (int i = 0; i < target_node_locations.size(); ++i) {
+      target_node_locations[i] = static_cast<double>(c3_target->state[i + 3]);
+    }
+    DrawDeformableNetworkState(object_pose_target_visualizer_.get(),
+                               elastoplastic_model, target_node_locations,
+                               c3_target_object_path_, target_color_,
+                               timestamp);
+  }
+
+  // 3) Final target state.
+  if (object_pose_final_visualizer_ != nullptr) {
+    const auto* c3_final_target = this->EvalInputValue<dairlib::lcmt_c3_state>(
+        context, c3_state_final_target_input_port_);
+    Eigen::VectorXd final_target_node_locations = Eigen::VectorXd::Zero(
+        static_cast<int>((c3_final_target->state.size() - 3) / 2));
+    for (int i = 0; i < final_target_node_locations.size(); ++i) {
+      final_target_node_locations[i] =
+          static_cast<double>(c3_final_target->state[i + 3]);
+    }
+    DrawDeformableNetworkState(object_pose_final_visualizer_.get(),
+                               elastoplastic_model, final_target_node_locations,
+                               c3_final_target_object_path_,
+                               final_target_color_, timestamp);
+  }
+
+  return drake::systems::EventStatus::Succeeded();
+}
+
+void LcmC3TargetDrawer::DrawDeformableNetworkState(
+    multibody::MultiposeVisualizer* multi_pose_visualizer,
+    const dairlib::lcmt_elastoplastic_network* elastoplastic_model,
+    const Eigen::VectorXd& node_locations, const std::string& meshcat_prefix,
+    const drake::geometry::Rgba& color, const double& timestamp) const {
+  // 1) Draw the nodes.
+  int n_nodes = elastoplastic_model->num_points;
+  MatrixXd object_configs = MatrixXd::Zero(3, n_nodes);
+  for (int i = 0; i < n_nodes; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      object_configs.col(i)[j] = node_locations[3 * i + j];
+    }
+  }
+  multi_pose_visualizer->DrawPoses(object_configs);
+
+  // 2) Draw the edges.
+  for (int i = 0; i < elastoplastic_model->num_connections; ++i) {
+    int vertex_i = elastoplastic_model->connections[i][0];
+    int vertex_j = elastoplastic_model->connections[i][1];
+    const VectorXd point_1 = Vector3d(node_locations[3 * vertex_i + 0],
+                                      node_locations[3 * vertex_i + 1],
+                                      node_locations[3 * vertex_i + 2]);
+    const VectorXd point_2 = Vector3d(node_locations[3 * vertex_j + 0],
+                                      node_locations[3 * vertex_j + 1],
+                                      node_locations[3 * vertex_j + 2]);
+    const VectorXd vector_1_to_2 = point_2 - point_1;
+    auto distance_norm = vector_1_to_2.norm();
+    const std::string& conn_path_root = meshcat_prefix + "/vertex_" +
+                                        std::to_string(vertex_i) + "_to_" +
+                                        std::to_string(vertex_j) + "/";
+    if (distance_norm >= 1e-3) {
+      if (!meshcat_->HasPath(conn_path_root + "arrow/")) {
+        meshcat_->SetObject(conn_path_root + "arrow/cylinder",
+                            cylinder_for_deformable_, color);
+      }
+      meshcat_->SetTransform(conn_path_root, RigidTransformd(point_1),
+                             timestamp);
+      // Transform and stretch the cylinder (in z) to match the length of the
+      // connection.
+      std::string conn_arrow_path = conn_path_root + "arrow";
+      meshcat_->SetTransform(
+          conn_arrow_path,
+          RigidTransformd(RotationMatrixd::MakeFromOneVector(vector_1_to_2, 2)),
+          timestamp);
+      meshcat_->SetProperty(conn_arrow_path + "/cylinder", "position",
+                            {0, 0, 0.5 * distance_norm}, timestamp);
+      // Note: Meshcat does not fully support non-uniform scaling (see
+      // #18095). We get away with it here since there is no rotation on this
+      // frame and no children in the kinematic tree.
+      meshcat_->SetProperty(conn_arrow_path + "/cylinder", "scale",
+                            {1, 1, distance_norm}, timestamp);
+      meshcat_->SetProperty(conn_path_root, "visible", true, timestamp);
+    } else {
+      meshcat_->SetProperty(conn_path_root, "visible", false, timestamp);
+    }
+  }
 }
 
 LcmC3PlanDrawer::LcmC3PlanDrawer(

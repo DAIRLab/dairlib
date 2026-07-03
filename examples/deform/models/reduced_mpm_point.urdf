@@ -1,5 +1,6 @@
 <?xml version="1.0" ?>
 <robot name="reduced_model_point">
+  <link name="base_link" />
   <link name="reduced_model_point">
    <visual>
       <geometry>
@@ -10,4 +11,23 @@
       </material>
     </visual>
   </link>
+  <link name="pt_fake_x" />
+  
+  <link name="pt_fake_y" />
+  
+  <joint name="x" type="prismatic">
+    <parent link="base_link"/>
+    <child link="pt_fake_x"/>
+    <axis xyz="1 0 0"/>
+  </joint>
+  <joint name="y" type="prismatic">
+    <parent link="pt_fake_x"/>
+    <child link="pt_fake_y"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+    <joint name="z" type="prismatic">
+    <parent link="pt_fake_y"/>
+    <child link="reduced_model_point"/>
+    <axis xyz="0 0 1"/>
+  </joint>
 </robot>

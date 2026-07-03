@@ -40,7 +40,8 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
     std::vector<double> total_area_per_object,
     std::vector<bool> object_on_target,
     const MatrixXd& unsuccessful_sample_buffer,
-    const int& n_deformable_nodes = 0);
+    const std::vector<drake::geometry::GeometryId>& internal_contact_geoms =
+        {});
 
 bool SampleIsAcceptable(const Eigen::VectorXd& candidate_state,
                         const SamplingParams& sampling_params,
@@ -71,7 +72,8 @@ Eigen::Vector3d RandomOnSphereSampling(const int& n_q, const int& n_v,
 
 Eigen::Vector3d RandomOnSphereAroundDeformableSampling(
     const int& n_q, const int& n_v, const Eigen::VectorXd& x_lcs,
-    const int& n_deformable_nodes, const double& sample_projection_clearance,
+    const int& n_deformable_nodes, const double& ee_radius,
+    const double& node_radius, const double& sample_projection_clearance,
     const double& min_angle_from_vertical,
     const double& max_angle_from_vertical);
 
@@ -84,6 +86,7 @@ Eigen::Vector3d PerimeterSampling(
     drake::systems::Context<double>* context,
     drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
     drake::systems::Context<drake::AutoDiffXd>* context_ad,
+    const drake::geometry::QueryObject<double>& query_object,
     const std::vector<
         std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
         contact_geoms,
@@ -97,6 +100,7 @@ Eigen::Vector3d ShellSampling(
     drake::systems::Context<double>* context,
     drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
     drake::systems::Context<drake::AutoDiffXd>* context_ad,
+    const drake::geometry::QueryObject<double>& query_object,
     const std::vector<
         std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
         contact_geoms,
@@ -141,12 +145,15 @@ bool IsSampleInWorkspace(const Eigen::VectorXd& candidate_state,
 
 /// Find and return the end effector radius from the plant.
 /// WARNING:  assumes EE-object pairs are first in contact_geoms.
-double GetEERadiusFromPlant(
-    const drake::multibody::MultibodyPlant<double>& plant,
-    const drake::systems::Context<double>& context,
+double GetEERadius(
+    const drake::geometry::QueryObject<double>& query_object,
     const std::vector<
         std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
         contact_geoms);
+
+double GetNodeRadius(
+    const drake::geometry::QueryObject<double>& query_object,
+    const std::vector<drake::geometry::GeometryId>& internal_contact_geoms);
 
 /// Whether the candidate state's EE location is within a clearance distance of
 /// the surface of the object.  Can factor in the EE radius if a real clearance
@@ -171,6 +178,7 @@ Eigen::VectorXd ProjectSampleOutsideObject(
     const SamplingParams& sampling_params,
     const drake::multibody::MultibodyPlant<double>& plant,
     const drake::systems::Context<double>& context,
+    const drake::geometry::QueryObject<double>& query_object,
     const std::vector<
         std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
         contact_geoms);

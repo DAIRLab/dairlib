@@ -12,9 +12,7 @@ using systems::TimestampedVector;
 
 namespace systems {
 
-C3ModeVisualizer::C3ModeVisualizer(
-    const drake::multibody::MultibodyPlant<double>& plant)
-    : plant_(plant) {
+C3ModeVisualizer::C3ModeVisualizer(const int& n_lcs_state) {
   this->set_name("C3ModeVisualizer");
 
   is_c3_mode_input_port_ =
@@ -23,17 +21,11 @@ C3ModeVisualizer::C3ModeVisualizer(
               drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
           .get_index();
 
-  // 19 is the hardcoded size of the current lcs state vector. Alternatively,
-  // pass in the plant and read the size from there.
-  int lcs_state_size = plant_.num_positions() + plant_.num_velocities() + 6;
   curr_lcs_state_ =
       this->DeclareVectorInputPort("curr_lcs_state",
-                                   TimestampedVector<double>(lcs_state_size))
+                                   TimestampedVector<double>(n_lcs_state))
           .get_index();
 
-  std::cout << "passed curr_lcs_state_ size: "
-            << plant_.num_positions() + plant_.num_velocities() + 6
-            << std::endl;
   // Output c3_mode indicator for visualization.
   c3_mode_visualization_traj_port_ =
       this->DeclareAbstractOutputPort(

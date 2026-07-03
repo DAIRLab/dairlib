@@ -1,11 +1,12 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <drake/geometry/meshcat.h>
 
-#include "dairlib/lcmt_timestamped_saved_traj.hpp"
+#include "multibody/multipose_visualizer.h"
 
 #include "drake/systems/framework/leaf_system.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
@@ -13,15 +14,16 @@
 namespace dairlib {
 namespace systems {
 
-/// Converts lcmt_elastoplastic_network to types that can be visualized:  a
-/// lcmt_timestamped_saved_traj for the points, and line segments for the
-/// connections.
+/// Draws the nodes and connections of a lcmt_elastoplastic_network through
+/// meshcat: the nodes via a MultiposeVisualizer, and the connections as
+/// cylinder segments.
 class ElastoPlasticModelInterpreter
     : public drake::systems::LeafSystem<double> {
  public:
   ElastoPlasticModelInterpreter(
       const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
-      int n_network_points, Eigen::VectorXd color);
+      int n_network_points, const std::string& node_model_file,
+      Eigen::VectorXd color);
 
   // Input port
   const drake::systems::InputPort<double>&
@@ -29,29 +31,15 @@ class ElastoPlasticModelInterpreter
     return this->get_input_port(lcmt_elastoplastic_network_input_port_);
   }
 
-  // Output port
-  const drake::systems::OutputPort<double>&
-  get_output_port_points_lcmt_timestamped_saved_traj() const {
-    return this->get_output_port(
-        points_lcmt_timestamped_saved_traj_output_port_);
-  }
-
  private:
-  // Output function
-  void OutputReducedModelPointsLcm(
-      const drake::systems::Context<double>& context,
-      dairlib::lcmt_timestamped_saved_traj* output) const;
-
-  // Discrete update event to draw connections
-  drake::systems::EventStatus DrawConnections(
+  // Discrete update event to draw the nodes and connections
+  drake::systems::EventStatus DrawNetwork(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
   int n_network_points_;
 
   drake::systems::InputPortIndex lcmt_elastoplastic_network_input_port_;
-  drake::systems::OutputPortIndex
-      points_lcmt_timestamped_saved_traj_output_port_;
 
   drake::systems::DiscreteStateIndex last_update_time_index_;
   std::shared_ptr<drake::geometry::Meshcat> meshcat_;
@@ -59,6 +47,11 @@ class ElastoPlasticModelInterpreter
       drake::geometry::Cylinder(0.002, 1.0);
   const std::string connection_path_ = "elastoplastic_connections";
   drake::geometry::Rgba connection_color_;
+
+  // Draws the network node points. The node model's "base_link" is welded to
+  // world since each node is represented as a translation-only (x/y/z
+  // prismatic) point relative to it, not a floating body.
+  std::unique_ptr<multibody::MultiposeVisualizer> node_visualizer_;
 };
 
 }  // namespace systems

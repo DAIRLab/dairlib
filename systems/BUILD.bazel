@@ -49,6 +49,20 @@ cc_library(
 )
 
 cc_library(
+    name = "three_d_printer_kinematics",
+    srcs = ["three_d_printer_kinematics.cc"],
+    hdrs = ["three_d_printer_kinematics.h"],
+    deps = [
+        ":franka_kinematics_vector",
+        "//common",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "franka_kinematics_vector",
     srcs = ["franka_kinematics_vector.cc"],
     hdrs = ["franka_kinematics_vector.h"],

@@ -2,6 +2,13 @@
 #include <iostream>
 
 #include "common/find_resource.h"
+#include "drake/math/rigid_transform.h"
+#include "drake/math/roll_pitch_yaw.h"
+#include "drake/math/rotation_matrix.h"
+
+using drake::math::RigidTransform;
+using drake::math::RollPitchYaw;
+using drake::math::RotationMatrix;
 
 namespace dairlib {
 namespace systems {
@@ -44,7 +51,7 @@ ThreeDPrinterKinematics::ThreeDPrinterKinematics(const MultibodyPlant<double>& f
               FrankaKinematicsVector<double>(
                   num_end_effector_positions_, num_object_positions_,
                   num_end_effector_velocities_, num_object_velocities_),
-              &FrankaKinematics::ComputeLCSState)
+              &ThreeDPrinterKinematics::ComputeLCSState)
           .get_index();
 }
 
@@ -94,13 +101,13 @@ ThreeDPrinterKinematics::ThreeDPrinterKinematics(const MultibodyPlant<double>& f
               FrankaKinematicsVector<double>(
                   num_end_effector_positions_, num_object_positions_,
                   num_end_effector_velocities_, num_object_velocities_),
-              &FrankaKinematics::ComputeLCSState)
+              &ThreeDPrinterKinematics::ComputeLCSState)
           .get_index();
 }
 
 void ThreeDPrinterKinematics::ComputeLCSState(
     const drake::systems::Context<double>& context,
-    ThreeDPrinterKinematicsVector<double>* lcs_state) const {
+    FrankaKinematicsVector<double>* lcs_state) const {
   const OutputVector<double>* franka_output =
       (OutputVector<double>*)this->EvalVectorInput(context, franka_state_port_);
 
@@ -110,8 +117,52 @@ void ThreeDPrinterKinematics::ComputeLCSState(
         (StateVector<double>*)this->EvalVectorInput(context, object_state_ports_.at(i))
     );
   } 
+VectorXd q_franka = franka_output->GetPositions();
+std::cout << "q size = " << q_franka.size() << std::endl;
+std::cout << q_franka.transpose() << std::endl;
 
-  VectorXd q_franka = franka_output->GetPositions();
+std::cout << "\n==============================" << std::endl;
+std::cout << "Original printer head pose:" << std::endl;
+std::cout << "Position    : "
+          << q_franka.head<3>().transpose() << std::endl;
+std::cout << "RPY (rad)   : "
+          << q_franka.segment<3>(3).transpose() << std::endl;
+Eigen::Vector3d printer_rpy = Eigen::Vector3d::Zero();
+
+RigidTransform<double> X_WP(
+    RollPitchYaw<double>(printer_rpy),
+    q_franka.head<3>());
+// Build the printer head pose from the input
+
+// Fixed transform: end effector -> printer head
+RigidTransform<double> X_EP(
+    RotationMatrix<double>::Identity(),
+    Eigen::Vector3d(0.107, 0.0075, 0.0));
+
+std::cout << "\nOffset (EE -> Printer Head): "
+          << X_EP.translation().transpose() << std::endl;
+
+// Compute world -> end effector
+RigidTransform<double> X_WE = X_WP * X_EP.inverse();
+
+
+
+std::cout << "\nComputed end effector pose:" << std::endl;
+std::cout << "Position    : "
+          << X_WE.translation().transpose() << std::endl;
+
+
+std::cout << "\nTranslation applied: "
+          << (X_WE.translation() - X_WP.translation()).transpose()
+          << std::endl;
+
+// Convert back into the coordinate representation expected by the plant
+q_franka.head<3>() = X_WE.translation();
+
+
+std::cout << "\nUpdated q_franka:" << std::endl;
+std::cout << q_franka.transpose() << std::endl;
+std::cout << "==============================\n" << std::endl;
   VectorXd v_franka = franka_output->GetVelocities();
 
   int nq = object_outputs[0]->GetPositions().size();

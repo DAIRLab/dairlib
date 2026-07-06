@@ -21,7 +21,7 @@
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/sampling_based_c3_controller.h"
 #include "systems/framework/lcm_driven_loop.h"
-#include "systems/franka_kinematics.h"
+#include "systems/three_d_printer_kinematics.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/senders/c3_state_sender.h"
 #include "systems/senders/sample_buffer_sender.h"
@@ -481,7 +481,7 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.radio_channel, &lcm));
 
   auto reduced_order_model_receiver =
-      builder.AddSystem<systems::FrankaKinematics>(
+      builder.AddSystem<systems::ThreeDPrinterKinematics>(
           plant_three_d_printer, three_d_printer_context.get(), plant_object,
           object_context.get(), k3dEndEffectorName,
           controller_params.object_body_name,

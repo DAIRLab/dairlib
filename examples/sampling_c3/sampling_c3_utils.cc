@@ -124,10 +124,7 @@ ModelInstanceIndex Add3DPrinterToPlant(MultibodyPlant<double>* plant,
 
   return printer_index;
 }
-void AddWallsToPlant(
-    drake::multibody::MultibodyPlant<double>* plant,
-    drake::geometry::SceneGraph<double>* scene_graph,
-    const bool& include_back_wall) {
+
 
 void AddWallsToPlant(drake::multibody::MultibodyPlant<double>* plant,
                      drake::geometry::SceneGraph<double>* scene_graph,

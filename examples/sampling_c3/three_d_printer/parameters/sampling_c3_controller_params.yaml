@@ -17,7 +17,7 @@ lcm_channels_visualize_file: examples/sampling_c3/shared_parameters/lcm_channels
 object_model: examples/sampling_c3/urdf/nut/nut_controller.sdf
 object_models: [examples/sampling_c3/urdf/push_t_white/push_t_white_controller.sdf]
 object_body_name: body
-base_name: A_shape_video
+base_name: [A_shape_video]
 # base_names: [P_shape_texture, U_shape_texture, S_shape_texture, H_shape_texture]
 # base_names: [I_shape_texture, C_shape_texture, R_shape_texture, A_shape_video]
 # base_names: [U_shape_texture, R_shape_texture, D_shape_texture, F_shape_texture]

@@ -36,7 +36,6 @@ FrankaKinematics::FrankaKinematics(const MultibodyPlant<double>& franka_plant,
       object_names_(object_names) {
   std::cout << "[FrankaKinematics] Constructor called." << std::endl;
   std::cout << "  end_effector_name = " << end_effector_name_ << std::endl;
-  std::cout << "  object_name = " << object_name_ << std::endl;
   std::cout << "  include_end_effector_orientation = "
             << include_end_effector_orientation_ << std::endl;
   std::cout << "  object_names.size() = " << object_names_.size() << std::endl;

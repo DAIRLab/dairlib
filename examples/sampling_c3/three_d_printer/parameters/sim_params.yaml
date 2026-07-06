@@ -1,4 +1,4 @@
-object_model: examples/sampling_c3/urdf/nut/nut.sdf           # TODO @bibit what do we want here?
+    # TODO @bibit what do we want here?
 object_models: [examples/sampling_c3/urdf/push_t_white/push_t_white.sdf]
 franka_publish_rate: 1000
 object_publish_rate: 10
@@ -11,5 +11,5 @@ dt: 0.001
 realtime_rate: 0.1
 
 q_init_franka: [0.175,0.175,0.175]
-q_init_object: [0, 0, 0]
+
 q_init_objects: [[0.2, 0.2, 0.1]]

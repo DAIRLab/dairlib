@@ -20,56 +20,26 @@ ThreeDPrinterKinematics::ThreeDPrinterKinematics(const MultibodyPlant<double>& f
                                    const std::string& end_effector_name,
                                    const std::string& object_name,
                                    bool include_end_effector_orientation)
-    : franka_plant_(franka_plant),
-      franka_context_(franka_context),
-      object_plant_(object_plant),
-      object_context_(object_context),
-      world_(franka_plant_.world_frame()),
-      end_effector_name_(end_effector_name),
-      object_name_(object_name),
-      include_end_effector_orientation_(include_end_effector_orientation) {
-  this->set_name("three_d_printer_kinematics");
-  franka_state_port_ =
-      this->DeclareVectorInputPort(
-              "x_franka", OutputVector<double>(franka_plant.num_positions(),
-                                               franka_plant.num_velocities(),
-                                               franka_plant.num_actuators()))
-          .get_index();
+        : ThreeDPrinterKinematics(franka_plant, franka_context, object_plant,
+                       object_context, end_effector_name,
+                       std::vector<std::string>{object_name},
+                       include_end_effector_orientation) {}
 
-  object_state_port_ =
-      this->DeclareVectorInputPort(
-              "x_object", StateVector<double>(object_plant.num_positions(),
-                                               object_plant.num_velocities()))
-          .get_index();
-  num_end_effector_positions_ = 3 + include_end_effector_orientation_ * 3;
-  num_object_positions_ = 7 * 2;
-  num_end_effector_velocities_ = 3 + include_end_effector_orientation_ * 3;
-  num_object_velocities_ = 6 * 2;
-  lcs_state_port_ =
-      this->DeclareVectorOutputPort(
-              "x_lcs",
-              FrankaKinematicsVector<double>(
-                  num_end_effector_positions_, num_object_positions_,
-                  num_end_effector_velocities_, num_object_velocities_),
-              &ThreeDPrinterKinematics::ComputeLCSState)
-          .get_index();
-}
 
 ThreeDPrinterKinematics::ThreeDPrinterKinematics(const MultibodyPlant<double>& franka_plant,
-                                                 Context<double>* franka_context,
-                                                 const MultibodyPlant<double>& object_plant,
-                                                 Context<double>* object_context,
-                                                 const std::string& end_effector_name,
-                                                 const std::string& object_name,
-                                                 bool include_end_effector_orientation,
-                                                 std::vector<std::string> object_names)
+                                   Context<double>* franka_context,
+                                   const MultibodyPlant<double>& object_plant,
+                                   Context<double>* object_context,
+                                   const std::string& end_effector_name,
+                                   std::vector<std::string> object_names,
+                                   bool include_end_effector_orientation)
     : franka_plant_(franka_plant),
       franka_context_(franka_context),
       object_plant_(object_plant),
       object_context_(object_context),
       world_(franka_plant_.world_frame()),
       end_effector_name_(end_effector_name),
-      object_name_(object_name),
+
       include_end_effector_orientation_(include_end_effector_orientation),
       object_names_(object_names) {
 
@@ -85,10 +55,8 @@ ThreeDPrinterKinematics::ThreeDPrinterKinematics(const MultibodyPlant<double>& f
   for (int i = 0; i < num_objects_; i++) {
     std::string port_name = "x_object_" + std::to_string(i);
     object_state_ports_.push_back(
-        this->DeclareVectorInputPort(
-              port_name, StateVector<double>(7, 6))
-          .get_index()
-    );
+        this->DeclareVectorInputPort(port_name, StateVector<double>(7, 6))
+            .get_index());
   } 
 
   num_end_effector_positions_ = 3 + include_end_effector_orientation_ * 3;

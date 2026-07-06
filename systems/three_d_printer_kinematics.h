@@ -33,21 +33,20 @@ namespace systems {
 class ThreeDPrinterKinematics : public drake::systems::LeafSystem<double> {
  public:
   explicit ThreeDPrinterKinematics(const MultibodyPlant<double>& franka_plant,
-                                   Context<double>* franka_context,
-                                   const MultibodyPlant<double>& object_plant,
-                                   Context<double>* object_context,
-                                const std::string& end_effector_name,
-                                const std::string& object_name,
-                                bool include_end_effector_orientation);
+                            Context<double>* franka_context,
+                            const MultibodyPlant<double>& object_plant,
+                            Context<double>* object_context,
+                            const std::string& end_effector_name,
+                            const std::string& object_name,
+                            bool include_end_effector_orientation);
 
   explicit ThreeDPrinterKinematics(const MultibodyPlant<double>& franka_plant,
                             Context<double>* franka_context,
                             const MultibodyPlant<double>& object_plant,
                             Context<double>* object_context,
                             const std::string& end_effector_name,
-                            const std::string& object_name,
-                            bool include_end_effector_orientation,
-                            std::vector<std::string> object_names);
+                            std::vector<std::string> object_names,
+                            bool include_end_effector_orientation);
 
  
   std::vector<const drake::systems::InputPort<double>*> get_input_ports_object_state() const {
@@ -90,7 +89,7 @@ class ThreeDPrinterKinematics : public drake::systems::LeafSystem<double> {
   Context<double>* object_context_;
   const drake::multibody::Frame<double>& world_;
   std::string end_effector_name_;
-  std::string object_name_;
+
   const bool include_end_effector_orientation_;
 };
 

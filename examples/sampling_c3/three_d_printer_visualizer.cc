@@ -17,7 +17,7 @@
 #include "multibody/com_pose_system.h"
 #include "multibody/multibody_utils.h"
 #include "multibody/visualization_utils.h"
-#include "systems/franka_kinematics.h"
+#include "systems/three_d_printer_kinematics.h"
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/senders/sample_buffer_to_point_cloud.h"
@@ -256,11 +256,11 @@ std::cout << "base_name = "
   auto mux =
       builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);
   auto reduced_order_model_receiver =
-      builder.AddSystem<systems::FrankaKinematics>(
+      builder.AddSystem<systems::ThreeDPrinterKinematics>(
           plant_franka, franka_context.get(), plant_object,
-          object_context.get(), k3dEndEffectorName,
-          controller_params.object_body_name, false,
-          controller_params.base_names);
+          object_context.get(), k3dEndEffectorName,controller_params.base_names,
+          false
+          );
 
   builder.Connect(three_d_printer_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_franka_state());
@@ -490,9 +490,8 @@ std::cout << "base_name = "
 
   if (vis_params.visualize_c3_plan_best) {
     auto object_pose_drawer_best = builder.AddSystem<systems::LcmPoseDrawer>(
-        meshcat, FindResourceOrThrow(vis_params.object_vis_model),
-        "object_position_target", "object_orientation_target",
-        "plans/best_planned", sampling_c3_options.N, true,
+        meshcat, vis_params.object_vis_models, position_names,
+        orientation_names, "plans/best_planned", sampling_c3_options.N, true,
         vis_params.c3_best_object_color);
     builder.Connect(trajectory_sub_object_best->get_output_port(),
                     object_pose_drawer_best->get_input_port_trajectory());
@@ -508,10 +507,9 @@ std::cout << "base_name = "
 
     auto dynamically_feasible_object_pose_drawer_best =
         builder.AddSystem<systems::LcmPoseDrawer>(
-            meshcat, FindResourceOrThrow(vis_params.object_vis_model),
-            "object_position_target", "object_orientation_target",
-            "plans/dynamically_feasible_best_plan", sampling_c3_options.N + 1,
-            true, vis_params.df_best_object_color);
+            meshcat, vis_params.object_vis_models, position_names,
+            orientation_names, "plans/dynamically_feasible_best_plan",
+            sampling_c3_options.N + 1, true, vis_params.df_best_object_color);
     builder.Connect(
         dynamically_feasible_trajectory_sub_object_best->get_output_port(),
         dynamically_feasible_object_pose_drawer_best
@@ -566,6 +564,16 @@ std::cout << "base_name = "
   }
 
   if (vis_params.visualize_c3_state) {
+    if (vis_params.object_vis_models.size() == 1) {
+      auto c3_target_drawer =
+          builder.AddSystem<systems::LcmC3TargetDrawer>(meshcat, true, true);
+      builder.Connect(c3_state_actual_sub->get_output_port(),
+                      c3_target_drawer->get_input_port_c3_state_actual());
+      builder.Connect(c3_state_target_sub->get_output_port(),
+                      c3_target_drawer->get_input_port_c3_state_target());
+      builder.Connect(c3_final_state_target_sub->get_output_port(),
+                      c3_target_drawer->get_input_port_c3_state_final_target());
+    } else {
     auto c3_target_drawer = builder.AddSystem<systems::LcmC3TargetDrawer>(
         meshcat, vis_params.object_vis_models.size(), true, true);
     builder.Connect(c3_state_actual_sub->get_output_port(),
@@ -574,7 +582,7 @@ std::cout << "base_name = "
                     c3_target_drawer->get_input_port_c3_state_target());
     builder.Connect(c3_final_state_target_sub->get_output_port(),
                     c3_target_drawer->get_input_port_c3_state_final_target());
-  }
+  }}
 
   if (vis_params.visualize_c3_forces_curr) {
     auto end_effector_force_drawer_curr =

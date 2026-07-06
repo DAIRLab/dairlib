@@ -26,7 +26,10 @@ struct SamplingC3ControllerParams {
   std::string lcm_channels_hardware_file;
   std::string lcm_channels_simulation_file;
   std::string lcm_channels_visualize_file;
+  std::string object_model;
+  std::string object_body_name;
 
+  std::vector<std::string> base_name;
   std::vector<std::string> object_models;
   std::vector<std::string> base_names;
 

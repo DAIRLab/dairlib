@@ -1,0 +1,46 @@
+# All messages are of type lcmt_timestamped_saved_traj unless otherwise noted.
+
+franka_state_channel: FRANKA_STATE              # lcmt_robot_output
+object_state_channels: [OBJECT_G_shape_video_STATE_SIMULATION, OBJECT_R_shape_texture_STATE_SIMULATION, OBJECT_A_shape_video_STATE_SIMULATION, OBJECT_S_shape_texture_STATE_SIMULATION] # lcmt_object_state
+franka_input_channel: FRANKA_INPUT              # lcmt_robot_input
+
+osc_channel: OSC_FRANKA                         # lcmt_robot_input
+osc_debug_channel: OSC_DEBUG_FRANKA             # lcmt_osc_output
+
+c3_actor_curr_plan_channel: C3_TRAJECTORY_ACTOR_CURR_PLAN
+c3_object_curr_plan_channel: C3_TRAJECTORY_OBJECT_CURR_PLAN
+c3_force_curr_channel: C3_FORCES_CURR           # lcmt_c3_forces
+c3_debug_output_curr_channel: C3_DEBUG_CURR     # lcmt_c3_output
+
+c3_actor_best_plan_channel: C3_TRAJECTORY_ACTOR_BEST_PLAN
+c3_object_best_plan_channel: C3_TRAJECTORY_OBJECT_BEST_PLAN
+c3_force_best_channel: C3_FORCES_BEST           # lcmt_c3_forces
+c3_debug_output_best_channel: C3_DEBUG_BEST     # lcmt_c3_output
+
+c3_trajectory_exec_actor_channel: C3_EXECUTION_TRAJECTORY_ACTOR
+repos_trajectory_exec_actor_channel: REPOS_EXECUTION_TRAJECTORY_ACTOR
+
+tracking_trajectory_actor_channel: TRACKING_TRAJECTORY_ACTOR
+tracking_trajectory_object_channel: TRACKING_TRAJECTORY_OBJECT
+
+c3_final_target_state_channel: C3_FINAL_TARGET  # lcmt_c3_state
+c3_target_state_channel: C3_TARGET              # lcmt_c3_state
+c3_actual_state_channel: C3_ACTUAL              # lcmt_c3_state
+
+sample_locations_channel: SAMPLE_LOCATIONS
+sample_costs_channel: SAMPLE_COSTS
+sample_buffer_channel: SAMPLE_BUFFER            # lcmt_sample_buffer
+unsuccessful_sample_buffer_channel: UNSUCCESSFUL_SAMPLE_BUFFER
+                                                # lcmt_sample_buffer
+
+dynamically_feasible_curr_actor_plan_channel: DYNAMICALLY_FEASIBLE_CURR_ACTOR_PLAN
+dynamically_feasible_curr_plan_channel: DYNAMICALLY_FEASIBLE_CURR_PLAN
+dynamically_feasible_best_actor_plan_channel: DYNAMICALLY_FEASIBLE_BEST_ACTOR_PLAN
+dynamically_feasible_best_plan_channel: DYNAMICALLY_FEASIBLE_BEST_PLAN
+
+is_c3_mode_channel: IS_C3_MODE
+target_generator_info_channel: TARGET_GEN_INFO
+sampling_c3_debug_channel: SAMPLING_C3_DEBUG    # lcmt_sampling_c3_debug
+
+radio_channel: SAMPLING_C3_RADIO                # lcmt_radio_out
+franka_target_joint_position_channel: FRANKA_TARGET_JOINT_POSITION  # lcmt_franka_target_joint_position

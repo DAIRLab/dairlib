@@ -1,11 +1,12 @@
 #pragma once
 
 #include <memory>
+
 #include <Eigen/Dense>
 
-#include "drake/common/trajectories/piecewise_polynomial.h"
-#include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/copyable_unique_ptr.h"
+#include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
+#include "drake/common/trajectories/piecewise_polynomial.h"
 
 namespace dairlib {
 namespace systems {
@@ -34,10 +35,10 @@ namespace systems {
 /// Requirement:
 ///  - This function is designed for bipedal robots.
 Eigen::Vector2d ImposeHalfplaneGuard(Eigen::Vector2d foot_placement_pos,
-    bool left_or_right_stance,
-    double yaw, Eigen::Vector2d CoM, Eigen::Vector2d stance_foot_pos,
-    double center_line_offset);
-
+                                     bool left_or_right_stance, double yaw,
+                                     Eigen::Vector2d CoM,
+                                     Eigen::Vector2d stance_foot_pos,
+                                     double center_line_offset);
 
 /// ImposeStepLengthGuard() updates the foot placement position by imposing a
 /// step length limit.
@@ -48,6 +49,6 @@ Eigen::Vector2d ImposeHalfplaneGuard(Eigen::Vector2d foot_placement_pos,
 ///  - `max_dist` maximum distance from center of mass to foot placement
 ///    position
 Eigen::Vector2d ImposeStepLengthGuard(Eigen::Vector2d foot_placement_pos,
-    Eigen::Vector2d CoM, double max_dist);
+                                      Eigen::Vector2d CoM, double max_dist);
 }  // namespace systems
 }  // namespace dairlib

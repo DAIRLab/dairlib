@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+
 #include <dairlib/lcmt_robot_output.hpp>
 #include <drake/lcmt_panda_command.hpp>
 
@@ -16,9 +17,10 @@ const static int kNumFrankaJoints = 7;
 
 class FrankaStateOutTranslator : public drake::systems::LeafSystem<double> {
  public:
-  explicit FrankaStateOutTranslator(std::vector<std::string> joint_position_names,
-                                    std::vector<std::string> joint_velocity_names,
-                                    std::vector<std::string> joint_actuator_names);
+  explicit FrankaStateOutTranslator(
+      std::vector<std::string> joint_position_names,
+      std::vector<std::string> joint_velocity_names,
+      std::vector<std::string> joint_actuator_names);
 
   const drake::systems::InputPort<double>& get_input_port_panda_status() const {
     return this->get_input_port(panda_status_);
@@ -50,7 +52,7 @@ class FrankaEffortsInTranslator : public drake::systems::LeafSystem<double> {
 
  private:
   void OutputFrankaCommand(const drake::systems::Context<double>& context,
-                         drake::lcmt_panda_command* output) const;
+                           drake::lcmt_panda_command* output) const;
 
   drake::systems::InputPortIndex robot_input_;
   drake::systems::OutputPortIndex franka_command_output_;

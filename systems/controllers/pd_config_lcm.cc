@@ -1,18 +1,19 @@
 #include "systems/controllers/pd_config_lcm.h"
-#include "multibody/multibody_utils.h"
+
 #include <iostream>
+
+#include "multibody/multibody_utils.h"
 
 namespace dairlib {
 namespace systems {
 
-using std::string;
+using dairlib::systems::TimestampedVector;
+using drake::AbstractValue;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
-using drake::AbstractValue;
-using dairlib::systems::TimestampedVector;
 using Eigen::VectorXd;
-using drake::systems::Context;
 using std::map;
+using std::string;
 
 // methods implementation for CassiePDConfigReceiver.
 PDConfigReceiver::PDConfigReceiver(const MultibodyPlant<double>& plant) {
@@ -21,7 +22,6 @@ PDConfigReceiver::PDConfigReceiver(const MultibodyPlant<double>& plant) {
   num_positions_ = plant.num_positions();
   num_velocities_ = plant.num_velocities();
   num_actuators_ = plant.num_actuators();
-
 
   MatrixXd B = plant.MakeActuationMatrix();
   // using all one's because zeros will cause quaternions to NaN
@@ -63,16 +63,16 @@ PDConfigReceiver::PDConfigReceiver(const MultibodyPlant<double>& plant) {
         index_q = k;
       }
     }
-    if (index_q != -1){
+    if (index_q != -1) {
       actuatorToPositionIndexMap_[j] = index_q;
     }
-    std::cout << "Map u_ind:" << j << " q_ind: " << index_q << " v_ind: " <<
-                  index << std::endl;
+    std::cout << "Map u_ind:" << j << " q_ind: " << index_q
+              << " v_ind: " << index << std::endl;
   }
 
   // Velocity map:
-  this->DeclareAbstractInputPort(
-      "lcmt_pd_config", drake::Value<dairlib::lcmt_pd_config>{});
+  this->DeclareAbstractInputPort("lcmt_pd_config",
+                                 drake::Value<dairlib::lcmt_pd_config>{});
   this->DeclareVectorOutputPort(
       "pd_config",
       LinearConfig(plant.num_positions() + plant.num_velocities(),
@@ -85,7 +85,6 @@ void PDConfigReceiver::CopyConfig(const Context<double>& context,
   const AbstractValue* input = this->EvalAbstractInput(context, 0);
   DRAKE_THROW_UNLESS(input != nullptr);
   const auto& config_msg = input->get_value<dairlib::lcmt_pd_config>();
-
 
   MatrixXd K = MatrixXd::Zero(num_actuators_, num_positions_ + num_velocities_);
   VectorXd desired_state = VectorXd::Zero(num_positions_ + num_velocities_);

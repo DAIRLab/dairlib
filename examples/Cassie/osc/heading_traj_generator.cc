@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include <string>
+
 #include <drake/common/trajectories/piecewise_quaternion.h>
 
 #include "multibody/multibody_utils.h"
@@ -70,7 +71,6 @@ void HeadingTrajGenerator::CalcHeadingTraj(
       plant_.EvalBodyPoseInWorld(*context_, pelvis_).rotation().matrix());
   quat.normalize();
 
-
   double dt = 0.1;
   double des_delta_yaw = des_yaw_vel(0) * dt;
   Eigen::Vector4d pelvis_rotation_i;
@@ -89,9 +89,8 @@ void HeadingTrajGenerator::CalcHeadingTraj(
       breaks, {quat, final_quat});
 
   // Assign traj
-  auto* pp_traj =
-      (PiecewiseQuaternionSlerp<double>*)dynamic_cast<PiecewiseQuaternionSlerp<double>*>(
-          traj);
+  auto* pp_traj = (PiecewiseQuaternionSlerp<double>*)dynamic_cast<
+      PiecewiseQuaternionSlerp<double>*>(traj);
   *pp_traj = pp;
 }
 

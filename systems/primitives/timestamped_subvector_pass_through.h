@@ -2,16 +2,17 @@
 
 #include <memory>
 
+#include "systems/framework/timestamped_vector.h"
+
 #include "drake/common/drake_copyable.h"
 #include "drake/systems/framework/leaf_system.h"
-#include "systems/framework/timestamped_vector.h"
 
 namespace dairlib {
 namespace systems {
 
 /// This class is copied from drake/systems/primitives/PassThrough
 /// with the modification that it only passes through a subset of the vector
-/// Unliked SubvectorPassThrough, this is designed for use with 
+/// Unliked SubvectorPassThrough, this is designed for use with
 /// TimeStampedVectors. It will pass through the subvector AND the timestamp.
 template <typename T>
 class TSSubvectorPassThrough final : public drake::systems::LeafSystem<T> {
@@ -48,16 +49,15 @@ class TSSubvectorPassThrough final : public drake::systems::LeafSystem<T> {
   void get_output_port(int) = delete;
 
  protected:
-  void DoCalcVectorOutput(
-      const drake::systems::Context<T>& context,
-      systems::TimestampedVector<T>* output) const;
+  void DoCalcVectorOutput(const drake::systems::Context<T>& context,
+                          systems::TimestampedVector<T>* output) const;
 
  private:
-  bool is_abstract() const { return false;}
-
+  bool is_abstract() const { return false; }
 
   // Allow different specializations to access each other's private data.
-  template <typename U> friend class TSSubvectorPassThrough;
+  template <typename U>
+  friend class TSSubvectorPassThrough;
 
   int start_;
   int length_;

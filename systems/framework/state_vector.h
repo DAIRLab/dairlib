@@ -1,9 +1,9 @@
 #pragma once
 
-#include "systems/framework/timestamped_vector.h"
 #include <string>
 #include <vector>
 
+#include "systems/framework/timestamped_vector.h"
 
 namespace dairlib {
 namespace systems {
@@ -17,7 +17,7 @@ using std::vector;
 ///    * velocities
 /// Similar to OutputVector but only the state variables
 template <typename T>
-class StateVector : public TimestampedVector<T>  {
+class StateVector : public TimestampedVector<T> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(StateVector)
 
@@ -29,19 +29,19 @@ class StateVector : public TimestampedVector<T>  {
       : TimestampedVector<T>(num_positions + num_velocities),
         num_positions_(num_positions),
         num_velocities_(num_velocities),
-        position_start_(0){}
+        position_start_(0) {}
 
   /// Constructs a StateVector with the specified positions and velocities.
   explicit StateVector(const VectorX<T>& positions,
-                        const VectorX<T>& velocities)
+                       const VectorX<T>& velocities)
       : StateVector(positions.size(), velocities.size()) {
     this->SetPositions(positions);
     this->SetVelocities(velocities);
   }
 
   void SetPositions(VectorX<T> positions) {
-    this->get_mutable_data().segment(position_start_,
-                                     num_positions_) = positions;
+    this->get_mutable_data().segment(position_start_, num_positions_) =
+        positions;
   }
 
   void SetVelocities(VectorX<T> velocities) {
@@ -81,14 +81,15 @@ class StateVector : public TimestampedVector<T>  {
 
   /// Returns a mutable state vector
   Eigen::Map<VectorX<T>> GetMutableState() {
-    auto data = this->get_mutable_data().segment(position_start_,
-                                                 num_positions_ + num_velocities_);
+    auto data = this->get_mutable_data().segment(
+        position_start_, num_positions_ + num_velocities_);
     return Eigen::Map<VectorX<T>>(&data(0), data.size());
   }
 
   /// Returns a mutable positions vector
   Eigen::Map<VectorX<T>> GetMutablePositions() {
-    auto data = this->get_mutable_data().segment(position_start_, num_positions_);
+    auto data =
+        this->get_mutable_data().segment(position_start_, num_positions_);
     return Eigen::Map<VectorX<T>>(&data(0), data.size());
   }
 
@@ -107,13 +108,9 @@ class StateVector : public TimestampedVector<T>  {
     return this->GetAtIndex(position_start_ + num_positions_ + index);
   }
 
-  void SetName(int index, string name) {
-    position_names_[index] = name;
-  }
+  void SetName(int index, string name) { position_names_[index] = name; }
 
-  string GetName(int index) {
-    return position_names_[index];
-  }
+  string GetName(int index) { return position_names_[index]; }
 
  protected:
   virtual StateVector<T>* DoClone() const {

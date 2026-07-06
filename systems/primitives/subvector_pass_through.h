@@ -45,16 +45,15 @@ class SubvectorPassThrough final : public drake::systems::LeafSystem<T> {
   void get_output_port(int) = delete;
 
  protected:
-  void DoCalcVectorOutput(
-      const drake::systems::Context<T>& context,
-      drake::systems::BasicVector<T>* output) const;
+  void DoCalcVectorOutput(const drake::systems::Context<T>& context,
+                          drake::systems::BasicVector<T>* output) const;
 
  private:
-  bool is_abstract() const { return false;}
-
+  bool is_abstract() const { return false; }
 
   // Allow different specializations to access each other's private data.
-  template <typename U> friend class SubvectorPassThrough;
+  template <typename U>
+  friend class SubvectorPassThrough;
 
   int start_;
   int length_;

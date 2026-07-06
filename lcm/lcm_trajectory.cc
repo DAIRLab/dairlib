@@ -3,11 +3,10 @@
 #include <algorithm>
 #include <chrono>
 #include <cstring>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <memory>
 #include <utility>
-#include <iostream>
 
 #include "drake/common/value.h"
 
@@ -187,9 +186,9 @@ void LcmTrajectory::AddTrajectory(const std::string& trajectory_name,
 
 void LcmTrajectory::ClearTrajectories() {
   if (this->trajectories_.size() > 0) {
-      trajectories_.clear();
-      trajectory_names_.clear();
-    }
+    trajectories_.clear();
+    trajectory_names_.clear();
+  }
 }
 
 void LcmTrajectory::ConstructMetadataObject(string name, string description) {

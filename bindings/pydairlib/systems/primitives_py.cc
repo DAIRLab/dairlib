@@ -43,7 +43,8 @@ PYBIND11_MODULE(primitives, m) {
 
   using drake::multibody::MultibodyPlant;
 
-  py::class_<systems::SubvectorPassThrough<double>, drake::systems::LeafSystem<double>>(m, "SubvectorPassThrough")
+  py::class_<systems::SubvectorPassThrough<double>,
+             drake::systems::LeafSystem<double>>(m, "SubvectorPassThrough")
       .def(py::init<int, int, int>());
 }
 

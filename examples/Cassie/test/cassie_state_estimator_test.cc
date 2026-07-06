@@ -106,9 +106,9 @@ class ContactEstimationTest : public ::testing::Test {
 TEST_F(ContactEstimationTest, solveFourbarLinkageTest) {
   // Example position (floating base position doesn't affect the result)
   VectorXd q_init(plant_.num_positions());
-  q_init << 1, VectorXd::Zero(6), -0.084017,  -0.00120735, 0.366012, -0.6305,
-      0.00205363, 0.838878, 0, 0.205351,
-      0.084017,  0.00120735, 0.366012, -0.6305, 0.00205363,  0.838878, 0, 0.205351;
+  q_init << 1, VectorXd::Zero(6), -0.084017, -0.00120735, 0.366012, -0.6305,
+      0.00205363, 0.838878, 0, 0.205351, 0.084017, 0.00120735, 0.366012,
+      -0.6305, 0.00205363, 0.838878, 0, 0.205351;
 
   // Get the angles analytically
   double calc_left_heel_spring, calc_right_heel_spring;

@@ -19,10 +19,11 @@ using drake::systems::kUseDefaultName;
 
 template <typename T>
 TSSubvectorPassThrough<T>::TSSubvectorPassThrough(int vector_size, int start,
-      int length)
+                                                  int length)
     : drake::systems::LeafSystem<T>(
-        drake::systems::SystemTypeTag<TSSubvectorPassThrough>()),
-      start_(start), length_(length) {
+          drake::systems::SystemTypeTag<TSSubvectorPassThrough>()),
+      start_(start),
+      length_(length) {
   DRAKE_DEMAND(vector_size != -1);
   systems::TimestampedVector<T> input(vector_size);
   systems::TimestampedVector<T> output(length);
@@ -36,12 +37,12 @@ template <typename U>
 TSSubvectorPassThrough<T>::TSSubvectorPassThrough(
     const TSSubvectorPassThrough<U>& other)
     : TSSubvectorPassThrough(other.get_input_port().size(), other.start_,
-                           other.length_) {}
+                             other.length_) {}
 
 template <typename T>
 void TSSubvectorPassThrough<T>::DoCalcVectorOutput(
-      const drake::systems::Context<T>& context,
-      systems::TimestampedVector<T>* output) const {
+    const drake::systems::Context<T>& context,
+    systems::TimestampedVector<T>* output) const {
   const systems::TimestampedVector<T>& input =
       *this->template EvalVectorInput<TimestampedVector>(context, 0);
   output->SetDataVector(input.get_data().segment(start_, length_));

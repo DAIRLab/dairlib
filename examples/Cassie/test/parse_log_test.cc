@@ -1,23 +1,23 @@
-#include "drake/lcm/drake_lcm_log.h"
 #include <iostream>
+
+#include "dairlib/lcmt_robot_input.hpp"
+#include "dairlib/lcmt_robot_output.hpp"
+#include "examples/Cassie/cassie_utils.h"
+#include "systems/primitives/vector_aggregator.h"
+#include "systems/robot_lcm_systems.h"
+
+#include "drake/lcm/drake_lcm_log.h"
+#include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_log_playback_system.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
-#include "drake/multibody/plant/multibody_plant.h"
-
-#include "systems/primitives/vector_aggregator.h"
-#include "systems/robot_lcm_systems.h"
-#include "examples/Cassie/cassie_utils.h"
-
-#include "dairlib/lcmt_robot_output.hpp"
-#include "dairlib/lcmt_robot_input.hpp"
 
 using std::string;
 
-using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::lcm::LcmPublisherSystem;
+using drake::systems::lcm::LcmSubscriberSystem;
 
 namespace dairlib {
 using systems::VectorAggregator;
@@ -25,7 +25,7 @@ using systems::VectorAggregator;
 int ParseLog(string filename) {
   drake::multibody::MultibodyPlant<double> plant(0.0);
   AddCassieMultibody(&plant);
-  
+
   drake::lcm::DrakeLcmLog r_log(filename, false);
 
   drake::systems::DiagramBuilder<double> builder;
@@ -38,7 +38,7 @@ int ParseLog(string filename) {
 
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
   builder.Connect(state_sub->get_output_port(),
-                    state_receiver->get_input_port(0));
+                  state_receiver->get_input_port(0));
 
   auto state_aggregator = builder.AddSystem<VectorAggregator>(
       state_receiver->get_output_port(0).size() - 1);
@@ -51,7 +51,7 @@ int ParseLog(string filename) {
 
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(plant);
   builder.Connect(input_sub->get_output_port(),
-                    input_receiver->get_input_port(0));
+                  input_receiver->get_input_port(0));
 
   auto input_aggregator = builder.AddSystem<VectorAggregator>(
       input_receiver->get_output_port(0).size() - 1);
@@ -81,17 +81,16 @@ int ParseLog(string filename) {
   }
 
   std::cout << "*****timestamp vector*****" << std::endl;
-  std:: cout << state_aggregator->BuildTimestampVector() << std::endl;
+  std::cout << state_aggregator->BuildTimestampVector() << std::endl;
 
   std::cout << "*****data matrix*****" << std::endl;
-  std:: cout << state_aggregator->BuildMatrixFromVectors() << std::endl;
+  std::cout << state_aggregator->BuildMatrixFromVectors() << std::endl;
 
   std::cout << "*****timestamp vector*****" << std::endl;
-  std:: cout << input_aggregator->BuildTimestampVector() << std::endl;
+  std::cout << input_aggregator->BuildTimestampVector() << std::endl;
 
   std::cout << "*****data matrix*****" << std::endl;
-  std:: cout << input_aggregator->BuildMatrixFromVectors() << std::endl;
-
+  std::cout << input_aggregator->BuildMatrixFromVectors() << std::endl;
 
   return 0;
 }

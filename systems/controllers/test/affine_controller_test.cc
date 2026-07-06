@@ -1,21 +1,22 @@
+#include "systems/controllers/affine_controller.h"
+
 #include <memory>
 #include <utility>
 
 #include <gtest/gtest.h>
-#include "systems/controllers/affine_controller.h"
 
 namespace dairlib {
 namespace systems {
 namespace {
 
-using Eigen::VectorXd;
+using drake::systems::BasicVector;
+using drake::systems::Context;
+using drake::systems::System;
+using drake::systems::SystemOutput;
 using Eigen::MatrixXd;
+using Eigen::VectorXd;
 using std::make_unique;
 using std::unique_ptr;
-using drake::systems::System;
-using drake::systems::Context;
-using drake::systems::SystemOutput;
-using drake::systems::BasicVector;
 
 class AffineControllerTest : public ::testing::Test {
  protected:
@@ -107,9 +108,9 @@ TEST_F(AffineControllerTest, TestNumberOfPortsAndControllerOutput) {
 
   // Hook input of the expected size.
   affine_controller_->get_input_port_info().FixValue(context_.get(),
-                                                   *input_port_info_val_);
+                                                     *input_port_info_val_);
   affine_controller_->get_input_port_params().FixValue(context_.get(),
-                                                   *input_port_params_val_);
+                                                       *input_port_params_val_);
 
   affine_controller_->CalcOutput(*context_, output_.get());
 

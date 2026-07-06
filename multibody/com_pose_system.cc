@@ -3,26 +3,28 @@
 namespace dairlib {
 namespace multibody {
 
+using drake::multibody::MultibodyPlant;
 using drake::systems::BasicVector;
 using drake::systems::Context;
-using drake::multibody::MultibodyPlant;
 
-ComPoseSystem::ComPoseSystem(
-    const MultibodyPlant<double>& plant) : plant_(plant) {
+ComPoseSystem::ComPoseSystem(const MultibodyPlant<double>& plant)
+    : plant_(plant) {
   com_output_port_ =
       this->DeclareVectorOutputPort("com_quat_xyz", BasicVector<double>(7),
                                     &ComPoseSystem::OutputCom)
           .get_index();
-  xy_com_output_port_ =
-      this->DeclareVectorOutputPort("com_quat_xyz_ground", BasicVector<double>(7),
-                                    &ComPoseSystem::OutputXyCom)
+  xy_com_output_port_ = this->DeclareVectorOutputPort(
+                                "com_quat_xyz_ground", BasicVector<double>(7),
+                                &ComPoseSystem::OutputXyCom)
+                            .get_index();
+  position_input_port_ =
+      this->DeclareVectorInputPort("q",
+                                   BasicVector<double>(plant_.num_positions()))
           .get_index();
-  position_input_port_ = this->DeclareVectorInputPort("q", BasicVector<double>(
-      plant_.num_positions())).get_index();
 }
 
-void ComPoseSystem::OutputCom(
-    const Context<double>& context, BasicVector<double>* output) const {
+void ComPoseSystem::OutputCom(const Context<double>& context,
+                              BasicVector<double>* output) const {
   const auto q = this->EvalVectorInput(context, position_input_port_);
 
   auto plant_context = plant_.CreateDefaultContext();
@@ -32,8 +34,8 @@ void ComPoseSystem::OutputCom(
   pose << 1, 0, 0, 0, com;
 }
 
-void ComPoseSystem::OutputXyCom(
-    const Context<double>& context, BasicVector<double>* output) const {
+void ComPoseSystem::OutputXyCom(const Context<double>& context,
+                                BasicVector<double>* output) const {
   const auto q = this->EvalVectorInput(context, position_input_port_);
 
   auto plant_context = plant_.CreateDefaultContext();
@@ -42,7 +44,6 @@ void ComPoseSystem::OutputXyCom(
   auto pose = output->get_mutable_value();
   pose << 1, 0, 0, 0, com.head(2), 0;
 }
-
 
 }  // namespace multibody
 }  // namespace dairlib

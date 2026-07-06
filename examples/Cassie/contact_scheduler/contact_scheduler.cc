@@ -26,11 +26,10 @@ using drake::systems::Context;
 using systems::ImpactInfoVector;
 using systems::OutputVector;
 
-SLIPContactScheduler::SLIPContactScheduler(const MultibodyPlant<double>& plant,
-                                           Context<double>* plant_context,
-                                           std::set<RunningFsmState> impact_states,
-                                           double near_impact_threshold, double tau,
-                                           BLEND_FUNC blend_func)
+SLIPContactScheduler::SLIPContactScheduler(
+    const MultibodyPlant<double>& plant, Context<double>* plant_context,
+    std::set<RunningFsmState> impact_states, double near_impact_threshold,
+    double tau, BLEND_FUNC blend_func)
     : plant_(plant),
       plant_context_(plant_context),
       impact_states_(std::move(impact_states)),
@@ -46,8 +45,8 @@ SLIPContactScheduler::SLIPContactScheduler(const MultibodyPlant<double>& plant,
                                                         plant.num_velocities(),
                                                         plant.num_actuators()))
                     .get_index();
-  fsm_port_ = this->DeclareVectorOutputPort("fsm", 1,
-                                            &SLIPContactScheduler::CalcFiniteState)
+  fsm_port_ = this->DeclareVectorOutputPort(
+                      "fsm", 1, &SLIPContactScheduler::CalcFiniteState)
                   .get_index();
   impact_info_port_ = this->DeclareVectorOutputPort(
                               "near_impact", ImpactInfoVector<double>(0, 0, 0),
@@ -63,8 +62,8 @@ SLIPContactScheduler::SLIPContactScheduler(const MultibodyPlant<double>& plant,
               6, &SLIPContactScheduler::CalcContactScheduler)
           .get_index();
   debug_port_ = this->DeclareAbstractOutputPort(
-          "status", &SLIPContactScheduler::OutputDebuggingInfo)
-      .get_index();
+                        "status", &SLIPContactScheduler::OutputDebuggingInfo)
+                    .get_index();
 
   // Declare discrete states and update
   stored_fsm_state_index_ = DeclareDiscreteState(3 * VectorXd::Ones(1));
@@ -75,11 +74,11 @@ SLIPContactScheduler::SLIPContactScheduler(const MultibodyPlant<double>& plant,
   nominal_state_durations << 0.25, 0.1;
   nominal_state_durations_index_ =
       DeclareDiscreteState(nominal_state_durations);
-  std::vector<std::pair<double, RunningFsmState>> initial_state_transitions =
-      {{-0.1, kRightFlight},
-       {0.00, kLeftStance},
-       {0.25, kLeftFlight},
-       {0.35, kRightStance}};
+  std::vector<std::pair<double, RunningFsmState>> initial_state_transitions = {
+      {-0.1, kRightFlight},
+      {0.00, kLeftStance},
+      {0.25, kLeftFlight},
+      {0.35, kRightStance}};
   VectorXd initial_transition_times = VectorXd::Zero(4);
   initial_transition_times << -0.1, 0.0, 0.25, 0.35;
   transition_times_index_ = DeclareDiscreteState(initial_transition_times);
@@ -108,10 +107,9 @@ EventStatus SLIPContactScheduler::UpdateTransitionTimes(
   auto transition_times =
       state->get_mutable_discrete_state(transition_times_index_)
           .get_mutable_value();
-  auto& upcoming_transitions =
-      state->get_mutable_abstract_state<
-          std::vector<std::pair<double, RunningFsmState>>>(
-          upcoming_transitions_index_);
+  auto& upcoming_transitions = state->get_mutable_abstract_state<
+      std::vector<std::pair<double, RunningFsmState>>>(
+      upcoming_transitions_index_);
   std::cout << "current time: " << current_time;
   auto active_state = stored_fsm_state;
   double transition_time = upcoming_transitions.at(3).first;
@@ -231,8 +229,8 @@ EventStatus SLIPContactScheduler::UpdateTransitionTimes(
   return drake::systems::EventStatus::Succeeded();
 }
 
-void SLIPContactScheduler::CalcFiniteState(const Context<double>& context,
-                                           BasicVector<double>* fsm_state) const {
+void SLIPContactScheduler::CalcFiniteState(
+    const Context<double>& context, BasicVector<double>* fsm_state) const {
   // Assign fsm_state
   VectorXd current_finite_state =
       context.get_discrete_state(stored_fsm_state_index_).CopyToVector();
@@ -246,9 +244,10 @@ void SLIPContactScheduler::CalcNextImpactInfo(
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   auto current_time = static_cast<double>(robot_output->get_timestamp());
-  const auto& upcoming_transitions = context.get_abstract_state<
-      std::vector<std::pair<double, RunningFsmState>>>(
-      upcoming_transitions_index_);
+  const auto& upcoming_transitions =
+      context
+          .get_abstract_state<std::vector<std::pair<double, RunningFsmState>>>(
+              upcoming_transitions_index_);
   // Assign the blending function ptr
   auto alpha_func = blend_func_ == kSigmoid ? &blend_sigmoid : &blend_exp;
 
@@ -338,9 +337,10 @@ void SLIPContactScheduler::OutputDebuggingInfo(
     dairlib::lcmt_contact_timing* debug_info) const {
   const OutputVector<double>* robot_output =
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
-  auto& upcoming_transitions = context.get_abstract_state<
-      std::vector<std::pair<double, RunningFsmState>>>(
-      upcoming_transitions_index_);
+  auto& upcoming_transitions =
+      context
+          .get_abstract_state<std::vector<std::pair<double, RunningFsmState>>>(
+              upcoming_transitions_index_);
   auto stored_fsm_state =
       (RunningFsmState)context.get_discrete_state(stored_fsm_state_index_)[0];
   debug_info->utime = robot_output->get_timestamp() * 1e6;

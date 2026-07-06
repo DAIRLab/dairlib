@@ -7,7 +7,6 @@
 using Eigen::MatrixXd;
 
 struct OSCRunningGains : OSCGains {
-
   double weight_scaling;
   double w_swing_toe;
   double swing_toe_kp;
@@ -91,7 +90,6 @@ struct OSCRunningGains : OSCGains {
     a->Visit(DRAKE_NVP(rot_filter_tau));
     a->Visit(DRAKE_NVP(w_input_accel));
     a->Visit(DRAKE_NVP(w_joint_limit));
-
 
     a->Visit(DRAKE_NVP(PelvisW));
     a->Visit(DRAKE_NVP(PelvisKp));

@@ -1,6 +1,9 @@
 #include "sampling_c3_utils.h"
+
 #include <iostream>
+
 #include "common/find_resource.h"
+
 #include "drake/multibody/parsing/parser.h"
 
 namespace dairlib {
@@ -10,7 +13,6 @@ using drake::math::RigidTransform;
 using drake::multibody::ModelInstanceIndex;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
-
 
 ModelInstanceIndex AddFrankaToPlant(MultibodyPlant<double>* plant,
                                     SceneGraph<double>* scene_graph,
@@ -22,27 +24,27 @@ ModelInstanceIndex AddFrankaToPlant(MultibodyPlant<double>* plant,
 
   ModelInstanceIndex franka_index = parser.AddModelsFromUrl(kFrankaModel)[0];
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  plant->WeldFrames(plant->world_frame(),
-                    plant->GetFrameByName("panda_link0"), X_WI);
+  plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("panda_link0"),
+                    X_WI);
 
   if (include_ee) {
     parser.AddModels(FindResourceOrThrow(kEndEffectorModel));
     RigidTransform<double> T_EE_W = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(
-        drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
-      kToolAttachmentFrame);
+        drake::math::RotationMatrix<double>(
+            drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
+        kToolAttachmentFrame);
     plant->WeldFrames(plant->GetFrameByName("panda_link7"),
                       plant->GetFrameByName("end_effector_flange"), T_EE_W);
-    }
+  }
 
   if (include_ground_and_platform) {
     parser.AddModels(FindResourceOrThrow(kGroundModel));
     parser.AddModels(FindResourceOrThrow(kPlatformModel));
 
     RigidTransform<double> X_F_P = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), kFrankaToPlatformOffset);
+        drake::math::RotationMatrix<double>(), kFrankaToPlatformOffset);
     RigidTransform<double> X_F_G_franka = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), kFrankaToGroundOffset);
+        drake::math::RotationMatrix<double>(), kFrankaToGroundOffset);
 
     plant->WeldFrames(plant->GetFrameByName("panda_link0"),
                       plant->GetFrameByName("ground"), X_F_G_franka);
@@ -126,10 +128,15 @@ void AddWallsToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph,
     const bool& include_back_wall) {
+
+void AddWallsToPlant(drake::multibody::MultibodyPlant<double>* plant,
+                     drake::geometry::SceneGraph<double>* scene_graph,
+                     const bool& include_back_wall) {
   Eigen::Vector3d side_wall_size(kWallLengthX, kWallWidth, kWallHeight);
   AddBoxToPlant(plant, scene_graph, side_wall_size, "left_wall");
   AddBoxToPlant(plant, scene_graph, side_wall_size, "right_wall");
-  Eigen::Vector3d wall_size(kWallWidth, kWallLengthY+2*kWallWidth, kWallHeight);
+  Eigen::Vector3d wall_size(kWallWidth, kWallLengthY + 2 * kWallWidth,
+                            kWallHeight);
   AddBoxToPlant(plant, scene_graph, wall_size, "front_wall");
 
   RigidTransform<double> X_G_LW = RigidTransform<double>(
@@ -155,26 +162,24 @@ void AddWallsToPlant(
   }
 }
 
-void AddBoxToPlant(
-    drake::multibody::MultibodyPlant<double>* plant,
-    drake::geometry::SceneGraph<double>* scene_graph,
-    const Eigen::Vector3d& box_size,
-    const std::string& box_name) {
+void AddBoxToPlant(drake::multibody::MultibodyPlant<double>* plant,
+                   drake::geometry::SceneGraph<double>* scene_graph,
+                   const Eigen::Vector3d& box_size,
+                   const std::string& box_name) {
   ModelInstanceIndex model_instance_index = plant->AddModelInstance(box_name);
   const drake::multibody::RigidBody<double>& body = plant->AddRigidBody(
-    box_name,
-    model_instance_index,
-    drake::multibody::SpatialInertia<double>::SolidBoxWithMass(
-      1.0, box_size(0)/2, box_size(1)/2, box_size(2)/2));
+      box_name, model_instance_index,
+      drake::multibody::SpatialInertia<double>::SolidBoxWithMass(
+          1.0, box_size(0) / 2, box_size(1) / 2, box_size(2) / 2));
 
   plant->RegisterVisualGeometry(
-    body, RigidTransform<double>::Identity(),
-    drake::geometry::Box(box_size(0), box_size(1), box_size(2)),
-    box_name, kWallColor);
+      body, RigidTransform<double>::Identity(),
+      drake::geometry::Box(box_size(0), box_size(1), box_size(2)), box_name,
+      kWallColor);
   plant->RegisterCollisionGeometry(
-    body, RigidTransform<double>::Identity(),
-    drake::geometry::Box(box_size(0), box_size(1), box_size(2)),
-    box_name, kWallFriction);
+      body, RigidTransform<double>::Identity(),
+      drake::geometry::Box(box_size(0), box_size(1), box_size(2)), box_name,
+      kWallFriction);
 }
 
 ModelInstanceIndex AddObjectToPlant(
@@ -195,19 +200,16 @@ std::vector<ModelInstanceIndex> AddObjectsToPlant(
 
   std::vector<ModelInstanceIndex> models;
   for (const auto& model : object_models) {
-      models.push_back(
-        parser.AddModels(FindResourceOrThrow(model))[0]
-      );
+    models.push_back(parser.AddModels(FindResourceOrThrow(model))[0]);
   }
   return models;
 }
 
-void AddLCSModelToPlant(
-    MultibodyPlant<double>* plant,
-    SceneGraph<double>* scene_graph,
-    const std::string& object_model,
-    const bool& include_end_effector_orientation,
-    const bool& include_walls) {
+void AddLCSModelToPlant(MultibodyPlant<double>* plant,
+                        SceneGraph<double>* scene_graph,
+                        const std::string& object_model,
+                        const bool& include_end_effector_orientation,
+                        const bool& include_walls) {
   // Cannot currently handle end effector orientation (would just require new
   // EE simple model with orientation DOFs).
   DRAKE_DEMAND(!include_end_effector_orientation);
@@ -221,10 +223,10 @@ void AddLCSModelToPlant(
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   RigidTransform<double> X_W_G = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), kWorldToGroundOffset);
-  plant->WeldFrames(plant->world_frame(),
-                    plant->GetFrameByName("base_link"), X_WI);
-  plant->WeldFrames(plant->world_frame(),
-                    plant->GetFrameByName("ground"), X_W_G);
+  plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("base_link"),
+                    X_WI);
+  plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("ground"),
+                    X_W_G);
 
   if (include_walls) {
     // TODO: may want to exclude the back wall for the LCS model.
@@ -232,13 +234,10 @@ void AddLCSModelToPlant(
   }
 }
 
-
 std::vector<ModelInstanceIndex> AddLCSModelsToPlant(
-    MultibodyPlant<double>* plant,
-    SceneGraph<double>* scene_graph,
+    MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph,
     std::vector<std::string> object_models,
-    const bool& include_end_effector_orientation,
-    const bool& include_walls) {
+    const bool& include_end_effector_orientation, const bool& include_walls) {
   // Cannot currently handle end effector orientation (would just require new
   // EE simple model with orientation DOFs).
   DRAKE_ASSERT(!include_end_effector_orientation);
@@ -247,27 +246,22 @@ std::vector<ModelInstanceIndex> AddLCSModelsToPlant(
 
   Parser parser_lcs(plant);
   parser_lcs.SetAutoRenaming(true);
-  parser_lcs.AddModels(kEndEffectorSimpleModel);
-  parser_lcs.AddModels(kGroundModel);
+  parser_lcs.AddModels(k3dEndEffectorSimpleModel);
+  parser_lcs.AddModels(kBaseModel);
+
 
   for (const auto& model : object_models) {
-    obj_models.push_back(
-      parser_lcs.AddModels(FindResourceOrThrow(model))[0]
-    );
+    obj_models.push_back(parser_lcs.AddModels(FindResourceOrThrow(model))[0]);
   }
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
   RigidTransform<double> X_W_G = RigidTransform<double>(
       drake::math::RotationMatrix<double>(), kWorldToGroundOffset);
-  plant->WeldFrames(plant->world_frame(),
-                    plant->GetFrameByName("base_link"), X_WI);
-  plant->WeldFrames(plant->world_frame(),
-                    plant->GetFrameByName("ground"), X_W_G);
+  plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("base_link"),
+                    X_WI);
+  plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("ground"),
+                    X_W_G);
 
-  if (include_walls) {
-    // TODO: may want to exclude the back wall for the LCS model.
-    AddWallsToPlant(plant, scene_graph);  //, false);
-  }
 
   return obj_models;
 }
@@ -311,4 +305,4 @@ std::vector<ModelInstanceIndex> AddLCSModelsTo3DPrinterPlant(
 
 
 
-}   // namespace dairlib
+}  // namespace dairlib

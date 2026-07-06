@@ -21,7 +21,8 @@ class HydroelasticGeomCollider {
   /// @param geometry_id_B
   HydroelasticGeomCollider(
       const drake::multibody::MultibodyPlant<T>& plant,
-      const std::vector<drake::SortedPair<drake::geometry::GeometryId>>& contact_geoms);
+      const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
+          contact_geoms);
 
   /// Calculates the distance and contact frame Jacobian.
   /// Jacobian is ordered [J_n; J_t], and has shape 3 x (nq or nv), depending

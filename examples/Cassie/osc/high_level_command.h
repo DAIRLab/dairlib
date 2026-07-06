@@ -54,7 +54,8 @@ class HighLevelCommand : public drake::systems::LeafSystem<double> {
   HighLevelCommand(const drake::multibody::MultibodyPlant<double>& plant,
                    drake::systems::Context<double>* context,
                    double vel_scale_rot, double vel_scale_trans_sagittal,
-                   double vel_scale_trans_lateral, double stick_filter_dt=0.0);
+                   double vel_scale_trans_lateral,
+                   double stick_filter_dt = 0.0);
   /// Constructor that computes the desired yaw and translational velocities
   /// according to a global target position
   ///

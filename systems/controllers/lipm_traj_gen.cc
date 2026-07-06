@@ -181,10 +181,10 @@ EventStatus LIPMTrajGenerator::DiscreteVariableUpdate(
     // <foot_spread_lb_ meter: ratio 1
     // >foot_spread_ub_ meter: ratio 0.9
     // Linear interpolate in between
-    heuristic_ratio_ = std::clamp(
-        1 + (0.9 - 1) / (foot_spread_ub_ - foot_spread_lb_) *
-                (dist - foot_spread_lb_),
-        0.9, 1.0);
+    heuristic_ratio_ =
+        std::clamp(1 + (0.9 - 1) / (foot_spread_ub_ - foot_spread_lb_) *
+                           (dist - foot_spread_lb_),
+                   0.9, 1.0);
   }
 
   discrete_state->get_mutable_vector(prev_fsm_idx_).GetAtIndex(0) = fsm_state;
@@ -216,9 +216,9 @@ ExponentialPlusPiecewisePolynomial<double> LIPMTrajGenerator::ConstructLipmTraj(
   // We add stance_foot_pos(2) to desired COM height to account for state
   // drifting
   double max_height_diff_per_step = 0.05;
-  double final_height = std::clamp(
-      desired_com_height_ + stance_foot_pos(2),
-      CoM(2) - max_height_diff_per_step, CoM(2) + max_height_diff_per_step);
+  double final_height = std::clamp(desired_com_height_ + stance_foot_pos(2),
+                                   CoM(2) - max_height_diff_per_step,
+                                   CoM(2) + max_height_diff_per_step);
   //  double final_height = desired_com_height_ + stance_foot_pos(2);
   Y[0](2, 0) = final_height;
   Y[1](2, 0) = final_height;
@@ -299,8 +299,8 @@ void LIPMTrajGenerator::CalcTrajFromCurrent(
   double end_time = prev_event_time(0) + unordered_state_durations_[mode_index];
   // Ensure "current_time < end_time" to avoid error in
   // creating trajectory.
-  start_time = std::clamp(
-      start_time, -std::numeric_limits<double>::infinity(), end_time - 0.001);
+  start_time = std::clamp(start_time, -std::numeric_limits<double>::infinity(),
+                          end_time - 0.001);
 
   VectorXd q = robot_output->GetPositions();
   multibody::SetPositionsIfNew<double>(plant_, q, context_);

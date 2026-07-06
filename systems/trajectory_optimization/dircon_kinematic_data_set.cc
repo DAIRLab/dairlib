@@ -1,34 +1,36 @@
+#include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
+
 #include <chrono>
+
+#include "multibody/multibody_utils.h"
 
 #include "drake/math/autodiff.h"
 #include "drake/math/autodiff_gradient.h"
-#include "systems/trajectory_optimization/dircon_kinematic_data_set.h"
-#include "multibody/multibody_utils.h"
 
 namespace dairlib {
 
-using std::vector;
-using Eigen::MatrixXd;
-using drake::VectorX;
-using drake::MatrixX;
 using drake::AutoDiffXd;
+using drake::MatrixX;
+using drake::VectorX;
+using drake::math::DiscardGradient;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
-using drake::math::DiscardGradient;
+using Eigen::MatrixXd;
+using std::vector;
 
 template <typename T>
 DirconKinematicDataSet<T>::DirconKinematicDataSet(
     const MultibodyPlant<T>& plant,
     vector<DirconKinematicData<T>*>* constraints,
-    vector<int> skip_constraint_inds) :
-    plant_(plant),
-    constraints_(constraints),
-    num_positions_(plant.num_positions()),
-    num_velocities_(plant.num_velocities()),
-    cache_(500) {
+    vector<int> skip_constraint_inds)
+    : plant_(plant),
+      constraints_(constraints),
+      num_positions_(plant.num_positions()),
+      num_velocities_(plant.num_velocities()),
+      cache_(500) {
   // Initialize matrices
   constraint_count_ = 0;
-  for (uint i=0; i < constraints_->size(); i++) {
+  for (uint i = 0; i < constraints_->size(); i++) {
     constraint_count_ += (*constraints_)[i]->getLength();
   }
 
@@ -36,11 +38,11 @@ DirconKinematicDataSet<T>::DirconKinematicDataSet(
 
   // We will not include indices givein in skip_constraint_inds
   constraint_map_ = MatrixXd::Zero(
-    constraint_count_ - skip_constraint_inds.size(), constraint_count_);
+      constraint_count_ - skip_constraint_inds.size(), constraint_count_);
   int j = 0;
   for (int i = 0; i < constraint_count_; i++) {
-    if (std::find(skip_constraint_inds.begin(),
-        skip_constraint_inds.end(), i) == skip_constraint_inds.end()) {
+    if (std::find(skip_constraint_inds.begin(), skip_constraint_inds.end(),
+                  i) == skip_constraint_inds.end()) {
       // skip_constraint_inds does not contain i
       constraint_map_(j, i) = 1;
       j++;
@@ -60,7 +62,6 @@ DirconKinematicDataSet<T>::DirconKinematicDataSet(
   M_ = MatrixX<T>(num_velocities_, num_velocities_);
   right_hand_side_ = VectorX<T>(num_velocities_);
 }
-
 
 template <typename T>
 void DirconKinematicDataSet<T>::updateData(const Context<T>& context,
@@ -87,7 +88,7 @@ void DirconKinematicDataSet<T>::updateData(const Context<T>& context,
   } else {
     int index = 0;
     int n;
-    for (uint i=0; i < constraints_->size(); i++) {
+    for (uint i = 0; i < constraints_->size(); i++) {
       (*constraints_)[i]->updateConstraint(context);
 
       n = (*constraints_)[i]->getLength();
@@ -107,20 +108,20 @@ void DirconKinematicDataSet<T>::updateData(const Context<T>& context,
     plant_.CalcBiasTerm(context, &right_hand_side_);
 
     right_hand_side_ = -right_hand_side_ +
-        plant_.MakeActuationMatrix() * input +
-        plant_.CalcGravityGeneralizedForces(context) +
-        getJWithoutSkipping().transpose() * forces;
+                       plant_.MakeActuationMatrix() * input +
+                       plant_.CalcGravityGeneralizedForces(context) +
+                       getJWithoutSkipping().transpose() * forces;
 
     vdot_ = M_.llt().solve(right_hand_side_);
 
-    cddot_ = Jdotv_ + getJWithoutSkipping()*vdot_;
+    cddot_ = Jdotv_ + getJWithoutSkipping() * vdot_;
 
     VectorX<T> q_dot(num_positions_);
     plant_.MapVelocityToQDot(context, v, &q_dot);
     xdot_ << q_dot, vdot_;
 
-    CacheData data{c_, cdot_, getJWithoutSkipping(),
-                   Jdotv_, cddot_, vdot_, xdot_};
+    CacheData data{c_,    cdot_, getJWithoutSkipping(), Jdotv_, cddot_,
+                   vdot_, xdot_};
 
     cache_.AddData(key, data);
   }
@@ -190,7 +191,6 @@ template <typename T>
 DirconKinematicData<T>* DirconKinematicDataSet<T>::getConstraint(int index) {
   return (*constraints_)[index];
 }
-
 
 // Explicitly instantiates on the most common scalar types.
 template class DirconKinematicDataSet<double>;

@@ -27,8 +27,8 @@ void BasicTrajectoryPassthrough::CalcTraj(
     Trajectory<double>* traj) const {
   // Read in current state
   auto* casted_traj =
-  (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
-      traj);
+      (PiecewisePolynomial<double>*)dynamic_cast<PiecewisePolynomial<double>*>(
+          traj);
   *casted_traj = traj_;
 }
 

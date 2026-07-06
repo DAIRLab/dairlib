@@ -1,9 +1,9 @@
 #include "multibody/kinematic/distance_evaluator.h"
 
-using drake::MatrixX;
 using drake::Matrix3X;
-using drake::VectorX;
+using drake::MatrixX;
 using drake::Vector3;
+using drake::VectorX;
 using drake::multibody::Frame;
 using drake::multibody::MultibodyPlant;
 using drake::systems::Context;
@@ -53,7 +53,8 @@ void DistanceEvaluator<T>::EvalFullJacobian(
   // safe
   static Matrix3X<T> J_A(3, plant().num_velocities());
   static Matrix3X<T> J_B(3, plant().num_velocities());
-  static Vector3<T> pt_A_W;;
+  static Vector3<T> pt_A_W;
+  ;
   static Vector3<T> pt_B_W;
 
   const drake::multibody::Frame<T>& world = plant().world_frame();

@@ -1,11 +1,12 @@
-#include <memory>
 #include <iostream>
+#include <memory>
 
 #include <gflags/gflags.h>
 
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/Cassie/cassie_state_estimator.h"
+#include "examples/Cassie/cassie_state_estimator_settings.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "examples/Cassie/networking/cassie_output_receiver.h"
 #include "examples/Cassie/networking/cassie_output_sender.h"
@@ -29,7 +30,6 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
-#include "examples/Cassie/cassie_state_estimator_settings.h"
 
 namespace dairlib {
 
@@ -64,7 +64,9 @@ DEFINE_string(state_channel_name, "CASSIE_STATE_SIMULATION",
 // Cassie model paramter
 DEFINE_bool(floating_base, true, "Fixed or floating base model");
 DEFINE_string(joint_offset_yaml, "", "yaml with joint offset values");
-DEFINE_string(contact_detection_yaml, "examples/Cassie/state_estimator_contact_thresholds.yaml", "Yaml with contact estimation values");
+DEFINE_string(contact_detection_yaml,
+              "examples/Cassie/state_estimator_contact_thresholds.yaml",
+              "Yaml with contact estimation values");
 
 // Testing mode
 DEFINE_int64(test_mode, -1,
@@ -163,7 +165,8 @@ int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   DiagramBuilder<double> builder;
-  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>("udpm://239.255.76.67:7667?ttl=0");
+  auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(
+      "udpm://239.255.76.67:7667?ttl=0");
   drake::lcm::DrakeLcm lcm_network("udpm://239.255.76.67:7667?ttl=1");
 
   // Build Cassie MBP
@@ -206,13 +209,14 @@ int do_main(int argc, char* argv[]) {
 
   // Create state estimator
   const auto joint_offset_map =
-      (FLAGS_joint_offset_yaml.empty()) ?
-      std::map<std::string, double>{} :
-      drake::yaml::LoadYamlFile<std::map<std::string, double>>(
-          FindResourceOrThrow(FLAGS_joint_offset_yaml));
+      (FLAGS_joint_offset_yaml.empty())
+          ? std::map<std::string, double>{}
+          : drake::yaml::LoadYamlFile<std::map<std::string, double>>(
+                FindResourceOrThrow(FLAGS_joint_offset_yaml));
 
-  CassieStateEstimatorContactThresholds settings = drake::yaml::LoadYamlFile<CassieStateEstimatorContactThresholds>(
-      FindResourceOrThrow(FLAGS_contact_detection_yaml));
+  CassieStateEstimatorContactThresholds settings =
+      drake::yaml::LoadYamlFile<CassieStateEstimatorContactThresholds>(
+          FindResourceOrThrow(FLAGS_contact_detection_yaml));
 
   auto state_estimator = builder.AddSystem<systems::CassieStateEstimator>(
       plant, &fourbar_evaluator, &left_contact_evaluator,
@@ -220,8 +224,8 @@ int do_main(int argc, char* argv[]) {
       FLAGS_test_with_ground_truth_state, FLAGS_print_ekf_info,
       FLAGS_test_mode);
 
-  state_estimator->SetSpringDeflectionThresholds(settings.knee_spring_threshold,
-                                                 settings.ankle_spring_threshold);
+  state_estimator->SetSpringDeflectionThresholds(
+      settings.knee_spring_threshold, settings.ankle_spring_threshold);
   state_estimator->SetContactForceThreshold(settings.contact_force_threshold);
   // Create and connect CassieOutputSender publisher (low-rate for the network)
   // This echoes the messages from the robot
@@ -337,7 +341,7 @@ int do_main(int argc, char* argv[]) {
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("dispatcher_robot_out"));
   const auto& diagram = *owned_diagram;
-//  DrawAndSaveDiagramGraph(diagram);
+  //  DrawAndSaveDiagramGraph(diagram);
   drake::systems::Simulator<double> simulator(std::move(owned_diagram));
   auto& diagram_context = simulator.get_mutable_context();
 

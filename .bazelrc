@@ -51,7 +51,7 @@ build --action_env=LD_LIBRARY_PATH=
 # TODO(jwnimmer-tri) We should see if we can reuse more of Drake's
 # customizations somehow.
 
-# build with snopt
+# build with gurobi
 build --define=WITH_GUROBI=ON
 build --define=NO_CLARABEL=ON
 

@@ -7,6 +7,7 @@
 
 #include "dairlib/lcmt_controller_switch.hpp"
 
+#include "drake/common/text_logging.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
@@ -14,7 +15,6 @@
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/lcm/serializer.h"
-#include "drake/common/text_logging.h"
 
 namespace dairlib {
 
@@ -99,8 +99,7 @@ class CassieLcmDrivenLoop {
       diagram_name_ = diagram->get_name();
     }
     diagram_ptr_ = diagram.get();
-    simulator_ =
-        std::make_unique<drake::systems::Simulator<double>>(*diagram);
+    simulator_ = std::make_unique<drake::systems::Simulator<double>>(*diagram);
 
     // Create subscriber for the switch (in the case of multi-input)
     DRAKE_DEMAND(!input_channels.empty());

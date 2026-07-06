@@ -3,13 +3,15 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "solvers/nonlinear_constraint.h"
 #include "systems/trajectory_optimization/dircon/dircon_mode.h"
 #include "systems/trajectory_optimization/dircon/dynamics_cache.h"
+
 #include "drake/common/drake_copyable.h"
 #include "drake/common/symbolic/expression.h"
-#include "drake/solvers/constraint.h"
 #include "drake/planning/trajectory_optimization/multiple_shooting.h"
+#include "drake/solvers/constraint.h"
 
 namespace dairlib {
 namespace systems {
@@ -33,16 +35,15 @@ class QuaternionConstraint : public solvers::NonlinearConstraint<T> {
 template <typename T>
 class DirconCollocationConstraint : public solvers::NonlinearConstraint<T> {
  public:
-
  public:
   /// Requires two context pointers to be pasesd as arguments, one for each
   /// knot point. The constraint will create its own pointer for the collocation
   /// point context.
-  DirconCollocationConstraint(const drake::multibody::MultibodyPlant<T>& plant,
+  DirconCollocationConstraint(
+      const drake::multibody::MultibodyPlant<T>& plant,
       const multibody::KinematicEvaluatorSet<T>& evaluators,
       drake::systems::Context<T>* context_0,
-      drake::systems::Context<T>* context_1,
-      int mode_index, int knot_index,
+      drake::systems::Context<T>* context_1, int mode_index, int knot_index,
       DynamicsCache<T>* cache = nullptr);
 
  public:
@@ -51,8 +52,8 @@ class DirconCollocationConstraint : public solvers::NonlinearConstraint<T> {
 
  private:
   drake::VectorX<T> CalcTimeDerivativesWithForce(
-    drake::systems::Context<T>* context,
-    const drake::VectorX<T>& forces) const;
+      drake::systems::Context<T>* context,
+      const drake::VectorX<T>& forces) const;
 
   const drake::multibody::MultibodyPlant<T>& plant_;
   const multibody::KinematicEvaluatorSet<T>& evaluators_;
@@ -73,11 +74,10 @@ class DirconCollocationConstraint : public solvers::NonlinearConstraint<T> {
 template <typename T>
 class ImpactConstraint : public solvers::NonlinearConstraint<T> {
  public:
-  ImpactConstraint(
-      const drake::multibody::MultibodyPlant<T>& plant,
-      const multibody::KinematicEvaluatorSet<T>& evaluators,
-      drake::systems::Context<T>* context,
-      std::string description);
+  ImpactConstraint(const drake::multibody::MultibodyPlant<T>& plant,
+                   const multibody::KinematicEvaluatorSet<T>& evaluators,
+                   drake::systems::Context<T>* context,
+                   std::string description);
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
                           drake::VectorX<T>* y) const override;
@@ -92,7 +92,7 @@ class ImpactConstraint : public solvers::NonlinearConstraint<T> {
 
 /// A constraint class to wrap the acceleration component of a
 /// KinematicEvaluatorSet, using DIRCON's DynamicsCache
-/// 
+///
 /// This constraint is of the form
 ///    d^2/dt^2 phi(q) = 0
 /// corresponding to the __active__ constraints only.
@@ -111,12 +111,11 @@ class CachedAccelerationConstraint : public solvers::NonlinearConstraint<T> {
   CachedAccelerationConstraint(
       const drake::multibody::MultibodyPlant<T>& plant,
       const multibody::KinematicEvaluatorSet<T>& evaluators,
-      drake::systems::Context<T>* context,
-      const std::string& description,
+      drake::systems::Context<T>* context, const std::string& description,
       DynamicsCache<T>* cache = nullptr);
 
   void EvaluateConstraint(const Eigen::Ref<const drake::VectorX<T>>& x,
-                                  drake::VectorX<T>* y) const;
+                          drake::VectorX<T>* y) const;
 
  private:
   const drake::multibody::MultibodyPlant<T>& plant_;
@@ -125,7 +124,6 @@ class CachedAccelerationConstraint : public solvers::NonlinearConstraint<T> {
   std::unique_ptr<drake::systems::Context<T>> owned_context_;
   DynamicsCache<T>* cache_;
 };
-
 
 }  // namespace trajectory_optimization
 }  // namespace systems

@@ -1,17 +1,18 @@
 #include "multibody/multibody_solvers.h"
+
 #include "multibody/multibody_utils.h"
 
 namespace dairlib {
 namespace multibody {
 
-using Eigen::VectorXd;
+using drake::MatrixX;
+using drake::VectorX;
 using drake::multibody::MultibodyPlant;
 using drake::solvers::Binding;
 using drake::solvers::Constraint;
 using drake::solvers::VectorXDecisionVariable;
 using drake::systems::Context;
-using drake::MatrixX;
-using drake::VectorX;
+using Eigen::VectorXd;
 using solvers::NonlinearConstraint;
 
 template <typename T>
@@ -38,7 +39,8 @@ VectorXDecisionVariable MultibodyProgram<T>::AddVelocityVariables() {
 template <typename T>
 VectorXDecisionVariable MultibodyProgram<T>::AddConstraintForceVariables(
     const KinematicEvaluatorSet<T>& evaluators) {
-  return NewContinuousVariables(evaluators.count_full(), "lambda");;
+  return NewContinuousVariables(evaluators.count_full(), "lambda");
+  ;
 }
 
 template <typename T>
@@ -47,7 +49,7 @@ Binding<Constraint> MultibodyProgram<T>::AddKinematicPositionConstraint(
     const VectorXDecisionVariable& q, Context<T>* local_context) {
   DRAKE_DEMAND(q.size() == plant_.num_positions());
   auto constraint = std::make_shared<KinematicPositionConstraint<T>>(
-        plant_, evaluators, local_context);
+      plant_, evaluators, local_context);
   return AddConstraint(constraint, q);
 }
 
@@ -79,26 +81,26 @@ Binding<Constraint> MultibodyProgram<T>::AddKinematicVelocityConstraint(
 
 template <typename T>
 Binding<Constraint> MultibodyProgram<T>::AddKinematicAccelerationConstraint(
-    const KinematicEvaluatorSet<T> &evaluators,
-    const VectorXDecisionVariable &q, const VectorXDecisionVariable &v,
-    const VectorXDecisionVariable &u, const VectorXDecisionVariable &lambda,
+    const KinematicEvaluatorSet<T>& evaluators,
+    const VectorXDecisionVariable& q, const VectorXDecisionVariable& v,
+    const VectorXDecisionVariable& u, const VectorXDecisionVariable& lambda,
     Context<T>* local_context) {
   DRAKE_DEMAND(q.size() == plant_.num_positions());
   DRAKE_DEMAND(v.size() == plant_.num_velocities());
   DRAKE_DEMAND(u.size() == plant_.num_actuators());
   DRAKE_DEMAND(lambda.size() == evaluators.count_full());
   auto constraint = std::make_shared<KinematicAccelerationConstraint<T>>(
-          plant_, evaluators, local_context);
+      plant_, evaluators, local_context);
   return AddConstraint(constraint, {q, v, u, lambda});
 }
 
 template <typename T>
 Binding<Constraint> MultibodyProgram<T>::AddKinematicAccelerationConstraint(
-    const KinematicEvaluatorSet<T> &evaluators,
-    const VectorXDecisionVariable &q, const VectorXDecisionVariable &v,
-    const VectorXDecisionVariable &u, const VectorXDecisionVariable &lambda) {
-  return AddKinematicAccelerationConstraint(
-      evaluators, q, v, u, lambda, context_.get());
+    const KinematicEvaluatorSet<T>& evaluators,
+    const VectorXDecisionVariable& q, const VectorXDecisionVariable& v,
+    const VectorXDecisionVariable& u, const VectorXDecisionVariable& lambda) {
+  return AddKinematicAccelerationConstraint(evaluators, q, v, u, lambda,
+                                            context_.get());
 }
 
 template <typename T>
@@ -108,12 +110,12 @@ std::vector<Binding<Constraint>> MultibodyProgram<T>::AddHolonomicConstraint(
     const VectorXDecisionVariable& u, const VectorXDecisionVariable& lambda,
     Context<T>* local_context) {
   std::vector<Binding<Constraint>> bindings;
-  bindings.push_back(AddKinematicPositionConstraint(
-      evaluators, q, local_context));
-  bindings.push_back(AddKinematicVelocityConstraint(
-      evaluators, q, v, local_context));
-  bindings.push_back(AddKinematicAccelerationConstraint(
-      evaluators, q, v, u, lambda, local_context));
+  bindings.push_back(
+      AddKinematicPositionConstraint(evaluators, q, local_context));
+  bindings.push_back(
+      AddKinematicVelocityConstraint(evaluators, q, v, local_context));
+  bindings.push_back(AddKinematicAccelerationConstraint(evaluators, q, v, u,
+                                                        lambda, local_context));
   return bindings;
 }
 
@@ -124,7 +126,6 @@ std::vector<Binding<Constraint>> MultibodyProgram<T>::AddHolonomicConstraint(
     const VectorXDecisionVariable& u, const VectorXDecisionVariable& lambda) {
   return AddHolonomicConstraint(evaluators, q, v, u, lambda, context_.get());
 }
-
 
 template <typename T>
 Binding<Constraint> MultibodyProgram<T>::AddFixedPointConstraint(
@@ -155,19 +156,18 @@ void MultibodyProgram<T>::AddJointLimitConstraints(VectorXDecisionVariable q) {
     if (joint.num_positions() == 1) {
       auto q_joint = q.segment(joint.position_start(), joint.num_positions());
       AddConstraint(q_joint <= joint.position_upper_limits());
-      AddConstraint(q_joint >= joint.position_lower_limits()); 
+      AddConstraint(q_joint >= joint.position_lower_limits());
     }
   }
 }
 
 template <typename T>
 FixedPointConstraint<T>::FixedPointConstraint(
-    const MultibodyPlant<T>& plant,
-    const KinematicEvaluatorSet<T>& evaluators,
+    const MultibodyPlant<T>& plant, const KinematicEvaluatorSet<T>& evaluators,
     Context<T>* context, const std::string& description)
     : NonlinearConstraint<T>(plant.num_velocities(),
-                             plant.num_positions() + plant.num_actuators()
-                                 + evaluators.count_full(),
+                             plant.num_positions() + plant.num_actuators() +
+                                 evaluators.count_full(),
                              VectorXd::Zero(plant.num_velocities()),
                              VectorXd::Zero(plant.num_velocities()),
                              description),
@@ -185,7 +185,6 @@ FixedPointConstraint<T>::FixedPointConstraint(
 template <typename T>
 void FixedPointConstraint<T>::EvaluateConstraint(
     const Eigen::Ref<const VectorX<T>>& input, VectorX<T>* y) const {
-
   auto u = input.segment(plant_.num_positions(), plant_.num_actuators());
   auto lambda = input.segment(plant_.num_positions() + plant_.num_actuators(),
                               evaluators_.count_full());

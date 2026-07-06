@@ -35,7 +35,7 @@ void GaussianNoisePassThrough::DoCalcVectorOutput(
       pos_variance_ * Eigen::VectorXd::Random(num_positions_);
   output->GetMutableVelocities() +=
       vel_variance_ * Eigen::VectorXd::Random(num_velocities_);
-//  std::cout << output->
+  //  std::cout << output->
 }
 
 }  // namespace systems

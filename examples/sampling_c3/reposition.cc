@@ -105,6 +105,8 @@ void RepositionStraightLine(
     // If one step gets to the goal, set finished_reposition_flag.
     if (i == 1 && t_line >= total_travel_time && !is_doing_c3) {
       finished_reposition_flag = true;
+      // std::cout << "WARNING! Straight line finished repositioning in 1 step."
+      //           << std::endl;
     }
   }
 }
@@ -461,6 +463,9 @@ void RepositionPiecewiseLinear(
     knots.col(j) = x_lcs_goal;
     if (j == 1 && !is_doing_c3) {
       finished_reposition_flag = true;
+      std::cout << "WARNING! Piecewise linear finished repositioning in 1 step."
+                << std::endl;
+
     }
   }
 }

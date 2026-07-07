@@ -800,7 +800,7 @@ const auto& trajectory =
   // Get current time from context
   double current_time = context.get_time();
   VectorXd default_position_ = VectorXd::Zero(3);
-  default_position_ << 0.175, 0.175, 0.175;  // Default position if trajectory is empty
+  default_position_ << 0.0, 0.0, 0.175;  // Default position if trajectory is empty
 
   VectorXd desired_position;
 

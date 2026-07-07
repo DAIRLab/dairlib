@@ -40,8 +40,8 @@ def main(log_type, demo_name, folder_path):
 
     # c3 gains, sampling c3 options, sampling, osc, sim, goal
 
-    object_c3_urdf = op.join(dair, controller_params['object_model'])
-    object_sim_urdf = op.join(dair, sim_params['object_model'])
+    object_c3_urdf = op.join(dair, controller_params['object_models'][0])
+    object_sim_urdf = op.join(dair, sim_params['object_models'][0])
 
     # NOTE:  must match kEndEffectorSimpleModel in sampling_c3_utils.h
     ee_simple_model_urdf = op.join(

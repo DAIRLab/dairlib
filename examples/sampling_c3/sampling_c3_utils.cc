@@ -243,8 +243,8 @@ std::vector<ModelInstanceIndex> AddLCSModelsToPlant(
 
   Parser parser_lcs(plant);
   parser_lcs.SetAutoRenaming(true);
-  parser_lcs.AddModels(k3dEndEffectorSimpleModel);
-  parser_lcs.AddModels(kBaseModel);
+  parser_lcs.AddModels(kEndEffectorSimpleModel);
+  parser_lcs.AddModels(kGroundModel);
 
 
   for (const auto& model : object_models) {
@@ -259,6 +259,10 @@ std::vector<ModelInstanceIndex> AddLCSModelsToPlant(
   plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("ground"),
                     X_W_G);
 
+  if (include_walls) {
+    // TODO: may want to exclude the back wall for the LCS model.
+    AddWallsToPlant(plant, scene_graph);  //, false);
+  }
 
   return obj_models;
 }

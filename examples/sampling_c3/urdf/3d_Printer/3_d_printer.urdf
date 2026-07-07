@@ -428,7 +428,7 @@
   <joint name="y_axis_joint" type="prismatic">
   <parent link="z_gantry"/>
   <child link="y_beam"/>
-  <origin xyz="0 -0.128275 0" rpy="0 0 0"/>
+  <origin xyz="0 -0.134375 0" rpy="0 0 0"/>
   <axis xyz="0 1 0"/>
   <!--
     Build volume in y is 0.35 m, so half-range is 0.175 m.

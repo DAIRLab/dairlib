@@ -1130,6 +1130,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
     // Add additional costs based on repositioning progress.
     if ((i == SampleIndex::kCurrentReposTarget) && finished_reposition_flag_) {
+      std::cout << "DEBUG finished repositioning" << std::endl;
       all_sample_costs_[i] += progress_params_.finished_reposition_cost;
       finished_reposition_flag_ = false;
     }
@@ -1198,7 +1199,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   double curr_cost = all_sample_costs_[SampleIndex::kCurrentLocation];
   double repos_target_cost =
       all_sample_costs_[SampleIndex::kCurrentReposTarget];
-  if (is_doing_c3_ == true) {  // Currently doing C3.
+  if (is_doing_c3_ == true) { 
+    std::cout << "Currently doing C3." << std::endl;
     pursued_target_source_ = PursuedTargetSource::kNoTarget;
 
     // Keep track of progress while in C3 mode.
@@ -1250,10 +1252,13 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         pursued_target_source_ = PursuedTargetSource::kNewSample;
       }
     }
-  } else {  // Currently repositioning.
+  } else {  
+    //std::cout << "Currently repositioning." << std::endl;
     // First, apply hysteresis between repositioning targets.
     if (best_sample_index_ == SampleIndex::kCurrentReposTarget &&
         !in_collision) {
+      //std::cout << "Repos -> Repos: staying with current repositioning target"
+                //<< std::endl;
       pursued_target_source_ = PursuedTargetSource::kPrevious;
     } else if (in_collision) {
       // This means the previous repositioning target is now in penetration with
@@ -1273,6 +1278,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
           (repos_target_cost <
                best_other_cost + hyst_repos_to_repos_frac * repos_target_cost &&
            progress_params_.use_relative_hysteresis)) {
+         //std::cout << "Repos -> Repos: hysteresis keeps the previous"
+             //<< " repositioning target" << std::endl;
         best_sample_index_ = SampleIndex::kCurrentReposTarget;
         best_other_cost = repos_target_cost;
         finished_reposition_flag_ = false;
@@ -1285,6 +1292,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // repos_to_repos hysteresis value here before the comparison to the
       // current location C3 cost with repos_to_c3 hysteresis afterwards.
       else {
+        //std::cout << "Repos -> Repos: switching to a new sample"
+                  //<< std::endl;
         pursued_target_source_ = PursuedTargetSource::kNewSample;
         if (!progress_params_.use_relative_hysteresis) {
           best_other_cost += hyst_repos_to_repos;
@@ -1315,6 +1324,17 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       }
     }
 
+
+    std::cout << "Best sample index: " << best_sample_index_ << std::endl;
+    std::cout << "Best other cost: " << best_other_cost << std::endl;
+    std::cout << "Current cost: " << curr_cost << std::endl;
+    std::cout << "check: " << (best_other_cost >
+                   curr_cost + hyst_repos_to_c3_frac * best_other_cost) 
+              << std::endl;
+    std::cout << "check2: " << (x_lcs_curr[2] < sampling_params_.z_height +
+                                  sampling_params_.c3_min_clearance +
+                                  wall_offset) << std::endl;
+    std::cout << "wall_offset: " << wall_offset << std::endl;
     // Switch to C3 if forced by xbox controller.
     if (force_c3_mode) {
       std::cout << "Forcing into C3 mode" << std::endl;
@@ -1342,6 +1362,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                                   sampling_params_.c3_min_clearance +
                                   wall_offset ||
               !sampling_params_.ee_z_close)) {
+      std::cout << "Switching from repositioning to C3" << std::endl;
       is_doing_c3_ = true;
       finished_reposition_flag_ = false;
       if (repos_target_cost > progress_params_.finished_reposition_cost) {
@@ -1599,10 +1620,10 @@ void SamplingC3Controller::Check3dPrinterForWorkspaceLimitViolations(
     // std::cout << "lhs = " << lhs << ", rhs = " << rhs << std::endl;
 
     DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 3).transpose() *
-                     sampling_c3_options_.workspace_limits[2].segment(0, 3) - 0.107 >
+                     sampling_c3_options_.workspace_limits[2].segment(0, 3) >
                  sampling_c3_options_.workspace_limits[2][3]);
     DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 3).transpose() *
-                     sampling_c3_options_.workspace_limits[2].segment(0, 3) - 0.107 <
+                     sampling_c3_options_.workspace_limits[2].segment(0, 3) <
                  sampling_c3_options_.workspace_limits[2][4]);
 
   // radius checks
@@ -1928,6 +1949,10 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
                               is_doing_c3_, finished_reposition_flag_,
                               reposition_params_, sampling_c3_options_);
 
+  if (finished_reposition_flag_) {
+    // If repositioning is finished, reset the flag for next repositioning.
+    std::cout << "Repositioning finished, YAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY" << std::endl;
+  }
   // Update predicted next state if in this mode.
   if (!is_doing_c3_) {
     if (filtered_solve_time_ < (N_ - 1) * dt_) {

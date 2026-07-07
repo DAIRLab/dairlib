@@ -12,7 +12,7 @@
 #include "examples/iC3/plate/parameter_headers/franka_plate_controller_params.h"
 #include "examples/iC3/plate/parameter_headers/franka_plate_lcm_channels.h"
 #include "examples/iC3/iC3_options.h"
-#include "examples/iC3/systems/iC3_trajectory_generator.h"
+#include "examples/iC3/systems/open_loop_trajectory_generator.h"
 #include "examples/iC3/systems/c3_goal_generator.h"
 #include "examples/iC3/systems/c3_trajectory_generator.h"
 #include "systems/controllers/c3/ic3_tracking_controller.h"
@@ -292,22 +292,30 @@ int DoMain(int argc, char* argv[]) {
   //         lcm_channel_params.c3_object_channel, &lcm,
   //         TriggerTypeSet({TriggerType::kForced})));   
 
+  auto reduced_order_model_receiver =
+      builder.AddSystem<systems::FrankaKinematics>(
+          plant_franka, franka_context.get(), plant_object, object_context.get(),
+          controller_params.end_effector_name, "cube",
+          controller_params.include_end_effector_orientation);
+
   if (controller_params.run_open_loop) {
-    auto ic3_target_generator =
-      builder.AddSystem<iC3TrajectoryGenerator>(plant_for_lcs, ic3_options); 
+    auto open_loop_trajectory_generator =
+      builder.AddSystem<OpenLoopTrajectoryGenerator>(
+        plant_for_lcs, ic3_options, lcs_factory, controller_params.track_dynamically_feasible, 0); 
 
-    builder.Connect(ic3_target_generator->get_output_port_actor_trajectory(),
+    builder.Connect(open_loop_trajectory_generator->get_output_port_actor_trajectory(),
                     c3_actor_trajectory_sender->get_input_port());  
-    // builder.Connect(ic3_target_generator->get_output_port_object_trajectory(),
-    //                 c3_object_trajectory_sender->get_input_port()); 
 
+    builder.Connect(reduced_order_model_receiver->get_output_port(),
+                  open_loop_trajectory_generator->get_input_port_x_curr());
     builder.Connect(nominal_position->get_output_port(),
-                    ic3_target_generator->get_input_port_nominal_trajectory());
+                    open_loop_trajectory_generator->get_input_port_nominal_position());
 
     builder.Connect(ic3_x_trajectory_sub->get_output_port(),
-                    ic3_target_generator->get_input_port_iC3_x_trajectory());
+                    open_loop_trajectory_generator->get_input_port_ic3_x());
     builder.Connect(ic3_u_trajectory_sub->get_output_port(),
-                    ic3_target_generator->get_input_port_iC3_u_trajectory());
+                    open_loop_trajectory_generator->get_input_port_ic3_u());
+
   } else {
     auto lqr_sub =
             builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_lqr_output>(
@@ -322,12 +330,6 @@ int DoMain(int argc, char* argv[]) {
 
     auto c3_goal_generator = 
         builder.AddSystem<C3GoalGenerator>(plant_for_lcs, lcs_factory, ic3_options, c3_controller_options, controller_params.x_target, 0); 
-
-    auto reduced_order_model_receiver =
-      builder.AddSystem<systems::FrankaKinematics>(
-          plant_franka, franka_context.get(), plant_object, object_context.get(),
-          controller_params.end_effector_name, "cube",
-          controller_params.include_end_effector_orientation);
 
     auto ic3_timing_system = builder.AddSystem<iC3TimingSystem>(
             ic3_options, controller_params);

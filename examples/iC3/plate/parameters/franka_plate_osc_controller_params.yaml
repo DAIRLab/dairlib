@@ -61,7 +61,7 @@ EndEffectorRotW:
     0, 300, 0,
     0, 0, 300 ]
 EndEffectorRotKp:
-  [ 220, 0, 0,
+  [ 220, 0, 0,  
     0, 220, 0,
     0, 0, 220 ]
 EndEffectorRotKd:

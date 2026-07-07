@@ -880,12 +880,12 @@ VectorXd OperationalSpaceControl::SolveQp(
       // Update velocity constraints
       if (v_min_.size() == tracking_data_vec_->size() && 
           v_max_.size() == tracking_data_vec_->size()) {
-        VectorXd qdot = J_t * x_wo_spr.tail(plant_wo_spr_.num_velocities())
+        VectorXd ydot = J_t * x_wo_spr.tail(plant_wo_spr_.num_velocities())
                                 .tail(n_revolute_joints_);
-        std::cout << "qdot " << qdot.transpose() << std::endl;
+        std::cout << "ydot " << ydot.transpose() << std::endl;
 
-        VectorXd lower_bound = (v_min_[i] - qdot) / v_damping_- JdotV_t;
-        VectorXd upper_bound = (v_max_[i] - qdot) / v_damping_- JdotV_t;
+        VectorXd lower_bound = (v_min_[i] - ydot) / v_damping_ - JdotV_t;
+        VectorXd upper_bound = (v_max_[i] - ydot) / v_damping_ - JdotV_t;
 
         std::cout << "lb " << lower_bound.transpose() << std::endl;
         std::cout << "ub " << upper_bound.transpose() << std::endl;
@@ -1065,6 +1065,8 @@ VectorXd OperationalSpaceControl::SolveQp(
     drake::log()->warn("Iterations: {}", details.iter);
     drake::log()->warn("Primal Res: {}", details.primal_res); 
     drake::log()->warn("Dual Res: {}", details.dual_res);
+
+    // while (true) {}
   }
 
   for (auto& tracking_data : *tracking_data_vec_) {

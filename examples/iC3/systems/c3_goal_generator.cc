@@ -214,10 +214,15 @@ void C3GoalGenerator::OutputLCS(
     MatrixXd u_hat(n_u_, N_);
     double dt_scaling = c3_controller_options_.lcs_factory_options.dt / ic3_options_.dt;
 
+    VectorXd x_final = state_data.col(
+          std::min(static_cast<int>(timestep + N_ * dt_scaling), ic3_options_.N));
+
     for (int k = 0; k < N_; k++) {
       int idx = std::min(static_cast<int>(timestep + dt_scaling * k), ic3_options_.N);
       std::cout << "idx " << idx << std::endl;
-      x_hat.col(k) = state_data.col(idx);
+      // x_hat.col(k) = state_data.col(idx);
+
+      x_hat.col(k) = x_lcs + k * (x_final - x_lcs) / (N_-1);
       u_hat.col(k) = u_nominal;
 
       // Linearize about true end effector position

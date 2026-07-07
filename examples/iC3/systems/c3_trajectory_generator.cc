@@ -472,7 +472,11 @@ std::tuple<MatrixXd, MatrixXd> C3TrajectoryGenerator::SimulateLCS(VectorXd x0, M
           u(j) = std::clamp(u(j), lb_u_(j), ub_u_(j));
       }
     }
-    VectorXd x_next = lcs.Simulate(x_curr, u);
+    c3::LCSSimulateConfig config;
+    config.regularized = true;
+    config.min_exp = -16;
+    config.max_exp = -6;
+    VectorXd x_next = lcs.Simulate(x_curr, u, config);
 
     // Threshold states
     for (int j = 0; j < A_x_.rows(); j++) {

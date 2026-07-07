@@ -12,10 +12,8 @@
 #include "examples/iC3/trifinger/parameter_headers/trifinger_controller_params.h"
 #include "examples/iC3/trifinger/parameter_headers/trifinger_lcm_channels.h"
 #include "examples/iC3/iC3_options.h"
-#include "examples/iC3/hybrid_mpc_options.h"
-#include "examples/iC3/systems/lqr_trajectory_generator.h"
+#include "examples/iC3/systems/open_loop_trajectory_generator.h"
 #include "examples/iC3/trifinger/systems/trifinger_kinematics.h"
-#include "systems/controllers/c3/ic3_hybrid_mpc_tracking_controller.h"
 #include "examples/iC3/systems/timed_gate.h"
 #include "examples/iC3/systems/iC3_timing_system.h"
 
@@ -27,7 +25,6 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/primitives/radio_parser.h"
 #include "systems/robot_lcm_systems.h"
-#include "solvers/solver_options_io.h"
 #include "systems/system_utils.h"
 #include "systems/trajectory_optimization/c3_output_systems.h"
 
@@ -80,11 +77,6 @@ int DoMain(int argc, char* argv[]) {
       drake::yaml::LoadYamlFile<TrifingerControllerParams>(
           FLAGS_controller_settings);
 
-  // HARDCODED path
-  HybridMpcOptions hybrid_mpc_options =
-      drake::yaml::LoadYamlFile<HybridMpcOptions>(
-        "examples/iC3/trifinger/parameters/trifinger_hybrid_mpc_options.yaml");
-
   iC3Options ic3_options =
       drake::yaml::LoadYamlFile<iC3Options>(
           controller_params.ic3_options_file);
@@ -92,11 +84,6 @@ int DoMain(int argc, char* argv[]) {
   C3ControllerOptions c3_controller_options =
       drake::yaml::LoadYamlFile<C3ControllerOptions>(
           controller_params.c3_controller_options_file);
-
-   drake::solvers::SolverOptions solver_options =
-      drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
-          FindResourceOrThrow(hybrid_mpc_options.osqp_settings))
-          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   MultibodyPlant<double> plant_trifinger(0.0);
   Parser parser_trifinger(&plant_trifinger);
@@ -172,82 +159,6 @@ int DoMain(int argc, char* argv[]) {
   int n_x = plant_for_lcs.num_positions() + plant_for_lcs.num_velocities();
   int n_u = plant_for_lcs.num_actuators();
 
-  MatrixXd A_x(MatrixXd::Zero(n_x, n_x));
-  VectorXd lb_x(VectorXd::Zero(n_x));
-  VectorXd ub_x(VectorXd::Zero(n_x));
-
-  MatrixXd A_x_mpc(MatrixXd::Zero(n_x, n_x));
-  VectorXd lb_x_mpc(VectorXd::Zero(n_x));
-  VectorXd ub_x_mpc(VectorXd::Zero(n_x));
-
-  MatrixXd A_u(MatrixXd::Zero(n_u, n_u));
-  VectorXd lb_u(VectorXd::Zero(n_u));
-  VectorXd ub_u(VectorXd::Zero(n_u));
-
-  for (int i = 0; i < 3; i++) {
-
-    A_x(3*i, 3*i) = 1;
-    A_x(3*i+1, 3*i+1) = 1;
-    A_x(3*i+2, 3*i+2) = 1;
-
-    A_x(16 + 3*i, 16 + 3*i) = 1;
-    A_x(16 + 3*i + 1, 16 + 3*i+1) = 1;
-    A_x(16 + 3*i + 2, 16 + 3*i+2) = 1;
-
-    lb_x(3*i) = xd(3*i) - 0.06;
-    lb_x(3*i+1) = xd(3*i+1) - 0.06;
-    lb_x(3*i+2) = xd(3*i+2) - 0.01;
-
-    lb_x(16 + 3*i) = -0.075;
-    lb_x(16 + 3*i+1) = -0.075;
-    lb_x(16 + 3*i+2) = -0.05;
-
-    ub_x(3*i) = xd(3*i) + 0.06;
-    ub_x(3*i+1) = xd(3*i+1) + 0.06;
-    ub_x(3*i+2) = xd(3*i+2) + 0.01;
-
-    ub_x(16 + 3*i) = 0.075;
-    ub_x(16 + 3*i+1) = 0.075;
-    ub_x(16 + 3*i+2) = 0.05;
-
-    // A_x_mpc(3*i, 3*i) = 1;
-    // A_x_mpc(3*i+1, 3*i+1) = 1;
-    // A_x_mpc(3*i+2, 3*i+2) = 1;
-
-    A_x_mpc(16 + 3*i, 16 + 3*i) = 1;
-    A_x_mpc(16 + 3*i + 1, 16 + 3*i+1) = 1;
-    A_x_mpc(16 + 3*i + 2, 16 + 3*i+2) = 1;
-
-    // lb_x_mpc(3*i) = xd(3*i) - 0.08;
-    // lb_x_mpc(3*i+1) = xd(3*i+1) - 0.08;
-    // lb_x_mpc(3*i+2) = xd(3*i+2) - 0.02;
-
-    lb_x_mpc(16 + 3*i) = -0.1;
-    lb_x_mpc(16 + 3*i+1) = -0.1;
-    lb_x_mpc(16 + 3*i+2) = -0.1;
-
-    // ub_x_mpc(3*i) = xd(3*i) + 0.08;
-    // ub_x_mpc(3*i+1) = xd(3*i+1) + 0.08;
-    // ub_x_mpc(3*i+2) = xd(3*i+2) + 0.02;
-
-    ub_x_mpc(16 + 3*i) = 0.1;
-    ub_x_mpc(16 + 3*i+1) = 0.1;
-    ub_x_mpc(16 + 3*i+2) = 0.1;
-  }
-
-  for (int i = 0; i < 3; i++) {
-    A_u(3*i, 3*i) = 1;
-    A_u(3*i+1, 3*i+1) = 1;
-    A_u(3*i+2, 3*i+2) = 1;
-    
-    lb_u(3*i) = -0.4;
-    lb_u(3*i+1) = -0.4;
-    lb_u(3*i+2) = 0.15;
-
-    ub_u(3*i) = 0.4;
-    ub_u(3*i+1) = 0.4;
-    ub_u(3*i+2) = 0.25;
-  }
 
   std::cout << "Before builder " << std::endl;
   DiagramBuilder<double> builder;
@@ -266,19 +177,11 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.ic3_inputs_channel, &lcm));
 
-  auto ic3_lambda_trajectory_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.ic3_forces_channel, &lcm));
-
 
   auto c3_actor_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.c3_actor_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));   
-
-  auto lqr_sub =
-      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_lqr_output>(
-          "iC3_LQR", &lcm));
 
   auto object_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
@@ -302,16 +205,9 @@ int DoMain(int argc, char* argv[]) {
   auto x_desired_source =
     builder.AddSystem<drake::systems::ConstantVectorSource<double>>(xd);    
 
-  auto controller =
-      builder.AddSystem<systems::iC3HybridMpcTrackingController>
-          (plant_for_lcs, lcs_factory, hybrid_mpc_options, solver_options, ic3_options, 1,
-            A_x_mpc, lb_x_mpc, ub_x_mpc, A_u, lb_u, ub_u);
-
-  auto lqr_trajectory_generator =
-      builder.AddSystem<LqrTrajectoryGenerator>(plant_for_lcs, lcs_factory, ic3_options, 1,
-        A_x, lb_x, ub_x, A_u, lb_u, ub_u); 
-
-  lqr_trajectory_generator->SetPublishEndEffectorOrientation(false);
+  auto open_loop_trajectory_generator =
+      builder.AddSystem<OpenLoopTrajectoryGenerator>(
+          plant_for_lcs, ic3_options, lcs_factory, controller_params.track_dynamically_feasible, 1); 
   
   auto timed_gate =
       builder.AddSystem<TimedGate>(ic3_options, 1);    
@@ -329,28 +225,20 @@ int DoMain(int argc, char* argv[]) {
                   ic3_timing_system->get_input_port_radio());  
 
 
-  builder.Connect(ic3_timing_system->get_output_port_timestep(),
-                  controller->get_input_port_timestep());
-  builder.Connect(reduced_order_model_receiver->get_output_port(),
-                  controller->get_input_port_lcs_state());  
-  builder.Connect(ic3_x_trajectory_sub->get_output_port(),
-                  controller->get_input_port_ic3_x());
-  builder.Connect(ic3_u_trajectory_sub->get_output_port(),
-                  controller->get_input_port_ic3_u());
-  builder.Connect(ic3_lambda_trajectory_sub->get_output_port(),
-                  controller->get_input_port_ic3_lambda());
-
   // Note: nominal position unused here
-  builder.Connect(nominal_position->get_output_port(),
-                  lqr_trajectory_generator->get_input_port_nominal_position());
-  builder.Connect(controller->get_output_port_actor_input(),
-                  lqr_trajectory_generator->get_input_port_actor_input());
-  builder.Connect(controller->get_output_port_tracking_target(),
-                  lqr_trajectory_generator->get_input_port_tracking_target());
   builder.Connect(reduced_order_model_receiver->get_output_port(),
-                  lqr_trajectory_generator->get_input_port_x_curr());   
+                  open_loop_trajectory_generator->get_input_port_x_curr());
+  builder.Connect(nominal_position->get_output_port(),
+                  open_loop_trajectory_generator->get_input_port_nominal_position());
+  builder.Connect(ic3_x_trajectory_sub->get_output_port(),
+                  open_loop_trajectory_generator->get_input_port_ic3_x());  
+  builder.Connect(ic3_u_trajectory_sub->get_output_port(),
+                  open_loop_trajectory_generator->get_input_port_ic3_u());
+  builder.Connect(ic3_timing_system->get_output_port_timestep(),
+                  open_loop_trajectory_generator->get_input_port_timestep());
 
-  builder.Connect(lqr_trajectory_generator->get_output_port_actor_trajectory(),
+
+  builder.Connect(open_loop_trajectory_generator->get_output_port_actor_trajectory(),
                   timed_gate->get_input_port_c3_actor());
   builder.Connect(nominal_position->get_output_port(),
                   timed_gate->get_input_port_nominal_position());
@@ -366,7 +254,7 @@ int DoMain(int argc, char* argv[]) {
 
   auto owned_diagram = builder.Build();
   std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
-  shared_diagram->set_name(("trifinger_hybrid_mpc_controller"));
+  shared_diagram->set_name(("trifinger_open_loop_controller"));
   DrawAndSaveDiagramGraph(*shared_diagram);
 
   std::cout << "Before lcm driven loop" << std::endl;

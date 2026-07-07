@@ -122,7 +122,7 @@
         <mesh filename="package://robot_properties_fingers/meshes/SIM_BL_FINGER_TIP_LINK.obj" scale="1 1 1"/>
       </geometry>
       <drake:proximity_properties>
-        <drake:mu_static value="0.6"/>
+        <drake:mu_static value="0.5"/>
         <drake:mu_dynamic value="0.5"/>
       </drake:proximity_properties>
     </collision>
@@ -250,7 +250,7 @@
         <mesh filename="package://robot_properties_fingers/meshes/SIM_BL_FINGER_TIP_LINK.obj" scale="1 1 1"/>
       </geometry>
       <drake:proximity_properties>
-        <drake:mu_static value="0.6"/>
+        <drake:mu_static value="0.5"/>
         <drake:mu_dynamic value="0.5"/>
       </drake:proximity_properties>
     </collision>
@@ -378,7 +378,7 @@
         <mesh filename="package://robot_properties_fingers/meshes/SIM_BL_FINGER_TIP_LINK.obj" scale="1 1 1"/>
       </geometry>
       <drake:proximity_properties>
-        <drake:mu_static value="0.6"/>
+        <drake:mu_static value="0.5"/>
         <drake:mu_dynamic value="0.5"/>
       </drake:proximity_properties>
     </collision>

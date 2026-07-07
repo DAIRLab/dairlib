@@ -84,7 +84,7 @@ cc_binary(
         "//examples/iC3/plate/parameter_headers:franka_plate_controller_params",
         "//examples/iC3/plate/parameter_headers:franka_plate_lcm_channels",
         "//examples/iC3:iC3_options",
-        "//examples/iC3/systems:iC3_trajectory_generator",
+        "//examples/iC3/systems:open_loop_trajectory_generator",
         "//examples/iC3/systems:c3_goal_generator",
         "//examples/iC3/systems:c3_trajectory_generator",
         "//examples/iC3/systems:timed_gate",

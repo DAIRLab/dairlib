@@ -269,10 +269,15 @@ int DoMain(int argc, char* argv[]) {
   auto x_desired_source =
     builder.AddSystem<drake::systems::ConstantVectorSource<double>>(xd);    
 
+  VectorXd gravity(VectorXd::Zero(9));
+  gravity[2] = 9.81 * 0.02;
+  gravity[5] = 9.81 * 0.02;
+  gravity[8] = 9.81 * 0.02;
+
   auto controller =
       builder.AddSystem<systems::iC3LqrTrackingController>
-          (plant_for_lcs, ic3_options, c3_controller_options.c3_options.R, 
-            c3_controller_options.lcs_factory_options.N, 1);
+          (plant_for_lcs, lcs_factory, c3_controller_options, ic3_options,
+            controller_params.x_target, gravity, 1);
 
   auto lqr_trajectory_generator =
       builder.AddSystem<LqrTrajectoryGenerator>(plant_for_lcs, lcs_factory, ic3_options, 1,
@@ -310,8 +315,6 @@ int DoMain(int argc, char* argv[]) {
                   controller->get_input_port_lcs_state());
   builder.Connect(c3_goal_generator->get_output_port_target(),
                   controller->get_input_port_target());
-  builder.Connect(c3_goal_generator->get_output_port_lcs(),
-                  controller->get_input_port_lcs());
   builder.Connect(lqr_sub->get_output_port(),
                   controller->get_input_port_lqr());    
   builder.Connect(ic3_x_trajectory_sub->get_output_port(),

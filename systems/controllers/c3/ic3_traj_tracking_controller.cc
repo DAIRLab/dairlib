@@ -1,4 +1,4 @@
-#include "ic3_tracking_controller.h"
+#include "ic3_traj_tracking_controller.h"
 #include <Eigen/Dense>
 
 #include <c3/core/c3_miqp.h>
@@ -36,7 +36,7 @@ using systems::TimestampedVector;
 
 namespace systems {
 
-iC3TrackingController::iC3TrackingController(
+iC3TrajTrackingController::iC3TrajTrackingController(
     const drake::multibody::MultibodyPlant<double>& plant, C3ControllerOptions controller_options, 
       iC3Options ic3_options, int example_idx, 
       MatrixXd A_x, VectorXd lb_x, VectorXd ub_x, MatrixXd A_u, VectorXd lb_u, VectorXd ub_u, 
@@ -153,7 +153,6 @@ iC3TrackingController::iC3TrackingController(
   } else if (example_idx_ == 1 || example_idx_ == 2) {
     ee_start_idx = 0;
   }
-  c3_->AddEETrackingCost(ee_start_idx, ee_size);
 
   lcs_state_input_port_ =
       this->DeclareVectorInputPort("x_lcs", TimestampedVector<double>(n_x_))
@@ -192,14 +191,14 @@ iC3TrackingController::iC3TrackingController(
   c3_solution.time_vector_ = VectorXf::Zero(N_);
   c3_solution_port_ =
       this->DeclareAbstractOutputPort("c3_solution", c3_solution,
-                                      &iC3TrackingController::OutputC3Solution)
+                                      &iC3TrajTrackingController::OutputC3Solution)
           .get_index();
 
   tracking_target_port_ =
       this->DeclareVectorOutputPort(
               "tracking_target_port",
 							BasicVector<double>(n_u_),
-              &iC3TrackingController::OutputTrackingTarget)
+              &iC3TrajTrackingController::OutputTrackingTarget)
           .get_index();
 
   plan_start_time_index_ = DeclareDiscreteState(1);
@@ -208,14 +207,14 @@ iC3TrackingController::iC3TrackingController(
 
   if (controller_options_.publish_frequency > 0) {
     DeclarePeriodicDiscreteUpdateEvent(1 / controller_options_.publish_frequency, 0.0,
-                                       &iC3TrackingController::ComputePlan);
+                                       &iC3TrajTrackingController::ComputePlan);
   } else {
-    DeclareForcedDiscreteUpdateEvent(&iC3TrackingController::ComputePlan);
+    DeclareForcedDiscreteUpdateEvent(&iC3TrajTrackingController::ComputePlan);
   }
 
 }
 
-LCS iC3TrackingController::CreatePlaceholderLCS() const {
+LCS iC3TrajTrackingController::CreatePlaceholderLCS() const {
   MatrixXd A = MatrixXd::Ones(n_x_, n_x_);
   MatrixXd B = MatrixXd::Zero(n_x_, n_u_);
   VectorXd d = VectorXd::Zero(n_x_);
@@ -227,7 +226,7 @@ LCS iC3TrackingController::CreatePlaceholderLCS() const {
   return LCS(A, B, D, d, E, F, H, c, N_, dt_);
 }
 
-drake::systems::EventStatus iC3TrackingController::ComputePlan(
+drake::systems::EventStatus iC3TrajTrackingController::ComputePlan(
     const Context<double>& context,
     DiscreteValues<double>* discrete_state) const {
 
@@ -238,7 +237,7 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
   std::cout << "context time " << context.get_time() << std::endl;
 
   // If in teleop or waiting, don't solve
-  if (ic3_timestep < 0 || ic3_timestep > ic3_options_.N) return drake::systems::EventStatus::Succeeded();
+  if (ic3_timestep < 0) return drake::systems::EventStatus::Succeeded();
 
   auto start = std::chrono::high_resolution_clock::now();
 
@@ -258,137 +257,27 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
   auto mutable_solve_time =
       discrete_state->get_mutable_value(filtered_solve_time_index_);
 
-  const auto* lcm_all_x_trajectories = this->EvalAbstractInput(context, ic3_x_port_);
-  const auto* lcm_all_u_trajectories = this->EvalAbstractInput(context, ic3_u_port_);
-  const auto* lcm_all_lambda_trajectories = this->EvalAbstractInput(context, ic3_lambda_port_);
-
-  if (lcm_all_x_trajectories != nullptr && lcm_all_u_trajectories != nullptr && 
-      lcm_all_lambda_trajectories != nullptr && state_data_.cols() == 0) {
-
-    const std::string trajectory_name = "iteration_" + std::to_string(ic3_options_.iter_to_use);
-
-    LcmTrajectory x_trajectory = LcmTrajectory(
-        lcm_all_x_trajectories->get_value<lcmt_timestamped_saved_traj>().saved_traj);
-    LcmTrajectory u_trajectory = LcmTrajectory(
-        lcm_all_u_trajectories->get_value<lcmt_timestamped_saved_traj>().saved_traj);
-    LcmTrajectory lambda_trajectory = LcmTrajectory(
-        lcm_all_lambda_trajectories->get_value<lcmt_timestamped_saved_traj>().saved_traj);
-    LcmTrajectory::Trajectory state_trajectory = x_trajectory.GetTrajectory(trajectory_name);
-    LcmTrajectory::Trajectory input_trajectory = u_trajectory.GetTrajectory(trajectory_name);
-    LcmTrajectory::Trajectory force_trajectory = lambda_trajectory.GetTrajectory(trajectory_name);
-    state_data_ = state_trajectory.datapoints;
-    input_data_ = input_trajectory.datapoints;
-    force_data_ = force_trajectory.datapoints;
-
-    std::cout << "got trajectories " << std::endl;
-  }
-
-  std::cout << state_data_.cols() << std::endl;
-
-  // Don't run C3 if can't get plan
-  if (state_data_.cols() == 0) return drake::systems::EventStatus::Succeeded();
-
+  const std::string trajectory_name = "iteration_" + std::to_string(ic3_options_.iter_to_use);
+  const auto& lcm_all_x_trajectories = 
+    this->EvalAbstractInput(context, ic3_x_port_)->get_value<lcmt_timestamped_saved_traj>();
+  const auto& lcm_all_u_trajectories = 
+    this->EvalAbstractInput(context, ic3_u_port_)->get_value<lcmt_timestamped_saved_traj>();
+  const auto& lcm_all_lambda_trajectories = 
+    this->EvalAbstractInput(context, ic3_lambda_port_)->get_value<lcmt_timestamped_saved_traj>();
+  LcmTrajectory x_trajectory = LcmTrajectory(lcm_all_x_trajectories.saved_traj);
+  LcmTrajectory u_trajectory = LcmTrajectory(lcm_all_u_trajectories.saved_traj);
+  LcmTrajectory lambda_trajectory = LcmTrajectory(lcm_all_lambda_trajectories.saved_traj);
+  LcmTrajectory::Trajectory state_trajectory = x_trajectory.GetTrajectory(trajectory_name);
+  LcmTrajectory::Trajectory input_trajectory = u_trajectory.GetTrajectory(trajectory_name);
+  LcmTrajectory::Trajectory force_trajectory = lambda_trajectory.GetTrajectory(trajectory_name);
+  MatrixXd state_data = state_trajectory.datapoints;
+  MatrixXd input_data = input_trajectory.datapoints;
+  MatrixXd force_data = force_trajectory.datapoints;
 
 
   discrete_state->get_mutable_value(plan_start_time_index_)[0] =
       lcs_x->get_timestamp();
 
-  // Assumes 1 quaternion body
-  vector<VectorXd> x_desired;
-  x_desired.push_back(x_des.value());
-  VectorXd x_curr = x_lcs;
-  for (int i = 1; i < N_+1; i++) {
-    int idx = std::min(ic3_options_.N-1, ic3_timestep+i);
-    VectorXd u_nominal = input_data_.col(idx);
-    x_curr = lcs.Simulate(x_curr, u_nominal);
-    // std::cout << "x curr " << x_curr.segment(9, 4).transpose() << std::endl;
-    double norm = x_curr.segment(quaternion_indices_[0], 4).norm(); 
-    std::cout << "norm " << i << " " << norm << std::endl;
-
-    VectorXd x_des_copy = x_des.value();
-    x_des_copy.segment(quaternion_indices_[0], 4) = 
-        x_des_copy.segment(quaternion_indices_[0], 4) * norm;
-    x_desired.push_back(x_des_copy);
-  }
-
-
-  // Penetration testing code
-  // if (n_u_ == 9) {
-  //   VectorXd x_plan = state_data.col(ic3_timestep);
-  //   c3::LCSSimulateConfig config; 
-  //   config.regularized = true;
-  //   config.max_exp = -6;
-    
-  //   VectorXd u_test(VectorXd::Zero(n_u_));
-  //   u_test(2) = 0.196;
-  //   u_test(5) = 0.196;
-  //   u_test(8) = 0.196;
-  //   auto [x_out, force] = lcs.SimulateAndReturnForce(x_plan, u_test, config);
-
-  //   for (int f = 0; f < 3; f++) {
-  //     plant_.SetPositionsAndVelocities(&plant_context_, x_plan);
-  //     c3::multibody::GeomGeomCollider collider(plant_, contact_geoms_[f]);
-  //     auto [phi, J] = collider.EvalPolytope(plant_context_, 2);
-  //     std::cout << "phi " << f << " " << phi << std::endl;
-  //     std::cout << "simulated lambda " << force.segment(4*f, 4).transpose() << std::endl << std::endl;
-  //   }
-  // }
-
-
-  UpdateQuaternionCosts(x_lcs, x_des.value());
-  C3::CostMatrices new_costs(Q_, R_, G_, U_);
-
-  c3_->UpdateCostMatrices(new_costs);
-  c3_->UpdateTarget(x_desired);
-
-  int value_function_idx;
-
-  // Get value function from lcm
-  const auto* lqr_input = this->EvalAbstractInput(context, lqr_input_port_);
-  if (lqr_input != nullptr && H_.size() == 0) {
-    H_.clear();
-    g_.clear(); 
-
-    const auto& lqr_all_inputs = lqr_input->get_value<lcmt_lqr_output>();
-
-    const std::vector<std::vector<std::vector<double>>>& source_H = lqr_all_inputs.H[ic3_options_.iter_to_use];
-    const std::vector<std::vector<double>>& source_g = lqr_all_inputs.g[ic3_options_.iter_to_use];
-
-    for (int i = 0; i < source_H.size(); i++) {
-
-      Eigen::MatrixXd mat(MatrixXd::Zero(source_H[i].size(), source_H[i][0].size()));
-      for (int j = 0; j < source_H[i].size(); j++) {
-          mat.row(j) = Eigen::Map<const Eigen::VectorXd>(source_H[i][j].data(), source_H[i][j].size());
-      }
-      H_.push_back(std::move(mat));
-      g_.push_back(Eigen::VectorXd::Map(source_g[i].data(), source_g[i].size()));
-    }
-  }
-
-  // Don't run C3 if can't get value function
-  if (H_.size() == 0) return drake::systems::EventStatus::Succeeded();
-
-  int lower_idx = std::max(0, ic3_timestep - ic3_options_.value_function_search_size);
-  int upper_idx = std::min(ic3_options_.N, ic3_timestep + ic3_options_.value_function_search_size);
-
-  // std::cout << "l idx " << lower_idx << " u idx " << upper_idx << std::endl;
-
-  int best_idx = GetNearestXForValueFunction(x_lcs, state_data_.middleCols(lower_idx, upper_idx-lower_idx+1)) + lower_idx;
-  value_function_idx = std::min(ic3_options_.N, best_idx + static_cast<int>(N_ * dt_scaling_)); // Want H[k + N]
-
-  int data_idx = std::min(ic3_options_.N-1, value_function_idx); // State data doesn't include final ic3 state
-  VectorXd bias = g_[value_function_idx] - H_[value_function_idx] * state_data_.col(data_idx);
-  c3_->UpdateFinalCost(H_[value_function_idx], bias);
-
-
-  if (ic3_options_.add_acceleration_cost) {
-    c3_->AddAccelerationCost(n_q_, n_v_, ic3_options_.acceleration_cost_weight);
-  }
-
-  c3_->UpdateLambdaMatchingCost(ic3_options_.lambda_tracking_weight * MatrixXd::Identity(n_lambda_, n_lambda_));
-  c3_->UpdateLambdaMatchingTarget(force_data_.col(value_function_idx));
-
-  // Set x_des of ee to match ic3 plan
   int ee_start_idx;
   int ee_size;
 
@@ -403,13 +292,13 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
 
   vector<VectorXd> ee_x_des;
   for (int i = 0; i < N_+1; i++) {
-    int idx = std::min(static_cast<int>(best_idx + i * dt_scaling_), ic3_options_.N); 
+    int idx = std::min(static_cast<int>(ic3_timestep + i * dt_scaling_), ic3_options_.N); 
 
     if (n_x_ == 23) {
-      ee_x_des.push_back(state_data_.col(idx).segment(ee_start_idx, ee_size));
+      ee_x_des.push_back(state_data.col(idx).segment(ee_start_idx, ee_size));
     } else if (n_x_ == 31) {
       // HARDCODED indices, compute rigid body transform between cube and ee in plan
-      VectorXd x_plan = state_data_.col(idx);
+      VectorXd x_plan = state_data.col(idx);
       VectorXd ee_x_des_curr(ee_size);
         
       Eigen::Quaterniond q_world_body(x_plan(9), x_plan(10), x_plan(11), x_plan(12)); 
@@ -440,46 +329,203 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
       ee_x_des.push_back(ee_x_des_curr);
     }
   }
-
-  MatrixXd Q_ee = ic3_options_.ee_tracking_weight * ic3_options_.ee_tracking_vector.asDiagonal();
-  c3_->UpdateEETrackingTargetAndCost(ee_x_des, Q_ee);
-
-  // Add constraint to stay near ee of plan
-  if (example_idx_ == 1 && ic3_options_.add_constraints_follow_plan) {
-    for (int f = 0; f < 3; f++) {
-      // A_x_(3*f, 3*f) = 1;
-      // A_x_(3*f+1, 3*f+1) = 1;
-
-      // lb_x_(3*f) = ee_x_des.at(0)(3*f) - 0.03;
-      // lb_x_(3*f+1) = ee_x_des.at(0)(3*f+1) - 0.03;
-      // ub_x_(3*f) = ee_x_des.at(0)(3*f) + 0.03;
-      // ub_x_(3*f+1) = ee_x_des.at(0)(3*f+1) + 0.03;
-    }
-  }
   tracking_target_ = ee_x_des.at(0);
-
   
 
-  vector<VectorXd> u_target;
-  for (int i = 0; i < N_; i++) {
-    if (ic3_options_.track_ic3_inputs) {
-      int idx = std::min(i + best_idx, ic3_options_.N-1);
-      u_target.push_back(input_data_.col(idx)); 
-    } else {
-      VectorXd gravity(VectorXd::Zero(n_u_));
-      // HARDCODED
-      if (example_idx_ == 0) {
-        gravity[2] = 8.33;
-      } else if (example_idx_ == 1 || example_idx_ == 2) {
-        gravity[2] = 0.196;
-        gravity[5] = 0.196;
-        gravity[8] = 0.196;
+  // Assumes 1 quaternion body
+  vector<VectorXd> x_desired;
+  x_desired.push_back(x_lcs);
+  VectorXd x_curr = x_lcs;
+  for (int i = 1; i < N_+1; i++) {
+    int idx = std::min(ic3_options_.N-1, ic3_timestep+i);
+    VectorXd u_nominal = input_data.col(idx);
+    x_curr = lcs.Simulate(x_curr, u_nominal);
+    double norm = x_curr.segment(quaternion_indices_[0], 4).norm(); 
+    std::cout << "norm " << norm << std::endl;
+
+    VectorXd x_des_curr = state_data.col(idx);
+    x_des_curr.segment(quaternion_indices_[0], 4) = 
+        x_des_curr.segment(quaternion_indices_[0], 4) * norm;
+
+    // Compute ee positions relative to object
+    x_des_curr.segment(0, n_u_) = ee_x_des[i];
+
+    // HARDCODED
+    if (example_idx_ == 1 || example_idx_ == 2) {
+      for (int f = 0; f < 3; f++) {
+        x_des_curr(3*f + 2) = x_des.value()(3*f+2);
       }
-      u_target.push_back(gravity);
     }
+
+    x_desired.push_back(x_des_curr);
+    std::cout << "x des " << i << x_des_curr.transpose() << std::endl;
   }
 
-  c3_->UpdateInputTarget(u_target);
+
+  // Penetration testing code
+  // if (n_u_ == 9) {
+  //   VectorXd x_plan = state_data.col(ic3_timestep);
+  //   c3::LCSSimulateConfig config; 
+  //   config.regularized = true;
+  //   config.max_exp = -6;
+    
+  //   VectorXd u_test(VectorXd::Zero(n_u_));
+  //   u_test(2) = 0.196;
+  //   u_test(5) = 0.196;
+  //   u_test(8) = 0.196;
+  //   auto [x_out, force] = lcs.SimulateAndReturnForce(x_plan, u_test, config);
+
+  //   for (int f = 0; f < 3; f++) {
+  //     plant_.SetPositionsAndVelocities(&plant_context_, x_plan);
+  //     c3::multibody::GeomGeomCollider collider(plant_, contact_geoms_[f]);
+  //     auto [phi, J] = collider.EvalPolytope(plant_context_, 2);
+  //     std::cout << "phi " << f << " " << phi << std::endl;
+  //     std::cout << "simulated lambda " << force.segment(4*f, 4).transpose() << std::endl << std::endl;
+  //   }
+  // }
+
+
+  UpdateQuaternionCosts(x_lcs, x_desired);
+  C3::CostMatrices new_costs(Q_, R_, G_, U_);
+
+  c3_->UpdateCostMatrices(new_costs);
+  c3_->UpdateTarget(x_desired);
+
+  int value_function_idx;
+  vector<Eigen::MatrixXd> H;
+  vector<Eigen::VectorXd> g;
+
+  // // Update final cost with LQR value function
+  // const auto* lqr_input = this->EvalAbstractInput(context, lqr_input_port_);
+  // if (lqr_input != nullptr && 0 <= ic3_timestep && 
+  //       ic3_timestep <= ic3_options_.N - N_ * dt_scaling_) {
+  //   const auto& lqr_all_inputs = lqr_input->get_value<lcmt_lqr_output>();
+
+  //   const std::vector<std::vector<std::vector<double>>>& source_H = lqr_all_inputs.H[ic3_options_.iter_to_use];
+  //   const std::vector<std::vector<double>>& source_g = lqr_all_inputs.g[ic3_options_.iter_to_use];
+
+  //   for (int i = 0; i < source_H.size(); i++) {
+
+  //     Eigen::MatrixXd mat(MatrixXd::Zero(source_H[i].size(), source_H[i][0].size()));
+  //     for (int j = 0; j < source_H[i].size(); j++) {
+  //         mat.row(j) = Eigen::Map<const Eigen::VectorXd>(source_H[i][j].data(), source_H[i][j].size());
+  //     }
+  //     H.push_back(std::move(mat));
+  //     g.push_back(Eigen::VectorXd::Map(source_g[i].data(), source_g[i].size()));
+  //   }
+
+  //   int lower_idx = std::max(0, ic3_timestep - ic3_options_.value_function_search_size);
+  //   int upper_idx = std::min(ic3_options_.N, ic3_timestep + ic3_options_.value_function_search_size);
+
+  //   // std::cout << "l idx " << lower_idx << " u idx " << upper_idx << std::endl;
+
+  //   int best_idx = GetNearestXForValueFunction(x_lcs, state_data.middleCols(lower_idx, upper_idx-lower_idx+1)) + lower_idx;
+  //   value_function_idx = std::min(ic3_options_.N, best_idx + static_cast<int>(N_ * dt_scaling_)); // Want H[k + N]
+  //   c3_->UpdateFinalCost(H[value_function_idx], g[value_function_idx]);
+
+
+    // // Set x_des of ee to match ic3 plan
+    // if (0 <= ic3_timestep) {
+    //   int ee_start_idx;
+    //   int ee_size;
+
+    //   // HARDCODED
+    //   if (example_idx_ == 0) {
+    //     ee_start_idx = 0;
+    //     ee_size = 5;
+    //   } else if (example_idx_ == 1 || example_idx_ == 2) {
+    //     ee_start_idx = 0;
+    //     ee_size = 9;
+    //   }
+
+    //   vector<VectorXd> ee_x_des;
+    //   for (int i = 0; i < N_+1; i++) {
+    //     int idx = std::min(static_cast<int>(best_idx + i * dt_scaling_), ic3_options_.N); 
+
+    //     if (n_x_ == 23) {
+    //       ee_x_des.push_back(state_data.col(idx).segment(ee_start_idx, ee_size));
+    //     } else if (n_x_ == 31) {
+    //       // HARDCODED indices, compute rigid body transform between cube and ee in plan
+    //       VectorXd x_plan = state_data.col(idx);
+    //       VectorXd ee_x_des_curr(ee_size);
+            
+    //       Eigen::Quaterniond q_world_body(x_plan(9), x_plan(10), x_plan(11), x_plan(12)); 
+    //       Eigen::Vector3d p_world_body(x_plan(13), x_plan(14), x_plan(15));    
+
+    //       for (int f = 0; f < 3; f++) {
+    //         Eigen::Vector3d p_world_point(x_plan(3*f), x_plan(3*f+1), x_plan(3*f+2));   
+
+    //         // Get relative transform of finger in cube frame
+    //         drake::math::RigidTransform<double> X_WB(drake::math::RotationMatrix<double>(q_world_body), p_world_body);
+    //         drake::math::RigidTransform<double> X_BW = X_WB.inverse();
+    //         Eigen::Vector3d p_body_point = X_BW * p_world_point;
+                  
+    //         // Get corresponding point in world for current cube pose
+    //         Eigen::Quaterniond q_world_body_curr(x_lcs(9), x_lcs(10), x_lcs(11), x_lcs(12));
+    //         Eigen::Vector3d p_world_body_curr(x_lcs(13), x_lcs(14), x_lcs(15));
+    //         drake::math::RigidTransform<double> X_WB_curr(
+    //             drake::math::RotationMatrix<double>(q_world_body_curr), 
+    //             p_world_body_curr
+    //         );
+    //         ee_x_des_curr.segment(3*f, 3) = X_WB_curr * p_body_point;
+
+    //         // HARDCODED OFFSET 
+    //         if (example_idx_ == 1){
+    //           ee_x_des_curr(3*f+2) = 0.07;
+    //         }
+    //       }
+    //       ee_x_des.push_back(ee_x_des_curr);
+    //     }
+    //   }
+
+    //   MatrixXd Q_ee = ic3_options_.ee_tracking_weight * ic3_options_.ee_tracking_vector.asDiagonal();
+    //   c3_->UpdateEETrackingTargetAndCost(ee_x_des, Q_ee);
+
+    //   // Add constraint to stay near ee of plan
+    //   if (example_idx_ == 1 && ic3_options_.add_constraints_follow_plan) {
+    //     for (int f = 0; f < 3; f++) {
+    //       // A_x_(3*f, 3*f) = 1;
+    //       // A_x_(3*f+1, 3*f+1) = 1;
+
+    //       // lb_x_(3*f) = ee_x_des.at(0)(3*f) - 0.03;
+    //       // lb_x_(3*f+1) = ee_x_des.at(0)(3*f+1) - 0.03;
+    //       // ub_x_(3*f) = ee_x_des.at(0)(3*f) + 0.03;
+    //       // ub_x_(3*f+1) = ee_x_des.at(0)(3*f+1) + 0.03;
+    //     }
+    //   }
+    //   tracking_target_ = ee_x_des.at(0);
+
+    // }
+
+    if (ic3_options_.add_acceleration_cost) {
+      c3_->AddAccelerationCost(n_q_, n_v_, ic3_options_.acceleration_cost_weight);
+    }
+
+    c3_->UpdateLambdaMatchingCost(ic3_options_.lambda_tracking_weight * MatrixXd::Identity(n_lambda_, n_lambda_));
+    c3_->UpdateLambdaMatchingTarget(force_data.col(value_function_idx));
+
+    vector<VectorXd> u_target;
+    for (int i = 0; i < N_; i++) {
+      if (ic3_options_.track_ic3_inputs) {
+        int idx = std::min(i + ic3_timestep, ic3_options_.N-1);
+        u_target.push_back(input_data.col(idx)); 
+
+      // TODO: why does this else exist, isn't it just redundant?
+      } else {
+        VectorXd gravity(VectorXd::Zero(n_u_));
+        // HARDCODED
+        if (example_idx_ == 0) {
+          gravity[2] = 8.33;
+        } else if (example_idx_ == 1 || example_idx_ == 2) {
+          gravity[2] = 0.196;
+          gravity[5] = 0.196;
+          gravity[8] = 0.196;
+        }
+        u_target.push_back(gravity);
+      }
+    }
+
+    c3_->UpdateInputTarget(u_target);
   
 
 
@@ -516,37 +562,18 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
   auto z_sol = c3_->GetFullSolution();
 
   // Print costs
-  if (n_u_ == 9 && ic3_options_.print_costs) {
-    VectorXd x_d = x_des.value();
+  if (n_u_ == 9) {
     for (int i = 0; i < z_sol.size(); i++) {
-      double finger_pos_cost = (z_sol[i].segment(0, 9) - x_d.segment(0, 9)).transpose() * 
-                                Q_[i].block(0, 0, 9, 9) * (z_sol[i].segment(0, 9) - x_d.segment(0, 9));
-      double cube_rot_cost = (z_sol[i].segment(9, 4) - x_d.segment(9, 4)).transpose() *
-                                Q_[i].block(9, 9, 4, 4) * (z_sol[i].segment(9, 4) - x_d.segment(9, 4));
-      double cube_pos_cost = (z_sol[i].segment(13, 3) - x_d.segment(13, 3)).transpose() *
-                                Q_[i].block(13, 13, 3, 3) * (z_sol[i].segment(13, 3) - x_d.segment(13, 3));
-      double finger_tracking_cost = (z_sol[i].segment(0, 9) - ee_x_des[i]).transpose() * 
-                                Q_ee * (z_sol[i].segment(0, 9) - ee_x_des[i]);
-      std::cout << "c3 cost " << i << " finger cost " << finger_pos_cost << " finger tracking " 
-          << finger_tracking_cost << ", cube rot " << cube_rot_cost << ", cube pos " << cube_pos_cost << std::endl;
+      double finger_pos_cost_0 = z_sol[i].segment(0, 3).transpose() * Q_[i].block(0, 0, 3, 3) * z_sol[i].segment(0, 3);
+      double finger_pos_cost_1 = z_sol[i].segment(3, 3).transpose() * Q_[i].block(3, 3, 3, 3) * z_sol[i].segment(3, 3);
+      double finger_pos_cost_2 = z_sol[i].segment(6, 3).transpose() * Q_[i].block(6, 6, 3, 3) * z_sol[i].segment(6, 3);
+
+      double cube_rot_cost = z_sol[i].segment(9, 4).transpose() * Q_[i].block(9, 9, 4, 4) * z_sol[i].segment(9, 4);
+      double cube_pos_cost = z_sol[i].segment(13, 3).transpose() * Q_[i].block(13, 13, 3, 3) * z_sol[i].segment(13, 3);
+      std::cout << "c3 cost " << i << " finger cost " << finger_pos_cost_0 << ", " 
+              << finger_pos_cost_1 << ", " << finger_pos_cost_2 << ", cube rot " 
+              << cube_rot_cost << ", cube pos " << cube_pos_cost << std::endl;
     }
-    VectorXd x_final = c3_->GetFinalStateSolution();
-    double final_finger_pos_cost = (x_final.segment(0, 9) - x_d.segment(0, 9)).transpose() * 
-                                      H_[value_function_idx].block(0, 0, 9, 9) * (x_final.segment(0, 9) - x_d.segment(0, 9)); 
-    double final_cube_rot_cost = (x_final.segment(9, 4) - x_d.segment(9, 4)).transpose() * 
-                                      H_[value_function_idx].block(9, 9, 4, 4) * (x_final.segment(9, 4) - x_d.segment(9, 4));
-    double final_cube_pos_cost =(x_final.segment(13, 3) - x_d.segment(13, 3)).transpose() * 
-                                      H_[value_function_idx].block(13, 13, 3, 3) * (x_final.segment(13, 3) - x_d.segment(13, 3));
-
-    std::cout << "c3 cost final "<< " finger cost " << final_finger_pos_cost << ", cube rot " 
-            << final_cube_rot_cost << ", cube pos " << final_cube_pos_cost << std::endl;
-
-    final_finger_pos_cost += g_[value_function_idx].segment(0, 9).dot(x_final.segment(0, 9) - x_d.segment(0, 9));
-    final_cube_rot_cost += g_[value_function_idx].segment(9, 4).dot(x_final.segment(9, 4) - x_d.segment(9, 4));
-    final_cube_pos_cost += g_[value_function_idx].segment(13, 3).dot(x_final.segment(13, 3) - x_d.segment(13, 3));
-
-    std::cout << "c3 cost final with affine "<< " finger cost " << final_finger_pos_cost << ", cube rot " 
-            << final_cube_rot_cost << ", cube pos " << final_cube_pos_cost << std::endl;
   }
 
 
@@ -569,40 +596,40 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
   return drake::systems::EventStatus::Succeeded();
 }
 
-void iC3TrackingController::UpdateQuaternionCosts(
-    const Eigen::VectorXd& x_curr, const Eigen::VectorXd& x_des) const {
-    
+void iC3TrajTrackingController::UpdateQuaternionCosts(
+    const Eigen::VectorXd& x_curr, const vector<Eigen::VectorXd> x_des) const {
+  DRAKE_DEMAND(x_des.size() == N_+1);
+
   // Early return if no quaternions or cost parameters not set
   if (quaternion_indices_.size() == 0 ||
       !controller_options_.quaternion_weight.has_value() ||
       !controller_options_.quaternion_regularizer_fraction.has_value()) {
     return;
   }
+  double discount_factor = 1;
+  for (int i = 0; i < N_ + 1; i++) {
+    for (int index : quaternion_indices_) {
+      Eigen::VectorXd quat_curr_i = x_curr.segment(index, 4).normalized();
+      Eigen::VectorXd quat_des_i = x_des[i].segment(index, 4).normalized();
 
-  for (int index : quaternion_indices_) {
-    Eigen::VectorXd quat_curr_i = x_curr.segment(index, 4).normalized();
-    Eigen::VectorXd quat_des_i = x_des.segment(index, 4).normalized();
+      Eigen::MatrixXd quat_hessian_i =
+          c3::systems::common::hessian_of_squared_quaternion_angle_difference(
+                    quat_curr_i, quat_des_i);
 
-    Eigen::MatrixXd quat_hessian_i =
-        c3::systems::common::hessian_of_squared_quaternion_angle_difference(
-                  quat_curr_i, quat_des_i);
+      // Regularize hessian so Q is always PSD
+      double min_eigenval = quat_hessian_i.eigenvalues().real().minCoeff();
+      Eigen::MatrixXd quat_regularizer_1 =
+          std::max(0.0, -min_eigenval) * Eigen::MatrixXd::Identity(4, 4);
+      Eigen::MatrixXd quat_regularizer_2 = quat_des_i * quat_des_i.transpose();
 
-    // Regularize hessian so Q is always PSD
-    double min_eigenval = quat_hessian_i.eigenvalues().real().minCoeff();
-    Eigen::MatrixXd quat_regularizer_1 =
-        std::max(0.0, -min_eigenval) * Eigen::MatrixXd::Identity(4, 4);
-    Eigen::MatrixXd quat_regularizer_2 = quat_des_i * quat_des_i.transpose();
+      // Additional regularization term to help with numerical issues
+      Eigen::MatrixXd quat_regularizer_3 = 1e-8 * Eigen::MatrixXd::Identity(4, 4);
 
-    // Additional regularization term to help with numerical issues
-    Eigen::MatrixXd quat_regularizer_3 = 1e-8 * Eigen::MatrixXd::Identity(4, 4);
-
-    double quaternion_weight = controller_options_.quaternion_weight.value();
-    double quaternion_regularizer_fraction =
-        controller_options_.quaternion_regularizer_fraction.value();
+      double quaternion_weight = controller_options_.quaternion_weight.value();
+      double quaternion_regularizer_fraction =
+          controller_options_.quaternion_regularizer_fraction.value();
 
     // Replace quaternion blocks in Q
-    double discount_factor = 1;
-    for (int i = 0; i < N_ + 1; i++) {
       Q_[i].block(index, index, 4, 4) =
           discount_factor * dt_scaling_ * c3_options_.w_Q * quaternion_weight *
           (quat_hessian_i + quat_regularizer_1 +
@@ -613,7 +640,7 @@ void iC3TrackingController::UpdateQuaternionCosts(
   }
 }
 
-int iC3TrackingController::GetNearestXForValueFunction(
+int iC3TrajTrackingController::GetNearestXForValueFunction(
     VectorXd x_curr, MatrixXd x_hat_slice) const {
   DRAKE_DEMAND(x_hat_slice.cols() > 0);
 
@@ -663,7 +690,7 @@ int iC3TrackingController::GetNearestXForValueFunction(
 
 }
 
-void iC3TrackingController::OutputC3Solution(
+void iC3TrajTrackingController::OutputC3Solution(
     const drake::systems::Context<double>& context,
     C3Output::C3Solution* c3_solution) const {
   double t = context.get_discrete_state(plan_start_time_index_)[0];
@@ -671,9 +698,6 @@ void iC3TrackingController::OutputC3Solution(
 
   auto z_sol = c3_->GetFullSolution();
   for (int i = 0; i < N_; i++) {
-    if (z_sol[i].array().isNaN().any()) {
-      std::cout << "ic3 tracking controller z sol " << i << " has NAN" << std::endl;
-    }
     c3_solution->time_vector_(i) = solve_time + t + i * dt_;
     c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
     c3_solution->lambda_sol_.col(i) =
@@ -685,7 +709,7 @@ void iC3TrackingController::OutputC3Solution(
 }
 
 
-void iC3TrackingController::OutputTrackingTarget(const drake::systems::Context<double>& context,
+void iC3TrajTrackingController::OutputTrackingTarget(const drake::systems::Context<double>& context,
                         drake::systems::BasicVector<double>* tracking_target) const {
 	tracking_target->get_mutable_value() = tracking_target_;
 }

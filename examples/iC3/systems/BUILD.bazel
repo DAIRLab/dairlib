@@ -1,12 +1,12 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "iC3_trajectory_generator",
+    name = "open_loop_trajectory_generator",
     srcs = [
-        "iC3_trajectory_generator.cc",
+        "open_loop_trajectory_generator.cc",
     ],
     hdrs = [
-        "iC3_trajectory_generator.h",
+        "open_loop_trajectory_generator.h",
     ],
     deps = 
     [

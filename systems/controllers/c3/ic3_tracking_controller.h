@@ -163,6 +163,13 @@ class iC3TrackingController : public drake::systems::LeafSystem<double> {
   mutable std::vector<Eigen::MatrixXd> G_;
   mutable std::vector<Eigen::MatrixXd> U_;
 
+  mutable std::vector<Eigen::MatrixXd> H_;
+  mutable std::vector<Eigen::VectorXd> g_;
+
+  mutable Eigen::MatrixXd state_data_;
+  mutable Eigen::MatrixXd input_data_;
+  mutable Eigen::MatrixXd force_data_;
+
   int N_; // N for c3 (NOT the same as iC3 horizon)
   double dt_; // dt for c3 (NOT the same as iC3 dt)
 

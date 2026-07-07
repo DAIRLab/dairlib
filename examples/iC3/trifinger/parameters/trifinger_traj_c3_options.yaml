@@ -1,0 +1,109 @@
+
+projection_type: "C3+"
+solve_time_filter_alpha: 0.0
+publish_frequency: 0
+state_prediction_joints: []
+
+quaternion_weight: 10000
+quaternion_regularizer_fraction: 0.0
+
+lcs_factory_options:
+  contact_model: "anitescu"
+  num_contacts: 7
+  spring_stiffness: 0
+  N: 4
+  dt: 0.02
+  contact_pair_configs:
+    - body_A: "fingertip_1"
+      body_A_collision_geom_indices: [0]
+      body_B: "cube"
+      body_B_collision_geom_indices: [0]
+      mu: 0.5
+      num_friction_directions: 2
+    - body_A: "fingertip_2"
+      body_A_collision_geom_indices: [0]
+      body_B: "cube"
+      body_B_collision_geom_indices: [0]
+      mu: 0.5
+      num_friction_directions: 2
+    - body_A: "fingertip_3"
+      body_A_collision_geom_indices: [0]
+      body_B: "cube"
+      body_B_collision_geom_indices: [0]
+      mu: 0.5
+      num_friction_directions: 2
+    - body_A: "cube"
+      body_A_collision_geom_indices: [1, 2, 3, 4]
+      body_B: "ground"
+      body_B_collision_geom_indices: [0]
+      mu: 0.5
+      num_friction_directions: 2
+
+
+c3_options: 
+  warm_start: true
+  end_on_qp_step: true
+  scale_lcs: true
+  penalize_input_change: false
+
+  num_threads: 10
+  delta_option: 1
+
+  admm_iter: 7
+
+  M: 1000
+  gamma: 1.0
+  rho_scale: 1.0
+
+  w_Q: 5
+  w_R: 500 #Penalty on all decision variables, assuming scalar
+  w_G: 100 #Penalty on all decision variables, assuming scalar
+  w_U: 1 #State Tracking Error, assuming diagonal
+
+
+  q_vector: [300000, 300000, 300000,    # finger 1
+             300000, 300000, 300000,    # finger 2
+             300000, 300000, 300000,    # finger 3
+             1, 1, 1, 1,
+             200000, 200000, 80000,
+             1, 1, 1,          # finger 1 velo
+             1, 1, 1,          # finger 2 velo
+             1, 1, 1,          # finger 3 velo 
+             0.2, 0.2, 0.2,
+             5, 5, 5]
+
+  r_vector: [1, 1, 1,        # finger 1 actuation
+              1, 1, 1,        # finger 2 actuation
+              1, 1, 1]        # finger 3 actuation
+
+
+  g_x: [30, 30, 30, 30, 30, 30, 30, 30, 30,    # hand pos
+        40, 40, 40, 40, 40, 40, 40,                      	# cube pos
+        1, 1, 1, 1, 1, 1, 1, 1, 1,  						  # hand velo
+        1, 1, 1, 1, 1, 1]                                 # cube velo
+  g_u: [100, 100, 100, 100, 100, 100, 100, 100, 100] 
+  g_lambda: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+  g_eta: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10] 
+
+
+  u_x: [10, 10, 10, 10, 10, 10, 10, 10, 10,   # hand pos
+        20, 20, 20, 20, 20, 20, 20,                       # cube pos
+        1, 1, 1, 1, 1, 1, 1, 1, 1,   # hand velo
+        1, 1, 1, 1, 1, 1]                           # cube velo
+  u_u: [10, 10, 10, 10, 10, 10, 10, 10, 10]
+  u_lambda: [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4] 
+  u_eta: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]
+
+  g_gamma: []
+  g_lambda_n: []
+  g_lambda_t: []
+  g_eta_slack: [] 
+  g_eta_n: [] 
+  g_eta_t: [] 
+
+  u_gamma: [] 
+  u_lambda_n: [] 
+  u_lambda_t: []
+  u_eta_slack: [] 
+  u_eta_n: [] 
+  u_eta_t: [] 

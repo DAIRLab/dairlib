@@ -1,5 +1,6 @@
 #include "ic3_lqr_tracking_controller.h"
 #include <Eigen/Dense>
+#include "c3/systems/common/quaternion_error_hessian.h"
 
 #include <iostream>
 #include <c3/core/lcs.h>
@@ -22,12 +23,20 @@ using systems::TimestampedVector;
 namespace systems {
 
 iC3LqrTrackingController::iC3LqrTrackingController(
-    const drake::multibody::MultibodyPlant<double>& plant, 
-      iC3Options ic3_options, MatrixXd R, int N, int example_idx)
+    const drake::multibody::MultibodyPlant<double>& plant, LCSFactory lcs_factory, 
+    c3::systems::C3ControllerOptions c3_controller_options, 
+    iC3Options ic3_options, VectorXd xd, VectorXd ud, int example_idx)
     : plant_(plant),
+      lcs_factory_(lcs_factory),
+      c3_controller_options_(c3_controller_options),
+      c3_options_(c3_controller_options.c3_options),
       ic3_options_(ic3_options),
-      R_(R),
-      N_(N),
+      Q_(c3_options_.Q),
+      R_(c3_options_.R),
+      xd_(xd),
+      ud_(ud),
+      N_(c3_controller_options_.lcs_factory_options.N),
+      dt_(c3_controller_options_.lcs_factory_options.dt),
       example_idx_(example_idx) { 
   this->set_name("ic3_lqr_tracking_controller");
 
@@ -60,9 +69,6 @@ iC3LqrTrackingController::iC3LqrTrackingController(
 
   lcs_state_input_port_ =
       this->DeclareVectorInputPort("x_lcs", TimestampedVector<double>(n_x_))
-          .get_index();
-  lcs_input_port_ =
-      this->DeclareAbstractInputPort("lcs", drake::Value<LCS>(lcs_placeholder))
           .get_index();
 
   target_input_port_ =
@@ -98,6 +104,13 @@ iC3LqrTrackingController::iC3LqrTrackingController(
       this->DeclareVectorOutputPort("tracking_target_port", BasicVector<double>(n_u_),
                                   &iC3LqrTrackingController::OutputTrackingTarget)
           .get_index();
+
+  // Get quaternion bodies
+  for (const auto& body_idx : plant_.GetFloatingBaseBodies()) {
+    const auto& body = plant_.get_body(body_idx);
+    int start = body.floating_positions_start();
+    quaternion_indices_.push_back(start);
+  }
 
   DeclareForcedDiscreteUpdateEvent(&iC3LqrTrackingController::ComputePlan);
 
@@ -138,67 +151,68 @@ drake::systems::EventStatus iC3LqrTrackingController::ComputePlan(
                                                         lcs_state_input_port_);
   drake::VectorX<double> x_lcs = lcs_x->get_data();
 
-  auto& lcs =
-      this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
-  
-  auto start_ic3_traj = std::chrono::high_resolution_clock::now();
-
   // Get iC3 plan
-  const std::string trajectory_name = "iteration_" + std::to_string(ic3_options_.iter_to_use);
-  const auto& lcm_all_x_trajectories = 
-    this->EvalAbstractInput(context, ic3_x_port_)->get_value<lcmt_timestamped_saved_traj>();
-  const auto& lcm_all_u_trajectories = 
-    this->EvalAbstractInput(context, ic3_u_port_)->get_value<lcmt_timestamped_saved_traj>();
-  const auto& lcm_all_lambda_trajectories = 
-    this->EvalAbstractInput(context, ic3_lambda_port_)->get_value<lcmt_timestamped_saved_traj>();
-  LcmTrajectory x_trajectory = LcmTrajectory(lcm_all_x_trajectories.saved_traj);
-  LcmTrajectory u_trajectory = LcmTrajectory(lcm_all_u_trajectories.saved_traj);
-  LcmTrajectory lambda_trajectory = LcmTrajectory(lcm_all_lambda_trajectories.saved_traj);
-  LcmTrajectory::Trajectory state_trajectory = x_trajectory.GetTrajectory(trajectory_name);
-  LcmTrajectory::Trajectory input_trajectory = u_trajectory.GetTrajectory(trajectory_name);
-  LcmTrajectory::Trajectory force_trajectory = lambda_trajectory.GetTrajectory(trajectory_name);
+  if (state_data_.cols() == 0 && input_data_.cols() == 0 && force_data_.cols() == 0) {
+    auto start_ic3_traj = std::chrono::high_resolution_clock::now();
 
-  MatrixXd state_data = state_trajectory.datapoints;
-  MatrixXd input_data = input_trajectory.datapoints;
-  MatrixXd force_data = force_trajectory.datapoints;
+    const std::string trajectory_name = "iteration_" + std::to_string(ic3_options_.iter_to_use);
+    const auto& lcm_all_x_trajectories = 
+      this->EvalAbstractInput(context, ic3_x_port_)->get_value<lcmt_timestamped_saved_traj>();
+    const auto& lcm_all_u_trajectories = 
+      this->EvalAbstractInput(context, ic3_u_port_)->get_value<lcmt_timestamped_saved_traj>();
+    const auto& lcm_all_lambda_trajectories = 
+      this->EvalAbstractInput(context, ic3_lambda_port_)->get_value<lcmt_timestamped_saved_traj>();
 
+    LcmTrajectory x_trajectory = LcmTrajectory(lcm_all_x_trajectories.saved_traj);
+    LcmTrajectory u_trajectory = LcmTrajectory(lcm_all_u_trajectories.saved_traj);
+    LcmTrajectory lambda_trajectory = LcmTrajectory(lcm_all_lambda_trajectories.saved_traj);
+    LcmTrajectory::Trajectory state_trajectory = x_trajectory.GetTrajectory(trajectory_name);
+    LcmTrajectory::Trajectory input_trajectory = u_trajectory.GetTrajectory(trajectory_name);
+    LcmTrajectory::Trajectory force_trajectory = lambda_trajectory.GetTrajectory(trajectory_name);
 
-  auto finish_ic3_traj = std::chrono::high_resolution_clock::now();
-  auto elapsed_ic3_traj = finish_ic3_traj - start_ic3_traj;
-  double solve_time_ic3_traj =
-      std::chrono::duration_cast<std::chrono::microseconds>(elapsed_ic3_traj).count() /
-      1e6;
-  std::cout << "ic3 traj time " << solve_time_ic3_traj << std::endl;
-      
-  
-  auto start_value_function = std::chrono::high_resolution_clock::now();
+    state_data_ = state_trajectory.datapoints;
+    input_data_ = input_trajectory.datapoints;
+    force_data_ = force_trajectory.datapoints;
 
-  // Get H, K, k_ff
-  vector<Eigen::MatrixXd> H;
-  vector<Eigen::MatrixXd> K_hat;
-  vector<Eigen::VectorXd> k_ff_hat;
+    lcs_ = MakeTimeVaryingLCS(state_data_, input_data_);
+
+    auto finish_ic3_traj = std::chrono::high_resolution_clock::now();
+    auto elapsed_ic3_traj = finish_ic3_traj - start_ic3_traj;
+    double solve_time_ic3_traj =
+        std::chrono::duration_cast<std::chrono::microseconds>(elapsed_ic3_traj).count() /
+        1e6;
+    std::cout << "ic3 traj time " << solve_time_ic3_traj << std::endl;
+  }
+
 
   const auto* lqr_input = this->EvalAbstractInput(context, lqr_input_port_);
+  if (lqr_input == nullptr) return drake::systems::EventStatus::Succeeded();    
 
-  if (lqr_input != nullptr) {
+  // Get H, K, k_ff
+  if (H_.size() == 0 && K_hat_.size() == 0 && k_ff_hat_.size() == 0) {
+    auto start_value_function = std::chrono::high_resolution_clock::now();
+
     const auto& lqr_all_inputs = lqr_input->get_value<dairlib::lcmt_lqr_output>();
     const std::vector<std::vector<std::vector<double>>>& source_H = lqr_all_inputs.H[ic3_options_.iter_to_use];
+    const std::vector<std::vector<double>>& source_g = lqr_all_inputs.g[ic3_options_.iter_to_use];
     const std::vector<std::vector<std::vector<double>>>& source_K = lqr_all_inputs.K[ic3_options_.iter_to_use];
     const std::vector<std::vector<double>>& source_k_ff = lqr_all_inputs.k_ff[ic3_options_.iter_to_use];
+
     for (int i = 0; i < source_H.size(); i++) {
       Eigen::MatrixXd mat(MatrixXd::Zero(source_H[i].size(), source_H[i][0].size()));
       for (int j = 0; j < source_H[i].size(); j++) {
           mat.row(j) = Eigen::Map<const Eigen::VectorXd>(source_H[i][j].data(), source_H[i][j].size());
       }
-      H.push_back(std::move(mat));
+      H_.push_back(std::move(mat));
+      g_.push_back(Eigen::VectorXd::Map(source_g[i].data(), source_g[i].size()));
     }
     for (int i = 0; i < source_K.size(); i++) {
       Eigen::MatrixXd mat(MatrixXd::Zero(source_K[i].size(), source_K[i][0].size()));
       for (int j = 0; j < source_K[i].size(); j++) {
           mat.row(j) = Eigen::Map<const Eigen::VectorXd>(source_K[i][j].data(), source_K[i][j].size());
       }
-      K_hat.push_back(std::move(mat));
-      k_ff_hat.push_back(Eigen::VectorXd::Map(source_k_ff[i].data(), source_k_ff[i].size()));
+      K_hat_.push_back(std::move(mat));
+      k_ff_hat_.push_back(Eigen::VectorXd::Map(source_k_ff[i].data(), source_k_ff[i].size()));
     }
     
     auto finish_value_function = std::chrono::high_resolution_clock::now();
@@ -207,46 +221,57 @@ drake::systems::EventStatus iC3LqrTrackingController::ComputePlan(
         std::chrono::duration_cast<std::chrono::microseconds>(elapsed_value_function).count() /
         1e6;
     std::cout << "ic3 value function time " << solve_time_value_function << std::endl;
-
-    int idx = std::min(ic3_options_.N-1, ic3_timestep);
-
-
-    auto start_simulate = std::chrono::high_resolution_clock::now();
-    // Simulate to get lambda
-    VectorXd u_nominal = input_data.col(idx);
-    c3::LCSSimulateConfig config; 
-    config.regularized = true;
-    config.max_exp = -6;
-    auto [x_out, lambda] = lcs.SimulateAndReturnForce(x_lcs, u_nominal, config);
-    
-    auto finish_simulate = std::chrono::high_resolution_clock::now();
-    auto elapsed_simulate = finish_simulate - start_simulate;
-    double solve_time_simulate =
-        std::chrono::duration_cast<std::chrono::microseconds>(elapsed_simulate).count() /
-        1e6;
-    std::cout << "lcs simulate time " << solve_time_simulate << std::endl;
-
-    auto start_matrix_multiplication = std::chrono::high_resolution_clock::now();
-
-    // Update feedforward gain
-    MatrixXd B = lcs.B()[0];
-    MatrixXd D = lcs.D()[0];
-    VectorXd lambda_nominal = force_data.col(idx);
-    VectorXd x_nominal = state_data.col(idx);
-
-    VectorXd rhs = B.transpose() * H[idx+1] * D * (lambda_nominal - lambda);
-    MatrixXd Q_uu = R_ + B.transpose() * H[idx+1] * B;
-    Eigen::LDLT<Eigen::MatrixXd> solver(Q_uu);  
-
-    VectorXd k_ff = k_ff_hat[idx] + solver.solve(rhs);
-    MatrixXd K = K_hat[idx];
-
-    double alpha = ic3_options_.lqr_alpha;
-    u_out_ = u_nominal + K * (x_lcs - x_nominal) + alpha * k_ff;
-
-  } else {
-    std::cout << "iC3 lqr value function lcm NULL" << std::endl;
   }
+
+
+  LCS lcs_sim = GetLCSSegment(ic3_timestep, N_);
+
+  UpdateQuaternionCosts(x_lcs, xd_);
+
+  int idx = std::min(ic3_options_.N-1, ic3_timestep);
+  auto start_simulate = std::chrono::high_resolution_clock::now();
+
+  // Simulate to get lambda
+  VectorXd u_nominal = input_data_.col(idx);
+  c3::LCSSimulateConfig config; 
+  config.regularized = true;
+  config.min_exp = -16;
+  config.max_exp = -6;
+  auto [x_out, lambda] = lcs_sim.SimulateAndReturnForce(x_lcs, u_nominal, config);
+  
+  auto finish_simulate = std::chrono::high_resolution_clock::now();
+  auto elapsed_simulate = finish_simulate - start_simulate;
+  double solve_time_simulate =
+      std::chrono::duration_cast<std::chrono::microseconds>(elapsed_simulate).count() /
+      1e6;
+  std::cout << "lcs simulate time " << solve_time_simulate << std::endl;
+
+  auto start_matrix_multiplication = std::chrono::high_resolution_clock::now();
+
+  // Update feedforward gain
+  MatrixXd B = lcs_sim.B()[0];
+  MatrixXd D = lcs_sim.D()[0];
+  VectorXd lambda_nominal = force_data_.col(idx);
+  VectorXd x_nominal = state_data_.col(idx);
+
+  VectorXd k_ff = UpdateFeedforwardGain(H_[idx+1], B, D, lambda_nominal, lambda, k_ff_hat_[idx]);
+  MatrixXd K = K_hat_[idx];
+
+
+  auto start_line_search = std::chrono::high_resolution_clock::now();
+  
+  int lookahead_horizon = 5;
+  double alpha = DoBackTrackingLineSearch(x_lcs, ic3_timestep, lookahead_horizon);
+  
+  auto finish_line_search = std::chrono::high_resolution_clock::now();
+  auto elapsed_line_search = finish_line_search - start_line_search;
+  double solve_time_line_search =
+      std::chrono::duration_cast<std::chrono::microseconds>(elapsed_line_search).count() /
+      1e6;
+  std::cout << "line_search time " << solve_time_line_search << std::endl;
+
+  u_out_ = u_nominal + K * (x_lcs - x_nominal) + alpha * k_ff;
+
 
 
   return drake::systems::EventStatus::Succeeded();
@@ -302,6 +327,207 @@ int iC3LqrTrackingController::GetNearestXForValueFunction(
   return best_idx;
 
 }
+
+VectorXd iC3LqrTrackingController::UpdateFeedforwardGain(MatrixXd H_ip1, MatrixXd B, 
+    MatrixXd D, VectorXd lambda_nominal, VectorXd lambda_real, VectorXd k_ff_hat) const {
+      
+  VectorXd rhs = B.transpose() * H_ip1 * D * (lambda_nominal - lambda_real);
+  MatrixXd Q_uu = R_ + B.transpose() * H_ip1 * B;
+  Eigen::LDLT<Eigen::MatrixXd> solver(Q_uu);  
+  VectorXd k_ff = k_ff_hat + solver.solve(rhs);
+
+  return k_ff;
+}
+
+double iC3LqrTrackingController::DoBackTrackingLineSearch(
+    Eigen::VectorXd x_curr, int idx, int lookahead_horizon) const {
+
+  c3::LCSSimulateConfig config; 
+  config.regularized = true;
+  config.min_exp = -16;
+  config.max_exp = -6;
+
+
+  double alpha = 1.0;
+  double beta = 0.5;
+  int max_steps = 10;
+
+  LCS lcs = GetLCSSegment(idx, lookahead_horizon);
+
+  // Get lambdas from simulating with u nominal
+  vector<VectorXd> lambdas;
+  VectorXd x_sim = x_curr;
+  for (int t = 0; t < lookahead_horizon; t++) {
+    VectorXd u_nominal = input_data_.col(std::min(idx + t, ic3_options_.N-1));
+
+    auto [x_out, lambda] = lcs.SimulateAndReturnForceAtTimestep(x_sim, u_nominal, config, t);
+    x_sim = x_out;
+    lambdas.push_back(lambda);
+  }
+
+  double best_alpha = 1.0;
+  double best_cost = std::numeric_limits<double>::infinity();
+  for (int i = 0; i < max_steps; i++) {
+
+    double x_cost = 0;
+    double u_cost = 0;
+    double final_cost = 0;
+
+    // Simulate forward lookahead_horizon timesteps to get cost
+    VectorXd x_sim = x_curr;
+    for (int t = 0; t < lookahead_horizon; t++) {
+
+      int tracking_idx = std::min(idx + t, ic3_options_.N-1);  
+      VectorXd x_nominal = state_data_.col(tracking_idx);
+      VectorXd u_nominal = input_data_.col(tracking_idx);
+
+      VectorXd k_ff = UpdateFeedforwardGain(H_[tracking_idx+1], lcs.B()[t], 
+                        lcs.D()[t], force_data_.col(tracking_idx), lambdas[t], k_ff_hat_[tracking_idx]);
+      VectorXd u_tracking = u_nominal + K_hat_[tracking_idx] * (x_sim - x_nominal)    
+                              + alpha * k_ff;
+
+      x_cost += (x_sim - xd_).transpose() * Q_ * (x_sim - xd_);
+      u_cost += (u_tracking - ud_).transpose() * R_ * (u_tracking - ud_);
+
+      auto [x_next, lambda] = lcs.SimulateAndReturnForceAtTimestep(x_sim, u_tracking, config, t);
+
+      x_sim = x_next;
+    }
+    int final_idx = std::min(idx + lookahead_horizon, ic3_options_.N);
+    VectorXd x_hat = state_data_.col(final_idx);
+    final_cost += ((x_sim - x_hat).transpose() * H_[final_idx] * (x_sim - x_hat) + 2 * g_[final_idx].transpose() * (x_sim - x_hat)).value();
+
+    // final_cost = 0;
+
+    std::cout << "alpha " << alpha << std::endl;
+    std::cout << "total cost " << x_cost + u_cost + final_cost << std::endl;
+
+    // std::cout << "x_cost " << x_cost << std::endl;
+    // std::cout << "u_cost " << u_cost << std::endl;
+    // std::cout << "final_cost " << final_cost << std::endl;
+
+
+    if (x_cost + u_cost + final_cost < best_cost) {
+      best_cost = x_cost + u_cost + final_cost;
+      best_alpha = alpha;
+    }
+
+    alpha *= beta;
+  }
+
+  // return previous alpha
+  std::cout << "best alpha " << best_alpha << std::endl;
+  return best_alpha;
+
+}
+
+
+
+void iC3LqrTrackingController::UpdateQuaternionCosts(
+    const Eigen::VectorXd& x_curr, const Eigen::VectorXd& x_des) const {
+    
+  // Early return if no quaternions or cost parameters not set
+  if (quaternion_indices_.size() == 0 ||
+      !c3_controller_options_.quaternion_weight.has_value() ||
+      !c3_controller_options_.quaternion_regularizer_fraction.has_value()) {
+    return;
+  }
+
+  for (int index : quaternion_indices_) {
+    Eigen::VectorXd quat_curr_i = x_curr.segment(index, 4).normalized();
+    Eigen::VectorXd quat_des_i = x_des.segment(index, 4).normalized();
+
+    Eigen::MatrixXd quat_hessian_i =
+        c3::systems::common::hessian_of_squared_quaternion_angle_difference(
+                  quat_curr_i, quat_des_i);
+
+    // Regularize hessian so Q is always PSD
+    double min_eigenval = quat_hessian_i.eigenvalues().real().minCoeff();
+    Eigen::MatrixXd quat_regularizer_1 =
+        std::max(0.0, -min_eigenval) * Eigen::MatrixXd::Identity(4, 4);
+    Eigen::MatrixXd quat_regularizer_2 = quat_des_i * quat_des_i.transpose();
+
+    // Additional regularization term to help with numerical issues
+    Eigen::MatrixXd quat_regularizer_3 = 1e-8 * Eigen::MatrixXd::Identity(4, 4);
+
+    double quaternion_weight = c3_controller_options_.quaternion_weight.value();
+    double quaternion_regularizer_fraction =
+        c3_controller_options_.quaternion_regularizer_fraction.value();
+
+    // Replace quaternion blocks in Q
+    Q_.block(index, index, 4, 4) =
+        c3_options_.w_Q * quaternion_weight *
+        (quat_hessian_i + quat_regularizer_1 +
+          quaternion_regularizer_fraction * quat_regularizer_2 +
+          quat_regularizer_3);
+    
+  }
+}
+
+
+LCS iC3LqrTrackingController::MakeTimeVaryingLCS(MatrixXd x_hat, MatrixXd u_hat) const {
+  DRAKE_DEMAND(x_hat.cols() >= u_hat.cols());
+
+  vector<Eigen::MatrixXd> A;
+  vector<Eigen::MatrixXd> B;
+  vector<Eigen::MatrixXd> D;
+  vector<Eigen::VectorXd> d;
+  vector<Eigen::MatrixXd> E;
+  vector<Eigen::MatrixXd> F;
+  vector<Eigen::MatrixXd> H;
+  vector<Eigen::VectorXd> c;
+
+  int N = u_hat.cols();
+
+  for (int k = 0; k < N; k++) {
+    
+    for (auto idx : quaternion_indices_) {
+      x_hat.col(k).segment(idx, 4) = x_hat.col(k).segment(idx, 4).normalized(); // Normalize quaternions
+    }
+
+    // Linearize about kth xhat, uhat
+    lcs_factory_.UpdateStateAndInput(x_hat.col(k), u_hat.col(k));
+    LCS lcs = lcs_factory_.GenerateLCS();
+    A.push_back(lcs.A()[0]);
+    B.push_back(lcs.B()[0]);
+    D.push_back(lcs.D()[0]);
+    d.push_back(lcs.d()[0]);
+    E.push_back(lcs.E()[0]);
+    F.push_back(lcs.F()[0]);
+    H.push_back(lcs.H()[0]);
+    c.push_back(lcs.c()[0]);      
+  }
+
+  return LCS(A, B, D, d, E, F, H, c, dt_);
+}
+
+LCS iC3LqrTrackingController::GetLCSSegment(int start_idx, int size) const {
+  DRAKE_DEMAND(lcs_.N() == ic3_options_.N);
+
+  std::vector<Eigen::MatrixXd> A;
+  std::vector<Eigen::MatrixXd> B;
+  std::vector<Eigen::MatrixXd> D;
+  std::vector<Eigen::VectorXd> d;
+  std::vector<Eigen::MatrixXd> E;
+  std::vector<Eigen::MatrixXd> F;
+  std::vector<Eigen::MatrixXd> H;
+  std::vector<Eigen::VectorXd> c;
+
+  for (int i = 0; i < size; i++) {
+    int idx = std::min(ic3_options_.N-1, start_idx + i);
+    A.push_back(lcs_.A()[idx]);
+    B.push_back(lcs_.B()[idx]);
+    D.push_back(lcs_.D()[idx]);
+    d.push_back(lcs_.d()[idx]);
+    E.push_back(lcs_.E()[idx]);
+    F.push_back(lcs_.F()[idx]);
+    H.push_back(lcs_.H()[idx]);
+    c.push_back(lcs_.c()[idx]);
+  }
+
+  return LCS(A, B, D, d, E, F, H, c, dt_);
+}
+
 
 void iC3LqrTrackingController::OutputActorInput(
     const drake::systems::Context<double>& context,

@@ -43,6 +43,8 @@ iC3HybridMpcTrackingController::iC3HybridMpcTrackingController(
       R_(mpc_options.R),
       S_(mpc_options.S),
       G_(mpc_options.G),
+      lambda_threshold_(mpc_options.lambda_threshold),
+      eta_threshold_(mpc_options.eta_threshold),
       A_x_(A_x),
       lb_x_(lb_x),
       ub_x_(ub_x),
@@ -101,6 +103,17 @@ iC3HybridMpcTrackingController::iC3HybridMpcTrackingController(
     slack_costs_[i] = 
         prog_.AddQuadraticCost(2*G_, VectorXd::Zero(n_lambda_), epsilon_[i]).evaluator().get();
   }
+
+  // End effector acceleration cost
+  // Assumes first n_u_ terms of velocity correspond to end effector
+  double accel_cost = mpc_options_.accel_cost;
+  for (int i = 0; i < N_; i++) {
+    MatrixXd Q_accel = accel_cost * MatrixXd::Identity(2*n_u_, 2*n_u_);
+    Q_accel.block(0, n_u_, n_u_, n_u_) = -accel_cost * MatrixXd::Identity(n_u_, n_u_);
+    Q_accel.block(n_u_, 0, n_u_, n_u_) = -accel_cost * MatrixXd::Identity(n_u_, n_u_);
+    prog_.AddQuadraticCost(2*Q_accel, VectorXd::Zero(2*n_u_), {x_[i].segment(n_q_, n_u_), x_[i+1].segment(n_q_, n_u_)});
+  }
+
 
   // Placeholder initial state constraint
   initial_state_constraint_ = 
@@ -403,16 +416,17 @@ drake::systems::EventStatus iC3HybridMpcTrackingController::ComputePlan(
     A_eta.block(0, n_x_+n_lambda_, n_lambda_, n_u_) = H;
     A_eta.block(0, n_x_+n_lambda_+n_u_, n_lambda_, n_lambda_) = MatrixXd::Zero(n_lambda_, n_lambda_);
 
-    lambda_lb.segment(0, n_lambda_) = VectorXd::Zero(n_lambda_);
     lambda_ub.segment(0, n_lambda_) = VectorXd::Constant(n_lambda_, std::numeric_limits<double>::infinity());
     lambda_ub.segment(n_lambda_, n_lambda_) = VectorXd::Zero(n_lambda_);
 
-    eta_lb.segment(0, n_lambda_) = -c;
     eta_ub.segment(0, n_lambda_) = VectorXd::Constant(n_lambda_, std::numeric_limits<double>::infinity());
 
     double tolerance = 1e-5;
     for (int j = 0; j < n_lambda_; j++) {
+      lambda_lb(j) = (lambda_hat(j) <= tolerance) ? 0 : lambda_threshold_(j);
       lambda_lb(n_lambda_+j) = (lambda_hat(j) <= tolerance) ? -std::numeric_limits<double>::infinity() : 0;
+
+      eta_lb(j) = -c(j) + (lambda_hat(j) > tolerance) ? 0 : eta_threshold_(j);
       eta_lb(n_lambda_+j) = (lambda_hat(j) > tolerance) ? -std::numeric_limits<double>::infinity() : 0;
       eta_ub(n_lambda_+j) = (lambda_hat(j) > tolerance) ? -c(j) : 0;
 

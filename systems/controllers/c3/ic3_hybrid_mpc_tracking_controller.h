@@ -147,6 +147,9 @@ class iC3HybridMpcTrackingController : public drake::systems::LeafSystem<double>
   VectorXd lb_u_;
   VectorXd ub_u_;
 
+  VectorXd lambda_threshold_;
+  VectorXd eta_threshold_;
+
   int example_idx_;
 
   mutable drake::math::RigidTransform<double> X_delta_;

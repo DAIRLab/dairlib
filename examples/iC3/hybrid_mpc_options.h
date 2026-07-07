@@ -12,6 +12,7 @@ struct HybridMpcOptions {
   double w_R;
   double w_S;
   double w_G; // Penalty on epsilon (complementarity slack variable)
+  double accel_cost; 
 
   Eigen::VectorXd q_vector;
   Eigen::VectorXd r_vector;
@@ -22,6 +23,9 @@ struct HybridMpcOptions {
   Eigen::MatrixXd R;
   Eigen::MatrixXd S;
   Eigen::MatrixXd G;
+
+  Eigen::VectorXd lambda_threshold;
+  Eigen::VectorXd eta_threshold;
 
   std::vector<int> quaternion_indices;
   double quaternion_weight;
@@ -44,6 +48,9 @@ struct HybridMpcOptions {
     a->Visit(DRAKE_NVP(quaternion_indices));
     a->Visit(DRAKE_NVP(quaternion_weight));
     a->Visit(DRAKE_NVP(use_nominal_lcs));
+    a->Visit(DRAKE_NVP(lambda_threshold));
+    a->Visit(DRAKE_NVP(eta_threshold));
+    a->Visit(DRAKE_NVP(accel_cost));
 
     Q = w_Q * q_vector.asDiagonal();
     R = w_R * r_vector.asDiagonal();

@@ -333,7 +333,7 @@ std::cout << "[DEBUG] 3D printer LCM systems connected."
               << sim_params.q_init_objects.at(i).transpose()
               << std::endl;
 
-    q.segment(3+ 7 * (i), 7) =
+    q.segment(3 + 7 * (i), 7) =
         sim_params.q_init_objects.at(i);
   }
 

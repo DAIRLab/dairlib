@@ -31,7 +31,7 @@ workspace_limits: [[1, 0, 0, 0.0, 0.35], [0, 1, 0, -0.0075, 0.3475], [0, 0, 1, 0
 # Table is x = 0.075 -> 0.71, y = -0.457 -> 0.457
 
 robot_radius_limits: [0.0, 10.0]  # for big object like egg carton, the limits should be [0.23, 0.75]
-workspace_margins: 0.01
+workspace_margins: 0.005
 u_horizontal_limits: [-10, 10]
 u_vertical_limits: [-3, 3]
 ee_velocity_limits: [-0.14, 0.14]

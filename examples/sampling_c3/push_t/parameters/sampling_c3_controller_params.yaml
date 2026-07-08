@@ -16,7 +16,10 @@ lcm_channels_visualize_file: examples/sampling_c3/shared_parameters/lcm_channels
 # Note:  Use vertical_link body name as representative of the pose of the entire
 # T model.  This works because vertical_link's origin is the same as the T's.
 object_models: [examples/sampling_c3/urdf/push_t_control.sdf]
+object_model: examples/sampling_c3/urdf/push_t_control.sdf
 base_names: [vertical_link]
+object_body_name: body
+base_name: [A_shape_video]
 
 include_end_effector_orientation: false
 

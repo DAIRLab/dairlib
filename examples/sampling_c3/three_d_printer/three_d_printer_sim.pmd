@@ -23,7 +23,7 @@ group "operator" {
         host = "localhost";
     }
     cmd "start_logging" {
-        exec = "python3 examples/sampling_c3/start_logging.py sim anything /home/ericcui/logs";
+        exec = "python3 examples/sampling_c3/start_logging.py sim three_d_printer /mnt/data0/three_d_printer/logs";
         host = "localhost";
     }
 
@@ -92,7 +92,6 @@ script "start_experiment_no_logs"{
     wait ms 1000;
     restart cmd "three_d_printer_sim";
     restart cmd "three_d_printer_osc";
-    restart cmd "visualizer";
     wait ms 50;
     restart cmd "sampling_c3";
 }
@@ -101,7 +100,6 @@ script "start_experiment_with_logs"{
     restart cmd "start_logging";
     restart cmd "three_d_printer_sim";
     restart cmd "three_d_printer_osc";
-    restart cmd "visualizer";
     wait ms 50;
     restart cmd "sampling_c3";
 }

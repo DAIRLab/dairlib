@@ -1599,10 +1599,10 @@ void SamplingC3Controller::Check3dPrinterForWorkspaceLimitViolations(
     // std::cout << "lhs = " << lhs << ", rhs = " << rhs << std::endl;
 
     DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 3).transpose() *
-                     sampling_c3_options_.workspace_limits[2].segment(0, 3) - 0.107 >
+                     sampling_c3_options_.workspace_limits[2].segment(0, 3) >
                  sampling_c3_options_.workspace_limits[2][3]);
     DRAKE_DEMAND(lcs_x_curr->get_data().segment(0, 3).transpose() *
-                     sampling_c3_options_.workspace_limits[2].segment(0, 3) - 0.107 <
+                     sampling_c3_options_.workspace_limits[2].segment(0, 3) <
                  sampling_c3_options_.workspace_limits[2][4]);
 
   // radius checks

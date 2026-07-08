@@ -333,14 +333,14 @@ std::cout << "[DEBUG] 3D printer LCM systems connected."
               << sim_params.q_init_objects.at(i).transpose()
               << std::endl;
 
-    q.segment(3 * (i + 1), 3) =
+    q.segment(3+ 7 * (i), 7) =
         sim_params.q_init_objects.at(i);
   }
 
   std::cout << "[DEBUG] Writing final tail object position."
             << std::endl;
 
-  q.tail(3) =
+  q.tail(7) =
       sim_params.q_init_objects.at(num_objects - 1);
 
   std::cout << "[DEBUG] Final q:\n"

@@ -80,6 +80,9 @@ void RepositionStraightLine(
     const Eigen::VectorXd& x_lcs, const Eigen::Vector3d& repos_target,
     const double& dt, const bool& is_doing_c3, bool& finished_reposition_flag,
     const SamplingC3RepositionParams& reposition_params) {
+
+  std::cout << "Repositioning using straight line trajectory to "
+            << repos_target.transpose() << std::endl;
   Eigen::Vector3d current_ee_location = x_lcs.head(3);
   Eigen::Vector3d curr_to_goal_vec = repos_target - current_ee_location;
   double travel_distance = curr_to_goal_vec.norm();
@@ -398,6 +401,7 @@ void RepositionPiecewiseLinear(
   Eigen::Vector3d current_ee_location = x_lcs.head(3);
 
   // Define the waypoints for the three-leg repositioning.
+  std::cout << "Repositioning using piecewise linear trajectory to " << repos_target.transpose() << std::endl;
   Eigen::Vector3d waypoint_above_ee = current_ee_location;
   waypoint_above_ee(2) = reposition_params.pwl_waypoint_height;
   Eigen::Vector3d waypoint_above_sample = repos_target;

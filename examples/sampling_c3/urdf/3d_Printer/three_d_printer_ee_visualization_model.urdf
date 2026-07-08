@@ -9,7 +9,7 @@
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <!-- Use slightly larger radius for visualization purposes. -->
-        <sphere radius="0.01"/>
+        <sphere radius="0.013"/>
       </geometry>
       <material>
         <color rgba="1.0 1.0 1.0 1.0"/>

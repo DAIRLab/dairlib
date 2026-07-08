@@ -483,7 +483,7 @@ int DoMain(int argc, char* argv[]) {
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::ThreeDPrinterKinematics>(
           plant_three_d_printer, three_d_printer_context.get(), plant_object,
-          object_context.get(), k3dEndEffectorName,
+          object_context.get(), k3dEndEffectorTipName,
           controller_params.base_names,
           controller_params.include_end_effector_orientation);
 

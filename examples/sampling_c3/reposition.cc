@@ -34,7 +34,14 @@ Eigen::MatrixXd Reposition(const int& n_q, const int& n_x, const int& N,
   // Compute EE position errors to repositioning target.
   double travel_distance = curr_to_goal_vec.norm();
   double xy_travel_distance = curr_to_goal_vec.head(2).norm();
-
+  std::cout << "Repositioning to " << repos_target.transpose()
+            << " from current ee location "
+            << current_ee_location.transpose() << std::endl;
+  std::cout << "Travel distance: " << travel_distance
+            << ", xy_travel_distance: " << xy_travel_distance
+            << ", travel_angle: " << travel_angle << std::endl;
+  std::cout << "piecewise linear comparison: " << reposition_params.use_straight_line_traj_under_piecewise_linear
+            << std::endl;
   // Use a straight line trajectory if close to the target.
   RepositioningTrajectoryType traj_type = reposition_params.traj_type;
   bool allow_ground_penetration = false;
@@ -45,8 +52,11 @@ Eigen::MatrixXd Reposition(const int& n_q, const int& n_x, const int& N,
         traj_type == RepositioningTrajectoryType::kCircular) &&
        travel_angle < reposition_params.use_straight_line_traj_within_angle) ||
       (traj_type == RepositioningTrajectoryType::kPiecewiseLinear &&
-       xy_travel_distance <
-           reposition_params.use_straight_line_traj_under_piecewise_linear)) {
+       ((xy_travel_distance <
+           reposition_params.use_straight_line_traj_under_piecewise_linear) || 
+           ((xy_travel_distance < reposition_params.use_straight_line_traj_under_piecewise_linear + 0.01) &&
+            (current_ee_location[2] < reposition_params.pwl_waypoint_height))))) {
+    std::cout << "Using straight line trajectory for repositioning." << std::endl;
     RepositionStraightLine(knots, n_q, n_x, N, x_lcs, repos_target, dt,
                            is_doing_c3, finished_reposition_flag,
                            reposition_params);

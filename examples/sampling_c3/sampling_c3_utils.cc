@@ -69,8 +69,12 @@ ModelInstanceIndex Add3DPrinterToPlant(MultibodyPlant<double>* plant,
   ModelInstanceIndex printer_index =
     parser.AddModelsFromUrl(k3DPrinterModel)[0];
 
+  ModelInstanceIndex ramp_index =
+    parser.AddModelsFromUrl(k3DPrinterRampModel)[0];
+
 // Disable gravity for the entire printer model instance.
   plant->set_gravity_enabled(printer_index, false);
+  plant->set_gravity_enabled(ramp_index, false);
 
   std::optional<ModelInstanceIndex> printer_model_instance{printer_index};
 
@@ -86,7 +90,7 @@ ModelInstanceIndex Add3DPrinterToPlant(MultibodyPlant<double>* plant,
       plant->GetJointByName("z_axis_joint", printer_model_instance));
 
   if (plant->time_step() > 0.0) {
-    const drake::multibody::PdControllerGains gains{2500.0, 250.0};
+    const drake::multibody::PdControllerGains gains{25000.0, 2500.0};
 
     plant->get_mutable_joint_actuator(
         plant->GetJointActuatorByName("x_axis_actuator").index())
@@ -105,6 +109,16 @@ ModelInstanceIndex Add3DPrinterToPlant(MultibodyPlant<double>* plant,
   plant->WeldFrames(plant->world_frame(),
                     plant->GetFrameByName("base_link"),
                     X_WI);
+
+  RigidTransform<double> T_Ramp_W(
+        drake::math::RotationMatrix<double>(
+            drake::math::RollPitchYaw<double>(0, 0, 0)),
+        k3dPrinterRampAttachmentFrame);
+
+
+  plant->WeldFrames(plant->GetFrameByName("base_link"),
+                    plant->GetFrameByName("ramp_link"),
+                    T_Ramp_W);
 
   if (include_ee) {
     ModelInstanceIndex ee_index = parser.AddModels(k3dEndEffectorModel)[0];

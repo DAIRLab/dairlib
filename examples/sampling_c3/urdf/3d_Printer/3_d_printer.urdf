@@ -355,6 +355,12 @@
         <color rgba="0.2 0.4 0.9 1.0"/>
       </material>
     </visual>
+    <collision>
+      <origin xyz="-0.225 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.02 0.457 0.0265"/>
+      </geometry>
+    </collision>
 
     <!-- Right beam running in y -->
     <visual>
@@ -366,6 +372,12 @@
         <color rgba="0.2 0.4 0.9 1.0"/>
       </material>
     </visual>
+    <collision>
+      <origin xyz="0.225 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.02 0.457 0.0265"/>
+      </geometry>
+    </collision>
 
     <!-- Rear crossbar running in x 
     Length of beam:
@@ -380,6 +392,12 @@
         <color rgba="0.2 0.4 0.9 1.0"/>
       </material>
     </visual>
+    <collision>
+      <origin xyz="0 0.2185 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.44 0.02 0.0265"/>
+      </geometry>
+    </collision>
   </link>
 
   <joint name="z_axis_joint" type="prismatic">
@@ -423,12 +441,18 @@
         <color rgba="0.9 0.2 0.2 1.0"/>
       </material>
     </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.43 0.028 0.02"/>
+      </geometry>
+    </collision>
   </link>
 
   <joint name="y_axis_joint" type="prismatic">
   <parent link="z_gantry"/>
   <child link="y_beam"/>
-  <origin xyz="0 -0.128275 0" rpy="0 0 0"/>
+  <origin xyz="0 -0.13432 0" rpy="0 0 0"/>
   <axis xyz="0 1 0"/>
   <!--
     Build volume in y is 0.35 m, so half-range is 0.175 m.
@@ -464,6 +488,12 @@
         <color rgba="0.2 0.8 0.2 1.0"/>
       </material>
     </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.080 0.11 0.1092"/>
+      </geometry>
+    </collision>
   </link>
 
 <joint name="x_axis_joint" type="prismatic">
@@ -477,6 +507,14 @@
   <limit lower="0" upper="0.350" effort="100" velocity="0.5"/>
 </joint>
   
+
+
+<drake:collision_filter_group name="printer_parts">
+  <drake:member link="z_gantry"/>
+  <drake:member link="y_beam"/>
+  <drake:member link="x_carriage"/>
+  <drake:ignored_collision_filter_group name="printer_parts"/>
+</drake:collision_filter_group>
   <!--
     Print volume marker:
     Printable dimensions are:

@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<sdf version="1.7">
+  <model name="cube">
+
+    <link name="cube">
+
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+
+        <!-- Example mass -->
+        <mass>0.05</mass>
+
+        <!-- Solid cube inertia:
+             I = (1/6) m a²
+             a = 0.0254 m
+             m = 0.05 kg
+        -->
+        <inertia>
+          <ixx>5.3763e-06</ixx>
+          <iyy>5.3763e-06</iyy>
+          <izz>5.3763e-06</izz>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyz>0</iyz>
+        </inertia>
+      </inertial>
+
+      <visual name="cube_visual">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+  <box>
+    <size>0.0508 0.0508 0.0508</size>
+  </box>
+</geometry>
+
+        <material>
+          <diffuse>0 0 0 1</diffuse>
+        </material>
+      </visual>
+
+      <collision name="cube_collision">
+        <pose>0 0 0 0 0 0</pose>
+
+        <geometry>
+          <box>
+            <size>0.0508 0.0508 0.0508</size>
+          </box>
+        </geometry>
+
+        <drake:proximity_properties xmlns:drake="uri:drake">
+          <drake:compliant_hydroelastic/>
+          <drake:hydroelastic_modulus>3.0e7</drake:hydroelastic_modulus>
+          <drake:mesh_resolution_hint>0.025</drake:mesh_resolution_hint>
+          <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
+          <drake:mu_dynamic>0.3</drake:mu_dynamic>
+        </drake:proximity_properties>
+
+      </collision>
+
+    </link>
+
+  </model>
+</sdf>

@@ -22,7 +22,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 -0.0535"/>
       <geometry>
-        <cylinder radius="0.004" length="0.107"/>
+        <cylinder radius="0.0025" length="0.107"/>
       </geometry>
     </visual>
   </link>

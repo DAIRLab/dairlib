@@ -499,6 +499,8 @@ void ObjectStateReceiver::CopyOutput(const Context<double>& context,
   DRAKE_ASSERT(input != nullptr);
   const auto& state_msg = input->get_value<dairlib::lcmt_object_state>();
 
+
+
   VectorXd positions = VectorXd::Zero(num_positions_);
   for (int i = 0; i < state_msg.num_positions; i++) {
     int j = position_index_map_.at(state_msg.position_names[i]);
@@ -800,7 +802,7 @@ const auto& trajectory =
   // Get current time from context
   double current_time = context.get_time();
   VectorXd default_position_ = VectorXd::Zero(3);
-  default_position_ << 0.1, 0.1, 0.25;  // Default position if trajectory is empty
+  default_position_ << 0.0, 0.0, 0.25;  // Default position if trajectory is empty
 
   VectorXd desired_position;
 

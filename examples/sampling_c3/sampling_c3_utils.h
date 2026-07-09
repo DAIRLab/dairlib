@@ -14,7 +14,9 @@ namespace dairlib {
 static constexpr const char* kFrankaModel =
     "package://drake_models/franka_description/urdf/panda_arm.urdf";
 static constexpr const char* k3DPrinterModel =
-  "file:///mnt/data0/three_d_printer/dairlib/examples/sampling_c3/urdf/3d_Printer/3_d_printer.urdf";  
+  "file:///mnt/data0/three_d_printer/dairlib/examples/sampling_c3/urdf/3d_Printer/3_d_printer.urdf";
+static constexpr const char* k3DPrinterRampModel =
+  "file:///mnt/data0/three_d_printer/dairlib/examples/sampling_c3/urdf/3d_Printer/ramp.urdf";  
 static constexpr const char* kEndEffectorModel =
     "examples/sampling_c3/urdf/end_effector_full.urdf";
 static constexpr const char* k3dEndEffectorModel =
@@ -44,6 +46,7 @@ static constexpr const char* kFrontWallModel =
 /// effector can be attached.
 static const Eigen::Vector3d kToolAttachmentFrame = {0, 0, 0.107};
 static const Eigen::Vector3d k3dPrinterToolAttachmentFrame = {0, -0.0075, -0.0546};
+static const Eigen::Vector3d k3dPrinterRampAttachmentFrame = {0.15, 0.15, 0.0};
 
 
 static const Eigen::Vector3d kFrankaToGroundOffset = {0, 0, -0.029};

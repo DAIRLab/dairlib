@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<robot name="ramp">
+
+  <link name="ramp_link">
+
+    <!-- Approximate mass/inertia -->
+    <inertial>
+      <origin xyz="0.1016 0 0.0254" rpy="0 0 0"/>
+      <mass value="1.0"/>
+      <inertia
+        ixx="0.001"
+        ixy="0.0"
+        ixz="0.0"
+        iyy="0.001"
+        iyz="0.0"
+        izz="0.001"/>
+    </inertial>
+
+    <!-- Ramp (mesh) -->
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="/mnt/data0/three_d_printer/dairlib/examples/sampling_c3/urdf/3d_Printer/ramp.obj"/>
+      </geometry>
+      <material name="gray">
+        <color rgba="0.7 0.7 0.7 1.0"/>
+      </material>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="/mnt/data0/three_d_printer/dairlib/examples/sampling_c3/urdf/3d_Printer/ramp.obj"/>
+      </geometry>
+    </collision>
+
+    <!-- Platform -->
+    <visual>
+      <!-- Center of platform -->
+      <origin xyz="-0.038 -0.038 0.04826" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.0762 0.0762 0.00508"/>
+      </geometry>
+      <material name="gray"/>
+    </visual>
+
+    <collision>
+      <origin xyz="0.1651 0 0.04826" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.0762 0.0762 0.00508"/>
+      </geometry>
+    </collision>
+
+  </link>
+
+</robot>

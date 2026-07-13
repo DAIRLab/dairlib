@@ -249,8 +249,8 @@ int DoMain(int argc, char* argv[]) {
           "end_effector_force", controller_params.W_ee_lambda, plant, plant,
           controller_params.end_effector_names, pts_to_track);
 
-  VectorXd ddq_min(-100 * VectorXd::Ones(9));
-  VectorXd ddq_max(100 * VectorXd::Ones(9));
+  VectorXd ddq_min = -controller_params.ddq_limit;
+  VectorXd ddq_max = controller_params.ddq_limit;
 
   osc->AddTrackingData(std::move(ee_position_tracking_data_0));
   osc->AddTrackingData(std::move(ee_position_tracking_data_120));

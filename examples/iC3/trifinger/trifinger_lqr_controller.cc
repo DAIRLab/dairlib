@@ -324,9 +324,6 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(ic3_lambda_trajectory_sub->get_output_port(),
                   controller->get_input_port_ic3_lambda());
 
-  // Note: nominal position unused here
-  builder.Connect(nominal_position->get_output_port(),
-                  lqr_trajectory_generator->get_input_port_nominal_position());
   builder.Connect(controller->get_output_port_actor_input(),
                   lqr_trajectory_generator->get_input_port_actor_input());
   builder.Connect(controller->get_output_port_tracking_target(),

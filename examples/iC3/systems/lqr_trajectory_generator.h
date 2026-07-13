@@ -38,10 +38,6 @@ class LqrTrajectoryGenerator : public drake::systems::LeafSystem<double> {
     return this->get_input_port(x_curr_port_);
   }
 
-  const drake::systems::InputPort<double>& get_input_port_nominal_position() const {
-    return this->get_input_port(nominal_position_port_);
-  }
-
   const drake::systems::InputPort<double>& get_input_port_tracking_target() const {
     return this->get_input_port(tracking_target_port_);
   }
@@ -65,7 +61,6 @@ class LqrTrajectoryGenerator : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context) const;
 
   drake::systems::InputPortIndex actor_input_port_;
-  drake::systems::InputPortIndex nominal_position_port_;
   drake::systems::InputPortIndex tracking_target_port_;
   drake::systems::InputPortIndex x_curr_port_;
 

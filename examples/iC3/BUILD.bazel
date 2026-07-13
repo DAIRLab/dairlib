@@ -27,6 +27,9 @@ cc_library(
     name = "hybrid_mpc_options",
     hdrs = ["hybrid_mpc_options.h"],
     visibility = ["//visibility:public"],
+    deps = [
+        "@c3//:libc3",
+    ],
 )
 
 py_binary(

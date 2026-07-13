@@ -36,8 +36,8 @@ iC3HybridMpcTrackingController::iC3HybridMpcTrackingController(
       mpc_options_(mpc_options),
       ic3_options_(ic3_options),
       solver_options_(solver_options),
-      N_(mpc_options.N),
-      dt_(ic3_options_.dt),
+      N_(mpc_options.lcs_factory_options.N),
+      dt_(mpc_options.lcs_factory_options.dt),
       example_idx_(example_idx),
       Q_(mpc_options.Q),
       R_(mpc_options.R),
@@ -53,7 +53,7 @@ iC3HybridMpcTrackingController::iC3HybridMpcTrackingController(
       ub_u_(ub_u),
       prog_(drake::solvers::MathematicalProgram()),
       osqp_(drake::solvers::OsqpSolver()) { 
-  this->set_name("ic3_lqr_tracking_controller");
+  this->set_name("ic3_hybrid_mpc_tracking_controller");
 
   n_q_ = plant_.num_positions();
   n_v_ = plant_.num_velocities();
@@ -71,12 +71,14 @@ iC3HybridMpcTrackingController::iC3HybridMpcTrackingController(
 
   // TODO: make this not bad
   if (example_idx_ == 0) {
-    n_lambda_ = 4 * 4;
+    n_lambda_ = 8 * 4;
   } else if (example_idx_ == 1) {
     n_lambda_ = 7 * 4;
   } else if (example_idx_ == 2) {
     n_lambda_ = 11 * 4;
   }
+
+  std::cout << "n lambda " << n_lambda_ << std::endl;
 
   // Add decision variables
   for (int i = 0; i < N_+1; i++) {
@@ -176,7 +178,7 @@ iC3HybridMpcTrackingController::iC3HybridMpcTrackingController(
     std::cout << "ub_u " << ub_u_.transpose() << std::endl;
   }
 
-
+  X_delta_ = drake::math::RigidTransform<double>::Identity();
 
   auto lcs_placeholder = CreatePlaceholderLCS();
 
@@ -216,6 +218,17 @@ iC3HybridMpcTrackingController::iC3HybridMpcTrackingController(
                                   &iC3HybridMpcTrackingController::OutputTrackingTarget)
           .get_index();
 
+  int nominal_position_size;
+  if (example_idx_ == 0) {
+    nominal_position_size = 3;
+  } else if (example_idx_ == 1 || example_idx_ == 2) {
+    nominal_position_size = 9;
+  }
+  nominal_position_port_ =
+      this->DeclareVectorInputPort(
+              "nominal_position", BasicVector<double>(nominal_position_size))
+          .get_index();
+
   DeclareForcedDiscreteUpdateEvent(&iC3HybridMpcTrackingController::ComputePlan);
 
 }
@@ -238,6 +251,8 @@ drake::systems::EventStatus iC3HybridMpcTrackingController::ComputePlan(
   const BasicVector<double>& timestep_vector =
       *this->template EvalVectorInput<BasicVector>(context, timestep_port_);
   int ic3_timestep = static_cast<int>(timestep_vector.get_value()(0));
+
+  std::cout << "ic3 timestep " << ic3_timestep << std::endl;
 
   // Get iC3 plan
   if (state_data_.cols() == 0 && input_data_.cols() == 0 && force_data_.cols() == 0) {
@@ -267,19 +282,23 @@ drake::systems::EventStatus iC3HybridMpcTrackingController::ComputePlan(
 
   auto start = std::chrono::high_resolution_clock::now();
 
-  std::cout << "ic3 timestep " << ic3_timestep << std::endl;
-
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
   drake::VectorX<double> x_lcs = lcs_x->get_data();  
 
+  if (example_idx_ == 0) {
+    const BasicVector<double>* nominal_position =
+      (BasicVector<double>*)this->EvalVectorInput(context, nominal_position_port_);
+    x_lcs.segment(0, 3) -= nominal_position->get_value();
+  }
+  std::cout << "x lcs " << x_lcs.transpose() << std::endl;
 
   // Update ee target based on current cube pose
   vector<VectorXd> x_des;
   vector<VectorXd> u_des;
   if (example_idx_ == 1 || example_idx_ == 2) {
-    if (ic3_timestep % 8 == 0) {
+    if (ic3_timestep % mpc_options_.transform_update_frequency == 0) {
       VectorXd x_plan = state_data_.col(ic3_timestep);
       Eigen::Quaterniond cube_rot_plan(x_plan(9), x_plan(10), x_plan(11), x_plan(12));
       Eigen::Vector3d cube_pos_plan(x_plan.segment(13, 3));
@@ -312,9 +331,11 @@ drake::systems::EventStatus iC3HybridMpcTrackingController::ComputePlan(
       u_des.push_back(u_plan);
     }
   } else if (example_idx_ == 0) {
-    for (int i = 0; i < N_; i++) {
+    for (int i = 0; i < N_+1; i++) {
       int idx = std::min(ic3_timestep + i, ic3_options_.N-1); 
       x_des.push_back(state_data_.col(idx));
+
+      if (i == N_) break;
       u_des.push_back(input_data_.col(idx));
     }
   }
@@ -360,8 +381,10 @@ drake::systems::EventStatus iC3HybridMpcTrackingController::ComputePlan(
       1e6;
   std::cout << "Quat norm time " << solve_time_quat_norm << std::endl;
 
+
   // Update initial state constraint
   initial_state_constraint_->UpdateCoefficients(MatrixXd::Identity(n_x_, n_x_), x_lcs);
+  std::cout << "x lcs " << x_lcs.transpose() << std::endl;
 
   // Update dynamics constraint
   // x_next = Ax + Bu + Dλ + d
@@ -381,6 +404,7 @@ drake::systems::EventStatus iC3HybridMpcTrackingController::ComputePlan(
     dynamics_constraints_[i]->UpdateCoefficients(A_dyn, affine_term);
   }
 
+  std::cout << "after update dynamics constraints " << std::endl;
 
   /* Update lambda/eta constraints
     0 <= λ <= ε if λ_hat = 0 
@@ -451,9 +475,12 @@ drake::systems::EventStatus iC3HybridMpcTrackingController::ComputePlan(
     eta_constraints_[i]->UpdateCoefficients(A_eta, eta_lb, eta_ub);
   }
 
+  std::cout << "after update lambda/eta constraints " << std::endl;
+
   // Update tracking and input targets to match plan 
   UpdateQuaternionCosts(x_lcs, x_des[N_]);
 
+  std::cout << "after update quat costs " << std::endl;
   // Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> solver_Q(Q_);
   // Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> solver_R(R_);
 
@@ -476,6 +503,11 @@ drake::systems::EventStatus iC3HybridMpcTrackingController::ComputePlan(
     VectorXd lambda_des = force_data_.col(idx);
     force_costs_[i]->UpdateCoefficients(2 * S_, -2 * S_ * lambda_des);
   }
+
+  std::cout << "Q_ " << Q_.rows() << " x " << Q_.cols() << std::endl;
+  std::cout << "R_ " << R_.rows() << " x " << R_.cols() << std::endl;
+  std::cout << "S_ " << S_.rows() << " x " << S_.cols() << std::endl;
+  std::cout << "G_ " << G_.rows() << " x " << G_.cols() << std::endl;
 
   auto start_qp_solve = std::chrono::high_resolution_clock::now();
 
@@ -500,38 +532,40 @@ drake::systems::EventStatus iC3HybridMpcTrackingController::ComputePlan(
 
   u_out_ = result.GetSolution(u_[0]);
 
-  for (int i = 0; i < N_; i++) {
-    VectorXd x_pred = result.GetSolution(x_[i]);
-    VectorXd u_pred = result.GetSolution(u_[i]);
-    VectorXd lambda_pred = result.GetSolution(lambda_[i]);
-    VectorXd epsilon_pred = result.GetSolution(epsilon_[i]);
-    VectorXd eta_pred = lcs.E()[i] * x_pred + lcs.F()[i] * lambda_pred + lcs.H()[i] * u_pred + lcs.c()[i];
+  if (example_idx_ == 1 || example_idx_ == 2) {
+    for (int i = 0; i < N_; i++) {
+      VectorXd x_pred = result.GetSolution(x_[i]);
+      VectorXd u_pred = result.GetSolution(u_[i]);
+      VectorXd lambda_pred = result.GetSolution(lambda_[i]);
+      VectorXd epsilon_pred = result.GetSolution(epsilon_[i]);
+      VectorXd eta_pred = lcs.E()[i] * x_pred + lcs.F()[i] * lambda_pred + lcs.H()[i] * u_pred + lcs.c()[i];
 
-    std::cout << "x " << i << ": " << x_pred.segment(0, 16).transpose() << std::endl;
-    std::cout << "u " << i << ": " << u_pred.transpose() << std::endl;
-    std::cout << "lambda " << i << ": " << lambda_pred.segment(0, 12).transpose() << std::endl;
-    std::cout << "eta " << i << ": " << eta_pred.segment(0, 12).transpose() << std::endl;
-    std::cout << "epsilon " << i << ": " << epsilon_pred.transpose() << std::endl;
+      std::cout << "x " << i << ": " << x_pred.segment(0, 16).transpose() << std::endl;
+      std::cout << "u " << i << ": " << u_pred.transpose() << std::endl;
+      std::cout << "lambda " << i << ": " << lambda_pred.segment(0, 12).transpose() << std::endl;
+      std::cout << "eta " << i << ": " << eta_pred.segment(0, 12).transpose() << std::endl;
+      std::cout << "epsilon " << i << ": " << epsilon_pred.transpose() << std::endl;
 
-    double quat_cost = x_pred.segment(9, 4).transpose() * Q_.block(9, 9, 4, 4) * x_pred.segment(9, 4);
-    std::cout << "quat cost " << quat_cost << std::endl;
+      double quat_cost = x_pred.segment(9, 4).transpose() * Q_.block(9, 9, 4, 4) * x_pred.segment(9, 4);
+      std::cout << "quat cost " << quat_cost << std::endl;
 
-    double finger_cost = x_pred.segment(0, 9).transpose() * Q_.block(0, 0, 9, 9) * x_pred.segment(0, 9);
-    std::cout << "finger cost " << finger_cost << std::endl;
+      double finger_cost = x_pred.segment(0, 9).transpose() * Q_.block(0, 0, 9, 9) * x_pred.segment(0, 9);
+      std::cout << "finger cost " << finger_cost << std::endl;
 
-    double cube_pos = x_pred.segment(13, 3).transpose() * Q_.block(13, 13, 3, 3) * x_pred.segment(13, 3);
-    std::cout << "cube pos cost " << cube_pos << std::endl;
+      double cube_pos = x_pred.segment(13, 3).transpose() * Q_.block(13, 13, 3, 3) * x_pred.segment(13, 3);
+      std::cout << "cube pos cost " << cube_pos << std::endl;
 
-    double u_cost = u_pred.transpose() * R_ * u_pred;
-    std::cout << "u cost " << u_cost << std::endl;
+      double u_cost = u_pred.transpose() * R_ * u_pred;
+      std::cout << "u cost " << u_cost << std::endl;
 
-    double lambda_cost = lambda_pred.transpose() * S_ * lambda_pred;
-    std::cout << "lambda cost " << lambda_cost << std::endl;
+      double lambda_cost = lambda_pred.transpose() * S_ * lambda_pred;
+      std::cout << "lambda cost " << lambda_cost << std::endl;
 
-    double epsilon_cost = epsilon_pred.transpose() * G_ * epsilon_pred;
-    std::cout << "epsilon cost " << epsilon_cost << std::endl;
+      double epsilon_cost = epsilon_pred.transpose() * G_ * epsilon_pred;
+      std::cout << "epsilon cost " << epsilon_cost << std::endl;
 
-    std::cout << std::endl;
+      std::cout << std::endl;
+    }
   }
 
 
@@ -591,6 +625,7 @@ void iC3HybridMpcTrackingController::UpdateQuaternionCosts(
            quaternion_regularizer_fraction * quat_regularizer_2 +
            quat_regularizer_3);
     }
+
   }
 }
 

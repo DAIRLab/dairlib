@@ -1,12 +1,11 @@
 #pragma once
 #include "drake/common/yaml/yaml_read_archive.h"
+#include "c3/multibody/lcs_factory_options.h"
 
 struct HybridMpcOptions {
 
   std::string osqp_settings;
-
-  int N;
-  double dt;
+  std::string object_model;
 
   double w_Q;
   double w_R;
@@ -31,12 +30,14 @@ struct HybridMpcOptions {
   double quaternion_weight;
 
   bool use_nominal_lcs;
+  int transform_update_frequency; 
+
+  c3::LCSFactoryOptions lcs_factory_options;
 
   template <typename Archive>
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(osqp_settings));
-    a->Visit(DRAKE_NVP(N));
-    a->Visit(DRAKE_NVP(dt));
+    a->Visit(DRAKE_NVP(object_model));
     a->Visit(DRAKE_NVP(w_Q));
     a->Visit(DRAKE_NVP(w_R));
     a->Visit(DRAKE_NVP(w_S));
@@ -51,6 +52,9 @@ struct HybridMpcOptions {
     a->Visit(DRAKE_NVP(lambda_threshold));
     a->Visit(DRAKE_NVP(eta_threshold));
     a->Visit(DRAKE_NVP(accel_cost));
+    a->Visit(DRAKE_NVP(transform_update_frequency));
+
+    a->Visit(DRAKE_NVP(lcs_factory_options));
 
     Q = w_Q * q_vector.asDiagonal();
     R = w_R * r_vector.asDiagonal();

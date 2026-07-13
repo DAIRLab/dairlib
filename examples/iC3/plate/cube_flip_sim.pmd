@@ -3,6 +3,10 @@ group "controllers" {
         exec = "bazel-bin/examples/iC3/plate/franka_plate_controller";
         host = "localhost";
     }
+    cmd "hybrid_mpc_controller" {
+        exec = "bazel-bin/examples/iC3/plate/franka_hybrid_mpc_controller";
+        host = "localhost";
+    }
     cmd "franka_osc" {
         exec = "bazel-bin/examples/iC3/plate/franka_plate_osc_controller";
         host = "localhost";

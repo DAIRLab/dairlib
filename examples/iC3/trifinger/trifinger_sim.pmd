@@ -1,22 +1,10 @@
 group "controllers" {
-    cmd "trifinger_180_controller" {
-        exec = "bazel-bin/examples/iC3/trifinger/trifinger_controller --example=180";
+    cmd "trifinger_180_hybrid_mpc_controller" {
+        exec = "bazel-bin/examples/iC3/trifinger/trifinger_hybrid_mpc_controller --example_idx=1";
         host = "localhost";
     }
-    cmd "trifinger_pivot_controller" {
-        exec = "bazel-bin/examples/iC3/trifinger/trifinger_controller --example=pivot";
-        host = "localhost";
-    }
-    cmd "trifinger_lqr_controller" {
-        exec = "bazel-bin/examples/iC3/trifinger/trifinger_lqr_controller";
-        host = "localhost";
-    }
-    cmd "trifinger_hybrid_mpc_controller" {
-        exec = "bazel-bin/examples/iC3/trifinger/trifinger_hybrid_mpc_controller";
-        host = "localhost";
-    }
-    cmd "trifinger_traj_controller" {
-        exec = "bazel-bin/examples/iC3/trifinger/trifinger_traj_controller";
+    cmd "trifinger_pivot_hybrid_mpc_controller" {
+        exec = "bazel-bin/examples/iC3/trifinger/trifinger_hybrid_mpc_controller --example_idx=2";
         host = "localhost";
     }
     cmd "trifinger_open_loop_controller" {
@@ -27,8 +15,12 @@ group "controllers" {
         exec = "bazel-bin/examples/iC3/trifinger/trifinger_osc_controller";
         host = "localhost";
     }
-    cmd "test_controller" {
-        exec = "bazel-bin/examples/iC3/trifinger/trifinger_test_traj_controller";
+    cmd "trifinger_180_controller" {
+        exec = "bazel-bin/examples/iC3/trifinger/trifinger_controller --example=180";
+        host = "localhost";
+    }
+    cmd "trifinger_pivot_controller" {
+        exec = "bazel-bin/examples/iC3/trifinger/trifinger_controller --example=pivot";
         host = "localhost";
     }
 }

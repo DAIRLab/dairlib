@@ -1,0 +1,92 @@
+<?xml version="1.0"?>
+<sdf version='1.7'>
+  <model name="cube">
+      <!-- Cube -->
+      <link name="cube">
+        <pose>0 0 0 0 0 0</pose> 
+        <inertial>
+          <mass>0.05</mass>
+          <inertia>
+            <ixx>0.000033</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>0.000033</iyy>
+            <iyz>0</iyz>
+            <izz>0.0000625</izz>
+          </inertia>
+        </inertial>
+        
+        <visual name="cube_visual">
+          <geometry>
+            <cylinder>
+              <radius>0.05</radius>
+              <length> 0.02 </length>
+            </cylinder>
+          </geometry>
+          <material><diffuse>0.8 0.4 0.0 1</diffuse></material>
+        </visual>
+         <visual name="z_axis">
+          <pose>0 0 0.1 0 0 0</pose> <!-- relative to cube frame -->
+          <geometry>
+            <cylinder>
+              <radius>0.01</radius>
+              <length>0.2</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0 0 1 1</ambient>
+            <diffuse>0 0 1 1</diffuse>
+          </material>
+        </visual>
+
+        <!-- Y-axis -->
+        <visual name="x_axis">
+          <pose>0.1 0 0 0 1.57079632679 0 </pose> <!-- rotate 90 deg around Z -->
+          <geometry>
+            <cylinder>
+              <radius>0.01</radius>
+              <length>0.2</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>1 0 0 1</ambient>
+            <diffuse>1 0 0 1</diffuse>
+          </material>
+        </visual>
+
+        <!-- Z-axis -->
+        <visual name="y_axis">
+          <pose>0 0.1 0 1.57079632679 0 0</pose> <!-- rotate 90 deg around Y -->
+          <geometry>
+            <cylinder>
+              <radius>0.01</radius>
+              <length>0.2</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>0 1 0 1</ambient>
+            <diffuse>0 1 0 1</diffuse>
+          </material>
+        </visual>
+
+         <collision name="cube">
+          <pose>0 0 0 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.05</radius>
+              <length> 0.02 </length>
+            </cylinder>
+          </geometry>
+        <drake:proximity_properties>
+        <drake:rigid_hydroelastic/>
+          <drake:mesh_resolution_hint>0.01</drake:mesh_resolution_hint>
+          <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>      
+          <drake:mu_static>0.25</drake:mu_static>
+          <drake:mu_dynamic>0.25</drake:mu_dynamic>
+        </drake:proximity_properties>
+        </collision>
+        
+
+      </link>
+    </model>
+</sdf>

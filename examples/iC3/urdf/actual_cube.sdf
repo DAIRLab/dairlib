@@ -29,8 +29,8 @@
             </cylinder>
           </geometry>
           <material>
-            <ambient>0 0 1 1</ambient>
-            <diffuse>0 0 1 1</diffuse>
+            <ambient>0 0 1 0.3</ambient>
+            <diffuse>0 0 1 0.3</diffuse>
           </material>
         </visual>
 
@@ -44,8 +44,8 @@
             </cylinder>
           </geometry>
           <material>
-            <ambient>1 0 0 1</ambient>
-            <diffuse>1 0 0 1</diffuse>
+            <ambient>1 0 0 0.3</ambient>
+            <diffuse>1 0 0 0.3</diffuse>
           </material>
         </visual>
 
@@ -59,8 +59,8 @@
             </cylinder>
           </geometry>
           <material>
-            <ambient>0 1 0 1</ambient>
-            <diffuse>0 1 0 1</diffuse>
+            <ambient>0 1 0 0.3</ambient>
+            <diffuse>0 1 0 0.3</diffuse>
           </material>
         </visual>
 

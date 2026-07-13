@@ -107,18 +107,18 @@ void FrankaKinematics::ComputeLCSState(
     FrankaKinematicsVector<double>* lcs_state) const {
 
   const OutputVector<double>* franka_output =
-      (OutputVector<double>*)this->EvalVectorInput(context, franka_state_port_);
-	
-	const auto* input =
-			this->EvalVectorInput(context, object_state_port_);
+    (OutputVector<double>*)this->EvalVectorInput(context, franka_state_port_);
 
-	if (input == nullptr) {
-									throw std::runtime_error("object_state_port_ not connected!");
-	}
-	auto object_output_uncasted = input->value();
+  const auto* input =
+          this->EvalVectorInput(context, object_state_port_);
 
-	const StateVector<double>* object_output =
-					(StateVector<double>*)this->EvalVectorInput(context, object_state_port_);
+  if (input == nullptr) {
+      throw std::runtime_error("object_state_port_ not connected!");
+  }
+  auto object_output_uncasted = input->value();
+
+  const StateVector<double>* object_output =
+              (StateVector<double>*)this->EvalVectorInput(context, object_state_port_);
 
   VectorXd q_franka = franka_output->GetPositions();
   VectorXd v_franka = franka_output->GetVelocities();
@@ -134,7 +134,6 @@ void FrankaKinematics::ComputeLCSState(
   v_object.segment(0, nv) = object_output->GetVelocities();
 
 	q_object.segment(0, 4) = q_object.segment(0, 4).normalized(); // Normalize quaternions
-
 
   multibody::SetPositionsIfNew<double>(franka_plant_, q_franka,
                                        franka_context_);

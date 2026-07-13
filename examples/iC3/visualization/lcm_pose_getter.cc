@@ -104,7 +104,7 @@ LcmPoseGetter::LcmPoseGetter(TrajectoryVideoParams& video_params, std::string na
     const BasicVector<double>* timestep_vec =
       (BasicVector<double>*)this->EvalVectorInput(context, timestep_input_port_);
     int timestep = static_cast<int>(std::round(timestep_vec->get_value()(0)));
-    //std::cout << "timestep " << timestep << std::endl;
+    std::cout << "timestep " << timestep << std::endl;
 
     const auto* abstract_input = this->EvalAbstractInput(context, trajectory_input_port_);
     if (abstract_input == nullptr) return;

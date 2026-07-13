@@ -16,5 +16,6 @@ c3_actual_state_channel: C3_ACTUAL # lcmt_c3_state
 
 ic3_positions_channel: iC3_TRAJECTORY_X
 ic3_inputs_channel: iC3_TRAJECTORY_U
+ic3_forces_channel: iC3_TRAJECTORY_LAMBDA
 
 radio_channel: RADIO

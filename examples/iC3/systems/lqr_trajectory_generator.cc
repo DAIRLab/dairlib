@@ -63,18 +63,6 @@ LqrTrajectoryGenerator::LqrTrajectoryGenerator(
       this->DeclareVectorInputPort("x_lcs", TimestampedVector<double>(n_x_))
           .get_index();
 
-  // HARDCODED
-  int nominal_position_size;
-  if (example_idx_ == 0) {
-    nominal_position_size = 3;
-  } else if (example_idx_ == 1 || example_idx_ == 2) {
-    nominal_position_size = 9;
-  }
-
-  nominal_position_port_ =
-      this->DeclareVectorInputPort(
-              "nominal_position", BasicVector<double>(nominal_position_size))
-          .get_index();    
 
   actor_trajectory_port_ =
       this->DeclareAbstractOutputPort(
@@ -92,14 +80,12 @@ void LqrTrajectoryGenerator::OutputActorTrajectory(
   const BasicVector<double>& actor_input =
       *this->template EvalVectorInput<BasicVector>(context, actor_input_port_);
 
-  const BasicVector<double>& nominal_position =
-      *this->template EvalVectorInput<BasicVector>(context, nominal_position_port_);
-
   const TimestampedVector<double>* x_curr_vector =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         x_curr_port_);   
   drake::VectorX<double> x_curr = x_curr_vector->get_data();
 
+  std::cout << "x curr " << x_curr.transpose() << std::endl;
 
   // HARDCODED HOW LONG TO SIMULATE FOR
   int num_sim_timesteps = 2;
@@ -128,9 +114,6 @@ void LqrTrajectoryGenerator::OutputActorTrajectory(
     torques.topRows(2) = u_hat.bottomRows(2);
 
     positions = x_hat.topRows(3);
-    for (int i = 0; i < num_sim_timesteps; i++) {
-      positions.col(i) = positions.col(i) + nominal_position.get_value();
-    }
 
     orientations = MatrixXd::Zero(4, num_sim_timesteps);
 
@@ -225,7 +208,7 @@ std::tuple<MatrixXd, MatrixXd> LqrTrajectoryGenerator::SimulateLCS(VectorXd x0, 
     VectorXd u = u_hat.col(i / ic3_options_.rollout_dt_scaling);
 
     if (!x_curr.allFinite()) {
-      std::cout << "c3 traj gen x_curr not all finite " << x_curr.transpose() << std::endl;
+      std::cout << "lqr traj gen x_curr not all finite " << x_curr.transpose() << std::endl;
     }
 
     lcs_factory_.UpdateStateAndInput(x_curr, u);
@@ -251,8 +234,13 @@ std::tuple<MatrixXd, MatrixXd> LqrTrajectoryGenerator::SimulateLCS(VectorXd x0, 
     // std::cout << "lqr traj gen A_x " << A_x_.diagonal().transpose() << std::endl;
     // std::cout << "lqr traj gen lb_x_ " << lb_x_.transpose() << std::endl;
     // std::cout << "lqr traj gen ub_x_ " << ub_x_.transpose() << std::endl;
+    c3::LCSSimulateConfig config;
+    config.regularized = true;
+    config.min_exp = -16;
+    config.max_exp = -6;
+    VectorXd x_next = lcs.Simulate(x_curr, u, config);
 
-    x_curr = lcs.Simulate(x_curr, u);
+
 
     // Threshold positions and inputs, assume A_x, A_u are diagonal 0/1 matrices
     for (int j = 0; j < A_x_.rows(); j++) {
@@ -266,7 +254,8 @@ std::tuple<MatrixXd, MatrixXd> LqrTrajectoryGenerator::SimulateLCS(VectorXd x0, 
       }
     }
 
-    x_hat.col(i+1) = x_curr;
+    x_hat.col(i+1) = x_next;
+    x_curr = x_next;
     u_hat_thresholded.col(i) = u;
   }
 

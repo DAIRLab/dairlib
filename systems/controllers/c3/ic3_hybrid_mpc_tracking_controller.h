@@ -60,6 +60,10 @@ class iC3HybridMpcTrackingController : public drake::systems::LeafSystem<double>
     return this->get_input_port(timestep_port_);
   }
 
+  const drake::systems::InputPort<double>& get_input_port_nominal_position() const {
+    return this->get_input_port(nominal_position_port_);
+  }
+
   const drake::systems::OutputPort<double>& get_output_port_actor_input() const {
     return this->get_output_port(actor_port_);
   }
@@ -94,7 +98,8 @@ class iC3HybridMpcTrackingController : public drake::systems::LeafSystem<double>
   drake::systems::InputPortIndex ic3_u_port_;
   drake::systems::InputPortIndex ic3_lambda_port_;
   drake::systems::InputPortIndex timestep_port_;
-  
+  drake::systems::InputPortIndex nominal_position_port_;
+
   drake::systems::OutputPortIndex actor_port_;
   drake::systems::OutputPortIndex tracking_target_port_;
 

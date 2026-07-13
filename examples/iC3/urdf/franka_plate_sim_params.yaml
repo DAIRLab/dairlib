@@ -1,6 +1,6 @@
 franka_model: package://drake_models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/iC3/urdf/plate_end_effector.sdf
-object_model: examples/iC3/urdf/cube_sim.sdf
+object_model: examples/iC3/urdf/_sim.sdf
 franka_publish_rate: 1000
 object_publish_rate: 10
 visualizer_publish_rate: 32

@@ -1,9 +1,8 @@
 osqp_settings: examples/iC3/trifinger/parameters/hybrid_mpc_osqp_settings.yaml
-
-N: 4
-dt: 0.02
+object_model: examples/iC3/trifinger/urdf/cube_for_lcs.sdf
 
 use_nominal_lcs: false
+transform_update_frequency: 5
 
 quaternion_indices: [9]
 quaternion_weight: 100
@@ -25,6 +24,7 @@ q_vector: [10000, 10000, 10000,
            1, 1, 1, 
            1, 1, 1, 
            1, 1, 1]
+
 r_vector: [1, 1, 1, 
            1, 1, 1, 
            1, 1, 1]
@@ -47,3 +47,34 @@ g_vector: [100, 100, 100, 100,
 lambda_threshold: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 eta_threshold: [1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6]
   
+lcs_factory_options:
+  contact_model: "anitescu"
+  num_contacts: 11
+  spring_stiffness: 0
+  N: 4
+  dt: 0.02
+  contact_pair_configs:
+    - body_A: "fingertip_1"
+      body_A_collision_geom_indices: [0]
+      body_B: "cube"
+      body_B_collision_geom_indices: [0]
+      mu: 0.33
+      num_friction_directions: 2
+    - body_A: "fingertip_2"
+      body_A_collision_geom_indices: [0]
+      body_B: "cube"
+      body_B_collision_geom_indices: [0]
+      mu: 0.33
+      num_friction_directions: 2
+    - body_A: "fingertip_3"
+      body_A_collision_geom_indices: [0]
+      body_B: "cube"
+      body_B_collision_geom_indices: [0]
+      mu: 0.33
+      num_friction_directions: 2
+    - body_A: "cube"
+      body_A_collision_geom_indices: [1, 2, 3, 4, 5, 6, 7, 8]
+      body_B: "ground"
+      body_B_collision_geom_indices: [0]
+      mu: 0.3
+      num_friction_directions: 2

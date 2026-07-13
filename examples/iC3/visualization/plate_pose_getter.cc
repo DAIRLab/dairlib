@@ -140,7 +140,7 @@ PlatePoseGetter::PlatePoseGetter(TrajectoryVideoParams& video_params,
 
       } else if (is_plate == 1) {
         int plate_position_index = 0;    
-        positions = MatrixXd::Zero(9, 3);
+        positions = MatrixXd::Zero(5, 3);
         positions.col(0) = data.col(timestep).segment(plate_position_index, 5);
         positions.col(1) = data.col(timestep).segment(plate_position_index, 5);
         positions.col(2) = data.col(timestep).segment(plate_position_index, 5);

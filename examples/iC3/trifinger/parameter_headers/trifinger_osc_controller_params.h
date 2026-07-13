@@ -21,6 +21,8 @@ struct TrifingerOSCControllerParams : OSCGains {
   std::vector<Eigen::VectorXd> velocity_upper_bound;
   double velocity_damping; 
 
+  Eigen::VectorXd ddq_limit;
+
   double x_scale;
   double y_scale;
   double z_scale;
@@ -50,6 +52,7 @@ struct TrifingerOSCControllerParams : OSCGains {
     a->Visit(DRAKE_NVP(velocity_lower_bound));
     a->Visit(DRAKE_NVP(velocity_upper_bound));
     a->Visit(DRAKE_NVP(velocity_damping));
+    a->Visit(DRAKE_NVP(ddq_limit));
     a->Visit(DRAKE_NVP(cancel_gravity_compensation));
     a->Visit(DRAKE_NVP(enforce_acceleration_constraints));
     a->Visit(DRAKE_NVP(publish_debug_info));

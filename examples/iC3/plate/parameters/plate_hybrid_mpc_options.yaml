@@ -1,0 +1,63 @@
+osqp_settings: examples/iC3/plate/parameters/hybrid_mpc_osqp_settings.yaml
+object_model: examples/iC3/urdf/cube.sdf
+
+use_nominal_lcs: false
+transform_update_frequency: -1
+
+quaternion_indices: [5]
+quaternion_weight: 10
+
+w_Q: 10
+w_R: 5
+w_S: 1
+w_G: 1000
+
+accel_cost: 0
+
+q_vector: [100, 100, 1000,
+           10000, 1000, 
+           1, 1, 1, 1, 
+           10, 10, 10, 
+           1, 1, 1, 
+           1, 1, 
+           1, 1, 1, 
+           1, 1, 1]
+
+r_vector: [1, 1, 10, 1, 1]
+
+s_vector: [1, 1, 1, 1,
+           1, 1, 1, 1, 
+           1, 1, 1, 1, 
+           1, 1, 1, 1, 
+           1, 1, 1, 1,
+           1, 1, 1, 1,
+           1, 1, 1, 1,
+           1, 1, 1, 1]
+
+g_vector: [1, 1, 1, 1,
+           1, 1, 1, 1, 
+           1, 1, 1, 1, 
+           1, 1, 1, 1, 
+           1, 1, 1, 1,
+           1, 1, 1, 1,
+           1, 1, 1, 1,
+           1, 1, 1, 1]
+
+# lambda_threshold: [0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0.35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+# eta_threshold: [0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+lambda_threshold: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+eta_threshold: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+lcs_factory_options: 
+  contact_model: "anitescu"
+  num_contacts: 8
+  spring_stiffness: 0
+  N: 3
+  dt: 0.01
+  contact_pair_configs:
+    - body_A: "cube" # TODO: CHANGE LCS MODEL, THIS IS NOT A CUBE LOL
+      body_A_collision_geom_indices: [1, 2, 3, 4, 5, 6, 7, 8]
+      body_B: "plate"
+      body_B_collision_geom_indices: [0]
+      mu: 0.33
+      num_friction_directions: 2

@@ -9,12 +9,12 @@
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
 
-#include "examples/iC3/trifinger/parameter_headers/trifinger_controller_params.h"
-#include "examples/iC3/trifinger/parameter_headers/trifinger_lcm_channels.h"
+#include "examples/iC3/plate/parameter_headers/franka_plate_controller_params.h"
+#include "examples/iC3/plate/parameter_headers/franka_plate_lcm_channels.h"
 #include "examples/iC3/iC3_options.h"
 #include "examples/iC3/hybrid_mpc_options.h"
 #include "examples/iC3/systems/lqr_trajectory_generator.h"
-#include "examples/iC3/trifinger/systems/trifinger_kinematics.h"
+#include "systems/franka_kinematics.h"
 #include "systems/controllers/c3/ic3_hybrid_mpc_tracking_controller.h"
 #include "examples/iC3/systems/timed_gate.h"
 #include "examples/iC3/systems/iC3_timing_system.h"
@@ -56,10 +56,14 @@ using multibody::MakeNameToPositionsMap;
 using multibody::MakeNameToVelocitiesMap;
 
 DEFINE_string(lcm_channels,
-              "examples/iC3/trifinger/parameters/trifinger_lcm_channels_simulation.yaml",
+              "examples/iC3/plate/parameters/plate_lcm_channels_simulation.yaml",
               "Filepath containing lcm channels");
-
-DEFINE_int32(example_idx, 1, "1 = 180 yaw, 2 = 180 pivot");
+DEFINE_string(controller_params_file,
+              "examples/iC3/plate/parameters/franka_plate_controller_params.yaml",
+              "Filepath containing lcm channels");
+DEFINE_string(hybrid_mpc_options_file,
+              "examples/iC3/plate/parameters/plate_hybrid_mpc_options.yaml",
+              "Filepath containing lcm channels");            
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -69,29 +73,14 @@ int DoMain(int argc, char* argv[]) {
   drake::yaml::LoadYamlOptions yaml_options;
   yaml_options.allow_yaml_with_no_cpp = true;
 
-  TrifingerLcmChannels lcm_channel_params =
-      drake::yaml::LoadYamlFile<TrifingerLcmChannels>(FLAGS_lcm_channels);
+  FrankaPlateLcmChannels lcm_channel_params =
+      drake::yaml::LoadYamlFile<FrankaPlateLcmChannels>(FLAGS_lcm_channels);
 
-
-  std::string controller_params_file;
-  if (FLAGS_example_idx == 1) {
-    controller_params_file = "examples/iC3/trifinger/parameters/trifinger_controller_params.yaml";
-  } else if (FLAGS_example_idx == 2) {
-    controller_params_file = "examples/iC3/trifinger/parameters/trifinger_pivot_controller_params.yaml";
-  }
-
-  TrifingerControllerParams controller_params =
-      drake::yaml::LoadYamlFile<TrifingerControllerParams>(controller_params_file);
-
-  std::string hybrid_mpc_options_file;
-  if (FLAGS_example_idx == 1) {
-    hybrid_mpc_options_file = "examples/iC3/trifinger/parameters/trifinger_hybrid_mpc_options_180.yaml";
-  } else if (FLAGS_example_idx == 2) {
-    hybrid_mpc_options_file = "examples/iC3/trifinger/parameters/trifinger_pivot_hybrid_mpc_options_pivot.yaml";
-  }
+  FrankaPlateControllerParams controller_params =
+      drake::yaml::LoadYamlFile<FrankaPlateControllerParams>(FLAGS_controller_params_file);
 
   HybridMpcOptions hybrid_mpc_options =
-      drake::yaml::LoadYamlFile<HybridMpcOptions>(hybrid_mpc_options_file);
+      drake::yaml::LoadYamlFile<HybridMpcOptions>(FLAGS_hybrid_mpc_options_file);
 
   iC3Options ic3_options =
       drake::yaml::LoadYamlFile<iC3Options>(
@@ -102,35 +91,28 @@ int DoMain(int argc, char* argv[]) {
           FindResourceOrThrow(hybrid_mpc_options.osqp_settings))
           .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
-  MultibodyPlant<double> plant_trifinger(0.0);
-  Parser parser_trifinger(&plant_trifinger);
-  parser_trifinger.SetAutoRenaming(true);
-  parser_trifinger.package_map().Add(
-    "robot_properties_fingers", 
-    "examples/iC3/trifinger/robot_properties_fingers"
-  );
-  ModelInstanceIndex trifinger_index = parser_trifinger.AddModels(FindResourceOrThrow(controller_params.trifinger_model))[0];
-  parser_trifinger.AddModels(FindResourceOrThrow(controller_params.end_effector_model));
-
-  // HARDECODED tip names
-  vector<std::string> trifinger_tip_names = {
-    "finger_tip_link_0", "finger_tip_link_120", "finger_tip_link_240"};
-
   VectorXd xd = controller_params.x_target;
 
-  for (int i = 0; i < 3; i++) {
-    const auto& trifinger_tip_frame = plant_trifinger.GetFrameByName(trifinger_tip_names[i], trifinger_index);
-    const auto& fingertip_frame = plant_trifinger.GetFrameByName(controller_params.end_effector_names[i]);
-    plant_trifinger.WeldFrames(trifinger_tip_frame, fingertip_frame, RigidTransform<double>::Identity());
-  }
+  MultibodyPlant<double> plant_franka(0.0);
+  Parser parser_franka(&plant_franka, nullptr);
+  parser_franka.AddModelsFromUrl(controller_params.franka_model);
+  drake::multibody::ModelInstanceIndex end_effector_index =
+      parser_franka.AddModels(
+          FindResourceOrThrow(controller_params.end_effector_model))[0];
 
-  Eigen::Vector3d base_translation(-0.0 * Vector3d::UnitZ());
-  RigidTransformd X_WI(drake::math::RotationMatrix<double>(), base_translation);
-  plant_trifinger.WeldFrames(plant_trifinger.world_frame(), 
-    plant_trifinger.GetFrameByName("base_link"), X_WI);
+  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
+  plant_franka.WeldFrames(plant_franka.world_frame(),
+                          plant_franka.GetFrameByName("panda_link0"), X_WI);
 
-  plant_trifinger.Finalize();
-  auto trifinger_context = plant_trifinger.CreateDefaultContext();
+  RigidTransform<double> T_EE_W =
+      RigidTransform<double>(drake::math::RotationMatrix<double>(),
+                             controller_params.tool_attachment_frame);
+  plant_franka.WeldFrames(
+      plant_franka.GetFrameByName("panda_link7"),
+      plant_franka.GetFrameByName("plate", end_effector_index), T_EE_W);
+
+  plant_franka.Finalize();
+  auto franka_context = plant_franka.CreateDefaultContext();
 
   // Object plant
   MultibodyPlant<double> plant_object(0.0);
@@ -147,16 +129,9 @@ int DoMain(int argc, char* argv[]) {
   Parser lcs_parser(&plant_for_lcs);
   lcs_parser.SetAutoRenaming(true);
   lcs_parser.AddModels(controller_params.end_effector_lcs_model);
-  lcs_parser.AddModels(hybrid_mpc_options.object_model);
-  lcs_parser.AddModels(controller_params.ground_model);
-  
-  for (auto fingertip : controller_params.ee_base_link_names) {
-    plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
-                            plant_for_lcs.GetFrameByName(fingertip), RigidTransform<double>::Identity());
-  }
-  plant_for_lcs.WeldFrames(plant_for_lcs.world_frame(),
-                          plant_for_lcs.GetFrameByName("ground"), RigidTransform<double>::Identity());
 
+  lcs_parser.AddModels(hybrid_mpc_options.object_model);
+  
   plant_for_lcs.Finalize();
 
 
@@ -176,134 +151,78 @@ int DoMain(int argc, char* argv[]) {
   int n_x = plant_for_lcs.num_positions() + plant_for_lcs.num_velocities();
   int n_u = plant_for_lcs.num_actuators();
 
+  MatrixXd A_x_mpc(MatrixXd::Zero(n_x, n_x));
+  VectorXd lb_x_mpc(VectorXd::Zero(n_x));
+  VectorXd ub_x_mpc(VectorXd::Zero(n_x));
+
   MatrixXd A_x(MatrixXd::Zero(n_x, n_x));
   VectorXd lb_x(VectorXd::Zero(n_x));
   VectorXd ub_x(VectorXd::Zero(n_x));
 
-  MatrixXd A_x_mpc(MatrixXd::Zero(n_x, n_x));
-  VectorXd lb_x_mpc(VectorXd::Zero(n_x));
-  VectorXd ub_x_mpc(VectorXd::Zero(n_x));
+  MatrixXd A_u_mpc(MatrixXd::Zero(n_u, n_u));
+  VectorXd lb_u_mpc(VectorXd::Zero(n_u));
+  VectorXd ub_u_mpc(VectorXd::Zero(n_u));
 
   MatrixXd A_u(MatrixXd::Zero(n_u, n_u));
   VectorXd lb_u(VectorXd::Zero(n_u));
   VectorXd ub_u(VectorXd::Zero(n_u));
 
-  if (FLAGS_example_idx == 1) {
-    for (int i = 0; i < 3; i++) {
-      A_x(3*i, 3*i) = 1;
-      A_x(3*i+1, 3*i+1) = 1;
-      A_x(3*i+2, 3*i+2) = 1;
+  // A_x_mpc(2, 2) = 1;
+  // A_x_mpc(3, 3) = 1;
+  // A_x_mpc(4, 4) = 1;
 
-      A_x(16 + 3*i, 16 + 3*i) = 1;
-      A_x(16 + 3*i + 1, 16 + 3*i+1) = 1;
-      A_x(16 + 3*i + 2, 16 + 3*i+2) = 1;
+  A_x(0, 0) = 1;
+  A_x(1, 1) = 1;
+  A_x(2, 2) = 1;
+  A_x(3, 3) = 1;
+  A_x(4, 4) = 1;
 
-      lb_x(3*i) = xd(3*i) - 0.08;
-      lb_x(3*i+1) = xd(3*i+1) - 0.08;
-      lb_x(3*i+2) = xd(3*i+2) - 0.01;
+  // lb_x_mpc(2) = -0.1; 
+  // lb_x_mpc(3) = -0.45;
+  // lb_x_mpc(4) = -0.45;
 
-      lb_x(16 + 3*i) = -0.08;
-      lb_x(16 + 3*i+1) = -0.08;
-      lb_x(16 + 3*i+2) = -0.05;
+  // ub_x_mpc(2) = 0.1;
+  // ub_x_mpc(3) = 0.45;
+  // ub_x_mpc(4) = 0.45;
 
-      ub_x(3*i) = xd(3*i) + 0.08;
-      ub_x(3*i+1) = xd(3*i+1) + 0.08;
-      ub_x(3*i+2) = xd(3*i+2) + 0.01;
+  lb_x(0) = -0.08;
+  lb_x(1) = -0.08;
+  lb_x(2) = -0.1; 
+  lb_x(3) = -0.5;
+  lb_x(4) = -0.5;
 
-      ub_x(16 + 3*i) = 0.08;
-      ub_x(16 + 3*i+1) = 0.08;
-      ub_x(16 + 3*i+2) = 0.05;
+  ub_x(0) = 0.08;
+  ub_x(1) = 0.08;
+  ub_x(2) = 0.1;
+  ub_x(3) = 0.5;
+  ub_x(4) = 0.5;
 
+  A_u(0, 0) = 1;
+  A_u(1, 1) = 1;
+  A_u(2, 2) = 1;
+  A_u(3, 3) = 1;
+  A_u(4, 4) = 1;
 
-      A_x_mpc(16 + 3*i, 16 + 3*i) = 1;
-      A_x_mpc(16 + 3*i + 1, 16 + 3*i+1) = 1;
-      A_x_mpc(16 + 3*i + 2, 16 + 3*i+2) = 1;
+  lb_u(0) = -1;
+  lb_u(1) = -1;
+  lb_u(2) = 0;
+  lb_u(3) = -1.8;
+  lb_u(4) = -1.8;
 
-      lb_x_mpc(16 + 3*i) = -0.08;
-      lb_x_mpc(16 + 3*i+1) = -0.08;
-      lb_x_mpc(16 + 3*i+2) = -0.05;
+  ub_u(0) = 1;
+  ub_u(1) = 1;
+  ub_u(2) = 15;
+  ub_u(3) = 1.8;
+  ub_u(4) = 1.8;
 
-      ub_x_mpc(16 + 3*i) = 0.08;
-      ub_x_mpc(16 + 3*i+1) = 0.08;
-      ub_x_mpc(16 + 3*i+2) = 0.05;
-    }
-
-    for (int i = 0; i < 3; i++) {
-      A_u(3*i, 3*i) = 1;
-      A_u(3*i+1, 3*i+1) = 1;
-      A_u(3*i+2, 3*i+2) = 1;
-      
-      lb_u(3*i) = -0.4;
-      lb_u(3*i+1) = -0.4;
-      lb_u(3*i+2) = 0.15;
-
-      ub_u(3*i) = 0.4;
-      ub_u(3*i+1) = 0.4;
-      ub_u(3*i+2) = 0.25;
-    }
-  } else if (FLAGS_example_idx == 2) {
-    for (int i = 0; i < 3; i++) {
-      A_x(3*i, 3*i) = 1;
-      A_x(3*i+1, 3*i+1) = 1;
-      A_x(3*i+2, 3*i+2) = 1;
-
-      A_x(16 + 3*i, 16 + 3*i) = 1;
-      A_x(16 + 3*i + 1, 16 + 3*i+1) = 1;
-      A_x(16 + 3*i + 2, 16 + 3*i+2) = 1;
-
-      lb_x(3*i) = xd(3*i) - 0.07;
-      lb_x(3*i+1) = xd(3*i+1) - 0.07;
-      lb_x(3*i+2) = xd(3*i+2) - 0.01;
-
-      lb_x(16 + 3*i) = -0.08;
-      lb_x(16 + 3*i+1) = -0.08;
-      lb_x(16 + 3*i+2) = -0.05;
-
-      ub_x(3*i) = xd(3*i) + 0.07;
-      ub_x(3*i+1) = xd(3*i+1) + 0.07;
-      ub_x(3*i+2) = xd(3*i+2) + 0.07;
-
-      ub_x(16 + 3*i) = 0.08;
-      ub_x(16 + 3*i+1) = 0.08;
-      ub_x(16 + 3*i+2) = 0.05;
-
-
-      A_x_mpc(16 + 3*i, 16 + 3*i) = 1;
-      A_x_mpc(16 + 3*i + 1, 16 + 3*i+1) = 1;
-      A_x_mpc(16 + 3*i + 2, 16 + 3*i+2) = 1;
-
-      lb_x_mpc(16 + 3*i) = -0.08;
-      lb_x_mpc(16 + 3*i+1) = -0.08;
-      lb_x_mpc(16 + 3*i+2) = -0.05;
-
-      ub_x_mpc(16 + 3*i) = 0.08;
-      ub_x_mpc(16 + 3*i+1) = 0.08;
-      ub_x_mpc(16 + 3*i+2) = 0.05;
-    }
-
-    for (int i = 0; i < 3; i++) {
-      A_u(3*i, 3*i) = 1;
-      A_u(3*i+1, 3*i+1) = 1;
-      A_u(3*i+2, 3*i+2) = 1;
-      
-      lb_u(3*i) = -0.8;
-      lb_u(3*i+1) = -0.8;
-      lb_u(3*i+2) = 0.15;
-
-      ub_u(3*i) = 0.8;
-      ub_u(3*i+1) = 0.8;
-      ub_u(3*i+2) = 0.25;
-    }
-  }
 
   std::cout << "Before builder " << std::endl;
   DiagramBuilder<double> builder;
-  auto trifinger_state_receiver =
-    builder.AddSystem<systems::RobotOutputReceiver>(plant_trifinger);
+  auto franka_state_receiver =
+    builder.AddSystem<systems::RobotOutputReceiver>(plant_franka);
 
-  // "Neutral config" of fingers
   auto nominal_position =
-      builder.AddSystem<drake::systems::ConstantVectorSource<double>>(controller_params.nominal_position);
+      builder.AddSystem<drake::systems::ConstantVectorSource<double>>(controller_params.ee_init_position);
 
   auto ic3_x_trajectory_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
@@ -334,10 +253,12 @@ int DoMain(int argc, char* argv[]) {
   auto object_state_receiver =
       builder.AddSystem<systems::ObjectStateReceiver>(plant_object);
 
+
   auto reduced_order_model_receiver =
-    builder.AddSystem<TrifingerKinematics>(
-        plant_trifinger, trifinger_context.get(), plant_object, object_context.get(),
-        controller_params.end_effector_names, "cube");
+      builder.AddSystem<systems::FrankaKinematics>(
+          plant_franka, franka_context.get(), plant_object, object_context.get(),
+          controller_params.end_effector_name, "cube",
+          controller_params.include_end_effector_orientation);
 
   auto radio_sub =
         builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
@@ -351,23 +272,23 @@ int DoMain(int argc, char* argv[]) {
 
   auto controller =
       builder.AddSystem<systems::iC3HybridMpcTrackingController>
-          (plant_for_lcs, lcs_factory, hybrid_mpc_options, solver_options, ic3_options, 1,
+          (plant_for_lcs, lcs_factory, hybrid_mpc_options, solver_options, ic3_options, 0,
             A_x_mpc, lb_x_mpc, ub_x_mpc, A_u, lb_u, ub_u);
 
   auto lqr_trajectory_generator =
-      builder.AddSystem<LqrTrajectoryGenerator>(plant_for_lcs, lcs_factory, ic3_options, 1,
+      builder.AddSystem<LqrTrajectoryGenerator>(plant_for_lcs, lcs_factory, ic3_options, 0,
         A_x, lb_x, ub_x, A_u, lb_u, ub_u); 
 
-  lqr_trajectory_generator->SetPublishEndEffectorOrientation(false);
+  lqr_trajectory_generator->SetPublishEndEffectorOrientation(true);
   
   auto timed_gate =
-      builder.AddSystem<TimedGate>(ic3_options, 1);    
+      builder.AddSystem<TimedGate>(ic3_options, 0);    
 
   builder.Connect(object_state_sub->get_output_port(),
                   object_state_receiver->get_input_port());
 
-  builder.Connect(trifinger_state_receiver->get_output_port(),
-                  reduced_order_model_receiver->get_input_port_trifinger_state());  
+  builder.Connect(franka_state_receiver->get_output_port(),
+                  reduced_order_model_receiver->get_input_port_franka_state());  
   builder.Connect(object_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_object_state());
                     
@@ -411,18 +332,19 @@ int DoMain(int argc, char* argv[]) {
 
   auto owned_diagram = builder.Build();
   std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
-  shared_diagram->set_name(("trifinger_hybrid_mpc_controller"));
+  shared_diagram->set_name(("franka_plate_hybrid_mpc_controller"));
   DrawAndSaveDiagramGraph(*shared_diagram);
 
   std::cout << "Before lcm driven loop" << std::endl;
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &lcm, shared_diagram, trifinger_state_receiver,
-      lcm_channel_params.trifinger_state_channel, true);
+      &lcm, shared_diagram, franka_state_receiver,
+      lcm_channel_params.franka_state_channel, true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
 
   LcmHandleSubscriptionsUntil(
-      &lcm, [&]() { return (ic3_x_trajectory_sub->GetInternalMessageCount() > 1); });
+      &lcm, [&]() { return ic3_x_trajectory_sub->GetInternalMessageCount() > 1 
+                            && object_state_sub->GetInternalMessageCount() > 1; });
   loop.Simulate();
   return 0;
 }

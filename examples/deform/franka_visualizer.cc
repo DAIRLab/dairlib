@@ -217,11 +217,11 @@ int do_main(int argc, char* argv[]) {
         sampling_params.consider_best_buffer_sample_when_leaving_c3 ? 1 : 0;
     auto sample_locations_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, FindResourceOrThrow(vis_params.ee_vis_model),
-        "sample_locations", "unused_orientation_name", "samples",
+        "sample_locations", "samples",
         std::max(sampling_params.num_additional_samples_c3 + from_buffer,
                  sampling_params.num_additional_samples_repos + 1) +
             1,
-        false, vis_params.sample_color);
+        false, vis_params.sample_color, "base_link");
     builder.Connect(sample_location_sub->get_output_port(),
                     sample_locations_drawer->get_input_port_trajectory());
   }
@@ -273,8 +273,8 @@ int do_main(int argc, char* argv[]) {
                     c3_mode_visualizer->get_input_port_curr_lcs_state());
     auto is_c3_mode_drawer = builder.AddSystem<systems::LcmPoseDrawer>(
         meshcat, FindResourceOrThrow(vis_params.ee_vis_model),
-        "c3_mode_visualization", "end_effector_orientation_target", "c3_mode",
-        1, false, vis_params.is_c3_mode_color);
+        "c3_mode_visualization", "c3_mode", 1, false,
+        vis_params.is_c3_mode_color, "base_link");
     builder.Connect(
         c3_mode_visualizer->get_output_port_c3_mode_visualization_traj(),
         is_c3_mode_drawer->get_input_port_trajectory());

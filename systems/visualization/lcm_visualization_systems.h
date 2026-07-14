@@ -84,7 +84,16 @@ class LcmPoseDrawer : public drake::systems::LeafSystem<double> {
                          const std::string& orientation_trajectory_name,
                          const std::string& system_name = "", int num_poses = 5,
                          bool add_transparency = true,
-                         const Eigen::VectorXd& rgb = Eigen::VectorXd());
+                         const Eigen::VectorXd& rgb = Eigen::VectorXd(),
+                         const std::string& weld_frame_to_world = "");
+
+  explicit LcmPoseDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
+                         const std::string& model_file,
+                         const std::string& joint_trajectory_name,
+                         const std::string& system_name = "", int num_poses = 5,
+                         bool add_transparency = true,
+                         const Eigen::VectorXd& rgb = Eigen::VectorXd(),
+                         const std::string& weld_frame_to_world = "");
 
   explicit LcmPoseDrawer(const std::shared_ptr<drake::geometry::Meshcat>&,
                          std::vector<std::string> model_files,
@@ -92,7 +101,8 @@ class LcmPoseDrawer : public drake::systems::LeafSystem<double> {
                          std::vector<std::string> orientation_trajectory_names,
                          const std::string& system_name = "", int num_poses = 5,
                          bool add_transparency = true,
-                         const Eigen::VectorXd& rgb = Eigen::VectorXd());
+                         const Eigen::VectorXd& rgb = Eigen::VectorXd(),
+                         const std::string& weld_frame_to_world = "");
 
   const drake::systems::InputPort<double>& get_input_port_trajectory() const {
     return this->get_input_port(trajectory_input_port_);
@@ -106,6 +116,10 @@ class LcmPoseDrawer : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
+  drake::systems::EventStatus DrawTrajectoryFromJoints(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+
   drake::systems::EventStatus DrawTrajectoryObjects(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
@@ -114,6 +128,7 @@ class LcmPoseDrawer : public drake::systems::LeafSystem<double> {
   std::shared_ptr<drake::geometry::Meshcat> meshcat_;
   const std::string translation_trajectory_name_;
   const std::string orientation_trajectory_name_;
+  const std::string joint_trajectory_name_;
 
   std::vector<std::string> translation_trajectory_names_;
   std::vector<std::string> orientation_trajectory_names_;

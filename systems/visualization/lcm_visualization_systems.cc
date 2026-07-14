@@ -92,7 +92,7 @@ LcmPoseDrawer::LcmPoseDrawer(
     const std::string& translation_trajectory_name,
     const std::string& orientation_trajectory_name,
     const std::string& system_name, int num_poses, bool add_transparency,
-    const Eigen::VectorXd& rgb)
+    const Eigen::VectorXd& rgb, const std::string& weld_frame_to_world)
     : meshcat_(meshcat),
       translation_trajectory_name_(translation_trajectory_name),
       orientation_trajectory_name_(orientation_trajectory_name),
@@ -109,8 +109,8 @@ LcmPoseDrawer::LcmPoseDrawer(
 
   multipose_visualizers_.push_back(
       std::make_unique<multibody::MultiposeVisualizer>(
-          model_file, N_, alpha_scale, "", RigidTransformd(), meshcat,
-          system_name, rgb));
+          model_file, N_, alpha_scale, weld_frame_to_world, RigidTransformd(),
+          meshcat, system_name, rgb));
   trajectory_input_port_ =
       this->DeclareAbstractInputPort(
               "lcmt_timestamped_saved_traj",
@@ -122,11 +122,41 @@ LcmPoseDrawer::LcmPoseDrawer(
 
 LcmPoseDrawer::LcmPoseDrawer(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
+    const std::string& model_file, const std::string& joint_trajectory_name,
+    const std::string& system_name, int num_poses, bool add_transparency,
+    const Eigen::VectorXd& rgb, const std::string& weld_frame_to_world)
+    : meshcat_(meshcat),
+      joint_trajectory_name_(joint_trajectory_name),
+      N_(num_poses) {
+  this->set_name("LcmPoseDrawer: " + system_name + "_" + joint_trajectory_name);
+
+  Eigen::VectorXd alpha_scale;
+  if (add_transparency) {
+    alpha_scale = 1.0 * VectorXd::LinSpaced(N_, 0.5, 0.1);
+  } else {
+    alpha_scale = 1.0 * VectorXd::Ones(N_);
+  }
+
+  multipose_visualizers_.push_back(
+      std::make_unique<multibody::MultiposeVisualizer>(
+          model_file, N_, alpha_scale, weld_frame_to_world, RigidTransformd(),
+          meshcat, system_name, rgb));
+  trajectory_input_port_ =
+      this->DeclareAbstractInputPort(
+              "lcmt_timestamped_saved_traj",
+              drake::Value<dairlib::lcmt_timestamped_saved_traj>{})
+          .get_index();
+
+  DeclarePerStepDiscreteUpdateEvent(&LcmPoseDrawer::DrawTrajectoryFromJoints);
+}
+
+LcmPoseDrawer::LcmPoseDrawer(
+    const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
     std::vector<std::string> model_files,
     std::vector<std::string> translation_trajectory_names,
     std::vector<std::string> orientation_trajectory_names,
     const std::string& system_name, int num_poses, bool add_transparency,
-    const Eigen::VectorXd& rgb)
+    const Eigen::VectorXd& rgb, const std::string& weld_frame_to_world)
     : meshcat_(meshcat),
       translation_trajectory_names_(translation_trajectory_names),
       orientation_trajectory_names_(orientation_trajectory_names),
@@ -144,8 +174,8 @@ LcmPoseDrawer::LcmPoseDrawer(
   for (int i = 0; i < model_files.size(); i++) {
     multipose_visualizers_.push_back(
         std::make_unique<multibody::MultiposeVisualizer>(
-            model_files.at(i), N_, alpha_scale, "", RigidTransformd(), meshcat,
-            system_name, rgb));
+            model_files.at(i), N_, alpha_scale, weld_frame_to_world,
+            RigidTransformd(), meshcat, system_name, rgb));
   }
 
   trajectory_input_port_ =
@@ -217,6 +247,43 @@ drake::systems::EventStatus LcmPoseDrawer::DrawTrajectory(
   }
 
   multipose_visualizers_.at(0)->DrawPoses(object_poses);
+
+  return drake::systems::EventStatus::Succeeded();
+}
+
+drake::systems::EventStatus LcmPoseDrawer::DrawTrajectoryFromJoints(
+    const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+  if (this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
+              context, trajectory_input_port_)
+          ->utime < 1e-3) {
+    return drake::systems::EventStatus::Succeeded();
+  }
+  const auto& lcmt_traj =
+      this->EvalInputValue<dairlib::lcmt_timestamped_saved_traj>(
+          context, trajectory_input_port_);
+  auto lcm_traj = LcmTrajectory(lcmt_traj->saved_traj);
+  const auto& lcm_joint_traj = lcm_traj.GetTrajectory(joint_trajectory_name_);
+
+  const int& n_joints = lcm_joint_traj.datapoints.rows();
+  MatrixXd system_poses = MatrixXd::Zero(n_joints, N_);
+
+  Eigen::VectorXd time_vector = PopulateTimeVectorOfLcmTrajectoryIfUnspecified(
+      lcm_joint_traj.time_vector);
+  auto joint_trajectory = PiecewisePolynomial<double>::FirstOrderHold(
+      time_vector, lcm_joint_traj.datapoints.topRows(n_joints));
+
+  // This recreates the trajectory using the knot points and then evaluates the
+  // trajectory at equal intervals based on the parameters. If the num_poses is
+  // equal to the number of knot points, then the poses will be the same as the
+  // knot points.
+  VectorXd joint_breaks =
+      VectorXd::LinSpaced(N_, time_vector[0], time_vector.tail(1)[0]);
+  for (int i = 0; i < system_poses.cols(); ++i) {
+    system_poses.col(i) << joint_trajectory.value(joint_breaks(i));
+  }
+
+  multipose_visualizers_.at(0)->DrawPoses(system_poses);
 
   return drake::systems::EventStatus::Succeeded();
 }

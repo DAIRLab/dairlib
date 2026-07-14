@@ -372,24 +372,30 @@ int DoMain(int argc, char* argv[]) {
           plant_lcs.GetCollisionGeometriesForBody(
               plant_lcs.GetBodyByName(body_name));
 
-      // Each object must contain at least 4 collision geometries:
-      // 1. The main body: it can be a single mesh or decomposed into multiple
-      // convex pieces
-      // 2. 3 spheres on the top left, top right, and bottom of the object
-      DRAKE_DEMAND(object_geoms.size() >= 4);
-      const auto& top_left_sphere_geoms =
-          plant_lcs.GetCollisionGeometriesForBody(
-              plant_lcs.GetBodyByName(body_name))[object_geoms.size() - 3];
-      const auto& top_right_sphere_geoms =
-          plant_lcs.GetCollisionGeometriesForBody(
-              plant_lcs.GetBodyByName(body_name))[object_geoms.size() - 2];
-      const auto& bottom_sphere_geoms = plant_lcs.GetCollisionGeometriesForBody(
-          plant_lcs.GetBodyByName(body_name))[object_geoms.size() - 1];
-      contact_geoms["TOP_LEFT_SPHERE_" + std::to_string(i)] =
-          top_left_sphere_geoms;
-      contact_geoms["TOP_RIGHT_SPHERE_" + std::to_string(i)] =
-          top_right_sphere_geoms;
-      contact_geoms["BOTTOM_SPHERE_" + std::to_string(i)] = bottom_sphere_geoms;
+      
+    drake::geometry::GeometryId bottom_right_sphere_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("cube"))[1];
+    drake::geometry::GeometryId top_right_sphere_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("cube"))[2];
+    drake::geometry::GeometryId top_left_sphere_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("cube"))[3];
+
+
+    contact_geoms["TOP_LEFT_SPHERE"] = top_left_sphere_geoms;
+    contact_geoms["TOP_RIGHT_SPHERE"] = top_right_sphere_geoms;
+    contact_geoms["BOTTOM_RIGHT_SPHERE"] = bottom_right_sphere_geoms;
+
+
+    ground_object_contact_pairs.push_back(
+        SortedPair(contact_geoms["TOP_LEFT_SPHERE"], contact_geoms["GROUND"]));
+    ground_object_contact_pairs.push_back(
+        SortedPair(contact_geoms["TOP_RIGHT_SPHERE"], contact_geoms["GROUND"]));
+    ground_object_contact_pairs.push_back(
+        SortedPair(contact_geoms["BOTTOM_RIGHT_SPHERE"], contact_geoms["GROUND"]));
+
 
       const std::vector<drake::geometry::GeometryId>
           object_geoms_without_spheres =
@@ -403,16 +409,6 @@ int DoMain(int argc, char* argv[]) {
             SortedPair(contact_geoms["EE"], object_geoms[j]));
       }
       all_object_geoms.push_back(object_geoms_without_spheres);
-
-      ground_object_contact_pairs.push_back(
-          SortedPair(contact_geoms["TOP_LEFT_SPHERE_" + std::to_string(i)],
-                     contact_geoms["GROUND"]));
-      ground_object_contact_pairs.push_back(
-          SortedPair(contact_geoms["TOP_RIGHT_SPHERE_" + std::to_string(i)],
-                     contact_geoms["GROUND"]));
-      ground_object_contact_pairs.push_back(
-          SortedPair(contact_geoms["BOTTOM_SPHERE_" + std::to_string(i)],
-                     contact_geoms["GROUND"]));
     }
 
     // Object-object contact pairs (excluding end effector), each pair of

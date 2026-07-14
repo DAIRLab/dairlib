@@ -46,7 +46,7 @@ static constexpr const char* kFrontWallModel =
 /// effector can be attached.
 static const Eigen::Vector3d kToolAttachmentFrame = {0, 0, 0.107};
 static const Eigen::Vector3d k3dPrinterToolAttachmentFrame = {0, -0.0075, -0.0546};
-static const Eigen::Vector3d k3dPrinterRampAttachmentFrame = {0.15, 0.15, 0.0};
+static const Eigen::Vector3d k3dPrinterRampAttachmentFrame = {0.05, 0.05, 0.0};
 
 
 static const Eigen::Vector3d kFrankaToGroundOffset = {0, 0, -0.029};

@@ -57,6 +57,50 @@
 
       </collision>
 
+      <visual name="corner_0">
+        <geometry>
+          <sphere>
+            <radius>0.01</radius>
+          </sphere>
+        </geometry>
+
+        <material>
+          <diffuse>1 0 0 1</diffuse>
+        </material>
+
+        <pose>-0.0254 -0.0254 -0.0254 0 0 0</pose>
+      </visual>
+
+      <visual name="corner_1">
+        <geometry>
+          <sphere>
+            <radius>0.01</radius>
+          </sphere>
+        </geometry>
+
+        <material>
+          <diffuse>0 1 0 1</diffuse>
+        </material>
+
+        <pose>-0.0254 0.0254 -0.0254 0 0 0</pose>
+      </visual>
+
+      <visual name="corner_2">
+        <geometry>
+          <sphere>
+            <radius>0.01</radius>
+          </sphere>
+        </geometry>
+
+        <material>
+          <diffuse>0 0 1 1</diffuse>
+        </material>
+
+        <pose>0.0254 0.0 -0.0254 0 0 0</pose>
+      </visual>
+
+      
+
     </link>
 
   </model>

@@ -15,8 +15,8 @@ lcm_channels_simulation_file: examples/sampling_c3/anything/parameters/lcm_chann
 lcm_channels_visualize_file: examples/sampling_c3/shared_parameters/lcm_channels_visualize.yaml
 
 object_model: examples/sampling_c3/urdf/A_shape_video/A_shape_video_controller.sdf
-object_models: [examples/sampling_c3/urdf/G_shape_video/G_shape_video_controller.sdf]
-object_body_name: body
+object_models: [examples/sampling_c3/urdf/cube/cube_controller.sdf]
+object_body_name: cube
 base_name: [A_shape_video]
 # base_names: [P_shape_texture, U_shape_texture, S_shape_texture, H_shape_texture]
 # base_names: [I_shape_texture, C_shape_texture, R_shape_texture, A_shape_video]
@@ -35,7 +35,7 @@ base_name: [A_shape_video]
 # base_names: [B_shape_video, I_shape_texture, B_shape_video, I_shape_texture, T_small_video]
 # base_names: [T_small_video, H_shape_texture, I_shape_texture, N_shape_video, G_shape_video]
 # base_names: [D_shape_texture, A_shape_video, I_shape_texture, R_shape_texture]
-base_names: [G_shape_video] #, R_shape_texture, A_shape_video, S_shape_texture]
+base_names: [cube] #, R_shape_texture, A_shape_video, S_shape_texture]
 
 include_end_effector_orientation: false
 

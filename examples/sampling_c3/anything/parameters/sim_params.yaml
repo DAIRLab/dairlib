@@ -1,4 +1,4 @@
-object_models: [examples/sampling_c3/urdf/G_shape_video/G_shape_video.sdf]
+object_models: [examples/sampling_c3/urdf/cube/cube.sdf]
 franka_publish_rate: 1000
 object_publish_rate: 10
 actuator_delay: 0.000

@@ -1,6 +1,6 @@
 ee_vis_model: examples/sampling_c3/urdf/ee_visualization_model.urdf
 
-object_vis_models: [examples/sampling_c3/urdf/G_shape_video/G_shape_video.sdf]
+object_vis_models: [examples/sampling_c3/urdf/cube/cube.sdf]
 visualizer_publish_rate: 30
 
 camera_pose: [1.5, 0, 0.6]
@@ -23,15 +23,15 @@ visualize_sample_buffer: true
 is_c3_mode_color: [1.0, 0.43, 1.0]
 sample_color: [1.0, 1.0, 0.0]
 
-visualize_execution_plan: false
+visualize_execution_plan: true
 
-visualize_c3_plan_curr: false
+visualize_c3_plan_curr: true
 c3_curr_object_color: []
 c3_curr_ee_color: [0.8, 0.8, 0.8]
 df_curr_object_color: []
 df_curr_ee_color: [0.5, 1.0, 0.5]
 
-visualize_c3_plan_best: false
+visualize_c3_plan_best: true
 c3_best_object_color: [1.0, 0.64, 0.0]
 c3_best_ee_color: [1.0, 0.64, 0.0]
 df_best_object_color: [1.0, 0.64, 0.0]

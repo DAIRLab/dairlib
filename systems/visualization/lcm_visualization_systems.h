@@ -347,8 +347,30 @@ class LcmC3PlanDrawer : public drake::systems::LeafSystem<double> {
       const Eigen::VectorXd& robot_rgb = Eigen::VectorXd(),
       const bool& show_object = true, const bool& show_robot = true);
 
+  /// Constructor that assumes the robot is a 3 DoF end effector and there are
+  /// multiple deformable network nodes (3 DoF each), drawn across the full C3
+  /// plan horizon. Consumes the raw `c3::lcmt_output` message (the LCM type
+  /// published by C3OutputGenerator), not `dairlib::lcmt_c3_output`.
+  explicit LcmC3PlanDrawer(
+      const std::shared_ptr<drake::geometry::Meshcat>& meshcat, const int& N,
+      const int& num_nodes, const std::string& node_model_file,
+      const std::string& robot_model_file,
+      const std::string& weld_frame_to_world = "",
+      const drake::math::RigidTransformd& object_world_offset =
+          drake::math::RigidTransformd(),
+      const drake::math::RigidTransformd& robot_world_offset =
+          drake::math::RigidTransformd(),
+      const Eigen::VectorXd& object_rgb = Eigen::VectorXd(),
+      const Eigen::VectorXd& robot_rgb = Eigen::VectorXd(),
+      const bool& show_object = true, const bool& show_robot = true);
+
   const drake::systems::InputPort<double>& get_input_port_c3_plan() const {
     return this->get_input_port(c3_plan_input_port_);
+  }
+
+  const drake::systems::InputPort<double>&
+  get_input_port_lcmt_elastoplastic_network() const {
+    return this->get_input_port(lcmt_elastoplastic_network_input_port_);
   }
 
  private:
@@ -356,12 +378,27 @@ class LcmC3PlanDrawer : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
+  drake::systems::EventStatus DrawC3PlanDeformableNetwork(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+
   const int N_;
+  int num_nodes_ = 0;
   drake::systems::InputPortIndex c3_plan_input_port_;
+  drake::systems::InputPortIndex lcmt_elastoplastic_network_input_port_;
+  std::shared_ptr<drake::geometry::Meshcat> meshcat_;
+  const drake::geometry::Cylinder cylinder_for_deformable_ =
+      drake::geometry::Cylinder(0.002, 1.0);
   std::unique_ptr<multibody::MultiposeVisualizer> object_plan_visualizer_ =
       nullptr;
   std::unique_ptr<multibody::MultiposeVisualizer> robot_plan_visualizer_ =
       nullptr;
+  // One visualizer per horizon step (deformable-network overload only), each
+  // rooted at its own meshcat path so nodes + connections for a given step
+  // can be toggled together as a single group.
+  std::vector<std::unique_ptr<multibody::MultiposeVisualizer>>
+      object_plan_step_visualizers_;
+  std::vector<drake::geometry::Rgba> object_plan_step_colors_;
 };
 
 }  // namespace systems

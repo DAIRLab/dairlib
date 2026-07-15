@@ -324,24 +324,6 @@ int DoMain(int argc, char* argv[]) {
 
   // 8) Publish the controller outputs.
   /////
-  // Systems for publishing the current and best planned trajectories.
-  auto actor_trajectory_sender_curr_plan = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.c3_actor_curr_plan_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
-  auto object_trajectory_sender_curr_plan = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.c3_object_curr_plan_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
-  auto actor_trajectory_sender_best_plan = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.c3_actor_best_plan_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
-  auto object_trajectory_sender_best_plan = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.c3_object_best_plan_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
-
   // Systems for publishing the tracking output.
   auto actor_c3_execution_trajectory_sender = builder.AddSystem(
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
@@ -408,15 +390,6 @@ int DoMain(int argc, char* argv[]) {
       LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.dynamically_feasible_best_plan_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
-
-  builder.Connect(controller->get_output_port_c3_solution_curr_plan_actor(),
-                  actor_trajectory_sender_curr_plan->get_input_port());
-  builder.Connect(controller->get_output_port_c3_solution_curr_plan_object(),
-                  object_trajectory_sender_curr_plan->get_input_port());
-  builder.Connect(controller->get_output_port_c3_solution_best_plan_actor(),
-                  actor_trajectory_sender_best_plan->get_input_port());
-  builder.Connect(controller->get_output_port_c3_solution_best_plan_object(),
-                  object_trajectory_sender_best_plan->get_input_port());
 
   C3OutputGenerator::AddLcmPublisherToBuilder(
       builder, controller->get_output_port_c3_solution_curr_plan(),

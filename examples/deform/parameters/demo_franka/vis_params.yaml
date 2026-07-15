@@ -24,8 +24,8 @@ model_reduction_point_model: examples/deform/models/reduced_mpm_point.urdf
 
 ee_vis_model: examples/deform/models/ee_visualization_model.urdf
 
-visualize_c3_plan_object: false
-visualize_c3_plan_robot: false
+visualize_c3_plan_object: true
+visualize_c3_plan_robot: true
 
 # Note:  Colors can either be empty ([]) or RGB values between 0 and 1.  If left
 # empty, the colors defined in the URDF/SDF files will be used.

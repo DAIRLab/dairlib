@@ -45,7 +45,8 @@ ElastoPlasticSC3Controller::ElastoPlasticSC3Controller(
           std::move(controller_params.sampling_c3_controller_params), verbose,
           3 *
               controller_params.elastoplastic_sc3_options
-                  .num_internal_contacts),
+                  .num_internal_contacts,
+          /*declare_actor_object_plan_ports=*/false),
       goal_params_(controller_params.elastoplastic_goal_params),
       internal_contact_geometries_(internal_contact_geometries),
       n_nodes_(internal_contact_geometries.size()),

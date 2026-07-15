@@ -1,6 +1,7 @@
 #include "lcm_visualization_systems.h"
 
 #include <c3/lcmt_contact_forces.hpp>
+#include <c3/lcmt_output.hpp>
 #include <dairlib/lcmt_c3_output.hpp>
 #include <dairlib/lcmt_c3_state.hpp>
 #include <dairlib/lcmt_elastoplastic_network.hpp>
@@ -1230,6 +1231,58 @@ drake::systems::EventStatus LcmC3TargetDrawer::DrawC3StateDeformableNetwork(
   return drake::systems::EventStatus::Succeeded();
 }
 
+namespace {
+// Draws the deformable-network connections (edges) as stretched cylinders
+// between node locations.  Shared by LcmC3TargetDrawer (single snapshot) and
+// LcmC3PlanDrawer (one call per horizon step).
+void DrawDeformableNetworkEdges(
+    const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
+    const drake::geometry::Cylinder& cylinder,
+    const dairlib::lcmt_elastoplastic_network* elastoplastic_model,
+    const Eigen::VectorXd& node_locations, const std::string& meshcat_prefix,
+    const drake::geometry::Rgba& color, const double& timestamp) {
+  for (int i = 0; i < elastoplastic_model->num_connections; ++i) {
+    int vertex_i = elastoplastic_model->connections[i][0];
+    int vertex_j = elastoplastic_model->connections[i][1];
+    const VectorXd point_1 = Vector3d(node_locations[3 * vertex_i + 0],
+                                      node_locations[3 * vertex_i + 1],
+                                      node_locations[3 * vertex_i + 2]);
+    const VectorXd point_2 = Vector3d(node_locations[3 * vertex_j + 0],
+                                      node_locations[3 * vertex_j + 1],
+                                      node_locations[3 * vertex_j + 2]);
+    const VectorXd vector_1_to_2 = point_2 - point_1;
+    auto distance_norm = vector_1_to_2.norm();
+    const std::string& conn_path_root = meshcat_prefix + "/vertex_" +
+                                        std::to_string(vertex_i) + "_to_" +
+                                        std::to_string(vertex_j) + "/";
+    if (distance_norm >= 1e-3) {
+      if (!meshcat->HasPath(conn_path_root + "arrow/")) {
+        meshcat->SetObject(conn_path_root + "arrow/cylinder", cylinder, color);
+      }
+      meshcat->SetTransform(conn_path_root, RigidTransformd(point_1),
+                            timestamp);
+      // Transform and stretch the cylinder (in z) to match the length of the
+      // connection.
+      std::string conn_arrow_path = conn_path_root + "arrow";
+      meshcat->SetTransform(
+          conn_arrow_path,
+          RigidTransformd(RotationMatrixd::MakeFromOneVector(vector_1_to_2, 2)),
+          timestamp);
+      meshcat->SetProperty(conn_arrow_path + "/cylinder", "position",
+                           {0, 0, 0.5 * distance_norm}, timestamp);
+      // Note: Meshcat does not fully support non-uniform scaling (see
+      // #18095). We get away with it here since there is no rotation on this
+      // frame and no children in the kinematic tree.
+      meshcat->SetProperty(conn_arrow_path + "/cylinder", "scale",
+                           {1, 1, distance_norm}, timestamp);
+      meshcat->SetProperty(conn_path_root, "visible", true, timestamp);
+    } else {
+      meshcat->SetProperty(conn_path_root, "visible", false, timestamp);
+    }
+  }
+}
+}  // namespace
+
 void LcmC3TargetDrawer::DrawDeformableNetworkState(
     multibody::MultiposeVisualizer* multi_pose_visualizer,
     const dairlib::lcmt_elastoplastic_network* elastoplastic_model,
@@ -1246,46 +1299,9 @@ void LcmC3TargetDrawer::DrawDeformableNetworkState(
   multi_pose_visualizer->DrawPoses(object_configs);
 
   // 2) Draw the edges.
-  for (int i = 0; i < elastoplastic_model->num_connections; ++i) {
-    int vertex_i = elastoplastic_model->connections[i][0];
-    int vertex_j = elastoplastic_model->connections[i][1];
-    const VectorXd point_1 = Vector3d(node_locations[3 * vertex_i + 0],
-                                      node_locations[3 * vertex_i + 1],
-                                      node_locations[3 * vertex_i + 2]);
-    const VectorXd point_2 = Vector3d(node_locations[3 * vertex_j + 0],
-                                      node_locations[3 * vertex_j + 1],
-                                      node_locations[3 * vertex_j + 2]);
-    const VectorXd vector_1_to_2 = point_2 - point_1;
-    auto distance_norm = vector_1_to_2.norm();
-    const std::string& conn_path_root = meshcat_prefix + "/vertex_" +
-                                        std::to_string(vertex_i) + "_to_" +
-                                        std::to_string(vertex_j) + "/";
-    if (distance_norm >= 1e-3) {
-      if (!meshcat_->HasPath(conn_path_root + "arrow/")) {
-        meshcat_->SetObject(conn_path_root + "arrow/cylinder",
-                            cylinder_for_deformable_, color);
-      }
-      meshcat_->SetTransform(conn_path_root, RigidTransformd(point_1),
-                             timestamp);
-      // Transform and stretch the cylinder (in z) to match the length of the
-      // connection.
-      std::string conn_arrow_path = conn_path_root + "arrow";
-      meshcat_->SetTransform(
-          conn_arrow_path,
-          RigidTransformd(RotationMatrixd::MakeFromOneVector(vector_1_to_2, 2)),
-          timestamp);
-      meshcat_->SetProperty(conn_arrow_path + "/cylinder", "position",
-                            {0, 0, 0.5 * distance_norm}, timestamp);
-      // Note: Meshcat does not fully support non-uniform scaling (see
-      // #18095). We get away with it here since there is no rotation on this
-      // frame and no children in the kinematic tree.
-      meshcat_->SetProperty(conn_arrow_path + "/cylinder", "scale",
-                            {1, 1, distance_norm}, timestamp);
-      meshcat_->SetProperty(conn_path_root, "visible", true, timestamp);
-    } else {
-      meshcat_->SetProperty(conn_path_root, "visible", false, timestamp);
-    }
-  }
+  DrawDeformableNetworkEdges(meshcat_, cylinder_for_deformable_,
+                             elastoplastic_model, node_locations,
+                             meshcat_prefix, color, timestamp);
 }
 
 LcmC3PlanDrawer::LcmC3PlanDrawer(
@@ -1296,7 +1312,7 @@ LcmC3PlanDrawer::LcmC3PlanDrawer(
     const RigidTransformd& robot_world_offset,
     const Eigen::VectorXd& object_rgb, const Eigen::VectorXd& robot_rgb,
     const bool& show_object, const bool& show_robot)
-    : N_(N) {
+    : N_(N), meshcat_(meshcat) {
   this->set_name("LcmC3PlanDrawer");
   c3_plan_input_port_ =
       this->DeclareAbstractInputPort("lcmt_c3_output",
@@ -1307,12 +1323,12 @@ LcmC3PlanDrawer::LcmC3PlanDrawer(
   if (show_object) {
     object_plan_visualizer_ = std::make_unique<multibody::MultiposeVisualizer>(
         object_model_file, N_, alpha_scale, weld_frame_to_world,
-        object_world_offset, meshcat, "c3_plans/object", object_rgb);
+        object_world_offset, meshcat, "object", object_rgb, "c3_plans/object");
   }
   if (show_robot) {
     robot_plan_visualizer_ = std::make_unique<multibody::MultiposeVisualizer>(
         robot_model_file, N_, alpha_scale, weld_frame_to_world,
-        robot_world_offset, meshcat, "c3_plans/robot", robot_rgb);
+        robot_world_offset, meshcat, "robot", robot_rgb, "c3_plans/robot");
   }
 
   DeclarePerStepDiscreteUpdateEvent(&LcmC3PlanDrawer::DrawC3Plan);
@@ -1364,6 +1380,111 @@ drake::systems::EventStatus LcmC3PlanDrawer::DrawC3Plan(
       }
     }
     robot_plan_visualizer_->DrawPoses(robot_config);
+  }
+
+  return drake::systems::EventStatus::Succeeded();
+}
+
+LcmC3PlanDrawer::LcmC3PlanDrawer(
+    const std::shared_ptr<drake::geometry::Meshcat>& meshcat, const int& N,
+    const int& num_nodes, const std::string& node_model_file,
+    const std::string& robot_model_file, const std::string& weld_frame_to_world,
+    const RigidTransformd& object_world_offset,
+    const RigidTransformd& robot_world_offset,
+    const Eigen::VectorXd& object_rgb, const Eigen::VectorXd& robot_rgb,
+    const bool& show_object, const bool& show_robot)
+    : N_(N), num_nodes_(num_nodes), meshcat_(meshcat) {
+  this->set_name("LcmC3PlanDrawer");
+  c3_plan_input_port_ =
+      this->DeclareAbstractInputPort("c3::lcmt_output",
+                                     drake::Value<c3::lcmt_output>{})
+          .get_index();
+  lcmt_elastoplastic_network_input_port_ =
+      this->DeclareAbstractInputPort(
+              "lcmt_elastoplastic_network",
+              drake::Value<dairlib::lcmt_elastoplastic_network>{})
+          .get_index();
+
+  // One shared fade schedule for both the EE trail and the node/edge trail.
+  Eigen::VectorXd alpha_scale = 1.0 * VectorXd::LinSpaced(N_, 0.5, 0.1);
+  if (show_robot) {
+    robot_plan_visualizer_ = std::make_unique<multibody::MultiposeVisualizer>(
+        robot_model_file, N_, alpha_scale, weld_frame_to_world,
+        robot_world_offset, meshcat, "robot", robot_rgb, "c3_plans/curr/robot");
+  }
+  if (show_object) {
+    object_plan_step_visualizers_.resize(N_);
+    object_plan_step_colors_.resize(N_);
+    for (int t = 0; t < N_; ++t) {
+      const std::string step_path =
+          "c3_plans/curr/deformable_network/step_" + std::to_string(t);
+      object_plan_step_visualizers_[t] =
+          std::make_unique<multibody::MultiposeVisualizer>(
+              node_model_file, num_nodes_,
+              Eigen::VectorXd::Constant(num_nodes_, alpha_scale[t]),
+              weld_frame_to_world, object_world_offset, meshcat,
+              "step_" + std::to_string(t), object_rgb, step_path);
+      object_plan_step_colors_[t] =
+          object_plan_step_visualizers_[t]->GetColor();
+      object_plan_step_colors_[t].update({}, {}, {}, alpha_scale[t]);
+    }
+  }
+
+  DeclarePerStepDiscreteUpdateEvent(
+      &LcmC3PlanDrawer::DrawC3PlanDeformableNetwork);
+}
+
+drake::systems::EventStatus LcmC3PlanDrawer::DrawC3PlanDeformableNetwork(
+    const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+  const auto* c3_output =
+      this->EvalInputValue<c3::lcmt_output>(context, c3_plan_input_port_);
+  const auto* elastoplastic_model =
+      this->EvalInputValue<dairlib::lcmt_elastoplastic_network>(
+          context, lcmt_elastoplastic_network_input_port_);
+
+  // Break if the plan or the network topology is not published yet.
+  if (c3_output->utime < 1e-3 || elastoplastic_model->utime < 1e-3) {
+    return drake::systems::EventStatus::Succeeded();
+  }
+
+  // Handle the robot (EE): occupies the leading rows of x_sol.
+  if (robot_plan_visualizer_ != nullptr) {
+    int n_robot_config = robot_plan_visualizer_->GetNumConfig();
+    MatrixXd robot_config = MatrixXd::Zero(n_robot_config, N_);
+    for (int t = 0; t < N_; ++t) {
+      for (int j = 0; j < n_robot_config; ++j) {
+        robot_config.col(t)[j] = c3_output->solution.x_sol[j][t];
+      }
+    }
+    robot_plan_visualizer_->DrawPoses(robot_config);
+  }
+
+  // Handle the deformable network (nodes + connections), one horizon step at
+  // a time. The EE position always occupies the leading 3 rows of x_sol (see
+  // LcmC3TargetDrawer::DrawC3StateDeformableNetwork for the same hardcoded
+  // offset), so node positions start at row 3.
+  if (!object_plan_step_visualizers_.empty()) {
+    constexpr int kEeConfigSize = 3;
+    double timestamp = context.get_time();
+    for (int t = 0; t < N_; ++t) {
+      Eigen::VectorXd node_locations = Eigen::VectorXd::Zero(3 * num_nodes_);
+      MatrixXd node_configs = MatrixXd::Zero(3, num_nodes_);
+      for (int n = 0; n < num_nodes_; ++n) {
+        for (int axis = 0; axis < 3; ++axis) {
+          double value =
+              c3_output->solution.x_sol[kEeConfigSize + 3 * n + axis][t];
+          node_locations[3 * n + axis] = value;
+          node_configs.col(n)[axis] = value;
+        }
+      }
+      object_plan_step_visualizers_[t]->DrawPoses(node_configs);
+      DrawDeformableNetworkEdges(
+          meshcat_, cylinder_for_deformable_, elastoplastic_model,
+          node_locations,
+          "c3_plans/curr/deformable_network/step_" + std::to_string(t),
+          object_plan_step_colors_[t], timestamp);
+    }
   }
 
   return drake::systems::EventStatus::Succeeded();

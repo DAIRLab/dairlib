@@ -67,7 +67,7 @@ SamplingC3Controller::SamplingC3Controller(
     MultibodyPlant<AutoDiffXd>& plant_ad, Context<AutoDiffXd>* context_ad,
     const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
     SamplingC3ControllerParams controller_params, bool verbose,
-    int n_lambda_internal)
+    int n_lambda_internal, bool declare_actor_object_plan_ports)
     : n_lambda_internal_(n_lambda_internal),
       plant_(plant),
       context_(context),
@@ -238,18 +238,20 @@ SamplingC3Controller::SamplingC3Controller(
               "c3_solution_curr_plan", c3_solution,
               &SamplingC3Controller::OutputC3SolutionCurrPlan)
           .get_index();
-  c3_solution_curr_plan_actor_port_ =
-      this->DeclareAbstractOutputPort(
-              "c3_solution_curr_plan_actor",
-              dairlib::lcmt_timestamped_saved_traj(),
-              &SamplingC3Controller::OutputC3SolutionCurrPlanActor)
-          .get_index();
-  c3_solution_curr_plan_object_port_ =
-      this->DeclareAbstractOutputPort(
-              "c3_solution_curr_plan_object",
-              dairlib::lcmt_timestamped_saved_traj(),
-              &SamplingC3Controller::OutputC3SolutionCurrPlanObject)
-          .get_index();
+  if (declare_actor_object_plan_ports) {
+    c3_solution_curr_plan_actor_port_ =
+        this->DeclareAbstractOutputPort(
+                "c3_solution_curr_plan_actor",
+                dairlib::lcmt_timestamped_saved_traj(),
+                &SamplingC3Controller::OutputC3SolutionCurrPlanActor)
+            .get_index();
+    c3_solution_curr_plan_object_port_ =
+        this->DeclareAbstractOutputPort(
+                "c3_solution_curr_plan_object",
+                dairlib::lcmt_timestamped_saved_traj(),
+                &SamplingC3Controller::OutputC3SolutionCurrPlanObject)
+            .get_index();
+  }
   c3_intermediates_curr_plan_port_ =
       this->DeclareAbstractOutputPort(
               "c3_intermediates_curr_plan", c3_intermediates,
@@ -269,18 +271,20 @@ SamplingC3Controller::SamplingC3Controller(
               "c3_solution_best_plan", c3_solution,
               &SamplingC3Controller::OutputC3SolutionBestPlan)
           .get_index();
-  c3_solution_best_plan_actor_port_ =
-      this->DeclareAbstractOutputPort(
-              "c3_solution_best_plan_actor",
-              dairlib::lcmt_timestamped_saved_traj(),
-              &SamplingC3Controller::OutputC3SolutionBestPlanActor)
-          .get_index();
-  c3_solution_best_plan_object_port_ =
-      this->DeclareAbstractOutputPort(
-              "c3_solution_best_plan_object",
-              dairlib::lcmt_timestamped_saved_traj(),
-              &SamplingC3Controller::OutputC3SolutionBestPlanObject)
-          .get_index();
+  if (declare_actor_object_plan_ports) {
+    c3_solution_best_plan_actor_port_ =
+        this->DeclareAbstractOutputPort(
+                "c3_solution_best_plan_actor",
+                dairlib::lcmt_timestamped_saved_traj(),
+                &SamplingC3Controller::OutputC3SolutionBestPlanActor)
+            .get_index();
+    c3_solution_best_plan_object_port_ =
+        this->DeclareAbstractOutputPort(
+                "c3_solution_best_plan_object",
+                dairlib::lcmt_timestamped_saved_traj(),
+                &SamplingC3Controller::OutputC3SolutionBestPlanObject)
+            .get_index();
+  }
   c3_intermediates_best_plan_port_ =
       this->DeclareAbstractOutputPort(
               "c3_intermediates_best_plan", c3_intermediates,

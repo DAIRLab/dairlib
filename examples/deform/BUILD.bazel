@@ -129,6 +129,7 @@ cc_binary(
         "//systems/primitives",
         "//systems/trajectory_optimization:lcm_trajectory_systems",
         "//systems/visualization:lcm_visualization_systems",
+        "@c3//:libc3",
         "@drake//:drake_shared_library",
         "@gflags",
     ],

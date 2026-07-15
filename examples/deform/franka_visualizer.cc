@@ -1,7 +1,7 @@
 #include <iostream>
 
+#include <c3/lcmt_output.hpp>
 #include <dairlib/lcmt_c3_forces.hpp>
-#include <dairlib/lcmt_c3_output.hpp>
 #include <dairlib/lcmt_c3_state.hpp>
 #include <dairlib/lcmt_elastoplastic_network.hpp>
 #include <dairlib/lcmt_material_points.hpp>
@@ -310,6 +310,26 @@ int do_main(int argc, char* argv[]) {
     builder.Connect(
         reduced_model_sub->get_output_port(),
         reduced_model_interpreter->get_input_port_lcmt_elastoplastic_network());
+  }
+
+  // Visualize the C3 plan (deformable nodes, connections, and EE) for the
+  // current C3 solve.
+  if (vis_params.visualize_c3_plan_object ||
+      vis_params.visualize_c3_plan_robot) {
+    auto c3_plan_sub = builder.AddSystem(
+        LcmSubscriberSystem::Make<c3::lcmt_output>(
+            lcm_channel_params.c3_debug_output_curr_channel, lcm));
+    auto c3_plan_drawer = builder.AddSystem<systems::LcmC3PlanDrawer>(
+        meshcat, elastoplastic_sc3_options.N, n_nodes,
+        vis_params.model_reduction_point_model, vis_params.ee_vis_model,
+        "base_link", RigidTransformd(), RigidTransformd(),
+        vis_params.c3_object_color, vis_params.c3_ee_color,
+        vis_params.visualize_c3_plan_object, vis_params.visualize_c3_plan_robot);
+    builder.Connect(c3_plan_sub->get_output_port(),
+                    c3_plan_drawer->get_input_port_c3_plan());
+    builder.Connect(
+        reduced_model_sub->get_output_port(),
+        c3_plan_drawer->get_input_port_lcmt_elastoplastic_network());
   }
 
   // Build the diagram.

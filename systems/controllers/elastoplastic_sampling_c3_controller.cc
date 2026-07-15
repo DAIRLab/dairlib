@@ -42,12 +42,12 @@ ElastoPlasticSC3Controller::ElastoPlasticSC3Controller(
     DeformControllerParams controller_params, bool verbose)
     : SamplingC3Controller(
           plant, context, plant_ad, context_ad, external_contact_pair_lists,
-          std::move(controller_params.sampling_c3_controller_params), verbose),
+          std::move(controller_params.sampling_c3_controller_params), verbose,
+          3 *
+              controller_params.elastoplastic_sc3_options
+                  .num_internal_contacts),
       goal_params_(controller_params.elastoplastic_goal_params),
       internal_contact_geometries_(internal_contact_geometries),
-      n_lambda_internal_(
-          3 *
-          controller_params.elastoplastic_sc3_options.num_internal_contacts),
       n_nodes_(internal_contact_geometries.size()),
       elastoplastic_sc3_options_(controller_params.elastoplastic_sc3_options) {
   this->set_name("elastoplastic_sc3_controller");

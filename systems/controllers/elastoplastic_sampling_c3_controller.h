@@ -81,7 +81,6 @@ class ElastoPlasticSC3Controller : public SamplingC3Controller {
                                         elastoplastic_network_lcmt) const;
 
   drake::systems::InputPortIndex elastoplastic_input_port_;
-  const int n_lambda_internal_;
   const int n_nodes_;
   const std::vector<drake::geometry::GeometryId> internal_contact_geometries_;
   const ElastoPlasticGoalParams goal_params_;

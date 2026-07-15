@@ -77,7 +77,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const std::vector<
           std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
           contact_geoms,
-      SamplingC3ControllerParams controller_params, bool verbose = false);
+      SamplingC3ControllerParams controller_params, bool verbose = false,
+      int n_lambda_internal = 0);
 
   // Input ports
   const drake::systems::InputPort<double>& get_input_port_target() const {
@@ -261,6 +262,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   int n_v_;
   int n_x_;
   int n_lambda_;
+  const int n_lambda_internal_;
   int n_u_;
   int N_;
   int n_z_;

@@ -66,8 +66,10 @@ SamplingC3Controller::SamplingC3Controller(
     MultibodyPlant<double>& plant, Context<double>* context,
     MultibodyPlant<AutoDiffXd>& plant_ad, Context<AutoDiffXd>* context_ad,
     const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
-    SamplingC3ControllerParams controller_params, bool verbose)
-    : plant_(plant),
+    SamplingC3ControllerParams controller_params, bool verbose,
+    int n_lambda_internal)
+    : n_lambda_internal_(n_lambda_internal),
+      plant_(plant),
       context_(context),
       plant_ad_(plant_ad),
       context_ad_(context_ad),
@@ -141,10 +143,11 @@ SamplingC3Controller::SamplingC3Controller(
       sampling_c3_options_.num_friction_directions_per_contact.value());
 
   // Placeholder LCS will have correct size as it's already determined by the
-  // contact model.
-  auto lcs_placeholder =
-      LCS::CreatePlaceholderLCS(n_x_, n_u_, n_lambda_, sampling_c3_options_.N,
-                                sampling_c3_options_.planning_dt_position);
+  // contact model.  Include n_lambda_internal_ (0 unless a subclass passes a
+  // nonzero value) so that n_z_ declares the output port sizes properly.
+  auto lcs_placeholder = LCS::CreatePlaceholderLCS(
+      n_x_, n_u_, n_lambda_ + n_lambda_internal_, sampling_c3_options_.N,
+      sampling_c3_options_.planning_dt_position);
 
   auto x_desired_placeholder = vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
 
@@ -202,6 +205,7 @@ SamplingC3Controller::SamplingC3Controller(
   auto c3_solution = C3Output::C3Solution();
   c3_solution.x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
   c3_solution.lambda_sol_ = MatrixXf::Zero(n_lambda_, N_);
+  c3_solution.lambda_internal_sol_ = MatrixXf::Zero(n_lambda_internal_, N_);
   c3_solution.u_sol_ = MatrixXf::Zero(n_u_, N_);
   c3_solution.time_vector_ = VectorXf::Zero(N_);
   auto c3_intermediates = C3Output::C3Intermediates();
@@ -2371,8 +2375,12 @@ void SamplingC3Controller::OutputC3SolutionCurrPlan(
     c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
     c3_solution->lambda_sol_.col(i) =
         z_sol[i].segment(n_x_, n_lambda_).cast<float>();
+    c3_solution->lambda_internal_sol_.col(i) =
+        z_sol[i].segment(n_x_ + n_lambda_, n_lambda_internal_).cast<float>();
     c3_solution->u_sol_.col(i) =
-        z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+        z_sol[i]
+            .segment(n_x_ + n_lambda_ + n_lambda_internal_, n_u_)
+            .cast<float>();
   }
 }
 
@@ -2554,8 +2562,12 @@ void SamplingC3Controller::OutputC3SolutionBestPlan(
     c3_solution->x_sol_.col(i) = z_sol[i].segment(0, n_x_).cast<float>();
     c3_solution->lambda_sol_.col(i) =
         z_sol[i].segment(n_x_, n_lambda_).cast<float>();
+    c3_solution->lambda_internal_sol_.col(i) =
+        z_sol[i].segment(n_x_ + n_lambda_, n_lambda_internal_).cast<float>();
     c3_solution->u_sol_.col(i) =
-        z_sol[i].segment(n_x_ + n_lambda_, n_u_).cast<float>();
+        z_sol[i]
+            .segment(n_x_ + n_lambda_ + n_lambda_internal_, n_u_)
+            .cast<float>();
   }
 }
 

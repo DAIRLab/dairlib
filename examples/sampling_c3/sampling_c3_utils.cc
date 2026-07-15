@@ -297,6 +297,7 @@ std::vector<ModelInstanceIndex> AddLCSModelsTo3DPrinterPlant(
   parser_lcs.SetAutoRenaming(true);
   parser_lcs.AddModels(k3dEndEffectorSimpleModel);
   parser_lcs.AddModels(kBaseModel);
+  parser_lcs.AddModelsFromUrl(k3DPrinterRampModel);
 
 
   for (const auto& model : object_models) {
@@ -312,6 +313,17 @@ std::vector<ModelInstanceIndex> AddLCSModelsTo3DPrinterPlant(
                     plant->GetFrameByName("base_ee_link"), X_WI);
   plant->WeldFrames(plant->world_frame(),
                     plant->GetFrameByName("ground"), X_W_G);
+
+  RigidTransform<double> T_Ramp_W(
+        drake::math::RotationMatrix<double>(
+            drake::math::RollPitchYaw<double>(0, 0, 0)),
+        k3dPrinterRampAttachmentFrame);
+
+
+  plant->WeldFrames(plant->GetFrameByName("ground"),
+                    plant->GetFrameByName("ramp_link"),
+                    T_Ramp_W);
+
 
 
   return obj_models;

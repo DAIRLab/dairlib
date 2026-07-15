@@ -96,10 +96,71 @@
           <diffuse>0 0 1 1</diffuse>
         </material>
 
-        <pose>0.0254 0.0 -0.0254 0 0 0</pose>
+        <pose>0.0254 0.0254 -0.0254 0 0 0</pose>
       </visual>
 
-      
+      <visual name="corner_3">
+        <geometry>
+          <sphere>
+            <radius>0.01</radius>
+          </sphere>
+        </geometry>
+
+        <material>
+          <diffuse>1 1 0 1</diffuse>
+        </material>
+
+        <pose>0.0254 -0.0254 -0.0254 0 0 0</pose>
+      </visual>
+      <visual name="corner_4">
+        <geometry>
+          <sphere>
+            <radius>0.01</radius>
+          </sphere>
+        </geometry>
+
+        <material>
+          <diffuse>1 0 1 1</diffuse>
+        </material>
+
+        <pose>-0.0254 -0.0254 0.0254 0 0 0</pose>
+      </visual>
+      <visual name="corner_5">
+        <geometry>
+          <sphere>
+            <radius>0.01</radius>
+          </sphere>
+        </geometry> 
+        <material>
+          <diffuse>0 1 1 1</diffuse>
+        </material>
+
+        <pose>0.0254 -0.0254 0.0254 0 0 0</pose>
+      </visual>
+      <visual name="corner_6">
+        <geometry>
+          <sphere>
+            <radius>0.01</radius>
+          </sphere>
+        </geometry> 
+        <material>
+          <diffuse>1 1 1 1</diffuse>
+        </material>
+
+        <pose>0.0254 0.0254 0.0254 0 0 0</pose>
+      </visual>
+      <visual name="corner_7">
+        <geometry>
+          <sphere>
+            <radius>0.01</radius>
+          </sphere>
+        </geometry> 
+        <material>
+          <diffuse>0 0 0 1</diffuse>
+        </material>
+
+        <pose>-0.0254 0.0254 0.0254 0 0 0</pose>
+      </visual>
 
     </link>
 

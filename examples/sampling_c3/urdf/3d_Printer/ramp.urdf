@@ -37,17 +37,17 @@
     <!-- Platform -->
     <visual>
       <!-- Center of platform -->
-      <origin xyz="-0.038 -0.038 0.04826" rpy="0 0 0"/>
+      <origin xyz="-0.038 -0.038 0.0254" rpy="0 0 0"/>
       <geometry>
-        <box size="0.0762 0.0762 0.00508"/>
+        <box size="0.0762 0.0762 0.0508"/>
       </geometry>
       <material name="gray"/>
     </visual>
 
     <collision>
-      <origin xyz="0.1651 0 0.04826" rpy="0 0 0"/>
+      <origin xyz="-0.038 -0.038 0.0254" rpy="0 0 0"/>
       <geometry>
-        <box size="0.0762 0.0762 0.00508"/>
+        <box size="0.0762 0.0762 0.0508"/>
       </geometry>
     </collision>
 

@@ -180,5 +180,5 @@ u_eta_t: []
 u_eta: []
 final_augmented_cost_contact_scaling: 1000
 final_augmented_cost_contact_indices: [0, 1, 2, 3]
-planar_demo: true 
+planar_demo: false
 

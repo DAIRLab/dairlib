@@ -32,8 +32,8 @@ angle_err_to_vel_factor: 0
 #fixed_target_position: [0.65, 0.18745379, -0.004]
 #fixed_target_orientation: [-0.9327733, 0, 0, 0.36046353]
 
-fixed_target_positions: [[0.17, 0.17, 0.0254]]
-fixed_target_orientations: [[0.71, 0, 0, 0.71]]
+fixed_target_positions: [[0.06, 0.1, 0.0762]]
+fixed_target_orientations: [[1, 0, 0, 0]]
 
 
 # Random-specific parameters.

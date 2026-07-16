@@ -15,7 +15,7 @@ lcm_channels_simulation_file: examples/sampling_c3/shared_parameters/lcm_channel
 lcm_channels_visualize_file: examples/sampling_c3/shared_parameters/lcm_channels_visualize.yaml
 
 object_model: examples/sampling_c3/urdf/nut/nut_controller.sdf
-object_models: [examples/sampling_c3/urdf/cube/cube_controller.sdf]
+object_models: [examples/sampling_c3/urdf/cone/cone_controller.sdf]
 object_body_name: body
 base_name: [A_shape_video]
 # base_names: [P_shape_texture, U_shape_texture, S_shape_texture, H_shape_texture]
@@ -36,7 +36,7 @@ base_name: [A_shape_video]
 # base_names: [T_small_video, H_shape_texture, I_shape_texture, N_shape_video, G_shape_video]
 # base_names: [D_shape_texture, A_shape_video, I_shape_texture, R_shape_texture]
 # base_names: [G_shape_video, R_shape_texture, A_shape_video, S_shape_texture]
-base_names: [cube]
+base_names: [cone]
 
 include_end_effector_orientation: false
 

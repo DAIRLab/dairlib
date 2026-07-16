@@ -381,28 +381,25 @@ int DoMain(int argc, char* argv[]) {
       
     drake::geometry::GeometryId bottom_right_sphere_geoms =
         plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("cube"))[1];
+            plant_lcs.GetBodyByName("cone"))[1];
     drake::geometry::GeometryId top_right_sphere_geoms =
         plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("cube"))[2];
+            plant_lcs.GetBodyByName("cone"))[2];
     drake::geometry::GeometryId top_left_sphere_geoms =
         plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("cube"))[3];
+            plant_lcs.GetBodyByName("cone"))[3];
     drake::geometry::GeometryId bottom_left_sphere_geoms =
         plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("cube"))[4];
+            plant_lcs.GetBodyByName("cone"))[4];
     drake::geometry::GeometryId high_bottom_right_sphere_geoms =
         plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("cube"))[5];
+            plant_lcs.GetBodyByName("cone"))[5];
     drake::geometry::GeometryId high_top_right_sphere_geoms =
         plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("cube"))[6];
+            plant_lcs.GetBodyByName("cone"))[6];
     drake::geometry::GeometryId high_top_left_sphere_geoms =
         plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("cube"))[7];
-    drake::geometry::GeometryId high_bottom_left_sphere_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("cube"))[8];
+            plant_lcs.GetBodyByName("cone"))[7];
 
 
     contact_geoms["TOP_LEFT_SPHERE"] = top_left_sphere_geoms;
@@ -412,7 +409,7 @@ int DoMain(int argc, char* argv[]) {
     contact_geoms["HIGH_TOP_LEFT_SPHERE"] = high_top_left_sphere_geoms;
     contact_geoms["HIGH_TOP_RIGHT_SPHERE"] = high_top_right_sphere_geoms;
     contact_geoms["HIGH_BOTTOM_RIGHT_SPHERE"] = high_bottom_right_sphere_geoms;
-    contact_geoms["HIGH_BOTTOM_LEFT_SPHERE"] = high_bottom_left_sphere_geoms;
+
 
 
     ground_object_contact_pairs.push_back(
@@ -429,8 +426,7 @@ int DoMain(int argc, char* argv[]) {
         SortedPair(contact_geoms["HIGH_TOP_RIGHT_SPHERE"], contact_geoms["GROUND"]));
     ground_object_contact_pairs.push_back(
         SortedPair(contact_geoms["HIGH_BOTTOM_RIGHT_SPHERE"], contact_geoms["GROUND"]));
-    ground_object_contact_pairs.push_back(
-        SortedPair(contact_geoms["HIGH_BOTTOM_LEFT_SPHERE"], contact_geoms["GROUND"])); 
+
 
 
 
@@ -448,19 +444,18 @@ int DoMain(int argc, char* argv[]) {
         SortedPair(contact_geoms["HIGH_TOP_RIGHT_SPHERE"], contact_geoms["RAMP"]));
     ground_object_contact_pairs.push_back(  
         SortedPair(contact_geoms["HIGH_BOTTOM_RIGHT_SPHERE"], contact_geoms["RAMP"]));
-    ground_object_contact_pairs.push_back(
-        SortedPair(contact_geoms["HIGH_BOTTOM_LEFT_SPHERE"], contact_geoms["RAMP"]));
+
 
 
 
       const std::vector<drake::geometry::GeometryId>
           object_geoms_without_spheres =
               std::vector<drake::geometry::GeometryId>(object_geoms.begin(),
-                                                       object_geoms.end() - 4);
+                                                       object_geoms.end() - 7);
 
       
 
-      for (int j = 0; j < object_geoms.size() - 4; j++) {
+      for (int j = 0; j < object_geoms.size() - 7; j++) {
         ee_contact_pairs.push_back(
             SortedPair(contact_geoms["EE"], object_geoms[j]));
       }

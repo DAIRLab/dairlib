@@ -56,9 +56,9 @@ hyst_repos_to_repos_position: 60000000000000
 
 # Relative hysteresis is in terms of a fraction of the current cost.
 use_relative_hysteresis: true
-hyst_c3_to_repos_frac: 0.4
+hyst_c3_to_repos_frac: 0.85
 hyst_c3_to_repos_frac_position: 0.6
-hyst_repos_to_c3_frac: 0.9
+hyst_repos_to_c3_frac: 0.3
 hyst_repos_to_c3_frac_position: 0.5
-hyst_repos_to_repos_frac: 0.3
-hyst_repos_to_repos_frac_position: 0.1
+hyst_repos_to_repos_frac: 0.9
+hyst_repos_to_repos_frac_position: 0.9

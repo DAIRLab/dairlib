@@ -1,5 +1,5 @@
 ee_vis_model: examples/sampling_c3/urdf/3d_Printer/three_d_printer_ee_visualization_model.urdf
-object_vis_models: [examples/sampling_c3/urdf/cube/cube.sdf]
+object_vis_models: [examples/sampling_c3/urdf/cone/cone.sdf]
 visualizer_publish_rate: 30
 
 camera_pose: [0, -1.0, 0.6]

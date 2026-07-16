@@ -500,6 +500,7 @@ SamplingC3Controller::SamplingC3Controller(
       std::string path =
           "examples/sampling_c3/urdf/" + base_name + "/" + base_name + ".obj";
       mesh_paths.push_back(path);
+      std::cout << "[SamplingC3Controller] Added mesh path: " << path << std::endl;
     }
     if (mesh_paths.empty()) {
       throw std::runtime_error(
@@ -508,7 +509,7 @@ SamplingC3Controller::SamplingC3Controller(
 
     // N OBJECTS
     // Store faces and bins for each object
-    std::cout << "[SamplingC3Controller] Processing " << mesh_paths.size() << " mesh files..." << std::endl;
+    std::cout << std::endl << std::endl <<"[SamplingC3Controller] Processing " << mesh_paths.size() << " mesh files..." << std::endl;
 
     for (const std::string& mesh_path : mesh_paths) {
       drake::geometry::TriangleSurfaceMesh<double>* mesh =
@@ -517,6 +518,8 @@ SamplingC3Controller::SamplingC3Controller(
 
       const auto& vertices = mesh->vertices();
       int num_tri = mesh->num_triangles();
+      std::cout << "  Num triangles: " << num_tri << " in mesh: " << mesh_path
+                << std::endl;
 
       vector<Face> object_faces;
       vector<double> object_bins;
@@ -536,7 +539,7 @@ SamplingC3Controller::SamplingC3Controller(
         double z_accept =
             std::pow(sampling_params_.buffer_distance, 2) -
             std::pow(sampling_params_.sample_projection_clearance, 2);
-        if (std::pow(std::abs(normal[2]), 2) < z_accept + 0.04) {
+        if ((std::pow(std::abs(normal[2]), 2) < z_accept + 0.04) || !sampling_c3_options_.planar_demo) {
           double area = 0.5 * (v1 - v0).cross(v2 - v0).norm();
           object_faces.push_back({area, normal, {v0, v1, v2}});
           cumulative_area += area;
@@ -1268,11 +1271,18 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // repositioning target. If the lowest cost sample is not at least the
       // hysteresis amount better than the current repositioning target, then
       // continue pursuing the previous repositioning target.
+      std::cout << "Repos -> Repos:  Found lower cost sample than previous "
+                   "repositioning target; checking hysteresis"
+                << std::endl;
       if ((repos_target_cost < best_other_cost + hyst_repos_to_repos &&
            !progress_params_.use_relative_hysteresis) ||
           (repos_target_cost <
                best_other_cost + hyst_repos_to_repos_frac * repos_target_cost &&
            progress_params_.use_relative_hysteresis)) {
+        std::cout << "Repos -> Repos:  Previous repositioning target is still "
+                     "better than new sample; continue pursuing previous "
+                     "target"
+                  << std::endl;
         best_sample_index_ = SampleIndex::kCurrentReposTarget;
         best_other_cost = repos_target_cost;
         finished_reposition_flag_ = false;
@@ -1285,6 +1295,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // repos_to_repos hysteresis value here before the comparison to the
       // current location C3 cost with repos_to_c3 hysteresis afterwards.
       else {
+        std::cout << "Repos -> Repos:  Switching to new sample" << std::endl;
         pursued_target_source_ = PursuedTargetSource::kNewSample;
         if (!progress_params_.use_relative_hysteresis) {
           best_other_cost += hyst_repos_to_repos;
@@ -1380,7 +1391,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   UpdateC3ExecutionTrajectory(x_lcs_curr, t);
   UpdateRepositioningExecutionTrajectory(x_lcs_curr, t);
 
-  if (verbose_) {
+  if (!verbose_) {
     std::cout << "x_pred_curr_plan_ after updating: "
               << x_pred_curr_plan_.transpose() << std::endl;
     vector<VectorXd> zs = c3_curr_plan_->GetFullSolution();

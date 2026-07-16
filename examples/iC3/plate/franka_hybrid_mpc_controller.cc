@@ -168,8 +168,8 @@ int DoMain(int argc, char* argv[]) {
   VectorXd ub_u(VectorXd::Zero(n_u));
 
   // A_x_mpc(2, 2) = 1;
-  // A_x_mpc(3, 3) = 1;
-  // A_x_mpc(4, 4) = 1;
+//   A_x_mpc(3, 3) = 1;
+//   A_x_mpc(4, 4) = 1;
 
   A_x(0, 0) = 1;
   A_x(1, 1) = 1;
@@ -178,24 +178,24 @@ int DoMain(int argc, char* argv[]) {
   A_x(4, 4) = 1;
 
   // lb_x_mpc(2) = -0.1; 
-  // lb_x_mpc(3) = -0.45;
-  // lb_x_mpc(4) = -0.45;
+//   lb_x_mpc(3) = -0.5;
+//   lb_x_mpc(4) = -0.5;
 
   // ub_x_mpc(2) = 0.1;
-  // ub_x_mpc(3) = 0.45;
-  // ub_x_mpc(4) = 0.45;
+//   ub_x_mpc(3) = 0.5;
+//   ub_x_mpc(4) = 0.5;
 
-  lb_x(0) = -0.08;
-  lb_x(1) = -0.08;
+  lb_x(0) = -0.05;
+  lb_x(1) = -0.05;
   lb_x(2) = -0.1; 
-  lb_x(3) = -0.5;
-  lb_x(4) = -0.5;
+  lb_x(3) = -0.05;
+  lb_x(4) = -0.6;
 
-  ub_x(0) = 0.08;
-  ub_x(1) = 0.08;
+  ub_x(0) = 0.05;
+  ub_x(1) = 0.05;
   ub_x(2) = 0.1;
-  ub_x(3) = 0.5;
-  ub_x(4) = 0.5;
+  ub_x(3) = 0.05;
+  ub_x(4) = 0.6;
 
   A_u(0, 0) = 1;
   A_u(1, 1) = 1;
@@ -206,13 +206,13 @@ int DoMain(int argc, char* argv[]) {
   lb_u(0) = -1;
   lb_u(1) = -1;
   lb_u(2) = 0;
-  lb_u(3) = -1.8;
+  lb_u(3) = -0.2;
   lb_u(4) = -1.8;
 
   ub_u(0) = 1;
   ub_u(1) = 1;
   ub_u(2) = 15;
-  ub_u(3) = 1.8;
+  ub_u(3) = 0.2;
   ub_u(4) = 1.8;
 
 

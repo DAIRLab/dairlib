@@ -236,8 +236,8 @@ int DoMain(int argc, char* argv[]) {
   osc->AddConstTrackingData(std::move(mid_link_position_tracking_data_for_rel),
                             controller_params.mid_link_target * VectorXd::Ones(1));
   osc->AddTrackingData(std::move(end_effector_orientation_tracking_data));
-  osc->AddForceTrackingData(std::move(end_effector_force_tracking_data));
-  osc->AddTorqueTrackingData(std::move(end_effector_torque_tracking_data));
+//   osc->AddForceTrackingData(std::move(end_effector_force_tracking_data));
+//   osc->AddTorqueTrackingData(std::move(end_effector_torque_tracking_data));
   osc->SetAccelerationCostWeights(gains.W_acceleration);
   osc->SetInputCostWeights(gains.W_input_regularization);
   osc->SetInputSmoothingCostWeights(gains.W_input_smoothing_regularization);
@@ -308,12 +308,12 @@ int DoMain(int argc, char* argv[]) {
       osc->get_input_port_tracking_data("end_effector_orientation_target"));
   builder.Connect(end_effector_force_receiver->get_output_port(0),
                   end_effector_force_trajectory->get_input_port_trajectory());
-  builder.Connect(end_effector_force_trajectory->get_output_port(0),
-                  osc->get_input_port_tracking_data("end_effector_force"));
+//   builder.Connect(end_effector_force_trajectory->get_output_port(0),
+//                   osc->get_input_port_tracking_data("end_effector_force"));
   builder.Connect(end_effector_torque_receiver->get_output_port(0),
                   end_effector_torque_trajectory->get_input_port_trajectory());
-  builder.Connect(end_effector_torque_trajectory->get_output_port(0),
-                  osc->get_input_port_tracking_data("end_effector_torque"));
+//   builder.Connect(end_effector_torque_trajectory->get_output_port(0),
+//                   osc->get_input_port_tracking_data("end_effector_torque"));
   auto owned_diagram = builder.Build();
   std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
   shared_diagram->set_name(("franka_plate_osc_controller"));

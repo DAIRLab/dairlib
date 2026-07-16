@@ -30,7 +30,7 @@ realtime_rate: 1.0
 # with centered plate
 q_init_franka: [-2.03, 1.75, 1.67, -2.05, 1.45, 1.74, 0]
 
-q_init_object: [1, 0, 0, 0, 0.53, -0.4, 0.7]
+q_init_object: [1, 0, 0, 0, 0.53, -0.4, 0.5]
 
 visualize_workspace: false
 visualize_pose_trace: false # BROKEN

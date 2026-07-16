@@ -23,7 +23,7 @@
               <length> 0.02 </length>
             </cylinder>
           </geometry>
-          <material><diffuse>0.8 0.3 0.0 1</diffuse></material>
+          <material><diffuse>0.8 0.4 0.0 1</diffuse></material>
         </visual>
          <visual name="z_axis">
           <pose>0 0 0.1 0 0 0</pose> <!-- relative to cube frame -->
@@ -79,105 +79,113 @@
           </geometry>
         <drake:proximity_properties>
           <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>      
-          <drake:mu_static>0.3</drake:mu_static>
-          <drake:mu_dynamic>0.3</drake:mu_dynamic>
+          <drake:mu_static>0.25</drake:mu_static>
+          <drake:mu_dynamic>0.25</drake:mu_dynamic>
         </drake:proximity_properties>
 
         </collision>
         <collision name="corner_1">
-          <pose>0.05 0 0 0 0 0</pose>
+          <pose>0.05 0 -0.01 0 0 0</pose>
           <geometry>
             <sphere>
-              <radius>0.001 0.001 0.001</radius>
+              <radius>0.002</radius>
             </sphere>
           </geometry>
           <drake:proximity_properties>
-            <drake:mu_static>0.5</drake:mu_static>
-            <drake:mu_dynamic>0.3</drake:mu_dynamic>
+            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>
+            <drake:mu_static>0.25</drake:mu_static>
+            <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
         <collision name="corner_2">
-          <pose>-0.05 0 0 0 0 0</pose>
+          <pose>-0.05 0 -0.01 0 0 0</pose>
           <geometry>
             <sphere>
-              <radius>0.001 0.001 0.001</radius>
+              <radius>0.002</radius>
             </sphere>
           </geometry>
           <drake:proximity_properties>
-            <drake:mu_static>0.3</drake:mu_static>
-            <drake:mu_dynamic>0.3</drake:mu_dynamic>
+            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>      
+            <drake:mu_static>0.25</drake:mu_static>
+            <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
         <collision name="corner_3">
-          <pose>0 0.05 0 0 0 0</pose>
+          <pose>0 0.05 -0.01 0 0 0</pose>
           <geometry>
             <sphere>
-              <radius>0.001 0.001 0.001</radius>
+              <radius>0.002</radius>
             </sphere>
           </geometry>
           <drake:proximity_properties>
-            <drake:mu_static>0.3</drake:mu_static>
-            <drake:mu_dynamic>0.3</drake:mu_dynamic>
+            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>      
+            <drake:mu_static>0.25</drake:mu_static>
+            <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
         <collision name="corner_4">
-          <pose>0 -0.05 0 0 0 0</pose>
+          <pose>0 -0.05 -0.01 0 0 0</pose>
           <geometry>
             <sphere>
-              <radius>0.001 0.001 0.001</radius>
+              <radius>0.002</radius>
             </sphere>
           </geometry>
           <drake:proximity_properties>
-            <drake:mu_static>0.3</drake:mu_static>
-            <drake:mu_dynamic>0.3</drake:mu_dynamic>
+            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>
+            <drake:mu_static>0.25</drake:mu_static>
+            <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
         <collision name="corner_5">
-          <pose>0.03535 -0.03535 0 0 0 0</pose>
+          <pose>0.05 0 0.01 0 0 0</pose>
           <geometry>
             <sphere>
-              <radius>0.001 0.001 0.001</radius>
+              <radius>0.002</radius>
             </sphere>
           </geometry>
           <drake:proximity_properties>
-            <drake:mu_static>0.3</drake:mu_static>
-            <drake:mu_dynamic>0.3</drake:mu_dynamic>
+            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>
+            <drake:mu_static>0.25</drake:mu_static>
+            <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
         <collision name="corner_6">
-          <pose>-0.03535 -0.03535 0 0 0 0</pose>
+          <pose>-0.05 0 0.01 0 0 0</pose>
           <geometry>
             <sphere>
-              <radius>0.001 0.001 0.001</radius>
+              <radius>0.002</radius>
             </sphere>
           </geometry>
           <drake:proximity_properties>
-            <drake:mu_static>0.3</drake:mu_static>
-            <drake:mu_dynamic>0.3</drake:mu_dynamic>
+            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>
+            <drake:mu_static>0.25</drake:mu_static>
+            <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
         <collision name="corner_7">
-          <pose>-0.03535 0.03535 0 0 0 0</pose>
+          <pose>0 0.05 0.01 0 0 0</pose>
           <geometry>
             <sphere>
-              <radius>0.001 0.001 0.001</radius>
+              <radius>0.002</radius>
             </sphere>
           </geometry>
           <drake:proximity_properties>
-            <drake:mu_static>0.3</drake:mu_static>
-            <drake:mu_dynamic>0.3</drake:mu_dynamic>
+            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>
+            <drake:mu_static>0.25</drake:mu_static>
+            <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
         <collision name="corner_8">
-          <pose>0.03535 0.03535 0 0 0 0</pose>
+          <pose>0 -0.05 0.01 0 0 0</pose>
           <geometry>
             <sphere>
-              <radius>0.001 0.001 0.001</radius>
+              <radius>0.002</radius>
             </sphere>
           </geometry>
           <drake:proximity_properties>
-            <drake:mu_static>0.3</drake:mu_static>
-            <drake:mu_dynamic>0.3</drake:mu_dynamic>
+            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>
+            <drake:mu_static>0.25</drake:mu_static>
+            <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
 

@@ -407,12 +407,12 @@ drake::systems::EventStatus iC3HybridMpcTrackingController::ComputePlan(
   std::cout << "after update dynamics constraints " << std::endl;
 
   /* Update lambda/eta constraints
-    0 <= λ <= ε if λ_hat = 0 
-    equivalent to [0 ] <= [1  0] [λ] <= [∞]
+    -ε <= λ <= ε if λ_hat = 0 
+    equivalent to [0 ] <= [1  1] [λ] <= [∞]
                   [-∞]    [1 -1] [ε]    [0]
     
-    0 <= λ <= ∞ if λ_hat > 0 
-    equivalent to [0] <= [1 0] [λ] <= [∞]
+    -ε <= λ <= ∞ if λ_hat > 0 
+    equivalent to [0] <= [1 1] [λ] <= [∞]
                   [0]    [0 0] [ε]    [0]
   */
   for (int i = 0; i < N_; i++) {
@@ -433,12 +433,12 @@ drake::systems::EventStatus iC3HybridMpcTrackingController::ComputePlan(
     MatrixXd A_eta(MatrixXd::Zero(2 * n_lambda_, n_x_ + n_lambda_ + n_u_ + n_lambda_));
 
     A_lambda.block(0, 0, n_lambda_, n_lambda_) = MatrixXd::Identity(n_lambda_, n_lambda_);
-    A_lambda.block(0, n_lambda_, n_lambda_, n_lambda_) = MatrixXd::Zero(n_lambda_, n_lambda_);
+    A_lambda.block(0, n_lambda_, n_lambda_, n_lambda_) = MatrixXd::Identity(n_lambda_, n_lambda_);
 
     A_eta.block(0, 0, n_lambda_, n_x_) = E;
     A_eta.block(0, n_x_, n_lambda_, n_lambda_) = F;
     A_eta.block(0, n_x_+n_lambda_, n_lambda_, n_u_) = H;
-    A_eta.block(0, n_x_+n_lambda_+n_u_, n_lambda_, n_lambda_) = MatrixXd::Zero(n_lambda_, n_lambda_);
+    A_eta.block(0, n_x_+n_lambda_+n_u_, n_lambda_, n_lambda_) = MatrixXd::Identity(n_lambda_, n_lambda_);
 
     lambda_ub.segment(0, n_lambda_) = VectorXd::Constant(n_lambda_, std::numeric_limits<double>::infinity());
     lambda_ub.segment(n_lambda_, n_lambda_) = VectorXd::Zero(n_lambda_);
@@ -450,7 +450,7 @@ drake::systems::EventStatus iC3HybridMpcTrackingController::ComputePlan(
       lambda_lb(j) = (lambda_hat(j) <= tolerance) ? 0 : lambda_threshold_(j);
       lambda_lb(n_lambda_+j) = (lambda_hat(j) <= tolerance) ? -std::numeric_limits<double>::infinity() : 0;
 
-      eta_lb(j) = -c(j) + (lambda_hat(j) > tolerance) ? 0 : eta_threshold_(j);
+      eta_lb(j) = -c(j) + ((lambda_hat(j) > tolerance) ? 0 : eta_threshold_(j));
       eta_lb(n_lambda_+j) = (lambda_hat(j) > tolerance) ? -std::numeric_limits<double>::infinity() : 0;
       eta_ub(n_lambda_+j) = (lambda_hat(j) > tolerance) ? -c(j) : 0;
 
@@ -512,7 +512,7 @@ drake::systems::EventStatus iC3HybridMpcTrackingController::ComputePlan(
   auto start_qp_solve = std::chrono::high_resolution_clock::now();
 
   // Solve QP and extract results
-  drake::solvers::MathematicalProgramResult result = osqp_.Solve(prog_);
+  drake::solvers::MathematicalProgramResult result = osqp_.Solve(prog_, std::nullopt, solver_options_);;
 
   auto finish_qp_solve = std::chrono::high_resolution_clock::now();
   auto elapsed_qp_solve = finish_qp_solve - start_qp_solve;
@@ -532,7 +532,11 @@ drake::systems::EventStatus iC3HybridMpcTrackingController::ComputePlan(
 
   u_out_ = result.GetSolution(u_[0]);
 
-  if (example_idx_ == 1 || example_idx_ == 2) {
+  if (example_idx_ == 0) {
+    for (int i = 0; i < N_; i++) {
+      std::cout << "epsilon " << result.GetSolution(epsilon_[i]).transpose() << std::endl;
+    }
+  } else if (example_idx_ == 1 || example_idx_ == 2) {
     for (int i = 0; i < N_; i++) {
       VectorXd x_pred = result.GetSolution(x_[i]);
       VectorXd u_pred = result.GetSolution(u_[i]);

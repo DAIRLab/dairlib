@@ -1391,7 +1391,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   UpdateC3ExecutionTrajectory(x_lcs_curr, t);
   UpdateRepositioningExecutionTrajectory(x_lcs_curr, t);
 
-  if (!verbose_) {
+  if (verbose_) {
     std::cout << "x_pred_curr_plan_ after updating: "
               << x_pred_curr_plan_.transpose() << std::endl;
     vector<VectorXd> zs = c3_curr_plan_->GetFullSolution();

@@ -51,8 +51,8 @@ build --action_env=LD_LIBRARY_PATH=
 # TODO(jwnimmer-tri) We should see if we can reuse more of Drake's
 # customizations somehow.
 
-# build with snopt
-build --define=WITH_SNOPT=ON
+# build with gurobi
+build --define=WITH_GUROBI=ON
 build --define=NO_CLARABEL=ON
 
 build:omp --copt=-DEIGEN_DONT_PARALLELIZE
@@ -61,3 +61,5 @@ build:omp --linkopt=-fopenmp
 
 # use python3 by default
 build --python_path=python3
+
+common --enable_bzlmod

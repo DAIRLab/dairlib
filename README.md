@@ -2,23 +2,25 @@
 Warning! This is very much "development-level" code and is provided as-is. APIs are likely to be unstable and, while we hope for the documentation to be thorough and accurate, we make no guarantees.
 
 ## Current Continuous Integration Status
-* `main` branch build and unit tests (Ubuntu 22.04): [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=build_jammy&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
-* Experimental build against Drake's `master` branch: [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=drake_master_build&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
+* `main` branch build and unit tests (Ubuntu Jammy 22.04): [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=build_jammy&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
+* `main` branch build and unit tests (Ubuntu Noble 24.04): [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=build_noble&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
+* Experimental build against Drake's `master` branch (Jammy): [![Build Status](https://api.cirrus-ci.com/github/DAIRLab/dairlib.svg?task=drake_master_build&script=test)](https://cirrus-ci.com/github/DAIRLab/dairlib)
+
 ## Basic Build Instructions
 
 Below are the basic build instructions for the main branch of dairlib without any modifications.
-Build variations to include SNOPT/GUROBI/ROS or a specific version of Drake are details in [`install/README.md`](install/README.md)
+Build variations to include SNOPT/GUROBI/ROS or a specific version of Drake are detailed in [`install/README.md`](install/README.md).
 
 ### 1. Download dairlib
-Clone `dairlib` into the your workspace, e.g. "my-workspace/dairlib".
+Clone `dairlib` into your workspace, e.g. "my-workspace/dairlib".
 ```
 git clone https://github.com/DAIRLab/dairlib.git
 ```
 
 ### 2. Install prerequisites (with sudo)
-This script just calls the corresponding install_prereqs script from Drake (currently only for ubuntu 22.04)
+This script calls the corresponding prerequisite installation script from Drake.
 ```
-sudo ./install/install_prereqs_jammy.sh
+sudo ./install/install_prereqs_ubuntu.sh
 ```
 
 ### 3. Build with bazel
@@ -26,19 +28,23 @@ sudo ./install/install_prereqs_jammy.sh
 ```
 bazel build ...
 ```
-We use bazel as our build system. `bazel build ...` builds everything in dairlib. To build specific binaries, use `bazel build <path>/<to>/<target>`
+We use Bazel with Bzlmod as our build system. `bazel build ...` builds everything in dairlib. To build specific binaries, use `bazel build <path>/<to>/<target>`.
 
+By default, dairlib uses the Drake version pinned in [`MODULE.bazel`](MODULE.bazel). To build against a local Drake checkout, use:
+```
+bazel build --override_module=drake=/home/user/my-workspace/drake <path>/<to>/<target>
+```
 
 ### 4. LCM and libbot
 ```
 sudo apt install lcm libbot2
 ```
-Installs a local copy of `lcm` and `libbot2` using `sudo apt install lcm libbot2`. The prerequisites installation should add the proper apt repo for these. If not, add `https://drake-apt.csail.mit.edu/jammy jammy main` to your apt sources
+This installs local copies of `lcm` and `libbot2`. The prerequisites installation should add the proper apt repo for these. If not, add the Drake apt source for your Ubuntu codename, e.g. `https://drake-apt.csail.mit.edu/jammy jammy main`.
 
 ## Other Setup Instructions
 
 ### IDE setup
-JetBrains IDEs have worked well for us and are available for free to students. For C++ development using the CLion Bazel plugin, see https://drake.mit.edu/clion.html and replace `drake` with `dairlib` in the "Setting up Drake in CLion" section. 
+JetBrains IDEs have worked well for us and are available for free to students. For C++ development using the CLion Bazel plugin, see https://drake.mit.edu/clion.html and replace `drake` with `dairlib` in the "Setting up Drake in CLion" section.
 
 ### Notes for macOS
 
@@ -63,19 +69,17 @@ See [examples/impact_invariant_control/README.md](examples/impact_invariant_cont
 
 ### Operational Space Controller
 
-See [systems/controllers/osc](systems/controllers/osc) for an example of a general Operational Space Controller with support for many task space objectives such as 
+See [systems/controllers/osc](systems/controllers/osc) for an example of a general Operational Space Controller with support for many task space objectives such as
 - center of mass tracking
 - joint space tracking
 - task space position tracking
 - task space orientation tracking
 
-We have tested that our OSC works for the following robot platforms: Cassie, Franka Panda, and TriFinger. 
+We have tested that our OSC works for the following robot platforms: Cassie, Franka Panda, and TriFinger.
 
 ### Contact-Implicit MPC (C3)
 
-WIP
-
-See [systems/controllers/c3_controller.cc](systems/controllers/c3_controller.cc)
+Refer to [c3](https://github.com/DAIRLab/c3) repo
 
 ### Trajectory Optimization (DIRCON)
 A modern Drake implementation of the DIRCON constrained trajectory optimization algorithm. Currently under construction. See `/examples/PlanarWalker/run_gait_dircon.cc` for a simple example of the hybrid DIRCON algorithm. The more complete example set (from the paper) currently exists on an older version of Drake https://github.com/mposa/drake/tree/hybrid-merge

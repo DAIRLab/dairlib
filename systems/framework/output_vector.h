@@ -1,9 +1,9 @@
 #pragma once
 
-#include "systems/framework/timestamped_vector.h"
 #include <string>
 #include <vector>
 
+#include "systems/framework/timestamped_vector.h"
 
 namespace dairlib {
 namespace systems {
@@ -19,8 +19,8 @@ using std::vector;
 ///    * imu accelerations
 /// Can be later extended if more information is desired in here
 template <typename T>
-class OutputVector : public TimestampedVector<T>  {
-public:
+class OutputVector : public TimestampedVector<T> {
+ public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(OutputVector)
 
   OutputVector() = default;
@@ -29,15 +29,14 @@ public:
   /// is NaN when T = double.
   explicit OutputVector(int num_positions, int num_velocities, int num_efforts)
       : TimestampedVector<T>(num_positions + num_velocities + num_efforts + 3),
-      num_positions_(num_positions),
-      num_velocities_(num_velocities),
-      num_efforts_(num_efforts),
-      position_start_(0){}
+        num_positions_(num_positions),
+        num_velocities_(num_velocities),
+        num_efforts_(num_efforts),
+        position_start_(0) {}
 
   /// Constructs a OutputVector with the specified positions and velocities.
   explicit OutputVector(const VectorX<T>& positions,
-                        const VectorX<T>& velocities,
-                        const VectorX<T>& efforts)
+                        const VectorX<T>& velocities, const VectorX<T>& efforts)
       : OutputVector(positions.size(), velocities.size(), efforts.size()) {
     this->SetPositions(positions);
     this->SetVelocities(velocities);
@@ -45,8 +44,8 @@ public:
   }
 
   void SetPositions(VectorX<T> positions) {
-    this->get_mutable_data().segment(position_start_,
-                                     num_positions_) = positions;
+    this->get_mutable_data().segment(position_start_, num_positions_) =
+        positions;
   }
 
   void SetVelocities(VectorX<T> velocities) {
@@ -55,19 +54,20 @@ public:
   }
 
   void SetEfforts(VectorX<T> efforts) {
-    this->get_mutable_data().segment(position_start_ + num_positions_ +
-                                     num_velocities_, num_efforts_) = efforts;
+    this->get_mutable_data().segment(
+        position_start_ + num_positions_ + num_velocities_, num_efforts_) =
+        efforts;
   }
 
   void SetIMUAccelerations(VectorX<T> imu_accelerations) {
-    this->get_mutable_data().segment(position_start_ + num_positions_  +
-                                     num_velocities_ + num_efforts_,
-                                     3) = imu_accelerations;
+    this->get_mutable_data().segment(
+        position_start_ + num_positions_ + num_velocities_ + num_efforts_, 3) =
+        imu_accelerations;
   }
 
   void SetEffortAtIndex(int index, T value) {
-    this->SetAtIndex(position_start_ + num_positions_ + num_velocities_ +
-          index, value);
+    this->SetAtIndex(position_start_ + num_positions_ + num_velocities_ + index,
+                     value);
   }
 
   void SetPositionAtIndex(int index, T value) {
@@ -79,19 +79,20 @@ public:
   }
 
   void SetIMUAccelerationAtIndex(int index, T value) {
-    this->SetAtIndex(position_start_ + num_positions_ + num_velocities_ + 
-                     num_efforts_ + index, value);
+    this->SetAtIndex(position_start_ + num_positions_ + num_velocities_ +
+                         num_efforts_ + index,
+                     value);
   }
 
   void SetState(VectorX<T> state) {
     this->get_mutable_data().segment(position_start_,
-      num_positions_ + num_velocities_) = state;
+                                     num_positions_ + num_velocities_) = state;
   }
 
   /// Returns a const state vector
   const VectorX<T> GetState() const {
     return this->get_data().segment(position_start_,
-      num_positions_ + num_velocities_);
+                                    num_positions_ + num_velocities_);
   }
 
   /// Returns a const positions vector
@@ -107,26 +108,27 @@ public:
 
   /// Returns a const velocities vector
   const VectorX<T> GetEfforts() const {
-    return this->get_data().segment(position_start_ + num_positions_ +
-                                    num_velocities_, num_efforts_);
+    return this->get_data().segment(
+        position_start_ + num_positions_ + num_velocities_, num_efforts_);
   }
 
   /// Returns a const imu accelerations vectors
   const VectorX<T> GetIMUAccelerations() const {
-    return this->get_data().segment(position_start_ + num_positions_ + 
-                                    num_velocities_ + num_efforts_, 3);
+    return this->get_data().segment(
+        position_start_ + num_positions_ + num_velocities_ + num_efforts_, 3);
   }
 
   /// Returns a mutable state vector
   Eigen::Map<VectorX<T>> GetMutableState() {
-    auto data = this->get_mutable_data().segment(position_start_,
-      num_positions_ + num_velocities_);
+    auto data = this->get_mutable_data().segment(
+        position_start_, num_positions_ + num_velocities_);
     return Eigen::Map<VectorX<T>>(&data(0), data.size());
   }
 
   /// Returns a mutable positions vector
   Eigen::Map<VectorX<T>> GetMutablePositions() {
-    auto data = this->get_mutable_data().segment(position_start_, num_positions_);
+    auto data =
+        this->get_mutable_data().segment(position_start_, num_positions_);
     return Eigen::Map<VectorX<T>>(&data(0), data.size());
   }
 
@@ -160,25 +162,20 @@ public:
   }
 
   T GetIMUAccelerationAtIndex(int index) const {
-    return this->GetAtIndex(position_start_ + num_positions_ + 
-                            num_velocities_ + num_efforts_ + index);
+    return this->GetAtIndex(position_start_ + num_positions_ + num_velocities_ +
+                            num_efforts_ + index);
   }
 
+  void SetName(int index, string name) { position_names_[index] = name; }
 
-  void SetName(int index, string name) {
-    position_names_[index] = name;
-  }
+  string GetName(int index) { return position_names_[index]; }
 
-  string GetName(int index) {
-    return position_names_[index];
-  }
-
-protected:
+ protected:
   virtual OutputVector<T>* DoClone() const {
     return new OutputVector<T>(num_positions_, num_velocities_, num_efforts_);
   }
 
-private:
+ private:
   const int num_positions_;
   const int num_velocities_;
   const int num_efforts_;

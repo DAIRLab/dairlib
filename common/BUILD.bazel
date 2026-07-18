@@ -3,7 +3,7 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "common",
     deps = [
-        ":blending_utils",
+        ":math_utils",
         ":discrete_time_filter",
         ":eigen_utils",
         ":file_utils",
@@ -49,12 +49,12 @@ cc_library(
 )
 
 cc_library(
-    name = "blending_utils",
+    name = "math_utils",
     srcs = [
-        "blending_utils.cc",
+        "math_utils.cc",
     ],
     hdrs = [
-        "blending_utils.h",
+        "math_utils.h",
     ],
     deps = [
         "@drake//:drake_shared_library",
@@ -71,5 +71,32 @@ cc_library(
     ],
     deps = [
         "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "quaternion_error_hessian",
+    srcs = [
+        "quaternion_error_hessian.cc"
+    ],
+    hdrs = [
+        "quaternion_error_hessian.h"
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "update_context",
+    srcs = [
+        "update_context.cc"
+    ],
+    hdrs = [
+        "update_context.h"
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+        "//multibody:utils",
     ],
 )

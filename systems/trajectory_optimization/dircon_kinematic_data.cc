@@ -2,18 +2,17 @@
 
 namespace dairlib {
 
+using drake::MatrixX;
+using drake::VectorX;
+using drake::multibody::MultibodyPlant;
+using drake::solvers::Constraint;
 using std::shared_ptr;
 using std::vector;
-using drake::VectorX;
-using drake::MatrixX;
-using drake::solvers::Constraint;
-using drake::multibody::MultibodyPlant;
 
 template <typename T>
 DirconKinematicData<T>::DirconKinematicData(const MultibodyPlant<T>& plant,
-                                            int length) :
-    plant_(plant),
-    length_(length) {
+                                            int length)
+    : plant_(plant), length_(length) {
   force_constraints_ = vector<shared_ptr<Constraint>>(0);
   c_ = VectorX<T>::Zero(length);
   cdot_ = VectorX<T>::Zero(length);
@@ -64,4 +63,3 @@ template class DirconKinematicData<double>;
 template class DirconKinematicData<drake::AutoDiffXd>;
 
 }  // namespace dairlib
-

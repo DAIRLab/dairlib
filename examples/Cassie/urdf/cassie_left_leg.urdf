@@ -1,0 +1,335 @@
+<robot name="left_leg">
+
+    <link name="thigh_left">
+        <inertial>
+            <origin
+                    xyz="0.05946 0.00005 -.03581"
+                    rpy="0 0 0" />
+            <mass value="5.52" />
+            <inertia
+                    ixx=".017969"
+                    ixy=".0002836"
+                    ixz="-.011685"
+                    iyy=".056284"
+                    iyz="-.00001926"
+                    izz=".049756" />
+        </inertial>
+        <visual>
+            <origin
+                    xyz="0 0 0"
+                    rpy="0 0 0" />
+            <geometry>
+                <mesh filename="meshes/agility/left_thigh.obj" />
+            </geometry>
+            <material name="">
+                <color rgba="0.024 0.24 0.5 1.0" />
+            </material>
+        </visual>
+    </link>
+
+    <link name="achilles_rod_left">
+        <inertial pos='0.24719 0 0' mass='0.1567' fullinertia='3.754e-06 0.004487 0.004488 -3.74e-08 -1.61e-08 0'/>
+        <joint name='left-achilles-rod' type='ball' limited='false' damping='0.01'/>
+        <visual>
+            <geometry>
+                <mesh filename="meshes/agility/achilles_rod.obj"/>
+            </geometry>
+        </visual>
+    </link>
+
+    <link name="knee_left">
+        <inertial>
+            <origin
+                    xyz="0.023 0.03207 -0.002181"
+                    rpy="0 0 0" />
+            <mass value="0.7578" />
+            <inertia
+                    ixx=".002159"
+                    ixy=".0009564"
+                    ixz=".000002837"
+                    iyy=".001438"
+                    iyz=".000000739"
+                    izz=".003344" />
+        </inertial>
+        <visual>
+            <origin
+                    xyz="0 0 0"
+                    rpy="0 0 0" />
+            <geometry>
+                <mesh filename="meshes/knee-output.obj" />
+            </geometry>
+            <material name="">
+                <color rgba="0.024 0.24 0.5 1.0" />
+            </material>
+        </visual>
+    </link>
+    <link name="shin_left">
+        <inertial>
+            <origin
+                    xyz=".18338 0.001169 0.0002123"
+                    rpy="0 0 0" />
+            <mass value="0.5771" />
+            <inertia
+                    ixx=".0003602"
+                    ixy=".0003335"
+                    ixz="-.0000001941"
+                    iyy=".034132"
+                    iyz=".0000002652"
+                    izz=".034111" />
+        </inertial>
+        <visual>
+            <origin
+                    xyz="0 0 0"
+                    rpy="0 0 0" />
+            <geometry>
+                <mesh filename="meshes/agility/left_shin.obj" />
+            </geometry>
+            <material name="">
+                <color rgba="0.024 0.24 0.5 1.0" />
+            </material>
+        </visual>
+    </link>
+
+    <link name="knee_spring_left">
+        <inertial>
+            <origin
+                    xyz=".08364 0.003427 0.0"
+                    rpy="0 0 0" />
+            <mass value="0.1864" />
+            <inertia
+                    ixx=".0000543"
+                    ixy=".00004601"
+                    ixz="0.0"
+                    iyy=".001712"
+                    iyz="0.0"
+                    izz=".001669" />
+        </inertial>
+        <visual>
+            <origin
+                    xyz="0 0 0"
+                    rpy="0 0 0" />
+            <geometry>
+                <mesh filename="meshes/knee-spring.obj" />
+            </geometry>
+            <material name="">
+                <color rgba="0.1 0.1 0.1 1" />
+            </material>
+        </visual>
+    </link>
+
+    <link name="tarsus_left">
+        <inertial>
+            <origin
+                    xyz=".11046 -.03058 -.00131"
+                    rpy="0 0 0" />
+            <mass value="0.782" />
+            <inertia
+                    ixx=".001125"
+                    ixy="-.002878"
+                    ixz="-.00006329"
+                    iyy=".023138"
+                    iyz=".00003615"
+                    izz=".023947" />
+        </inertial>
+        <visual>
+            <origin
+                    xyz="0 0 0"
+                    rpy="0 0 0" />
+            <geometry>
+                <mesh filename="meshes/tarsus.obj" />
+            </geometry>
+            <material name="">
+                <color rgba="0.024 0.24 0.5 1.0" />
+            </material>
+        </visual>
+    </link>
+
+    <link name="heel_spring_left">
+        <inertial>
+            <origin
+                    xyz="0.08097 0.00223 -0.0000385"
+                    rpy="0 0 0" />
+            <mass value="0.1259" />
+            <inertia
+                    ixx=".00003016"
+                    ixy=".00001528"
+                    ixz=".000000575"
+                    iyy=".001049"
+                    iyz="-.0000000557"
+                    izz=".001028" />
+        </inertial>
+        <visual>
+            <origin
+                    xyz="0 0 0"
+                    rpy="0 0 0" />
+            <geometry>
+                <mesh filename="meshes/heel-spring.obj" />
+            </geometry>
+            <material name="">
+                <color rgba="0.1 0.1 0.1 1" />
+            </material>
+        </visual>
+    </link>
+
+    <link name="toe_left">
+        <inertial>
+            <origin
+                    xyz="0.00474 0.02748 -0.00014"
+                    rpy="0 0 0" />
+            <mass value="0.1498" />
+            <inertia
+                    ixx=".000287"
+                    ixy="-.00009863"
+                    ixz="-.000001456"
+                    iyy=".0001713"
+                    iyz=".0000001716"
+                    izz=".0004491" />
+        </inertial>
+        <visual>
+            <origin
+                    xyz="0 0 0"
+                    rpy="0 0 0" />
+            <geometry>
+                <mesh filename="meshes/agility/left_foot.obj" />
+            </geometry>
+            <material name="">
+                <color rgba="0.4 0.4 0.4 1" />
+            </material>
+        </visual>
+    </link>
+    <link name="foot_crank_left">
+        <inertial>
+            <origin
+                    xyz="0.00493 2e-05 -0.00215"
+                    rpy="0 0 0" />
+            <mass value="0.1261" />
+            <inertia
+                    ixx="2.6941e-05"
+                    ixy="-2.1e-09"
+                    ixz="-3.9623e-06"
+                    iyy="4.9621e-05"
+                    iyz="-1.09e-08"
+                    izz="6.3362e-05" />
+        </inertial>
+        <visual>
+            <origin
+                    xyz="0 0 0"
+                    rpy="0 0 0" />
+            <geometry>
+                <mesh filename="meshes/agility/foot_crank.obj" />
+            </geometry>
+            <material name="">
+                <color rgba="0.4 0.4 0.4 1" />
+            </material>
+        </visual>
+    </link>
+    <link name="plantar_rod_left">
+        <inertial>
+            <origin
+                    xyz="0.17792 0 0"
+                    rpy="0 0 0" />
+            <mass value="0.1186" />
+            <inertia
+                    ixx=".000287"
+                    ixy="-2.34e-08"
+                    ixz="-8.1e-09"
+                    iyy="0.001774"
+                    iyz="0"
+                    izz="0.001775" />
+        </inertial>
+        <visual>
+            <origin
+                    xyz="0 0 0"
+                    rpy="0 0 0" />
+            <geometry>
+                <mesh filename="meshes/agility/plantar_rod.obj" />
+            </geometry>
+            <material name="">
+                <color rgba="0.4 0.4 0.4 1" />
+            </material>
+        </visual>
+    </link>
+
+    <!-- JOINTS ||| JOINTS ||| JOINTS ||| JOINTS ||| JOINTS |||-->
+
+
+    <!--        pos='0 0 0.045' xyaxes='0.7922 -0.60599 -0.072096 0.60349 0.79547 -0.054922'>-->
+    <drake:joint name="achilles_rod_left" type="ball">
+        <origin xyz="0 0 0.045" rpy="0 0.0907572539 -0.651007647" />
+        <parent link="thigh_left" />
+        <child link="achilles_rod_left" />
+        <dynamics damping="1" />
+    </drake:joint>
+
+    <joint name="knee_left" type="revolute">
+        <origin xyz="0.12 0 0.0045" rpy="0 0 0" />
+        <parent link="thigh_left" />
+        <child link="knee_left" />
+        <axis xyz="0 0 1" />
+        <limit lower="-2.862" upper="-0.646" effort="300"/>
+        <dynamics damping="1" />
+    </joint>
+
+    <joint name="knee_joint_left" type="revolute">
+        <origin xyz="0.06068 0.04741 0" rpy="0 0 0" />
+        <parent link="knee_left" />
+        <child link="shin_left" />
+        <axis xyz="0 0 1" />
+        <limit lower="-.1" upper="0.075"/>
+        <dynamics damping=".1" />
+    </joint>
+
+    <joint name="knee_spring_left_fixed" type="fixed">
+        <origin xyz="0.06068 0.08241 0" rpy="0 0 0" />
+        <parent link="knee_left" />
+        <child link="knee_spring_left" />
+    </joint>
+
+    <joint name="ankle_joint_left" type="revolute">
+        <origin xyz="0.43476 0.02 0" rpy="0 0 0" />
+        <parent link="shin_left" />
+        <child link="tarsus_left" />
+        <axis xyz="0 0 1" />
+        <limit lower=".8" upper="3"/>
+        <dynamics damping="0.1" />
+    </joint>
+
+    <!-- rpy="-0.0689 -0.0370 2.7208"-->
+    <joint name="ankle_spring_joint_left" type="revolute">
+        <origin xyz="-.01269 -.03059 .00092" rpy="0.0780 0.00549 2.7192" />
+        <parent link="tarsus_left" />
+        <child link="heel_spring_left" />
+        <limit lower="-.1" upper="0.1"/>
+        <axis xyz="0 0 1" />
+        <dynamics damping="10" /> <!-- made up value -->
+    </joint>
+
+    <joint name="toe_left" type="revolute">
+        <origin xyz="0.408 -0.040 0" rpy="0 0 0" />
+        <parent link="tarsus_left" />
+        <child link="toe_left" />
+        <axis xyz="0 0 1" />
+        <limit lower="-2.8" upper="0" effort="300"/>
+        <dynamics damping="1" />
+    </joint>
+
+    <joint name="foot_crank_left" type="revolute">
+        <origin xyz=".058 -0.034 0.02275"/>
+        <parent link="tarsus_left" />
+        <child link="foot_crank_left" />
+        <axis xyz="0 0 1" />
+        <limit lower="-2.8" upper="0" effort="300"/>
+        <dynamics damping="1" />
+    </joint>
+
+    <joint name="plantar_rod_left" type="revolute">
+        <origin xyz="0.055 0 -0.00791"/>
+        <parent link="foot_crank_left" />
+        <child link="plantar_rod_left" />
+        <axis xyz="0 0 1" />
+        <limit lower="0" upper="2.8" effort="300"/>
+        <dynamics damping="1" />
+    </joint>
+
+
+</robot>

@@ -39,19 +39,14 @@ class TextPrint:
 def main():
     publisher = lcm.LCM()
 
-    pygame.display.set_caption('Cassie Virtual Radio Controller')
-
     pygame.init()
-    screen_size = 500
-    screen = pygame.display.set_mode((screen_size, screen_size))
 
     # Used to manage how fast the screen updates
     clock = pygame.time.Clock()
     textPrint = TextPrint()
 
-    # radio spoof variables
-    radio_channel_6_pos = 0
-    radio_channel_6_delta = 0.05
+    latching_switch = 0
+    # radio_msg.channel[14] = 0
 
     if (pygame.joystick.get_count() != 1):
         raise RuntimeError("Please connect exactly one controller")
@@ -60,53 +55,68 @@ def main():
     joystick.init()
 
     done = False
-
+    i = 0
+    latching_switch_a = 1
+    latching_switch_b = 1
+    latching_switch_x = 0
+    latching_switch_y = 0
+    latching_switch_rt = 1 # right trigger
+    print("Teleop Status: " + str(latching_switch_a))
+    print("Move C3 Target with Remote Status: " + str(latching_switch_b))
+    print("Force Tracking Status: " + str(not latching_switch_x))
+    print("Spatial Force on Object Status: " + str(not latching_switch_y))
+    print("Set OSC Target with Remote Status: " + str(not latching_switch_rt))
     while not done:
         # DRAWING STEP
         # First, clear the screen to blue. Don't put other drawing commands
         # above this, or they will be erased with this command.
-        screen.fill(cassie_blue)
-        textPrint.reset()
+        # textPrint.reset()
 
         # Get the name from the OS for the controller/joystick
         name = joystick.get_name()
-        textPrint.print(screen, "Welcome! remember to make this the active \nwindow when you wish to use the remote")
-        textPrint.print(screen, "Controller detected: {}".format(name) )
 
         for event in pygame.event.get():
-            if event.type == pygame.QUIT: # If user clicked close
-                done=True # Flag that we are done so we exit this loop
-
-            if event.type == pygame.JOYHATMOTION:
-                hat_val = joystick.get_hat(0)
-                radio_channel_6_pos += radio_channel_6_delta * hat_val[1]
-                # saturate between -1 and 1
-                radio_channel_6_pos = min(max(radio_channel_6_pos, -1), 1)
-
-
-        textPrint.print(screen, "Side dial position: {:.2f}".format(radio_channel_6_pos))
-
-        # ALL CODE TO DRAW SHOULD GO ABOVE THIS COMMENT
-
-        # Go ahead and update the screen with what we've drawn.
-        pygame.display.flip()
+            if event.type == pygame.JOYBUTTONDOWN:
+                if event.button == 0:
+                    latching_switch_a = not latching_switch_a
+                    print("Teleop Status: " + str(latching_switch_a))
+                if event.button == 1:
+                    latching_switch_b = not latching_switch_b
+                    print("Move C3 Target with Remote Status: " + str(latching_switch_b))
+                if event.button == 2:
+                    latching_switch_x = not latching_switch_x
+                    print("Force Tracking Status: " + str(not latching_switch_x))
+                if event.button == 3:
+                    latching_switch_y = not latching_switch_y
+                    print("Spatial Force on Object Status: " + str(latching_switch_y))
+                if event.button == 5:
+                    latching_switch_rt = not latching_switch_rt
+                    print("Set OSC Target with Remote Status: " + str(latching_switch_rt))
 
 
         # Send LCM message
         radio_msg = dairlib.lcmt_radio_out()
         radio_msg.channel[0] = -joystick.get_axis(1)
-        radio_msg.channel[1] = joystick.get_axis(0)
+        radio_msg.channel[1] = -joystick.get_axis(0)
         radio_msg.channel[2] = -joystick.get_axis(4)
         radio_msg.channel[3] = joystick.get_axis(3)
-        radio_msg.channel[6] = radio_channel_6_pos
+        # radio_msg.channel[2] = -joystick.get_axis(3)
+        # radio_msg.channel[3] = joystick.get_axis(2)
 
+
+        radio_msg.channel[13] = latching_switch_b
+        radio_msg.channel[14] = latching_switch_a
+        radio_msg.channel[11] = latching_switch_x
+        radio_msg.channel[12] = latching_switch_y
+        radio_msg.channel[10] = latching_switch_rt
         radio_msg.channel[15] = -1 * np.rint(joystick.get_axis(5))
 
 
-        publisher.publish("CASSIE_VIRTUAL_RADIO", radio_msg.encode())
+        publisher.publish("RADIO", radio_msg.encode())
 
         # Limit to 20 frames per second
-        clock.tick(20)
+        clock.tick(60)
+        i += 1
 
     pygame.quit()
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/discrete_time_filter.h"
 #include "dairlib/lcmt_target_standing_height.hpp"
 #include "systems/controllers/control_utils.h"
 #include "systems/framework/output_vector.h"
@@ -19,8 +20,10 @@ static constexpr double kCoMXScale = 0.05;
 static constexpr double kCoMYScale = -0.05;
 static constexpr double kMaxTargetHeight = 0.9;
 static constexpr double kMinTargetHeight = 0.35;
-static constexpr double kTargetHeightMean = (kMinTargetHeight + kMaxTargetHeight) / 2.0;
-static constexpr double kTargetHeightScale = (kMaxTargetHeight - kMinTargetHeight) / 2.0;
+static constexpr double kTargetHeightMean =
+    (kMinTargetHeight + kMaxTargetHeight) / 2.0;
+static constexpr double kTargetHeightScale =
+    (kMaxTargetHeight - kMinTargetHeight) / 2.0;
 
 class StandingComTraj : public drake::systems::LeafSystem<double> {
  public:
@@ -30,8 +33,7 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
       const std::vector<std::pair<const Eigen::Vector3d,
                                   const drake::multibody::Frame<double>&>>&
           feet_contact_points,
-      double height = 0.9,
-      bool set_target_height_by_radio = false);
+      double height = 0.9, bool set_target_height_by_radio = false);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_port_);
@@ -42,9 +44,12 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
     return this->get_input_port(target_height_port_);
   }
 
-  const drake::systems::InputPort<double>& get_input_port_radio()
-      const {
+  const drake::systems::InputPort<double>& get_input_port_radio() const {
     return this->get_input_port(radio_port_);
+  }
+
+  void SetCommandFilter(double alpha) {
+    target_pos_filter_->UpdateParameters(alpha);
   }
 
  private:
@@ -67,10 +72,13 @@ class StandingComTraj : public drake::systems::LeafSystem<double> {
   double height_;
   bool set_target_height_by_radio_;
 
-
   // Testing -- filtering for center of support polygon
-  double cutoff_freq_ = 0.05;  // in Hz.
-  mutable Eigen::Vector3d filtered_feet_center_pos_ = Eigen::Vector3d::Zero();
+  double cutoff_freq_ = 0.5;  // in Hz.
+  //  mutable Eigen::Vector3d filtered_feet_center_pos_ =
+  //  Eigen::Vector3d::Zero(); mutable Eigen::Vector3d filtered_target_pos_ =
+  //  Eigen::Vector3d::Zero();
+
+  std::unique_ptr<FirstOrderLowPassFilter> target_pos_filter_;
   mutable double last_timestamp_ = 0;
 };
 

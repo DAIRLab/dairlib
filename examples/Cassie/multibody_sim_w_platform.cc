@@ -5,6 +5,7 @@
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
+#include "examples/Cassie/cassie_fixed_point_solver.h"
 #include "examples/Cassie/cassie_utils.h"
 #include "lcm/dircon_saved_trajectory.h"
 #include "multibody/multibody_utils.h"
@@ -47,7 +48,7 @@ DEFINE_bool(floating_base, true, "Fixed or floating base model");
 DEFINE_double(target_realtime_rate, 1.0,
               "Desired rate relative to real time.  See documentation for "
               "Simulator::set_target_realtime_rate() for details.");
-DEFINE_double(dt, 8e-5,
+DEFINE_double(dt, 1e-3,
               "The step size to use for time_stepping, ignored for continuous");
 DEFINE_double(v_stiction, 1e-3, "Stiction tolernace (m/s)");
 DEFINE_double(penetration_allowance, 1e-5,
@@ -59,6 +60,8 @@ DEFINE_double(publish_rate, 2000, "Publish rate for simulator");
 DEFINE_double(init_height, .7,
               "Initial starting height of the pelvis above "
               "ground");
+DEFINE_string(channel_u, "CASSIE_INPUT",
+              "LCM channel to receive controller commands from");
 DEFINE_double(platform_height, 0.0, "Height of the platform");
 DEFINE_double(platform_x, 0.0, "x location of the  platform");
 DEFINE_double(start_time, 0.0,
@@ -71,6 +74,10 @@ DEFINE_bool(spring_model, true, "Use a URDF with or without legs springs");
 DEFINE_bool(visualize, true, "Set to true to visualize the platform");
 DEFINE_double(actuator_delay, 0.0,
               "Duration of actuator delay. Set to 0.0 by default.");
+DEFINE_bool(use_traj_state, true,
+            "Whether to intialize the sim from a specific state");
+DEFINE_string(contact_solver, "SAP",
+              "Contact solver to use. Either TAMSI or SAP.");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -83,12 +90,22 @@ int do_main(int argc, char* argv[]) {
   const double time_step = FLAGS_dt;
   MultibodyPlant<double>& plant = *builder.AddSystem<MultibodyPlant>(time_step);
   if (FLAGS_floating_base) {
-    multibody::AddFlatTerrain(&plant, &scene_graph, .8, .8);
+    multibody::AddFlatTerrain(&plant, &scene_graph, .6, .6);
   }
 
   std::string urdf = FLAGS_spring_model
                          ? "examples/Cassie/urdf/cassie_v2.urdf"
                          : "examples/Cassie/urdf/cassie_fixed_springs.urdf";
+
+  if (FLAGS_contact_solver == "SAP") {
+    plant.set_discrete_contact_approximation(
+        drake::multibody::DiscreteContactApproximation::kSap);
+  } else if (FLAGS_contact_solver == "TAMSI") {
+    plant.set_discrete_contact_approximation(
+        drake::multibody::DiscreteContactApproximation::kTamsi);
+  } else {
+    std::cerr << "Unknown contact solver setting." << std::endl;
+  }
 
   if (FLAGS_platform_height != 0) {
     Parser parser(&plant, &scene_graph);
@@ -96,26 +113,18 @@ int do_main(int argc, char* argv[]) {
         FindResourceOrThrow("examples/impact_invariant_control/platform.urdf");
     parser.AddModels(terrain_name);
     Eigen::Vector3d offset;
-    offset << FLAGS_platform_x, 0, FLAGS_platform_height;
+    offset << FLAGS_platform_x, 0, 0.25 + FLAGS_platform_height;
     plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"),
                      drake::math::RigidTransform<double>(offset));
   }
-
-  plant.set_penetration_allowance(FLAGS_penetration_allowance);
-  plant.set_stiction_tolerance(FLAGS_v_stiction);
 
   AddCassieMultibody(&plant, &scene_graph, FLAGS_floating_base, urdf,
                      FLAGS_spring_model, true);
 
   plant.Finalize();
 
-  int nq = plant.num_positions();
-  int nv = plant.num_velocities();
-  int nx = nq + nv;
-
   // Create maps for joints
-  std::map<std::string, int> pos_map =
-      multibody::MakeNameToPositionsMap(plant);
+  std::map<std::string, int> pos_map = multibody::MakeNameToPositionsMap(plant);
   std::map<std::string, int> vel_map =
       multibody::MakeNameToVelocitiesMap(plant);
   std::map<std::string, int> act_map = multibody::MakeNameToActuatorsMap(plant);
@@ -124,7 +133,7 @@ int do_main(int argc, char* argv[]) {
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   auto input_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_input>(
-          "CASSIE_INPUT", lcm));
+          FLAGS_channel_u, lcm));
   auto input_receiver = builder.AddSystem<systems::RobotInputReceiver>(plant);
   auto passthrough = builder.AddSystem<SubvectorPassThrough>(
       input_receiver->get_output_port(0).size(), 0,
@@ -168,7 +177,7 @@ int do_main(int argc, char* argv[]) {
                   state_sender->get_input_port_effort());
   builder.Connect(*state_sender, *state_pub);
   builder.Connect(
-      plant.get_geometry_poses_output_port(),
+      plant.get_geometry_pose_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
   builder.Connect(scene_graph.get_query_output_port(),
                   plant.get_geometry_query_input_port());
@@ -201,7 +210,37 @@ int do_main(int argc, char* argv[]) {
 
   Eigen::VectorXd x_traj_init = state_traj.value(FLAGS_start_time);
 
-  plant.SetPositionsAndVelocities(&plant_context, x_traj_init);
+  if (FLAGS_use_traj_state) {
+    if (FLAGS_platform_x < 0) {
+      x_traj_init(6) += FLAGS_platform_height;
+    }
+    plant.SetPositionsAndVelocities(&plant_context, x_traj_init);
+  } else {
+    Eigen::VectorXd q_init, u_init, lambda_init;
+    double mu_fp = 0;
+    double min_normal_fp = 70;
+    double toe_spread = 0.1;
+    // Create a plant for CassieFixedPointSolver.
+    // Note that we cannot use the plant from the above diagram, because after
+    // the diagram is built, plant.get_input_port_actuation().HasValue(*context)
+    // throws a segfault error
+    drake::multibody::MultibodyPlant<double> plant_for_solver(0.0);
+    AddCassieMultibody(&plant_for_solver, nullptr,
+                       FLAGS_floating_base /*floating base*/, urdf,
+                       FLAGS_spring_model, true);
+    plant_for_solver.Finalize();
+    if (FLAGS_floating_base) {
+      CassieFixedPointSolver(plant_for_solver, FLAGS_init_height, mu_fp,
+                             min_normal_fp, true, toe_spread, &q_init, &u_init,
+                             &lambda_init);
+    } else {
+      CassieFixedBaseFixedPointSolver(plant_for_solver, &q_init, &u_init,
+                                      &lambda_init);
+    }
+    plant.SetPositions(&plant_context, q_init);
+    plant.SetVelocities(&plant_context,
+                        Eigen::VectorXd::Zero(plant.num_velocities()));
+  }
 
   diagram_context->SetTime(FLAGS_start_time);
   Simulator<double> simulator(*diagram, std::move(diagram_context));

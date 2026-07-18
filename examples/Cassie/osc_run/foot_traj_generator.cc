@@ -15,10 +15,10 @@ using Eigen::VectorXd;
 using std::string;
 
 using dairlib::systems::OutputVector;
-using drake::multibody::RigidBodyFrame;
 using drake::multibody::Frame;
 using drake::multibody::JacobianWrtVariable;
 using drake::multibody::MultibodyPlant;
+using drake::multibody::RigidBodyFrame;
 using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::DiscreteUpdateEvent;
@@ -87,7 +87,7 @@ FootTrajGenerator::FootTrajGenerator(const MultibodyPlant<double>& plant,
   last_stance_timestamp_idx_ = this->DeclareDiscreteState(1);
 
   // State variables inside this controller block
-  DeclarePerStepDiscreteUpdateEvent(&FootTrajGenerator::DiscreteVariableUpdate);
+  DeclareForcedDiscreteUpdateEvent(&FootTrajGenerator::DiscreteVariableUpdate);
 
   m_ = plant_.CalcTotalMass(*context_);
 }
@@ -100,7 +100,6 @@ EventStatus FootTrajGenerator::DiscreteVariableUpdate(
       (OutputVector<double>*)this->EvalVectorInput(context, state_port_);
   // Read in finite state machine
   VectorXd fsm_state = this->EvalVectorInput(context, fsm_port_)->get_value();
-
   VectorXd q = robot_output->GetPositions();
   VectorXd v = robot_output->GetVelocities();
   multibody::SetPositionsIfNew<double>(plant_, q, context_);

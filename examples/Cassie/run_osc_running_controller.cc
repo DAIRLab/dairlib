@@ -16,10 +16,10 @@
 #include "examples/Cassie/osc_run/foot_traj_generator.h"
 #include "examples/Cassie/osc_run/osc_running_gains.h"
 #include "examples/Cassie/osc_run/pelvis_trans_traj_generator.h"
+#include "examples/Cassie/systems/cassie_out_to_radio.h"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
 #include "multibody/multibody_utils.h"
-#include "examples/Cassie/systems/cassie_out_to_radio.h"
 #include "solvers/solver_options_io.h"
 #include "systems/controllers/controller_failure_aggregator.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
@@ -39,8 +39,8 @@ namespace dairlib {
 using std::map;
 using std::pair;
 using std::string;
-using std::vector;
 using std::unique_ptr;
+using std::vector;
 
 using Eigen::Matrix3d;
 using Eigen::MatrixXd;
@@ -52,6 +52,7 @@ using drake::geometry::SceneGraph;
 using drake::multibody::Frame;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
+using drake::systems::Diagram;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
 using drake::systems::TriggerTypeSet;
@@ -194,15 +195,13 @@ int DoMain(int argc, char* argv[]) {
   /**** OSC setup ****/
   // Cost
   /// REGULARIZATION COSTS
-  osc->SetAccelerationCostWeights(osc_gains.w_accel * osc_gains.W_acceleration);
-  osc->SetInputSmoothingCostWeights(osc_gains.w_input_reg *
-                                    osc_gains.W_input_regularization);
-  osc->SetInputCostWeights(osc_gains.w_input *
-                           osc_gains.W_input_regularization);
+  osc->SetAccelerationCostWeights(osc_gains.W_acceleration);
+  osc->SetInputSmoothingCostWeights(osc_gains.W_input_regularization);
+  osc->SetInputCostWeights(osc_gains.W_input_smoothing_regularization);
   osc->SetLambdaContactRegularizationWeight(
-      osc_gains.w_lambda * osc_gains.W_lambda_c_regularization);
+      osc_gains.W_lambda_c_regularization);
   osc->SetLambdaHolonomicRegularizationWeight(
-      osc_gains.w_lambda * osc_gains.W_lambda_h_regularization);
+      osc_gains.W_lambda_h_regularization);
   // Soft constraint on contacts
   osc->SetContactSoftConstraintWeight(osc_gains.w_soft_constraint);
   osc->SetJointLimitWeight(osc_gains.w_joint_limit);
@@ -228,26 +227,21 @@ int DoMain(int argc, char* argv[]) {
   osc->AddContactPoint(
       "left_toe",
       unique_ptr<multibody::WorldPointEvaluator<double>>(&left_toe_evaluator),
-      {RunningFsmState::kLeftStance}
-  );
+      {RunningFsmState::kLeftStance});
   osc->AddContactPoint(
       "left_heel",
       unique_ptr<multibody::WorldPointEvaluator<double>>(&left_heel_evaluator),
-      {RunningFsmState::kLeftStance}
-  );
+      {RunningFsmState::kLeftStance});
   osc->AddContactPoint(
       "right_toe",
       unique_ptr<multibody::WorldPointEvaluator<double>>(&right_toe_evaluator),
-      {RunningFsmState::kRightStance}
-  );
+      {RunningFsmState::kRightStance});
   osc->AddContactPoint(
       "right_heel",
       unique_ptr<multibody::WorldPointEvaluator<double>>(&right_heel_evaluator),
-      {RunningFsmState::kRightStance}
-  );
+      {RunningFsmState::kRightStance});
 
   multibody::KinematicEvaluatorSet<double> evaluators(plant);
-
 
   // Fix the springs in the dynamics
   auto pos_idx_map = multibody::MakeNameToPositionsMap(plant);
@@ -290,8 +284,8 @@ int DoMain(int argc, char* argv[]) {
       osc_gains.vel_scale_trans_sagital, osc_gains.vel_scale_trans_lateral);
 
   auto pelvis_trans_traj_generator =
-      builder.AddSystem<PelvisTransTrajGenerator>(
-          plant, plant_context.get(), feet_contact_points);
+      builder.AddSystem<PelvisTransTrajGenerator>(plant, plant_context.get(),
+                                                  feet_contact_points);
   pelvis_trans_traj_generator->SetSLIPParams(osc_gains.rest_length,
                                              osc_gains.rest_length_offset);
 
@@ -341,8 +335,8 @@ int DoMain(int argc, char* argv[]) {
   right_foot_tracking_data->AddStateAndPointToTrack(
       RunningFsmState::kLeftFlight, "toe_right");
 
-  left_foot_tracking_data->AddStateAndPointToTrack(
-      RunningFsmState::kLeftFlight, "toe_left");
+  left_foot_tracking_data->AddStateAndPointToTrack(RunningFsmState::kLeftFlight,
+                                                   "toe_left");
   right_foot_tracking_data->AddStateAndPointToTrack(
       RunningFsmState::kRightFlight, "toe_right");
 
@@ -365,17 +359,17 @@ int DoMain(int argc, char* argv[]) {
   auto right_hip_tracking_data = std::make_unique<TransTaskSpaceTrackingData>(
       "right_hip_traj", osc_gains.K_p_swing_foot, osc_gains.K_d_swing_foot,
       osc_gains.W_swing_foot, plant, plant);
-  left_hip_tracking_data->AddStateAndPointToTrack(
-      RunningFsmState::kRightStance, "pelvis");
-  right_hip_tracking_data->AddStateAndPointToTrack(
-      RunningFsmState::kLeftStance, "pelvis");
-  right_hip_tracking_data->AddStateAndPointToTrack(
-      RunningFsmState::kLeftFlight, "pelvis");
-  left_hip_tracking_data->AddStateAndPointToTrack(
-      RunningFsmState::kRightFlight, "pelvis");
+  left_hip_tracking_data->AddStateAndPointToTrack(RunningFsmState::kRightStance,
+                                                  "pelvis");
+  right_hip_tracking_data->AddStateAndPointToTrack(RunningFsmState::kLeftStance,
+                                                   "pelvis");
+  right_hip_tracking_data->AddStateAndPointToTrack(RunningFsmState::kLeftFlight,
+                                                   "pelvis");
+  left_hip_tracking_data->AddStateAndPointToTrack(RunningFsmState::kRightFlight,
+                                                  "pelvis");
 
-  left_hip_tracking_data->AddStateAndPointToTrack(
-      RunningFsmState::kLeftFlight, "pelvis");
+  left_hip_tracking_data->AddStateAndPointToTrack(RunningFsmState::kLeftFlight,
+                                                  "pelvis");
   right_hip_tracking_data->AddStateAndPointToTrack(
       RunningFsmState::kRightFlight, "pelvis");
 
@@ -624,10 +618,11 @@ int DoMain(int argc, char* argv[]) {
                   contact_scheduler_debug_publisher->get_input_port());
 
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("osc_running_controller"));
+  std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
+  shared_diagram->set_name(("osc_running_controller"));
 
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &lcm, std::move(owned_diagram), state_receiver, FLAGS_channel_x, true);
+      &lcm, shared_diagram, state_receiver, FLAGS_channel_x, true);
   DrawAndSaveDiagramGraph(*loop.get_diagram());
 
   loop.Simulate();

@@ -1,9 +1,8 @@
 #include "dircon_saved_trajectory.h"
+
 #include <iostream>
 
 #include "multibody/multibody_utils.h"
-
-#include <iostream>
 
 using drake::multibody::MultibodyPlant;
 using drake::trajectories::PiecewisePolynomial;
@@ -34,7 +33,6 @@ DirconTrajectory::DirconTrajectory(
     LcmTrajectory::Trajectory state_traj;
     LcmTrajectory::Trajectory state_derivative_traj;
     LcmTrajectory::Trajectory force_traj;
-    LcmTrajectory::Trajectory impulse_traj;
 
     state_traj.traj_name = "state_traj" + std::to_string(mode);
     state_traj.datapoints = x[mode];
@@ -65,15 +63,6 @@ DirconTrajectory::DirconTrajectory(
     force_traj.datapoints =
         Eigen::Map<MatrixXd>(dircon.GetForceSamplesByMode(result, mode).data(),
                              num_forces, force_traj.time_vector.size());
-
-    // Impulse vars
-    if (mode > 0) {
-      impulse_traj.traj_name = "impulse_vars" + std::to_string(mode);
-      impulse_traj.datatypes = impulse_names;
-      // Get start of mode to get time of impulse
-      impulse_traj.time_vector = state_breaks[mode].segment(0, 1);
-      impulse_traj.datapoints = result.GetSolution(dircon.impulse_vars(mode));
-    }
 
     // Collocation force vars
     if (state_breaks[mode].size() > 1) {
@@ -114,12 +103,30 @@ DirconTrajectory::DirconTrajectory(
     AddTrajectory(state_traj.traj_name, state_traj);
     AddTrajectory(state_derivative_traj.traj_name, state_derivative_traj);
     AddTrajectory(force_traj.traj_name, force_traj);
-    AddTrajectory(impulse_traj.traj_name, impulse_traj);
 
     x_.push_back(&state_traj);
     xdot_.push_back(&state_derivative_traj);
     lambda_.push_back(&force_traj);
-    impulse_.push_back(&impulse_traj);
+    // Impulse vars
+    LcmTrajectory::Trajectory impulse_traj;
+    if (mode > 0) {
+      impulse_traj.traj_name = "impulse_vars" + std::to_string(mode);
+      // Check to make sure an impact occurs
+      if (dircon.impulse_vars(mode - 1).size() == 0) {
+        impulse_traj.datatypes = impulse_names;
+        // Get start of mode to get time of impulse
+        impulse_traj.time_vector = state_breaks[mode].segment(0, 1);
+        impulse_traj.datapoints = VectorXd::Zero(impulse_names.size());
+      } else {
+        impulse_traj.datatypes = impulse_names;
+        // Get start of mode to get time of impulse
+        impulse_traj.time_vector = state_breaks[mode].segment(0, 1);
+        impulse_traj.datapoints =
+            result.GetSolution(dircon.impulse_vars(mode - 1));
+      }
+      AddTrajectory(impulse_traj.traj_name, impulse_traj);
+      impulse_.push_back(&impulse_traj);
+    }
   }
 
   // Input trajectory
@@ -186,7 +193,7 @@ DirconTrajectory::DirconTrajectory(
       force_names.push_back("lambda_" + std::to_string(num_forces));
       impulse_names.push_back("Lambda_" + std::to_string(i));
       collocation_force_names.push_back("lambda_c_" +
-          std::to_string(num_forces));
+                                        std::to_string(num_forces));
       ++num_forces;
     }
     force_traj.traj_name = "force_vars" + std::to_string(mode);
@@ -273,7 +280,7 @@ DirconTrajectory::DirconTrajectory(
 }
 
 PiecewisePolynomial<double> DirconTrajectory::ReconstructStateTrajectory()
-const {
+    const {
   PiecewisePolynomial<double> state_traj;
 
   for (int mode = 0; mode < num_modes_; ++mode) {
@@ -290,8 +297,9 @@ const {
 
 PiecewisePolynomial<double>
 DirconTrajectory::ReconstructStateTrajectoryWithSprings(
-    Eigen::MatrixXd& spr_to_wo_spr_map) const {
+    Eigen::MatrixXd& wo_spr_to_spr_map) const {
   PiecewisePolynomial<double> state_traj;
+  DRAKE_DEMAND(wo_spr_to_spr_map.cols() == x_[0]->datapoints.rows());
 
   for (int mode = 0; mode < num_modes_; ++mode) {
     // Cannot form trajectory with only a single break
@@ -299,8 +307,9 @@ DirconTrajectory::ReconstructStateTrajectoryWithSprings(
       continue;
     }
     state_traj.ConcatenateInTime(PiecewisePolynomial<double>::CubicHermite(
-        x_[mode]->time_vector, spr_to_wo_spr_map * x_[mode]->datapoints,
-        spr_to_wo_spr_map * xdot_[mode]->datapoints));
+        x_[mode]->time_vector,
+        wo_spr_to_spr_map * state_map_ * x_[mode]->datapoints,
+        wo_spr_to_spr_map * state_map_ * xdot_[mode]->datapoints));
   }
   return state_traj;
 }
@@ -373,7 +382,7 @@ PiecewisePolynomial<double> DirconTrajectory::ReconstructMirrorJointTrajectory(
 }
 
 PiecewisePolynomial<double> DirconTrajectory::ReconstructInputTrajectory()
-const {
+    const {
   PiecewisePolynomial<double> input_traj =
       PiecewisePolynomial<double>::FirstOrderHold(
           u_->time_vector, actuator_map_ * u_->datapoints);
@@ -416,8 +425,8 @@ DirconTrajectory::ReconstructGammaCTrajectory() const {
   return gamma_c_traj;
 }
 
-void DirconTrajectory::LoadFromFileWithPlant(const MultibodyPlant<double>& plant,
-                                    const std::string& filepath) {
+void DirconTrajectory::LoadFromFileWithPlant(
+    const MultibodyPlant<double>& plant, const std::string& filepath) {
   LcmTrajectory::LoadFromFile(filepath);
 
   // Find all the state trajectories
@@ -470,9 +479,10 @@ void DirconTrajectory::LoadFromFileWithPlant(const MultibodyPlant<double>& plant
       state_map_(nq + vel_map[state_name], i) = 1;
       vel_map_[state_name] = i;
     } else {
-      std::cerr << "Trajectory contains state names that are not present in the "
-                   "supplied MultibodyPlant."
-                << std::endl;
+      std::cerr
+          << "Trajectory contains state names that are not present in the "
+             "supplied MultibodyPlant."
+          << std::endl;
     }
   }
 
@@ -485,9 +495,10 @@ void DirconTrajectory::LoadFromFileWithPlant(const MultibodyPlant<double>& plant
       actuator_map_(act_map[motor_name], i) = 1;
       act_map_[motor_name] = i;
     } else {
-      std::cerr << "Trajectory contains actuator names that are not present in the "
-                   "supplied MultibodyPlant."
-                << std::endl;
+      std::cerr
+          << "Trajectory contains actuator names that are not present in the "
+             "supplied MultibodyPlant."
+          << std::endl;
     }
   }
 }
@@ -497,8 +508,8 @@ Eigen::VectorXd DirconTrajectory::GetCollocationPoints(
   // using a + (b - a) / 2 midpoint
   int num_knotpoints = time_vector.size();
   return time_vector.head(num_knotpoints - 1) +
-      0.5 * (time_vector.tail(num_knotpoints - 1) -
-          time_vector.head(num_knotpoints - 1));
+         0.5 * (time_vector.tail(num_knotpoints - 1) -
+                time_vector.head(num_knotpoints - 1));
 }
 
 }  // namespace dairlib

@@ -6,6 +6,7 @@
 
 namespace dairlib {
 
+using drake::systems::BasicVector;
 using Eigen::VectorXd;
 
 CassieEncoder::CassieEncoder(
@@ -36,18 +37,16 @@ CassieEncoder::CassieEncoder(
     }
   }
   this->DeclareVectorInputPort(
-      "robot_state",
-      systems::BasicVector<double>(num_positions_ + num_velocities_));
+      "robot_state", BasicVector<double>(num_positions_ + num_velocities_));
   this->DeclareVectorOutputPort(
-      "filtered_state",
-      systems::BasicVector<double>(num_positions_ + num_velocities_),
+      "filtered_state", BasicVector<double>(num_positions_ + num_velocities_),
       &CassieEncoder::UpdateFilter);
 }
 
 void CassieEncoder::UpdateFilter(const drake::systems::Context<double>& context,
-                                 systems::BasicVector<double>* output) const {
-  const systems::BasicVector<double>& x =
-      *this->template EvalVectorInput<systems::BasicVector>(context, 0);
+                                 BasicVector<double>* output) const {
+  const BasicVector<double>& x =
+      *this->template EvalVectorInput<BasicVector>(context, 0);
 
   VectorXd q = x.value().head(num_positions_);
   VectorXd v = x.value().tail(num_velocities_);

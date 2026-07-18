@@ -3,11 +3,10 @@
 #include <algorithm>
 #include <chrono>
 #include <cstring>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <memory>
 #include <utility>
-#include <iostream>
 
 #include "drake/common/value.h"
 
@@ -38,7 +37,7 @@ std::string exec(const char* cmd) {
   return result;
 }
 
-LcmTrajectory::Trajectory::Trajectory(string traj_name,
+LcmTrajectory::Trajectory::Trajectory(const string& traj_name,
                                       const lcmt_trajectory_block& traj_block) {
   int num_points = traj_block.num_points;
   int num_datatypes = traj_block.num_datatypes;
@@ -47,6 +46,7 @@ LcmTrajectory::Trajectory::Trajectory(string traj_name,
   this->time_vector = VectorXd::Map(traj_block.time_vec.data(), num_points);
   this->datapoints = MatrixXd(num_datatypes, num_points);
 
+  DRAKE_ASSERT(traj_block.datatypes.size() == traj_block.datapoints.size());
   // Convert vector<vector<double>> to EigenMatrix
   for (int i = 0; i < num_datatypes; ++i) {
     this->datapoints.row(i) =
@@ -63,6 +63,7 @@ LcmTrajectory::LcmTrajectory(const vector<Trajectory>& trajectories,
   for (const string& traj_name : trajectory_names_) {
     trajectories_[traj_name] = trajectories[index++];
   }
+  metadata_.git_dirty_flag = false;
   if (get_metadata) {
     std::cout << "NOTE: Using subprocesses to get LcmTrajectory metadata\n";
     ConstructMetadataObject(name, description);
@@ -181,6 +182,13 @@ void LcmTrajectory::AddTrajectory(const std::string& trajectory_name,
   DRAKE_ASSERT(trajectories_.find(trajectory_name) == trajectories_.end());
   trajectory_names_.push_back(trajectory_name);
   trajectories_[trajectory_name] = trajectory;
+}
+
+void LcmTrajectory::ClearTrajectories() {
+  if (this->trajectories_.size() > 0) {
+    trajectories_.clear();
+    trajectory_names_.clear();
+  }
 }
 
 void LcmTrajectory::ConstructMetadataObject(string name, string description) {

@@ -1,62 +1,122 @@
 load(
-    "@drake//tools/skylark:drake_lcm.bzl",
-    "drake_lcm_cc_library",
-    "drake_lcm_java_library",
-    "drake_lcm_py_library",
+    "@drake//tools/skylark:java.bzl",
+    "java_binary",
 )
 load(
-    "@drake//tools/skylark:drake_java.bzl",
-    "drake_java_binary",
+    "@lcm//lcm-bazel:lcm_cc_library_srcs.bzl",
+    "lcm_cc_library_srcs",
 )
-load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+load(
+    "@lcm//lcm-bazel:lcm_java_library_srcs.bzl",
+    "lcm_java_library_srcs",
+)
+load(
+    "@lcm//lcm-bazel:lcm_library.bzl",
+    "lcm_library",
+)
+load(
+    "@lcm//lcm-bazel:lcm_py_library_srcs.bzl",
+    "lcm_py_library_srcs",
+)
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_java//java:java_library.bzl", "java_library")
+load("@rules_python//python:defs.bzl", "py_library")
 
 package(default_visibility = ["//visibility:public"])
 
-#Lcm libraries
+ALL_LCM_SRCS = glob(["*.lcm"])
 
-#Lcm libraries
-drake_lcm_cc_library(
+ALL_ARCHIVE_LCM_SRCS = glob(["archive/*.lcm"])
+
+lcm_library(
+    name = "messages",
+    srcs = ALL_LCM_SRCS,
+    lcm_package = "dairlib",
+    visibility = ["//visibility:public"],
+)
+
+lcm_library(
+    name = "archive_messages",
+    srcs = ALL_ARCHIVE_LCM_SRCS,
+    lcm_package = "archive.dairlib",
+    visibility = ["//visibility:public"],
+)
+
+lcm_cc_library_srcs(
+    name = "messages_cc_srcs",
+    src = ":messages",
+)
+
+lcm_cc_library_srcs(
+    name = "archive_messages_cc_srcs",
+    src = ":archive_messages",
+)
+
+cc_library(
+    name = "lcmt_robot_archive",
+    srcs = [":archive_messages_cc_srcs"],
+    includes = ["."],
+    visibility = ["//visibility:public"],
+    deps = ["@lcm//lcm:lcm-coretypes"],
+)
+
+cc_library(
     name = "lcmt_robot",
-    lcm_package = "dairlib",
-    lcm_srcs = glob(["*.lcm"]),
+    srcs = [":messages_cc_srcs"],
+    includes = ["."],
+    visibility = ["//visibility:public"],
+    deps = ["@lcm//lcm:lcm-coretypes"],
 )
 
-#Lcm libraries
-drake_lcm_cc_library(
-    name = "lcmtypes_robot_archive",
-    lcm_package = "archive.dairlib",
-    lcm_srcs = glob(["archive/*.lcm"]),
+lcm_java_library_srcs(
+    name = "messages_java_srcs",
+    src = ":messages",
 )
 
-drake_lcm_java_library(
+lcm_java_library_srcs(
+    name = "archive_messages_java_srcs",
+    src = ":archive_messages",
+)
+
+java_library(
     name = "lcmtypes_robot_java",
-    lcm_package = "dairlib",
-    lcm_srcs = glob(["*.lcm"]),
+    srcs = [":messages_java_srcs"],
+    visibility = ["//visibility:public"],
+    deps = ["@lcm//lcm-java"],
 )
 
-drake_lcm_py_library(
+java_library(
+    name = "lcmtypes_robot_archive_java",
+    srcs = [":archive_messages_java_srcs"],
+    visibility = ["//visibility:public"],
+    deps = ["@lcm//lcm-java"],
+)
+
+lcm_py_library_srcs(
+    name = "messages_py_srcs",
+    src = ":messages",
+)
+
+lcm_py_library_srcs(
+    name = "archive_messages_py_srcs",
+    src = ":archive_messages",
+)
+
+py_library(
     name = "lcmtypes_robot_py",
-    add_current_package_to_imports = True,  # Use //:module_py instead.
-    extra_srcs = ["__init__.py"],
-    lcm_package = "dairlib",
-    lcm_srcs = glob(["*.lcm"]),
-    deps = [
-        "@drake//:module_py",
-    ],
+    srcs = [":messages_py_srcs"],
+    imports = ["."],
+    visibility = ["//visibility:public"],
 )
 
-drake_lcm_py_library(
+py_library(
     name = "lcmtypes_robot_archive_py",
-    add_current_package_to_imports = True,  # Use //:module_py instead.
-    extra_srcs = ["__init__.py"],
-    lcm_package = "archive.dairlib",
-    lcm_srcs = glob(["archive/*.lcm"]),
-    deps = [
-        "@drake//:module_py",
-    ],
+    srcs = [":archive_messages_py_srcs"],
+    imports = ["."],
+    visibility = ["//visibility:public"],
 )
 
-drake_java_binary(
+java_binary(
     name = "dair-lcm-spy",
     main_class = "lcm.spy.Spy",
     visibility = ["//visibility:private"],

@@ -2,7 +2,7 @@
 Launch bot-procman-sherrif using the cassie_test.pmd configuration file.
 Currently, you must bein the root `dairlib` directory for this to work properly.
 ```
-bot-procman-sherrif examples/Cassie/cassie_test.pmd
+bot-procman-sheriff -l examples/Cassie/cassie_simulation.pmd
 ```
 Note: if you've installed libbot2, using apt, `bot-procman-sherrif` is probably located in `/opt/libbot2/0.0.1.20180130/bin/` or a similar directory.
 Running `bot-procman-sherrif -l` will allow you to skip the "Spawn local deputy" step.

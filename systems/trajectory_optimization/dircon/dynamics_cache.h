@@ -34,17 +34,17 @@ template <typename T>
 class DynamicsCache {
  public:
   DynamicsCache(const multibody::KinematicEvaluatorSet<T>& constraints,
-      int max_size);
+                int max_size);
 
   drake::VectorX<T> CalcTimeDerivativesWithForce(
-      drake::systems::Context<T>* context,
-      const drake::VectorX<T>& forces);
+      drake::systems::Context<T>* context, const drake::VectorX<T>& forces);
 
  private:
   const multibody::KinematicEvaluatorSet<T>& evaluators_;
   size_t max_size_;
   std::unordered_map<CacheKey<T>, drake::VectorX<T>, CacheHasher<T>,
-      CacheComparer<T>> map_;
+                     CacheComparer<T>>
+      map_;
   std::list<CacheKey<T>> queue_;
 };
 

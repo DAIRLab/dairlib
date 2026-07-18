@@ -1,0 +1,64 @@
+# Ways of computing C3 costs after solving the MPC problem (defined as
+# C3CostComputationType enum in c3_options.h):
+#  0. kSimLCS:                       Simulate the LCS dynamics from the planned
+#                                    inputs.
+#  1. kUseC3Plan:                    Use the C3 planned trajectory and inputs.
+#  2. kSimLCSReplaceC3EEPlan:        Simulate the LCS dynamics from the planned
+#                                    inputs only for the object; use the planned
+#                                    EE trajectory.
+#  3. kSimImpedance:                 Try to emulate the real cost of the system
+#                                    associated not only applying the planned
+#                                    inputs, but also tracking the planned EE
+#                                    trajectory with an impedance controller.
+#  4. kSimImpedanceReplaceC3EEPlan:  The same as kSimImpedance except the EE
+#                                    states are replaced with the plan from C3
+#                                    at the end.
+#  5. kSimImpedanceObjectCostOnly:   The same as kSimImpedance except only the
+#                                    object terms contribute to the final cost.
+cost_type: 5
+cost_type_position: 5
+
+# Progress metric to use to determine if C3 is making progress, all phrased as
+# improvement requirements over a number of control loops (defined as
+# ProgressMetric enum in progress_params.h)
+#  0. kC3Cost:            C3 cost.
+#  1. kConfigCost:        Current object configuration cost.
+#  2. kPosOrRotCost:      Current position or rotation error.
+#  3. kConfigCostDrop:    Drop in object configuration cost (this is the same as
+#                         kConfigCost if the required drop is 0; a more
+#                         aggressive drop cuts C3 off earlier).
+track_c3_progress_via: 3
+
+# Ignore orientation errors when object is beyond this threshold from the goal.
+cost_switching_threshold_distance: 0.05
+
+# Penalize repositioning distance.
+travel_cost_per_meter: 0
+
+# Number of control loops to wait before cutting off C3 due to unproductivity.
+# Used for kC3Cost, kConfigCost, kPosOrRotCost.
+num_control_loops_to_wait: 5
+num_control_loops_to_wait_position: 5
+
+# kConfigCostDrop parameters.
+progress_enforced_cost_drop: 0.5
+progress_enforced_over_n_loops: 16
+
+### Hysteresis parameters for switching between C3 and repositioning modes.
+finished_reposition_cost: 1000000000
+
+hyst_c3_to_repos: 300000
+hyst_c3_to_repos_position: 300000
+hyst_repos_to_c3: 200000
+hyst_repos_to_c3_position: 200000
+hyst_repos_to_repos: 60000000000000
+hyst_repos_to_repos_position: 60000000000000
+
+# Relative hysteresis is in terms of a fraction of the current cost.
+use_relative_hysteresis: true
+hyst_c3_to_repos_frac: 0.6
+hyst_c3_to_repos_frac_position: 0.7
+hyst_repos_to_c3_frac: 0.9
+hyst_repos_to_c3_frac_position: 0.5
+hyst_repos_to_repos_frac: 0.7
+hyst_repos_to_repos_frac_position: 0.7

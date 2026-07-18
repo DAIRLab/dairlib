@@ -1,7 +1,8 @@
 #include <iostream>
+
 #include <Eigen/Dense>
 #include <gflags/gflags.h>
-#include "lcm/lcm-cpp.hpp"
+#include <lcm/lcm-cpp.hpp>
 
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -30,9 +31,8 @@ int main(int argc, char* argv[]) {
   int count_cassie_state = 0;
   Eigen::VectorXd diff_cassie_state(FLAGS_max_count);
 
-  while (event != NULL &&
-         count < FLAGS_max_count) {
-     count++;
+  while (event != NULL && count < FLAGS_max_count) {
+    count++;
 
     if (event->channel == "CASSIE_OUTPUT") {
       dairlib::lcmt_cassie_out msg;
@@ -54,10 +54,11 @@ int main(int argc, char* argv[]) {
   diff_cassie_output.conservativeResize(count_cassie_output);
   diff_cassie_state.conservativeResize(count_cassie_state);
 
-  std::cout << "CASSIE_OUTPUT (timestamp - utime) mean: " <<
-      diff_cassie_output.mean() << std::endl;
-  std::cout << "CASSIE_STATE_DISPATCHER (timestamp - utime) mean: " <<
-      diff_cassie_state.mean() << std::endl;
-  std::cout << "Difference of means (delay estimate, us): " <<
-      diff_cassie_state.mean() - diff_cassie_output.mean() << std::endl;
+  std::cout << "CASSIE_OUTPUT (timestamp - utime) mean: "
+            << diff_cassie_output.mean() << std::endl;
+  std::cout << "CASSIE_STATE_DISPATCHER (timestamp - utime) mean: "
+            << diff_cassie_state.mean() << std::endl;
+  std::cout << "Difference of means (delay estimate, us): "
+            << diff_cassie_state.mean() - diff_cassie_output.mean()
+            << std::endl;
 }

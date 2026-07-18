@@ -1,0 +1,128 @@
+## MODULE.bazel
+module(
+    name = "dairlib"
+)
+
+drake_dep_repositories = use_extension(
+    "@drake//tools/workspace:default.bzl",
+    "drake_dep_repositories",
+)
+
+# If you don't want to support building on macOS, you may remove the next line.
+# Note that it must appear prior to loading "rules_cc", per the documentation:
+#  https://github.com/bazelbuild/apple_support?tab=readme-ov-file#bazel-7-setup
+bazel_dep(name = "apple_support", version = "2.3.0")
+
+# Add the Bazel rules we need.
+bazel_dep(name = "rules_java", version = "9.6.1")
+bazel_dep(name = "rules_cc", version = "0.2.17")
+bazel_dep(name = "rules_python", version = "1.9.0")
+bazel_dep(name = "bazel_skylib", version = "1.9.0")
+bazel_dep(name = "rules_foreign_cc", version = "0.15.1")
+bazel_dep(name = "platforms", version = "1.0.0")
+bazel_dep(name = "lcm", version = "1.5.2")
+bazel_dep(name = "gflags", version = "2.2.2.bcr.1")
+bazel_dep(name = "googletest", version = "1.17.0.bcr.2")
+
+use_repo(
+    drake_dep_repositories,
+    "blas",
+    "drake_models",
+    "fmt",
+    "glib",
+    "lapack",
+    "meshcat",
+    "mosek",
+    "opencl",
+    "pybind11",
+    "snopt",
+    "spdlog",
+    "zlib",
+    "gurobi",
+    "eigen",
+)
+
+bazel_dep(name = "gazelle", version = "0.44.0")
+bazel_dep(name = "osqp", version = "1.0.0.bcr.2")
+
+# Use gurobi_cxx, which Drake deprecated
+gurobi_extension = use_extension("@dairlib//tools/workspace/gurobi:repository.bzl", "gurobi_extension")
+use_repo(gurobi_extension, "my_gurobi")
+
+# Replace Drake's Gurobi repository with ours.
+override_repo(
+    drake_dep_repositories,
+    gurobi = "my_gurobi",
+)
+
+# Here we introduce Drake as a module dependency, but note that Drake is not
+# published to any Bazel registry. Below, we'll override it with a github
+# source archive.
+bazel_dep(name = "drake")
+
+bazel_dep(name = "inekf")
+
+# By default, this example always uses the latest Drake master branch.
+
+# To use a local version of drake, use
+# build --override_module=drake=/home/user/stuff/drake
+# this will also work to override inekf 
+
+# You can also use DRAKE_COMMIT to choose a Drake release; e.g.:
+DRAKE_VERSION = "v1.51.1"
+DRAKE_CHECKSUM = "40cb4d0e3d378ba67c21aca8cc1396399774b333b12d0030f5fbe4ddff1dc786"
+
+# Before changing the DRAKE_VERSION, temporarily uncomment the next line so that Bazel
+# displays the suggested new value for the CHECKSUM.
+# DRAKE_CHECKSUM = "0" * 64
+
+# This declares the `@drake` module as a source code archive from github.
+# See README.md for instructions to use a local path, instead.
+archive_override(
+    module_name = "drake",
+    urls = [x.format(DRAKE_VERSION) for x in [
+        "https://github.com/RobotLocomotion/drake/archive/{}.tar.gz",
+    ]],
+    sha256 = DRAKE_CHECKSUM,
+    strip_prefix = "drake-{}".format(DRAKE_VERSION.lstrip("v")),
+)
+
+bazel_dep(name = "c3")
+git_override(
+    module_name = "c3",
+    remote = "https://github.com/DAIRLab/c3.git",
+    commit = "5c08cb2e14b1ab10e024cb46e8504970cffcd5ea"
+)
+
+
+INEKF_COMMIT = "297c308e50fa599af92ce3bd5f11d71e2bf8af69"
+INEKF_CHECKSUM = "c5a056ce00e1625e52f5a71b1d5c202acd53c1a8c7bca33da458db1e4f3f2edf"
+
+
+# Before changing the COMMIT, temporarily uncomment the next line so that Bazel
+# displays the suggested new value for the CHECKSUM.
+#INEKF_CHECKSUM = "0" * 64
+
+# This declares the `@inekf` module as a source code archive from github.
+archive_override(
+    module_name = "inekf",
+    urls = [x.format(INEKF_COMMIT) for x in [
+        "https://github.com/DAIRLab/invariant-ekf/archive/{}.tar.gz",
+    ]],
+    sha256 = INEKF_CHECKSUM,
+    strip_prefix = "invariant-ekf-{}".format(INEKF_COMMIT),
+)
+
+# Use the host system /usr/bin/python3.
+python_repository = use_repo_rule(
+    "@drake//tools/workspace/python:repository.bzl",
+    "python_repository",
+)
+
+python_repository(
+    name = "python",
+    linux_interpreter_path = "/usr/bin/python3",
+    requirements_flavor = "build",
+)
+
+register_toolchains("@python//:all")

@@ -17,10 +17,11 @@
 #include "solvers/fast_osqp_solver.h"
 #include "solvers/solver_options_io.h"
 #include "systems/controllers/control_utils.h"
+#include "systems/controllers/osc/external_force_tracking_data.h"
+#include "systems/controllers/osc/inverse_dynamics_qp.h"
 #include "systems/controllers/osc/osc_tracking_data.h"
 #include "systems/framework/impact_info_vector.h"
 #include "systems/framework/output_vector.h"
-#include "systems/controllers/osc/inverse_dynamics_qp.h"
 
 #include "drake/common/trajectories/exponential_plus_piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
@@ -97,10 +98,9 @@ namespace dairlib::systems::controllers {
 
 class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
  public:
-  OperationalSpaceControl(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      drake::systems::Context<double>* context,
-      bool used_with_finite_state_machine = true);
+  OperationalSpaceControl(const drake::multibody::MultibodyPlant<double>& plant,
+                          drake::systems::Context<double>* context,
+                          bool used_with_finite_state_machine = true);
 
   /***** Input/output ports *****/
 
@@ -227,11 +227,11 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void AddContactPoint(
       const std::string& name,
       std::unique_ptr<const multibody::WorldPointEvaluator<double>> evaluator,
-      std::vector<int> fsm_states={});
+      std::vector<int> fsm_states = {});
 
   void AddKinematicConstraint(
       std::unique_ptr<const multibody::KinematicEvaluatorSet<double>>
-      evaluator);
+          evaluator);
 
   // Tracking data methods
   /// The third argument is used to set a period in which OSC does not track the
@@ -240,6 +240,8 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   void AddTrackingData(std::unique_ptr<OscTrackingData> tracking_data,
                        double t_lb = 0,
                        double t_ub = std::numeric_limits<double>::infinity());
+  void AddForceTrackingData(
+      std::unique_ptr<ExternalForceTrackingData> tracking_data);
   void AddConstTrackingData(
       std::unique_ptr<OscTrackingData> tracking_data, const Eigen::VectorXd& v,
       double t_lb = 0, double t_ub = std::numeric_limits<double>::infinity());
@@ -262,11 +264,40 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
     SetOsqpSolverOptions(
         drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
             FindResourceOrThrow(yaml_string))
-            .GetAsSolverOptions(drake::solvers::OsqpSolver::id())
-    );
+            .GetAsSolverOptions(drake::solvers::OsqpSolver::id()));
   };
   // OSC LeafSystem builder
   void Build();
+
+  /*!
+   * @brief utility functions to enable/disable gravity compensation that will
+   * be executed by OSC backend.
+   */
+  void EnableGravityCompensation() { id_qp_.EnableGravityCompensation(); }
+  void DisableGravityCompensation() { id_qp_.DisableGravityCompensation(); }
+  bool HasGravityCompensation() { return id_qp_.HasGravityCompensation(); }
+
+  /*!
+   * @brief utility functions to enable/disable input constraints that will be
+   * executed by OSC backend.
+   */
+  void EnableInputConstraints() { id_qp_.EnableInputConstraints(); }
+  void DisableInputConstraints() { id_qp_.DisableInputConstraints(); }
+  bool HasInputConstraints() { return id_qp_.HasInputConstraints(); }
+
+  /*!
+   * @brief utility functions to enable/disable acceleration constraints that
+   * will be executed by OSC backend.
+   */
+  void EnableAccelerationConstraints() {
+    id_qp_.EnableAccelerationConstraints();
+  }
+  void DisableAccelerationConstraints() {
+    id_qp_.DisableAccelerationConstraints();
+  }
+  bool HasAccelerationConstraints() {
+    return id_qp_.HasAccelerationConstraints();
+  }
 
  private:
   // Osc checkers and constructor-related methods
@@ -356,6 +387,14 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   Eigen::MatrixXd K_joint_pos_;
   Eigen::MatrixXd K_joint_vel_;
 
+  // robot joint acceleration limits
+  Eigen::VectorXd ddq_min_;
+  Eigen::VectorXd ddq_max_;
+
+  // robot input limits
+  Eigen::VectorXd u_min_;
+  Eigen::VectorXd u_max_;
+
   // flag indicating whether using osc with finite state machine or not
   bool used_with_finite_state_machine_;
 
@@ -374,6 +413,7 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<Eigen::VectorXd> u_sol_;
   std::unique_ptr<Eigen::VectorXd> lambda_c_sol_;
   std::unique_ptr<Eigen::VectorXd> lambda_h_sol_;
+  std::unique_ptr<Eigen::VectorXd> lambda_e_sol_;
   std::unique_ptr<Eigen::VectorXd> epsilon_sol_;
   std::unique_ptr<Eigen::VectorXd> u_prev_;
   mutable double solve_time_{};
@@ -406,6 +446,10 @@ class OperationalSpaceControl : public drake::systems::LeafSystem<double> {
   std::unique_ptr<std::vector<std::unique_ptr<OscTrackingData>>>
       tracking_data_vec_ =
           std::make_unique<std::vector<std::unique_ptr<OscTrackingData>>>();
+
+  std::unique_ptr<std::vector<std::unique_ptr<ExternalForceTrackingData>>>
+      force_tracking_data_vec_ = std::make_unique<
+          std::vector<std::unique_ptr<ExternalForceTrackingData>>>();
 
   // Fixed position of constant trajectories
   std::vector<Eigen::VectorXd> fixed_position_vec_;

@@ -1,7 +1,4 @@
 # -*- python -*-
-
-load("@drake//tools/lint:lint.bzl", "add_lint_tests")
-
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
@@ -9,11 +6,13 @@ cc_library(
     srcs = [
         "impact_info_vector.cc",
         "output_vector.cc",
+        "state_vector.cc",
         "timestamped_vector.cc",
     ],
     hdrs = [
         "impact_info_vector.h",
         "output_vector.h",
+        "state_vector.h",
         "timestamped_vector.h",
     ],
     deps = [
@@ -30,7 +29,7 @@ cc_test(
     deps = [
         ":vector",
         "@drake//:drake_shared_library",
-        "@gtest//:main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -43,7 +42,7 @@ cc_test(
     deps = [
         ":vector",
         "@drake//:drake_shared_library",
-        "@gtest//:main",
+        "@googletest//:gtest_main",
     ],
 )
 

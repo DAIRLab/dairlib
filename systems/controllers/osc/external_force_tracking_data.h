@@ -1,0 +1,61 @@
+#pragma once
+
+#include <drake/common/trajectories/trajectory.h>
+#include <drake/multibody/plant/multibody_plant.h>
+
+namespace dairlib {
+namespace systems {
+namespace controllers {
+
+/// ExternalForceTrackingData
+/// Force tracking objective. Used to track desired external forces. Requires
+/// contact points on the MultibodyPlant where contact forces enter the dynamics
+class ExternalForceTrackingData {
+ public:
+  ExternalForceTrackingData(
+      const std::string& name, const Eigen::MatrixXd& W,
+      const drake::multibody::MultibodyPlant<double>& plant_w_spr,
+      const drake::multibody::MultibodyPlant<double>& plant_wo_spr,
+      const std::string& body_name, const Eigen::Vector3d& pt_on_body);
+
+  const Eigen::MatrixXd& GetWeight() const { return W_; }
+  const Eigen::VectorXd& GetLambdaDes() const { return lambda_des_; }
+  const std::string& GetName() const { return name_; };
+  const Eigen::Vector3d& GetPointOnBody() const { return pt_on_body_; };
+  const drake::multibody::Frame<double>& GetBodyFrame() const {
+    return *body_frame_wo_spr_;
+  };
+
+  const drake::multibody::MultibodyPlant<double>& plant_w_spr() const {
+    return plant_w_spr_;
+  };
+  const drake::multibody::MultibodyPlant<double>& plant_wo_spr() const {
+    return plant_wo_spr_;
+  };
+  void Update(const Eigen::VectorXd& x_w_spr,
+              const drake::systems::Context<double>& context_w_spr,
+              const Eigen::VectorXd& x_wo_spr,
+              const drake::systems::Context<double>& context_wo_spr,
+              const drake::trajectories::Trajectory<double>& traj, double t);
+
+ protected:
+ private:
+  std::string name_;
+
+  const drake::multibody::MultibodyPlant<double>& plant_w_spr_;
+  const drake::multibody::MultibodyPlant<double>& plant_wo_spr_;
+  // World frames
+  const drake::multibody::RigidBodyFrame<double>& world_w_spr_;
+  const drake::multibody::RigidBodyFrame<double>& world_wo_spr_;
+
+  const drake::multibody::RigidBodyFrame<double>* body_frame_w_spr_;
+  const drake::multibody::RigidBodyFrame<double>* body_frame_wo_spr_;
+  const Eigen::Vector3d pt_on_body_;
+
+  Eigen::VectorXd lambda_des_;
+  Eigen::MatrixXd W_;
+};
+
+}  // namespace controllers
+}  // namespace systems
+}  // namespace dairlib

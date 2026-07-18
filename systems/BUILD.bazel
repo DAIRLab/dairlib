@@ -12,7 +12,7 @@ cc_library(
         "//systems/framework:vector",
         "//systems/primitives",
         "@drake//:drake_shared_library",
-        "@lcm",
+        "@lcm//lcm:lcm-shared",
     ],
 )
 
@@ -30,6 +30,60 @@ cc_library(
     srcs = ["system_utils.cc"],
     hdrs = ["system_utils.h"],
     deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "franka_kinematics",
+    srcs = ["franka_kinematics.cc"],
+    hdrs = ["franka_kinematics.h"],
+    deps = [
+        ":franka_kinematics_vector",
+        "//common",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "franka_kinematics_vector",
+    srcs = ["franka_kinematics_vector.cc"],
+    hdrs = ["franka_kinematics_vector.h"],
+    deps = [
+        "//common",
+        "//multibody:utils",
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "franka_state_translator",
+    srcs = [
+        "franka_state_translator.cc",
+    ],
+    hdrs = [
+        "franka_state_translator.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "franka_target_joint_position_receiver",
+    srcs = ["franka_target_joint_position_receiver.cc"],
+    hdrs = [
+        "franka_target_joint_position_receiver.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:vector",
         "@drake//:drake_shared_library",
     ],
 )

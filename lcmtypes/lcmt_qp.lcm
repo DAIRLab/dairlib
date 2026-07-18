@@ -1,0 +1,17 @@
+package dairlib;
+
+struct lcmt_qp
+{
+  int32_t n_x;
+  int32_t n_ineq;
+  int32_t n_eq;
+  double Q[n_x][n_x];
+  double w[n_x];
+  double A_ineq[n_ineq][n_x];
+  double ineq_lb[n_ineq];
+  double ineq_ub[n_ineq];
+  double A_eq[n_eq][n_x];
+  double b_eq[n_eq];
+  double x_lb[n_x];
+  double x_ub[n_x];
+}

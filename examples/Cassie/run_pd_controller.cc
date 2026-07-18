@@ -1,10 +1,5 @@
+#include <drake/systems/analysis/simulator.h>
 #include <gflags/gflags.h>
-
-#include "drake/systems/analysis/simulator.h"
-#include "drake/systems/framework/diagram_builder.h"
-#include "drake/systems/lcm/lcm_interface_system.h"
-#include "drake/systems/lcm/lcm_publisher_system.h"
-#include "drake/systems/lcm/lcm_subscriber_system.h"
 
 #include "dairlib/lcmt_pd_config.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
@@ -13,6 +8,13 @@
 #include "systems/controllers/linear_controller.h"
 #include "systems/controllers/pd_config_lcm.h"
 #include "systems/robot_lcm_systems.h"
+
+#include "drake/common/text_logging.h"
+#include "drake/systems/analysis/simulator.h"
+#include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/lcm/lcm_interface_system.h"
+#include "drake/systems/lcm/lcm_publisher_system.h"
+#include "drake/systems/lcm/lcm_subscriber_system.h"
 
 namespace dairlib {
 
@@ -64,8 +66,7 @@ int doMain(int argc, char* argv[]) {
   // Create config receiver.
   auto config_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_pd_config>(channel_config, lcm));
-  auto config_receiver =
-      builder.AddSystem<systems::PDConfigReceiver>(plant);
+  auto config_receiver = builder.AddSystem<systems::PDConfigReceiver>(plant);
   builder.Connect(config_sub->get_output_port(),
                   config_receiver->get_input_port(0));
 
@@ -73,15 +74,13 @@ int doMain(int argc, char* argv[]) {
   auto command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
           channel_u, lcm, 1.0 / 1000.0));
-  auto command_sender =
-      builder.AddSystem<systems::RobotCommandSender>(plant);
+  auto command_sender = builder.AddSystem<systems::RobotCommandSender>(plant);
 
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
 
   auto controller = builder.AddSystem<systems::LinearController>(
-      plant.num_positions(), plant.num_velocities(),
-      plant.num_actuators());
+      plant.num_positions(), plant.num_velocities(), plant.num_actuators());
 
   builder.Connect(state_receiver->get_output_port(0),
                   controller->get_input_port_output());
@@ -114,4 +113,5 @@ int doMain(int argc, char* argv[]) {
 
 }  // namespace dairlib
 
+// int main(int argc, char* argv[]) { return dairlib::doMain(argc, argv); }
 int main(int argc, char* argv[]) { return dairlib::doMain(argc, argv); }

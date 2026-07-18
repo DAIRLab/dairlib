@@ -17,7 +17,8 @@ const int kPortIndex = 0;
 }  // namespace
 
 CassieUDPPublisher::CassieUDPPublisher(const std::string& address,
-                                       const int port, const UDPTriggerTypes& publish_triggers,
+                                       const int port,
+                                       const UDPTriggerTypes& publish_triggers,
                                        double publish_period)
     : address_(address),
       port_(port),
@@ -28,8 +29,8 @@ CassieUDPPublisher::CassieUDPPublisher(const std::string& address,
   // Check that publish_triggers does not contain an unsupported trigger
   for (const auto& trigger : publish_triggers) {
     DRAKE_DEMAND((trigger == TriggerType::kForced) ||
-        (trigger == TriggerType::kPeriodic) ||
-        (trigger == TriggerType::kPerStep));
+                 (trigger == TriggerType::kPeriodic) ||
+                 (trigger == TriggerType::kPerStep));
   }
 
   // Creating socket file descriptor
@@ -58,25 +59,24 @@ CassieUDPPublisher::CassieUDPPublisher(const std::string& address,
     DRAKE_DEMAND(publish_period > 0);
     const double offset = 0.0;
     this->DeclarePeriodicPublishEvent(
-        publish_period, offset,
-        &CassieUDPPublisher::PublishInputAsUDPMessage);
+        publish_period, offset, &CassieUDPPublisher::PublishInputAsUDPMessage);
   } else {
     DRAKE_DEMAND(publish_period == 0);
   }
   if (publish_triggers.find(TriggerType::kPerStep) != publish_triggers.end()) {
     this->DeclarePerStepPublishEvent(
-        &CassieUDPPublisher::PublishInputAsUDPMessage
-    );
+        &CassieUDPPublisher::PublishInputAsUDPMessage);
   }
 }
 
 CassieUDPPublisher::CassieUDPPublisher(const std::string& address,
                                        const int port, double publish_period)
-    : CassieUDPPublisher(address, port,
-                         (publish_period > 0) ?
-                         UDPTriggerTypes({TriggerType::kForced, TriggerType::kPeriodic}) :
-                         UDPTriggerTypes({TriggerType::kForced, TriggerType::kPerStep}),
-                         publish_period) {}
+    : CassieUDPPublisher(
+          address, port,
+          (publish_period > 0)
+              ? UDPTriggerTypes({TriggerType::kForced, TriggerType::kPeriodic})
+              : UDPTriggerTypes({TriggerType::kForced, TriggerType::kPerStep}),
+          publish_period) {}
 
 CassieUDPPublisher::~CassieUDPPublisher() {}
 
@@ -92,7 +92,7 @@ std::string CassieUDPPublisher::make_name(const std::string& address,
 // period or publish period = 0.0 was passed to the constructor).
 drake::systems::EventStatus CassieUDPPublisher::PublishInputAsUDPMessage(
     const drake::systems::Context<double>& context) const {
-  SPDLOG_TRACE(drake::log(), "Publishing UDP {} message", address_);
+  SPDLOG_TRACE("Publishing UDP {} message", address_);
 
   // Converts the input into message bytes.
   const drake::AbstractValue* const input_value =
@@ -102,9 +102,9 @@ drake::systems::EventStatus CassieUDPPublisher::PublishInputAsUDPMessage(
 
   serializer_->Serialize(*input_value, &message_bytes);
 
-  int result = sendto(socket_, message_bytes.data(),
-                      message_bytes.size(), 0,
-                      (struct sockaddr *)&server_address_, sizeof(server_address_));
+  int result =
+      sendto(socket_, message_bytes.data(), message_bytes.size(), 0,
+             (struct sockaddr*)&server_address_, sizeof(server_address_));
   DRAKE_THROW_UNLESS(result >= 0);
   return drake::systems::EventStatus::Succeeded();
 }

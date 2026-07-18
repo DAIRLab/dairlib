@@ -1,13 +1,14 @@
 #pragma once
 
-#include <string>
 #include <map>
+#include <string>
 
 #include "dairlib/lcmt_pd_config.hpp"
-#include "drake/systems/framework/leaf_system.h"
 #include "systems/controllers/linear_controller.h"
 #include "systems/framework/timestamped_vector.h"
+
 #include "drake/multibody/plant/multibody_plant.h"
+#include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
 namespace systems {
@@ -18,7 +19,7 @@ namespace systems {
 class PDConfigReceiver : public drake::systems::LeafSystem<double> {
  public:
   explicit PDConfigReceiver(
-    const drake::multibody::MultibodyPlant<double>& plant);
+      const drake::multibody::MultibodyPlant<double>& plant);
 
  private:
   void CopyConfig(const drake::systems::Context<double>& context,

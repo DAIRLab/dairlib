@@ -15,12 +15,12 @@ For more usages in Python, see the following in `_lcm_extra.py`:
 
 namespace dairlib {
 namespace pydairlib {
-//namespace pysystems {
-//namespace pylcm {
+// namespace pysystems {
+// namespace pylcm {
 
 void BindCppSerializers();
 
 //}  // namespace pylcm
 //}  // namespace pysystems
-}  // namespace pydrake
-}  // namespace drake
+}  // namespace pydairlib
+}  // namespace dairlib

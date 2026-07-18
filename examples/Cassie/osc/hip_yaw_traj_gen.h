@@ -1,11 +1,11 @@
 #pragma once
 
-#include "drake/systems/framework/leaf_system.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib::cassie {
 
-class HipYawTrajGen : public drake::systems::LeafSystem<double>{
+class HipYawTrajGen : public drake::systems::LeafSystem<double> {
  public:
   HipYawTrajGen(int left_stance_state);
 
@@ -23,12 +23,11 @@ class HipYawTrajGen : public drake::systems::LeafSystem<double>{
 
  private:
   void CalcYawTraj(const drake::systems::Context<double>& context,
-                       drake::trajectories::Trajectory<double>* traj) const;
+                   drake::trajectories::Trajectory<double>* traj) const;
 
   drake::systems::InputPortIndex radio_port_;
   drake::systems::InputPortIndex fsm_port_;
   drake::systems::OutputPortIndex hip_yaw_traj_port_;
   const int left_stance_state_;
 };
-}
-
+}  // namespace dairlib::cassie

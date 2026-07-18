@@ -1,0 +1,65 @@
+# Sampling strategies (defined as SamplingStrategy enum in sampling_params.h):
+#   0. kRadiallySymmetric:  radially distributed samples on a planar circle.
+#   1. kRandomOnCircle:     random samples on a planar circle.
+#   2. kRandomOnSphere:     random samples on a spherical surface.
+#   3. kFixed:              fixed set of samples.
+#   4. kRandomOnPerimeter:  random samples on a perimeter offset past the object
+#                           surface (roughly planar).
+#   5. kRandomOnShell:      random samples on a shell offset past the object
+#                           surface.
+sampling_strategy: 2
+
+### Parameters relevant for all sampling strategies.
+filter_samples_for_safety: true
+
+# Number of samples.  Add 2 for repositioning (current location, previous
+# repositioning target) and 1 for C3 (current location) to get total sample
+# number solved in parallel for each control loop.
+num_additional_samples_repos: 1
+num_additional_samples_c3: 2
+
+# Sample buffer parameters.
+consider_best_buffer_sample_when_leaving_c3: true
+N_sample_buffer: 400
+pos_error_sample_retention: 0.005
+ang_error_sample_retention: 0.087  # 0.087 rad = 5 deg
+
+# Unsuccessful sample buffer parameters.
+avoid_choosing_unsuccessful_samples: true
+N_unsuccessful_sample_buffer: 20
+unsuccessful_pos_error_sample_retention: 0.006
+unsuccessful_ang_error_sample_retention: 0.05  # 0.0349 rad = 2 deg
+unsuccessful_radius: 0.01
+
+# Shared across multiple sampling strategies.
+sampling_radius: 0.10  # kRadiallySymmetric, kRandomOnCircle, kRandomOnSphere
+sampling_height: 0.04  # kRadiallySymmetric, kRandomOnCircle, kRandomOnPerimeter
+sample_projection_clearance: 0.008  # kRandomOnPerimeter, kRandomOnShell
+min_angle_from_vertical: 0.2        # kRandomOnSphere, kRandomOnShell
+max_angle_from_vertical: 1.95       # kRandomOnSphere, kRandomOnShell
+
+# kFixed parameters.
+fixed_sample_locations: [[0.45, 0.340, 0.04],    # sample 1
+                         [0.27, 0.455, 0.04],   # sample 2
+                         [0.27, 0.225, 0.04]]   # sample 3
+
+# kRandomOnPerimeter parameters.
+grid_x_limits: [-0.16, 0.16]
+grid_y_limits: [-0.16, 0.16]
+
+# kRandomOnShell parameters.
+min_sampling_radius: 0.07
+max_sampling_radius: 0.10
+
+# kMeshNormal parameters
+buffer_distance: 0.05
+max_attempts: 100
+barycentric_bias: 0
+
+z_height: -0.004568184999999999
+
+gen_planar_samples: false # true = projects all samples to z_height
+ee_z_close: false # true = require ee to be close to sampling z-height before
+                  # entering c3
+sample_on_wall: true
+c3_min_clearance: 0.01

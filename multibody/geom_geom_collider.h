@@ -31,7 +31,6 @@ class GeomGeomCollider {
       drake::multibody::JacobianWrtVariable wrt =
           drake::multibody::JacobianWrtVariable::kV);
 
-
   /// Calculates the distance and contact frame Jacobian.
   /// Jacobian is ordered [J_n; J_t], and has shape
   ////   (2*num_friction_directions + 1) x (nq or nv), depending
@@ -48,11 +47,9 @@ class GeomGeomCollider {
   /// @param num_friction_directions
   /// @return A pair with <distance as a scalar, J>
   std::pair<T, drake::MatrixX<T>> EvalPolytope(
-      const drake::systems::Context<T>& context,
-      int num_friction_directions,
+      const drake::systems::Context<T>& context, int num_friction_directions,
       drake::multibody::JacobianWrtVariable wrt =
           drake::multibody::JacobianWrtVariable::kV);
-
 
   /// Calculates the distance and contact frame Jacobian for a 2D planar problem
   /// Jacobian is ordered [J_n; +J_t; -J_t], and has shape 3 x (nq).
@@ -66,11 +63,31 @@ class GeomGeomCollider {
       drake::multibody::JacobianWrtVariable wrt =
           drake::multibody::JacobianWrtVariable::kV);
 
+  std::pair<drake::VectorX<double>, drake::VectorX<double>> CalcWitnessPoints(
+      const drake::systems::Context<double>& context);
+
  private:
   std::pair<T, drake::MatrixX<T>> DoEval(
       const drake::systems::Context<T>& context,
       Eigen::Matrix<double, Eigen::Dynamic, 3> force_basis,
       drake::multibody::JacobianWrtVariable wrt, bool planar = false);
+
+  /// Identify if the geom-geom pair is a sphere and mesh, and identify which
+  /// one is the mesh.
+  /// @return <is_sphere_and_mesh, mesh_is_A>
+  std::pair<bool, bool> IsSphereAndMesh(
+      const drake::systems::Context<T>& context) const;
+
+  /// For generic geom-geom pairs, CalcWitnessPoints and DoEval rely on Drake's
+  /// ComputeSignedDistancePairClosestPoints, which can only resolve mesh
+  /// collisions for its convex hull.  The below is a custom implementation for
+  /// sphere-mesh collisions, which can resolve collisions with non-convex
+  /// meshes by relying on Drake's ComputeSignedDistanceGeometryToPoint, which
+  /// can compute signed distance to a non-convex mesh.
+  /// @return <p_ACa, p_BCb, nhat_BA_W, distance>
+  std::tuple<Eigen::Vector3d, Eigen::Vector3d, Eigen::Vector3d, T>
+  DoSphereMeshCollision(const drake::systems::Context<T>& context,
+                        const bool& is_A_mesh) const;
 
   const drake::multibody::MultibodyPlant<T>& plant_;
   const drake::geometry::GeometryId geometry_id_A_;

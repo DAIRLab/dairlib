@@ -1,59 +1,56 @@
-#include <memory>
-#include <iostream>
 #include <chrono>
+#include <iostream>
+#include <memory>
 
 #include <gflags/gflags.h>
 
+#include "common/find_resource.h"
+#include "multibody/multibody_utils.h"
+#include "multibody/visualization_utils.h"
+#include "systems/trajectory_optimization/dircon/dircon.h"
+
+#include "drake/geometry/drake_visualizer.h"
+#include "drake/multibody/parsing/parser.h"
 #include "drake/solvers/snopt_solver.h"
+#include "drake/solvers/solve.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/diagram_builder.h"
-#include "drake/multibody/parsing/parser.h"
-#include "drake/geometry/drake_visualizer.h"
-#include "drake/solvers/solve.h"
-
-#include "common/find_resource.h"
-#include "systems/trajectory_optimization/dircon/dircon.h"
-#include "multibody/multibody_utils.h"
-#include "multibody/visualization_utils.h"
 
 DEFINE_double(duration, 5, "The trajectory duration");
 DEFINE_double(u_max, 100, "Max effort");
 DEFINE_bool(autodiff, false, "Double or autodiff version");
 
 using drake::AutoDiffXd;
-using drake::multibody::MultibodyPlant;
 using drake::geometry::SceneGraph;
+using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::trajectories::PiecewisePolynomial;
 
-using Eigen::Vector3d;
-using Eigen::VectorXd;
 using Eigen::Matrix3d;
 using Eigen::MatrixXd;
+using Eigen::Vector3d;
+using Eigen::VectorXd;
 
 namespace dairlib {
 namespace {
 
-using systems::trajectory_optimization::DirconModeSequence;
-using systems::trajectory_optimization::DirconMode;
 using systems::trajectory_optimization::Dircon;
+using systems::trajectory_optimization::DirconMode;
+using systems::trajectory_optimization::DirconModeSequence;
 using systems::trajectory_optimization::KinematicConstraintType;
 
-using std::vector;
 using std::cout;
 using std::endl;
+using std::vector;
 
 template <typename T>
-void runDircon(
-    std::unique_ptr<MultibodyPlant<T>> plant_ptr,
-    MultibodyPlant<double>* plant_double_ptr,
-    std::unique_ptr<SceneGraph<double>> scene_graph_ptr,
-    double duration,
-    double u_max,
-    PiecewisePolynomial<double> init_x_traj,
-    PiecewisePolynomial<double> init_u_traj) {
-
+void runDircon(std::unique_ptr<MultibodyPlant<T>> plant_ptr,
+               MultibodyPlant<double>* plant_double_ptr,
+               std::unique_ptr<SceneGraph<double>> scene_graph_ptr,
+               double duration, double u_max,
+               PiecewisePolynomial<double> init_x_traj,
+               PiecewisePolynomial<double> init_u_traj) {
   drake::systems::DiagramBuilder<double> builder;
   MultibodyPlant<T>& plant = *plant_ptr;
   SceneGraph<double>& scene_graph =
@@ -69,10 +66,10 @@ void runDircon(
 
   trajopt.AddDurationBounds(duration, duration);
 
+  prog.SetSolverOption(drake::solvers::SnoptSolver::id(), "Print file",
+                       "../snopt.out");
   prog.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Print file", "../snopt.out");
-  prog.SetSolverOption(drake::solvers::SnoptSolver::id(),
-                           "Major iterations limit", 2000);
+                       "Major iterations limit", 2000);
 
   trajopt.drake::systems::trajectory_optimization::MultipleShooting::
       SetInitialTrajectory(init_u_traj, init_x_traj);
@@ -88,12 +85,12 @@ void runDircon(
   xf_vec << M_PI, 0, 0, 0;
 
   int nq = plant.num_positions();
-  prog.AddBoundingBoxConstraint(x0_vec, x0_vec,x0);
+  prog.AddBoundingBoxConstraint(x0_vec, x0_vec, x0);
   prog.AddBoundingBoxConstraint(xf_vec, xf_vec, xf);
 
   const double R = 1;  // Cost on input effort
   auto u = trajopt.input();
-  trajopt.AddRunningCost(u.transpose()*R*u);
+  trajopt.AddRunningCost(u.transpose() * R * u);
 
   trajopt.AddConstraintToAllKnotPoints(u[0] <= u_max);
   trajopt.AddConstraintToAllKnotPoints(u[0] >= -u_max);
@@ -113,13 +110,13 @@ void runDircon(
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
   if (result.is_success()) {
-    std::cout << "Success!" <<std::endl;
+    std::cout << "Success!" << std::endl;
   } else {
-    std::cout << "Failure!" <<std::endl;
+    std::cout << "Failure!" << std::endl;
   }
 
-  std::cout << "Solve time:" << elapsed.count() <<std::endl;
-  std::cout << "Cost:" << result.get_optimal_cost() <<std::endl;
+  std::cout << "Solve time:" << elapsed.count() << std::endl;
+  std::cout << "Cost:" << result.get_optimal_cost() << std::endl;
   // visualizer
   const drake::trajectories::PiecewisePolynomial<double> pp_xtraj =
       trajopt.ReconstructStateTrajectory(result);
@@ -170,14 +167,16 @@ int main(int argc, char* argv[]) {
   // Initialize state trajectory
   std::vector<double> init_time;
   for (int i = 0; i < N; i++) {
-    init_time.push_back(i*.2);
-    init_x.push_back(x0*(N - i - 1.0)/(N - 1.0) + xf * i/(N - 1.0));
-    init_u.push_back(5*VectorXd::Random(nu));
+    init_time.push_back(i * .2);
+    init_x.push_back(x0 * (N - i - 1.0) / (N - 1.0) + xf * i / (N - 1.0));
+    init_u.push_back(5 * VectorXd::Random(nu));
   }
-  auto init_x_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time, init_x);
-  auto init_u_traj = PiecewisePolynomial<double>::ZeroOrderHold(init_time, init_u);
+  auto init_x_traj =
+      PiecewisePolynomial<double>::ZeroOrderHold(init_time, init_x);
+  auto init_u_traj =
+      PiecewisePolynomial<double>::ZeroOrderHold(init_time, init_u);
 
-  dairlib::runDircon<double>(
-    std::move(plant), plant_vis.get(), std::move(scene_graph),
-    FLAGS_duration, FLAGS_u_max, init_x_traj, init_u_traj);
+  dairlib::runDircon<double>(std::move(plant), plant_vis.get(),
+                             std::move(scene_graph), FLAGS_duration,
+                             FLAGS_u_max, init_x_traj, init_u_traj);
 }

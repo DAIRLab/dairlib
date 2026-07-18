@@ -1,11 +1,10 @@
 #pragma once
 
 #include "drake/common/trajectories/trajectory.h"
+#include "drake/geometry/drake_visualizer.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
-#include "drake/geometry/drake_visualizer.h"
-
 
 namespace dairlib {
 namespace multibody {
@@ -27,7 +26,7 @@ void ConnectTrajectoryVisualizer(
     drake::systems::DiagramBuilder<double>* builder,
     drake::geometry::SceneGraph<double>* scene_graph,
     const drake::trajectories::Trajectory<double>& trajectory);
-void ConnectTrajectoryVisualizer(
+void ConnectTrajectoryVisualizerWithCoM(
     const drake::multibody::MultibodyPlant<double>* plant,
     drake::systems::DiagramBuilder<double>* builder,
     drake::geometry::SceneGraph<double>* scene_graph,

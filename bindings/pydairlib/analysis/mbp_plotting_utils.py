@@ -2,11 +2,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 
-from pydairlib.common import plot_styler, plotting_utils
-from osc_debug import lcmt_osc_tracking_data_t, osc_tracking_cost, osc_regularlization_tracking_cost
-from pydairlib.multibody import MakeNameToPositionsMap, \
+from pydrake.all import JacobianWrtVariable, JointActuatorIndex, JointIndex
+
+from bindings.pydairlib.common import plot_styler, plotting_utils
+from bindings.pydairlib.analysis.osc_debug import lcmt_osc_tracking_data_t, \
+    osc_tracking_cost, osc_regularlization_tracking_cost
+from bindings.pydairlib.multibody import MakeNameToPositionsMap, \
     MakeNameToVelocitiesMap, MakeNameToActuatorsMap, \
     CreateStateNameVectorFromMap, CreateActuatorNameVectorFromMap
+
+OSC_DERIV_UNITS = {'pos': 'Position $(m)$',
+                   'vel': 'Velocity $(m/s)$',
+                   'accel': 'Acceleration $(m/s^2)$'}
 
 
 def make_name_to_mbp_maps(plant):
@@ -51,11 +58,10 @@ def make_joint_order_permutations(robot_output_message, plant):
 
 
 def process_state_channel(state_data, plant):
-    t_x = []
+    t = []
     q = []
     u = []
     v = []
-
     pos_map = MakeNameToPositionsMap(plant)
     vel_map = MakeNameToVelocitiesMap(plant)
     act_map = MakeNameToActuatorsMap(plant)
@@ -73,9 +79,9 @@ def process_state_channel(state_data, plant):
         q.append(q_temp)
         v.append(v_temp)
         u.append(u_temp)
-        t_x.append(msg.utime / 1e6)
+        t.append(msg.utime / 1e6)
 
-    return {'t_x': np.array(t_x),
+    return {'t': np.array(t),
             'q': np.array(q),
             'v': np.array(v),
             'u': np.array(u)}
@@ -93,7 +99,7 @@ def process_effort_channel(data, plant):
         t.append(msg.utime / 1e6)
         u.append(u_temp)
 
-    return {'t_u': np.array(t), 'u': np.array(u)}
+    return {'t': np.array(t), 'u': np.array(u)}
 
 
 def make_point_positions_from_q(
@@ -108,6 +114,27 @@ def make_point_positions_from_q(
                                            frame_to_calc_position_in).ravel()
 
     return pos
+
+
+def make_point_velocities_from_qv(
+    q, v, plant, context, frame, pt_on_frame, frame_measured_in=None,
+    frame_expressed_in=None):
+    if frame_measured_in is None:
+        frame_measured_in = plant.world_frame()
+    if frame_expressed_in is None:
+        frame_expressed_in = plant.world_frame()
+
+    vel = np.zeros((v.shape[0], 3))
+    for i, generalized_pos_vel in enumerate(zip(q, v)):
+        plant.SetPositions(context, generalized_pos_vel[0])
+        J = plant.CalcJacobianTranslationalVelocity(context,
+                                                    JacobianWrtVariable.kV,
+                                                    frame, pt_on_frame,
+                                                    frame_measured_in,
+                                                    frame_expressed_in)
+        vel[i] = J @ generalized_pos_vel[1]
+
+    return vel
 
 
 def get_floating_base_velocity_in_body_frame(
@@ -125,9 +152,11 @@ def get_floating_base_velocity_in_body_frame(
 def process_osc_channel(data):
     t_osc = []
     if hasattr(data[0], 'regularization_cost_names'):
-        regularization_costs = osc_regularlization_tracking_cost(data[0].regularization_cost_names)
+        regularization_costs = osc_regularlization_tracking_cost(
+            data[0].regularization_cost_names)
     else:
-        regularization_costs = osc_regularlization_tracking_cost(['input_cost', 'acceleration_cost', 'soft_constraint_cost'])
+        regularization_costs = osc_regularlization_tracking_cost(
+            ['input_cost', 'acceleration_cost', 'soft_constraint_cost'])
     qp_solve_time = []
     u_sol = []
     lambda_c_sol = []
@@ -141,11 +170,15 @@ def process_osc_channel(data):
     for msg in data:
         t_osc.append(msg.utime / 1e6)
         if hasattr(msg, 'regularization_cost_names'):
-            regularization_costs.append(msg.regularization_cost_names, msg.regularization_costs)
+            regularization_costs.append(msg.regularization_cost_names,
+                                        msg.regularization_costs)
         else:
-            regularization_cost_names = ['input_cost', 'acceleration_cost', 'soft_constraint_cost']
-            regularization_cost_list = [msg.input_cost, msg.acceleration_cost, msg.soft_constraint_cost]
-            regularization_costs.append(regularization_cost_names, regularization_cost_list)
+            regularization_cost_names = ['input_cost', 'acceleration_cost',
+                                         'soft_constraint_cost']
+            regularization_cost_list = [msg.input_cost, msg.acceleration_cost,
+                                        msg.soft_constraint_cost]
+            regularization_costs.append(regularization_cost_names,
+                                        regularization_cost_list)
         qp_solve_time.append(msg.qp_output.solve_time)
         u_sol.append(msg.qp_output.u_sol)
         lambda_c_sol.append(msg.qp_output.lambda_c_sol)
@@ -157,7 +190,7 @@ def process_osc_channel(data):
         for tracking_data in msg.tracking_data:
             if tracking_data.name not in osc_debug_tracking_datas:
                 osc_debug_tracking_datas[tracking_data.name] = \
-                    lcmt_osc_tracking_data_t()
+                    lcmt_osc_tracking_data_t(name=tracking_data.name)
             osc_debug_tracking_datas[tracking_data.name].append(
                 tracking_data, msg.utime / 1e6)
 
@@ -166,9 +199,11 @@ def process_osc_channel(data):
     tracking_cost_handler = osc_tracking_cost(osc_debug_tracking_datas.keys())
     for msg in data:
         if hasattr(msg, 'tracking_costs'):
-            tracking_cost_handler.append(msg.tracking_data_names, msg.tracking_costs)
+            tracking_cost_handler.append(msg.tracking_data_names,
+                                         msg.tracking_costs)
         else:
-            tracking_cost_handler.append(msg.tracking_data_names, msg.tracking_cost)
+            tracking_cost_handler.append(msg.tracking_data_names,
+                                         msg.tracking_cost)
     tracking_cost = tracking_cost_handler.convertToNP()
 
     for name in osc_debug_tracking_datas:
@@ -240,6 +275,61 @@ def process_contact_channel(data):
             'lambda_c': contact_forces,
             'p_lambda_c': contact_info_locs}
 
+def process_c3_debug(data):
+    t = []
+    states = []
+    breaks = []
+    contact_forces = []
+    inputs = []
+    for msg in data:
+        t.append(msg.utime / 1e6)
+        states.append(msg.c3_solution.x_sol)
+        breaks.append(msg.c3_solution.time_vec)
+        contact_forces.append(msg.c3_solution.lambda_sol)
+        inputs.append(msg.c3_solution.u_sol)
+
+    t = np.array(t)
+    states = np.array(states)
+    breaks = np.array(breaks)
+    contact_forces = np.array(contact_forces)
+    inputs = np.array(inputs)
+
+    return {'t': t,
+            'time_vector': breaks,
+            'x': states,
+            'lambda': contact_forces,
+            'u': inputs,}
+
+def process_c3_tracking(data):
+    t = []
+    states = []
+    for msg in data:
+        t.append(msg.utime / 1e6)
+        states.append(msg.state)
+
+    t = np.array(t)
+    states = np.array(states)
+
+    return {'t': t,
+            'x': states,
+            }
+def process_object_state_channel(data):
+    t = []
+    positions = []
+    velocities = []
+    for msg in data:
+        t.append(msg.utime / 1e6)
+        positions.append(msg.position)
+        velocities.append(msg.velocity)
+
+    t = np.array(t)
+    positions = np.array(positions)
+    velocities = np.array(velocities)
+
+    return {'t': t,
+            'q': positions,
+            'v': velocities,}
+
 
 def permute_osc_joint_ordering(osc_data, robot_output_msg, plant):
     _, vperm, uperm = make_joint_order_permutations(robot_output_msg, plant)
@@ -255,6 +345,7 @@ def load_default_channels(data, plant, state_channel, input_channel,
     osc_debug = process_osc_channel(data[osc_debug_channel])
     osc_debug = permute_osc_joint_ordering(
         osc_debug, data[state_channel][0], plant)
+    # osc_debug = None
 
     return robot_output, robot_input, osc_debug
 
@@ -263,9 +354,22 @@ def load_force_channels(data, contact_force_channel):
     contact_info = process_contact_channel(data[contact_force_channel])
     return contact_info
 
+def load_c3_debug(data, c3_debug_channel, c3_target_channel, c3_actual_channel):
+    # c3_debug = process_c3_debug(data[c3_debug_channel])
+    c3_debug = None
+    c3_tracking_target = process_c3_tracking(data[c3_target_channel])
+    c3_tracking_actual = process_c3_tracking(data[c3_actual_channel])
+    return c3_debug, c3_tracking_target, c3_tracking_actual
 
-def plot_q_or_v_or_u(robot_output, key, x_names, x_slice, time_slice, ylabel=None, title=None):
-    ps = plot_styler.PlotStyler()
+def load_object_state(data, object_state_channel):
+    object_state = process_object_state_channel(data[object_state_channel])
+    return object_state
+
+def plot_q_or_v_or_u(
+    robot_output, key, x_names, x_slice, time_slice,
+    ylabel=None, title=None, ps=None, subplot_index=0):
+    if ps is None:
+        ps = plot_styler.PlotStyler()
     if ylabel is None:
         ylabel = key
     if title is None:
@@ -273,19 +377,22 @@ def plot_q_or_v_or_u(robot_output, key, x_names, x_slice, time_slice, ylabel=Non
 
     plotting_utils.make_plot(
         robot_output,  # data dict
-        't_x',  # time channel
+        't',  # time channel
         time_slice,
         [key],  # key to plot
         {key: x_slice},  # slice of key to plot
         {key: x_names},  # legend entries
         {'xlabel': 'Time',
          'ylabel': ylabel,
-         'title': title}, ps)
+         'title': title}, ps, subplot_index=subplot_index)
     return ps
 
 
-def plot_u_cmd(robot_input, key, x_names, x_slice, time_slice, ylabel=None, title=None):
-    ps = plot_styler.PlotStyler()
+def plot_u_cmd(
+    robot_input, key, x_names, x_slice, time_slice,
+    ylabel=None, title=None, ps=None, subplot_index=0):
+    if ps is None:
+        ps = plot_styler.PlotStyler()
     if ylabel is None:
         ylabel = key
     if title is None:
@@ -293,16 +400,15 @@ def plot_u_cmd(robot_input, key, x_names, x_slice, time_slice, ylabel=None, titl
 
     plotting_utils.make_plot(
         robot_input,  # data dict
-        't_u',  # time channel
+        't',  # time channel
         time_slice,
         [key],  # key to plot
         {key: x_slice},  # slice of key to plot
         {key: x_names},  # legend entries
         {'xlabel': 'Time',
          'ylabel': ylabel,
-         'title': title}, ps)
+         'title': title}, ps, subplot_index=subplot_index)
     return ps
-
 
 def plot_floating_base_positions(robot_output, q_names, fb_dim, time_slice):
     return plot_q_or_v_or_u(robot_output, 'q', q_names[:fb_dim], slice(fb_dim),
@@ -310,17 +416,17 @@ def plot_floating_base_positions(robot_output, q_names, fb_dim, time_slice):
                             title='Floating Base Positions')
 
 
-def plot_joint_positions(robot_output, q_names, fb_dim, time_slice):
+def plot_joint_positions(robot_output, q_names, fb_dim, time_slice, subplot_index=0):
     q_slice = slice(fb_dim, len(q_names))
     return plot_q_or_v_or_u(robot_output, 'q', q_names[q_slice], q_slice,
                             time_slice, ylabel='Joint Angle (rad)',
-                            title='Joint Positions')
+                            title='Joint Positions', subplot_index=subplot_index)
 
 
-def plot_positions_by_name(robot_output, q_names, time_slice, pos_map):
+def plot_positions_by_name(robot_output, q_names, time_slice, pos_map, ps = None, subplot_index = 0):
     q_slice = [pos_map[name] for name in q_names]
     return plot_q_or_v_or_u(robot_output, 'q', q_names, q_slice, time_slice,
-                            ylabel='Position', title='Select Positions')
+                            ylabel='Position', title='Select Positions', ps=ps, subplot_index=subplot_index)
 
 
 def plot_floating_base_velocities(robot_output, v_names, fb_dim, time_slice):
@@ -329,11 +435,11 @@ def plot_floating_base_velocities(robot_output, v_names, fb_dim, time_slice):
                             title='Floating Base Velocities')
 
 
-def plot_joint_velocities(robot_output, v_names, fb_dim, time_slice):
+def plot_joint_velocities(robot_output, v_names, fb_dim, time_slice, subplot_index=0):
     q_slice = slice(fb_dim, len(v_names))
     return plot_q_or_v_or_u(robot_output, 'v', v_names[q_slice], q_slice,
                             time_slice, ylabel='Joint Vel (rad/s)',
-                            title='Joint Velocities')
+                            title='Joint Velocities', subplot_index=subplot_index)
 
 
 def plot_velocities_by_name(robot_output, v_names, time_slice, vel_map):
@@ -342,28 +448,31 @@ def plot_velocities_by_name(robot_output, v_names, time_slice, vel_map):
                             ylabel='Velocity', title='Select Velocities')
 
 
-def plot_measured_efforts(robot_output, u_names, time_slice):
+def plot_measured_efforts(robot_output, u_names, time_slice, ps=None, subplot_index=0):
     return plot_q_or_v_or_u(robot_output, 'u', u_names, slice(len(u_names)),
                             time_slice, ylabel='Efforts (Nm)',
-                            title='Measured Joint Efforts')
+                            title='Measured Joint Efforts', ps=ps, subplot_index=subplot_index)
 
 
-def plot_measured_efforts_by_name(robot_output, u_names, time_slice, u_map):
-    u_slice = [u_map[name] for name in u_names]
-    return plot_q_or_v_or_u(robot_output, 'u', u_names, u_slice, time_slice,
-                            ylabel='Efforts (Nm)', title='Select Joint Efforts')
-
-
-def plot_commanded_efforts(robot_input, u_names, time_slice):
+def plot_commanded_efforts(robot_input, u_names, time_slice, ps=None, subplot_index=0):
     return plot_u_cmd(robot_input, 'u', u_names, slice(len(u_names)),
                       time_slice, ylabel='Efforts (Nm)',
-                      title='Commanded Joint Efforts')
+                      title='Commanded Joint Efforts', ps=ps, subplot_index=subplot_index)
+
+
+def plot_measured_efforts_by_name(robot_output, u_names, time_slice, u_map, ps=None, subplot_index=0):
+    u_slice = [u_map[name] for name in u_names]
+    return plot_q_or_v_or_u(robot_output, 'u', u_names, u_slice, time_slice,
+                            ylabel='Efforts (Nm)', title='Select Joint Efforts', ps=ps, subplot_index=subplot_index)
 
 
 def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
-                          pts, dims):
+                          pts, dims, ps=None, subplot_index=0):
+    if ps is None:
+        ps = plot_styler.PlotStyler()
+
     dim_map = ['_x', '_y', '_z']
-    data_dict = {'t': robot_output['t_x']}
+    data_dict = {'t': robot_output['t']}
     legend_entries = {}
     for name in frame_names:
         frame = plant.GetBodyByName(name).body_frame()
@@ -371,7 +480,7 @@ def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
         data_dict[name] = make_point_positions_from_q(robot_output['q'],
                                                       plant, context, frame, pt)
         legend_entries[name] = [name + dim_map[dim] for dim in dims[name]]
-    ps = plot_styler.PlotStyler()
+
     plotting_utils.make_plot(
         data_dict,
         't',
@@ -381,18 +490,49 @@ def plot_points_positions(robot_output, time_slice, plant, context, frame_names,
         legend_entries,
         {'title': 'Point Positions',
          'xlabel': 'time (s)',
-         'ylabel': 'pos (m)'}, ps)
+         'ylabel': 'pos (m)'}, ps, subplot_index=subplot_index)
+
+    return ps
+
+
+def plot_points_velocities(robot_output, time_slice, plant, context, frame_names,
+                          pts, dims, ps=None, subplot_index=0):
+    if ps is None:
+        ps = plot_styler.PlotStyler()
+
+    dim_map = ['_x', '_y', '_z']
+    data_dict = {'t': robot_output['t']}
+    legend_entries = {}
+    for name in frame_names:
+        frame = plant.GetBodyByName(name).body_frame()
+        pt = pts[name]
+        data_dict[name] = make_point_velocities_from_qv(robot_output['q'],
+                                                                  robot_output['v'],
+                                                                  plant, context,
+                                                                  frame, np.zeros(3))
+        legend_entries[name] = [name + dim_map[dim] for dim in dims[name]]
+
+    plotting_utils.make_plot(
+        data_dict,
+        't',
+        time_slice,
+        frame_names,
+        dims,
+        legend_entries,
+        {'title': 'Point Velocities',
+         'xlabel': 'time (s)',
+         'ylabel': 'pos (m)'}, ps, subplot_index=subplot_index)
 
     return ps
 
 
 def plot_floating_base_body_frame_velocities(robot_output, time_slice, plant,
                                              context, fb_frame_name):
-    data_dict = {'t': robot_output['t_x']}
+    data_dict = {'t': robot_output['t']}
     data_dict['base_vel'] = get_floating_base_velocity_in_body_frame(
         robot_output, plant, context,
-        plant.GetBodyByName(fb_frame_name).body_frame())
-    legend_entries = {'base_vel': ['base_vx', 'base_vy', 'base_vz']}
+        plant.GetBodyByName(fb_frame_name).body_frame())[:, 0]
+    legend_entries = {'base_vel': ['forward', 'lateral', 'vertical']}
     ps = plot_styler.PlotStyler()
     plotting_utils.make_plot(
         data_dict,
@@ -402,9 +542,8 @@ def plot_floating_base_body_frame_velocities(robot_output, time_slice, plant,
         {},
         legend_entries,
         {'title': 'Floating Base Velocity (Body Frame)',
-         'xlabel': 'time (s)',
+         'xlabel': 'Time (s)',
          'ylabel': 'Velocity (m/s)'}, ps)
-
     return ps
 
 
@@ -413,7 +552,8 @@ def plot_tracking_costs(osc_debug, time_slice):
     data_dict = \
         {key: val for key, val in osc_debug['tracking_cost'].items()}
     data_dict['t_osc'] = osc_debug['t_osc']
-
+    # import pdb; pdb.set_trace()
+    # data_dict['t_osc'] = osc_debug['trac']
     plotting_utils.make_plot(
         data_dict,
         't_osc',
@@ -438,7 +578,23 @@ def plot_general_osc_tracking_data(traj_name, deriv, dim, data, time_slice):
         {},
         {key: [key] for key in keys},
         {'xlabel': 'Time',
-         'ylabel': '',
+         'ylabel': OSC_DERIV_UNITS[deriv],
+         'title': f'{traj_name} {deriv} tracking {dim}'}, ps)
+    return ps
+
+
+def plot_general_osc_tracking_data(traj_name, deriv, dim, data, time_slice):
+    ps = plot_styler.PlotStyler()
+    keys = [key for key in data.keys() if key != 't']
+    plotting_utils.make_plot(
+        data,
+        't',
+        time_slice,
+        keys,
+        {},
+        {key: [key] for key in keys},
+        {'xlabel': 'Time',
+         'ylabel': OSC_DERIV_UNITS[deriv],
          'title': f'{traj_name} {deriv} tracking {dim}'}, ps)
     return ps
 
@@ -453,17 +609,58 @@ def plot_osc_tracking_data(osc_debug, traj, dim, deriv, time_slice):
     elif deriv == 'vel':
         data['ydot_des'] = tracking_data.ydot_des[:, dim]
         data['ydot'] = tracking_data.ydot[:, dim]
-        data['error_ydot'] = tracking_data.error_ydot[:, dim]
+        data['error_ydot'] = tracking_data.ydot_des[:,
+                             dim] - tracking_data.ydot[:,
+                                    dim]
+        data['projected_error_ydot'] = tracking_data.error_ydot[:, dim]
     elif deriv == 'accel':
         data['yddot_des'] = tracking_data.yddot_des[:, dim]
+        data['yddot_actual'] = 1000 * np.diff(tracking_data.ydot[:, dim], prepend=[0])
         data['yddot_command'] = tracking_data.yddot_command[:, dim]
         data['yddot_command_sol'] = tracking_data.yddot_command_sol[:, dim]
 
     data['t'] = tracking_data.t
+
     return plot_general_osc_tracking_data(traj, deriv, dim, data, time_slice)
 
 
+def plot_osc_tracking_data_in_space(osc_debug, traj, dims, deriv, time_slice):
+    tracking_data = osc_debug['osc_debug_tracking_datas'][traj]
+    data = {}
+    for dim in dims:
+        if deriv == 'pos':
+            data['y_des_' + str(dim)] = tracking_data.y_des[:, dim]
+            data['y_' + str(dim)] = tracking_data.y[:, dim]
+            data['error_y_' + str(dim)] = tracking_data.error_y[:, dim]
+        elif deriv == 'vel':
+            data['ydot_des_' + str(dim)] = tracking_data.ydot_des[:, dim]
+            data['ydot_' + str(dim)] = tracking_data.ydot[:, dim]
+            data['error_ydot_' + str(dim)] = tracking_data.ydot_des[:,
+                                             dim] - tracking_data.ydot[:, dim]
+            data['projected_error_ydot_' + str(dim)] = tracking_data.error_ydot[
+                                                       :,
+                                                       dim]
+        elif deriv == 'accel':
+            data['yddot_des_' + str(dim)] = tracking_data.yddot_des[:, dim]
+            data['yddot_command_' + str(dim)] = tracking_data.yddot_command[:,
+                                                dim]
+            data['yddot_command_sol_' + str(
+                dim)] = tracking_data.yddot_command_sol[:,
+                        dim]
+
+    data['t'] = tracking_data.t
+    ps = plot_styler.PlotStyler()
+    ps.plot(data['y_des_' + str(0)],
+            data['y_des_' + str(2)] - data['y_des_' + str(2)][0],
+            xlabel='Forward Position (m)', ylabel='Vertical Position (m)',
+            grid=False)
+    # ps.tight_layout()
+    # ps.axes[0].set_ylim([-0.05, 0.5])
+    return ps
+
+
 def plot_qp_costs(osc_debug, time_slice):
+    ps = plot_styler.PlotStyler()
     regularization_cost = osc_debug['regularization_costs'].regularization_costs
     data_dict = \
         {key: val for key, val in regularization_cost.items()}
@@ -478,7 +675,22 @@ def plot_qp_costs(osc_debug, time_slice):
         {key: [key] for key in regularization_cost.keys()},
         {'xlabel': 'Time',
          'ylabel': 'Cost',
-         'title': 'Regularization Costs'}, ps)
+         'title': 'regularization_costs'}, ps)
+    return ps
+
+
+def plot_qp_solutions(osc_debug, time_slice):
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        osc_debug,
+        't_osc',
+        time_slice,
+        ['lambda_c_sol'],
+        {},
+        {},
+        {'xlabel': 'Timestamp',
+         'ylabel': 'Solve Time ',
+         'title': 'OSC Lambda Solutions'}, ps)
     return ps
 
 
@@ -497,6 +709,20 @@ def plot_qp_solve_time(osc_debug, time_slice):
     return ps
 
 
+def plot_ddq_sol(osc_debug, time_slice, joint_names, ddq_slice):
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        osc_debug,
+        't_osc',
+        time_slice,
+        ['dv_sol'],
+        {'dv_sol': ddq_slice},
+        {'dv_sol': joint_names[ddq_slice]},
+        {'xlabel': 'time',
+         'ylabel': 'joint accelerations (rad/s^2)',
+         'title': 'OSC joint acceleration'}, ps)
+    return ps
+
 def plot_lambda_c_sol(osc_debug, time_slice, lambda_slice):
     ps = plot_styler.PlotStyler()
     plotting_utils.make_plot(
@@ -510,6 +736,22 @@ def plot_lambda_c_sol(osc_debug, time_slice, lambda_slice):
         {'xlabel': 'time',
          'ylabel': 'lambda',
          'title': 'OSC contact force solution'}, ps)
+    return ps
+
+
+def plot_lambda_h_sol(osc_debug, time_slice, lambda_slice):
+    ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        osc_debug,
+        't_osc',
+        time_slice,
+        ['lambda_h_sol'],
+        {'lambda_h_sol': lambda_slice},
+        {'lambda_h_sol': ['lambda_h_' + i for i in
+                          plotting_utils.slice_to_string_list(lambda_slice)]},
+        {'xlabel': 'time',
+         'ylabel': 'lambda',
+         'title': 'OSC constraint force solution'}, ps)
     return ps
 
 
@@ -536,11 +778,113 @@ def add_fsm_to_plot(ps, fsm_time, fsm_signal, fsm_state_names):
     # uses default color map
     legend_elements = []
     for i in np.unique(fsm_signal):
-        ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == i), color=ps.cmap(2 * i), alpha=0.2)
+        ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == i),
+                        color=ps.cmap(2 * i), alpha=0.2)
         if fsm_state_names:
-            legend_elements.append(Patch(facecolor=ps.cmap(2 * i), alpha=0.3, label=fsm_state_names[i]))
+            legend_elements.append(
+                Patch(facecolor=ps.cmap(2 * i), alpha=0.3,
+                      label=fsm_state_names[i]))
 
     if len(legend_elements) > 0:
         legend = ax.legend(handles=legend_elements, loc=4)
         # ax.add_artist(legend)
         ax.relim()
+    ax.relim()
+
+
+def plot_active_tracking_datas(osc_debug, time_slice, fsm_time, fsm_signal,
+                               fsm_state_names):
+    ps = plot_styler.PlotStyler()
+
+    ax = ps.fig.axes[0]
+    # ymin, ymax = ax.get_ylim()
+    ymin, ymax = 0, 1
+    tracking_data_names = osc_debug['osc_debug_tracking_datas'].keys()
+    # import pdb; pdb.set_trace()
+    n_tracking_datas = len(tracking_data_names)
+    tracking_data_legend_elements = []
+
+    tracking_data_name_dict = {'pelvis_trans_traj': 'Pelvis Position',
+                               'left_ft_traj': 'Left Foot Position',
+                               'right_ft_traj': 'Right Foot Position',
+                               'pelvis_rot_tracking_data': 'Pelvis Orientation',
+                               'left_toe_angle_traj': 'Left Toe Joint Angle',
+                               'right_toe_angle_traj': 'Right Toe Joint Angle',
+                               'swing_hip_yaw_left_traj': 'Left Hip Yaw Angle',
+                               'swing_hip_yaw_right_traj': 'Right Hip Yaw Angle',
+                               }
+
+    for i, tracking_data_name in enumerate(tracking_data_names):
+        # tracking_data_name = tracking_data_names[i]
+        tracking_data = osc_debug['osc_debug_tracking_datas'][
+            tracking_data_name]
+        ax.fill_between(fsm_time, ymax - (i + 0.25) / n_tracking_datas, ymax -
+                        (i + 0.75) / n_tracking_datas,
+                        where=tracking_data.is_active.astype(bool)[
+                              :fsm_time.shape[0]],
+                        color=ps.cmap(2 * i), alpha=0.7)
+        tracking_data_legend_elements.append(Patch(facecolor=ps.cmap(2 * i),
+                                                   alpha=0.7,
+                                                   label=
+                                                   tracking_data_name_dict[
+                                                       tracking_data_name]))
+
+    # uses default color map
+    legend_elements = []
+    for i in np.unique(fsm_signal):
+        ax.fill_between(fsm_time, ymin, ymax, where=(fsm_signal == i),
+                        color=ps.cmap(2 * i), alpha=0.2)
+        if fsm_state_names:
+            legend_elements.append(
+                Patch(facecolor=ps.cmap(2 * i), alpha=0.3,
+                      label=fsm_state_names[i]))
+    ps.tight_layout()
+
+    if len(legend_elements) > 0:
+        legend = ax.legend(handles=legend_elements, loc=4)
+        ax.add_artist(legend)
+        legend = ax.legend(handles=tracking_data_legend_elements, loc=1)
+        ax.add_artist(legend)
+        ax.relim()
+    ax.set_yticklabels([])
+    ax.set_yticks([])
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Tracking Objective')
+
+    return ps
+
+def generate_joint_limits(plant):
+    joint_position_limits_lower = np.zeros(plant.num_positions())
+    joint_position_limits_upper = np.zeros(plant.num_positions())
+    joint_velocity_limits_lower = np.zeros(plant.num_positions())
+    joint_velocity_limits_upper = np.zeros(plant.num_positions())
+    joint_actuator_limits_lower = np.zeros(plant.num_positions())
+    joint_actuator_limits_upper = np.zeros(plant.num_positions())
+    for i in range(plant.num_positions()):
+
+        joint_position_limits_lower[i] = plant.get_joint(JointIndex(i)).position_lower_limits()[0]
+        joint_position_limits_upper[i] = plant.get_joint(JointIndex(i)).position_upper_limits()[0]
+        joint_velocity_limits_lower[i] = plant.get_joint(JointIndex(i)).velocity_lower_limits()[0]
+        joint_velocity_limits_upper[i] = plant.get_joint(JointIndex(i)).velocity_upper_limits()[0]
+        joint_actuator_limits_lower[i] = -plant.get_joint_actuator(JointActuatorIndex(i)).effort_limit()
+        joint_actuator_limits_upper[i] = plant.get_joint_actuator(JointActuatorIndex(i)).effort_limit()
+    franka_joint_position_limit_range = [np.min(joint_position_limits_lower), np.max(joint_position_limits_upper)]
+    franka_joint_velocity_limit_range = [np.min(joint_velocity_limits_lower), np.max(joint_velocity_limits_upper)]
+    franka_joint_actuator_limit_range = [np.min(joint_actuator_limits_lower), np.max(joint_actuator_limits_upper)]
+    return franka_joint_position_limit_range, franka_joint_velocity_limit_range, franka_joint_actuator_limit_range
+
+# Cannot plot multiple indices of the solution because the solution is already multi-dimensional (time)
+def plot_c3_inputs(c3_output, time_slice, input_index, ps=None):
+    if ps == None:
+        ps = plot_styler.PlotStyler()
+    plotting_utils.make_plot(
+        c3_output,
+        't',
+        time_slice,
+        ['u'],
+        {'u': input_index},
+        {},
+        {'xlabel': 'Timestamp',
+         'ylabel': 'C3 Actor Inputs ',
+         'title': 'C3 Actor Solution'}, ps)
+    return ps

@@ -1,14 +1,15 @@
 #pragma once
 
+#include <chrono>
 #include <condition_variable>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "ros/ros.h"
+
 #include "drake/common/drake_copyable.h"
 #include "drake/systems/framework/leaf_system.h"
-
-#include "ros/ros.h"
 
 namespace dairlib {
 namespace systems {
@@ -65,10 +66,8 @@ class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
       : topic_(topic), node_handle_(node_handle) {
     DRAKE_DEMAND(node_handle_ != nullptr);
 
-
     subscriber_ = node_handle->subscribe(
         topic, 1, &RosSubscriberSystem<RosMessage>::HandleMessage, this);
-
 
     // Declare our two states (message_value, message_count).
     static_assert(kStateIndexMessage == 0, "");
@@ -79,14 +78,18 @@ class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
 
     // Our sole output is the message state.
     this->DeclareStateOutputPort(drake::systems::kUseDefaultName,
-        message_state_index);
+                                 message_state_index);
 
     set_name(make_name(topic_));
+    start_ = std::chrono::steady_clock::now();
+    time_ = 0;
   }
 
   ~RosSubscriberSystem() override{};
 
   const std::string& get_topic_name() const { return topic_; }
+
+  double message_time() const { return time_; }
 
   /// Returns the default name for a system that publishes @p topic.
   static std::string make_name(const std::string& topic) {
@@ -133,9 +136,10 @@ class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
   }
 
  protected:
-  void DoCalcNextUpdateTime(const drake::systems::Context<double>& context,
-      drake::systems::CompositeEventCollection<double>* events, double* time)
-      const override {
+  void DoCalcNextUpdateTime(
+      const drake::systems::Context<double>& context,
+      drake::systems::CompositeEventCollection<double>* events,
+      double* time) const override {
     // We do not support events other than our own message timing events.
     LeafSystem<double>::DoCalcNextUpdateTime(context, events, time);
     DRAKE_THROW_UNLESS(events->HasEvents() == false);
@@ -148,18 +152,18 @@ class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
       return;
     }
 
-
     *time = context.get_time();
 
     drake::systems::EventCollection<
-        drake::systems::UnrestrictedUpdateEvent<double>>&
-        uu_events = events->get_mutable_unrestricted_update_events();
+        drake::systems::UnrestrictedUpdateEvent<double>>& uu_events =
+        events->get_mutable_unrestricted_update_events();
     uu_events.AddEvent(drake::systems::UnrestrictedUpdateEvent<double>(
-            drake::systems::Event<double>::TriggerType::kTimed));
+        drake::systems::Event<double>::TriggerType::kTimed));
   }
 
   void DoCalcUnrestrictedUpdate(
-      const drake::systems::Context<double>&, const std::vector<
+      const drake::systems::Context<double>&,
+      const std::vector<
           const drake::systems::UnrestrictedUpdateEvent<double>*>&,
       drake::systems::State<double>* state) const override {
     ProcessMessageAndStoreToAbstractState(&state->get_mutable_abstract_state());
@@ -187,6 +191,10 @@ class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
     received_message_ = message;
     received_message_count_++;
     received_message_condition_variable_.notify_all();
+    time_ = (duration_cast<std::chrono::microseconds>(
+                 std::chrono::steady_clock::now() - start_))
+                .count() /
+            1.0e6;
   }
 
   // The topic on which to receive ROS messages.
@@ -197,6 +205,9 @@ class RosSubscriberSystem : public drake::systems::LeafSystem<double> {
 
   // A condition variable that's signaled every time the handler is called.
   mutable std::condition_variable received_message_condition_variable_;
+
+  mutable double time_;
+  mutable std::chrono::time_point<std::chrono::steady_clock> start_;
 
   // The most recently received ROS message.
   RosMessage received_message_{};

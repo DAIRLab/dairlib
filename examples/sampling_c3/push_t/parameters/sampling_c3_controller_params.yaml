@@ -1,0 +1,23 @@
+sampling_c3_options_file: examples/sampling_c3/push_t/parameters/sampling_c3plus_options.yaml
+reposition_params_file: examples/sampling_c3/push_t/parameters/reposition_params.yaml
+progress_params_file: examples/sampling_c3/push_t/parameters/progress_params_c3plus.yaml
+sampling_params_file: examples/sampling_c3/push_t/parameters/sampling_params.yaml
+goal_params_file: examples/sampling_c3/push_t/parameters/goal_params.yaml
+
+sim_params_file: examples/sampling_c3/push_t/parameters/sim_params.yaml
+vis_params_file: examples/sampling_c3/push_t/parameters/vis_params.yaml
+osc_params_file: examples/sampling_c3/shared_parameters/osc_params.yaml
+osqp_settings_file: examples/sampling_c3/shared_parameters/sampling_c3_qp_settings.yaml
+osc_qp_settings_file: examples/sampling_c3/shared_parameters/osc_qp_settings.yaml
+franka_driver_channels_file: common/parameters/franka_drake_lcm_driver_channels.yaml
+lcm_channels_hardware_file: examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml
+lcm_channels_simulation_file: examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml
+
+# Note:  Use vertical_link body name as representative of the pose of the entire
+# T model.  This works because vertical_link's origin is the same as the T's.
+object_models: [examples/sampling_c3/urdf/push_t_control.sdf]
+base_names: [vertical_link]
+
+include_end_effector_orientation: false
+
+control_loop_delay_ms: 0

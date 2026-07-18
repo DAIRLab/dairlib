@@ -1,13 +1,14 @@
 import numpy as np
 from math import nan
 
+
 # Class to easily convert list of lcmt_osc_tracking_data_t to numpy arrays
 class lcmt_osc_tracking_data_t:
-    def __init__(self, gap_threshold=0.01):
-        self.t_thresh=gap_threshold
+    def __init__(self, gap_threshold=0.01, name=''):
+        self.t_thresh = gap_threshold
         self.t = []
         self.y_dim = 0
-        self.name = ""
+        self.name = name
         self.is_active = []
         self.y = []
         self.y_des = []
@@ -23,9 +24,6 @@ class lcmt_osc_tracking_data_t:
         self.y_dim = len(msg.y)
         self.ydot_dim = len(msg.ydot)
 
-        # If there is a large gap between tracking datas, append 
-        # NaNs as a mask for plotting to avoid fictitious lines
-        # appearing in plots
         if self.t and (t - self.t[-1]) > self.t_thresh:
             self.t.append(nan)
             self.is_active.append(nan)

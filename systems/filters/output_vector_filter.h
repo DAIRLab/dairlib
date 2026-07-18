@@ -5,9 +5,9 @@
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
 
-/// OutputVectorFilter implements a first order vector-valued linear
+/// TimestampedLowpassFilter implements a first order vector-valued linear
 /// lowpass filter.  Since the control loops we use generally do not have
-/// a fixed sampling rate, we implement this filter using timestamps
+/// a fixed sampling rate, we implement this filter using timestamped vectors
 /// to achieve the  desired time constant / cutoff frequency
 
 using drake::systems::Context;
@@ -27,7 +27,7 @@ class OutputVectorFilter : public LeafSystem<double> {
   // For cutoff frequency w_c (in rad/s), tau = 1/w_c,
   // For cutoff frequency f in Hz, tau = 1/(2*pi*f)
   OutputVectorFilter(const drake::multibody::MultibodyPlant<double>& plant,
-                     const std::vector<double>& tau,
+                     const std::vector<double> tau,
                      std::optional<std::vector<int>> filter_idxs);
 
  private:
@@ -40,7 +40,7 @@ class OutputVectorFilter : public LeafSystem<double> {
 
   std::vector<int> filter_idxs_;
   const int n_y_filt_;
-  const std::vector<double>& tau_;
+  const std::vector<double> tau_;  // time constant
   int prev_val_idx_;
   int prev_time_idx_;
 };

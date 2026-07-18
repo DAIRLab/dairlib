@@ -1,7 +1,5 @@
 # -*- python -*-
 
-load("@drake//tools/lint:lint.bzl", "add_lint_tests")
-
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
@@ -94,13 +92,13 @@ cc_test(
         "//common",
         "//examples/Cassie:cassie_urdf",
         "@drake//:drake_shared_library",
-        "@gtest//:main",
+        "@googletest//:gtest_main",
     ],
 )
 
 cc_library(
     name = "ball_urdf",
-    data = glob(["multibody/ball.urdf"]),
+    data = glob(["ball.urdf"]),
 )
 
 cc_library(
@@ -118,6 +116,19 @@ cc_binary(
     data = ["//examples/trifinger:trifinger_urdf"],
     deps = [
         ":geom_geom_collider",
+        ":utils",
+        "//common",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "hydroelastic_geom_collider",
+    srcs = ["hydroelastic_geom_collider.cc"],
+    hdrs = [
+        "hydroelastic_geom_collider.h",
+    ],
+    deps = [
         ":utils",
         "//common",
         "@drake//:drake_shared_library",

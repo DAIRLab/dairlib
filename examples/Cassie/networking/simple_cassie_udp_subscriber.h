@@ -1,12 +1,14 @@
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+
 #include <string>
+
+#include "examples/Cassie/datatypes/cassie_out_t.h"
 
 #include "drake/common/drake_copyable.h"
 #include "drake/common/text_logging.h"
-#include "examples/Cassie/datatypes/cassie_out_t.h"
 
 namespace dairlib {
 
@@ -32,7 +34,7 @@ class SimpleCassieUdpSubscriber final {
 
   /**
    * Receives and stores the next message. This method will block until a
-   * message is received. 
+   * message is received.
    */
   void Poll();
 
@@ -45,10 +47,10 @@ class SimpleCassieUdpSubscriber final {
   /** Returns the total number of received messages. */
   int64_t count() const { return count_; }
 
-  /** 
+  /**
    * Returns the time that the last message was received, relative to when
    * this class was constructed
-  */
+   */
   double message_time() const { return time_; }
 
  private:

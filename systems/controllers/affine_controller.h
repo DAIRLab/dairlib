@@ -1,7 +1,8 @@
 #pragma once
 
-#include "drake/systems/framework/leaf_system.h"
 #include "systems/framework/output_vector.h"
+
+#include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
 namespace systems {

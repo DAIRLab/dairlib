@@ -68,6 +68,7 @@ void AddFlatTerrain(drake::multibody::MultibodyPlant<T>* plant,
                     drake::geometry::SceneGraph<T>* scene_graph,
                     double mu_static, double mu_kinetic,
                     Eigen::Vector3d normal_W = Eigen::Vector3d(0, 0, 1),
+                    double stiffness = 0, double dissipation_rate = 0,
                     bool show_ground = true);
 
 /// Get the ordered names from a NameTo___Map
@@ -89,7 +90,6 @@ std::map<std::string, int> MakeNameToPositionsMap(
 template <typename T>
 std::map<std::string, int> MakeNameToVelocitiesMap(
     const drake::multibody::MultibodyPlant<T>& plant);
-
 
 /// Given a MultiBodyPlant, builds a map from velocity name to velocity index
 template <typename T>
@@ -157,17 +157,14 @@ bool HasQuaternion(const drake::multibody::MultibodyPlant<T>& plant);
 template <typename T>
 Eigen::Vector3d ReExpressWorldVector3InBodyYawFrame(
     const drake::multibody::MultibodyPlant<T>& plant,
-    const drake::systems::Context<T>& context,
-    const std::string& body_name,
+    const drake::systems::Context<T>& context, const std::string& body_name,
     const Eigen::Vector3d& vec);
 
 template <typename T>
 Eigen::Vector2d ReExpressWorldVector2InBodyYawFrame(
     const drake::multibody::MultibodyPlant<T>& plant,
-    const drake::systems::Context<T>& context,
-    const std::string& body_name,
+    const drake::systems::Context<T>& context, const std::string& body_name,
     const Eigen::Vector2d& vec);
-
 
 /// Given a map of join position offsets labeled by name, i.e.
 /// {'toe_left': 0.02, 'knee_right': .0115}, constructs the vector q_offset,
@@ -180,7 +177,6 @@ Eigen::Vector2d ReExpressWorldVector2InBodyYawFrame(
 Eigen::VectorXd MakeJointPositionOffsetFromMap(
     const drake::multibody::MultibodyPlant<double>& plant,
     const std::map<std::string, double>& joint_offset_map);
-
 
 /// Computes the matrix for mapping global roll-pitch-yaw angular velocity to
 /// quaternion derivatives

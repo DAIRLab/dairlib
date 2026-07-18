@@ -1,0 +1,134 @@
+<robot name="foot_crank">
+    <link name="tarsus_left">
+        <inertial>
+            <origin
+                    xyz=".11046 -.03058 -.00131"
+                    rpy="0 0 0" />
+            <mass value="0.782" />
+            <inertia
+                    ixx=".001125"
+                    ixy="-.002878"
+                    ixz="-.00006329"
+                    iyy=".023138"
+                    iyz=".00003615"
+                    izz=".023947" />
+        </inertial>
+        <visual>
+            <origin
+                    xyz="0 0 0"
+                    rpy="0 0 0" />
+            <geometry>
+                <mesh filename="meshes/tarsus.obj" />
+            </geometry>
+            <material name="">
+                <color rgba="0.024 0.24 0.5 1.0" />
+            </material>
+        </visual>
+    </link>
+    <link name="toe_left">
+        <inertial>
+            <origin
+                    xyz="0.00474 0.02748 -0.00014"
+                    rpy="0 0 0" />
+            <mass value="0.1498" />
+            <inertia
+                    ixx=".000287"
+                    ixy="-.00009863"
+                    ixz="-.000001456"
+                    iyy=".0001713"
+                    iyz=".0000001716"
+                    izz=".0004491" />
+        </inertial>
+        <visual>
+            <origin
+                    xyz="0 0 0"
+                    rpy="0 0 0" />
+            <geometry>
+                <mesh filename="meshes/agility/left_foot.obj" />
+            </geometry>
+            <material name="">
+                <color rgba="0.4 0.4 0.4 1" />
+            </material>
+        </visual>
+    </link>
+    <link name="foot_crank_left">
+        <inertial>
+            <origin
+                    xyz="0.00493 2e-05 -0.00215"
+                    rpy="0 0 0" />
+            <mass value="0.1261" />
+            <inertia
+                    ixx="2.6941e-05"
+                    ixy="-2.1e-09"
+                    ixz="-3.9623e-06"
+                    iyy="4.9621e-05"
+                    iyz="-1.09e-08"
+                    izz="6.3362e-05" />
+        </inertial>
+        <visual>
+            <origin
+                    xyz="0 0 0"
+                    rpy="0 0 0" />
+            <geometry>
+                <mesh filename="meshes/agility/foot_crank.obj" />
+            </geometry>
+            <material name="">
+                <color rgba="0.4 0.4 0.4 1" />
+            </material>
+        </visual>
+    </link>
+    <link name="plantar_rod_left">
+        <inertial>
+            <origin
+                    xyz="0.17792 0 0"
+                    rpy="0 0 0" />
+            <mass value="0.1186" />
+            <inertia
+                    ixx=".000287"
+                    ixy="-2.34e-08"
+                    ixz="-8.1e-09"
+                    iyy="0.001774"
+                    iyz="0"
+                    izz="0.001775" />
+        </inertial>
+        <visual>
+            <origin
+                    xyz="0 0 0"
+                    rpy="0 0 0" />
+            <geometry>
+                <mesh filename="meshes/agility/plantar_rod.obj" />
+            </geometry>
+            <material name="">
+                <color rgba="0.4 0.4 0.4 1" />
+            </material>
+        </visual>
+    </link>
+
+    <joint name="toe_left" type="revolute">
+        <origin xyz="0.408 -0.040 0" rpy="0 0 0" />
+        <parent link="tarsus_left" />
+        <child link="toe_left" />
+        <axis xyz="0 0 1" />
+        <limit lower="-2.8" upper="0" effort="300"/>
+        <dynamics damping="1" />
+    </joint>
+
+    <joint name="foot_crank_left" type="revolute">
+        <origin xyz=".058 -0.034 0.02275"/>
+        <parent link="tarsus_left" />
+        <child link="foot_crank_left" />
+        <axis xyz="0 0 1" />
+        <limit lower="-2.8" upper="0" effort="300"/>
+        <dynamics damping="1" />
+    </joint>
+
+    <joint name="plantar_rod_left" type="revolute">
+        <origin xyz="0.055 0 -0.00791"/>
+        <parent link="foot_crank_left" />
+        <child link="plantar_rod_left" />
+        <axis xyz="0 0 1" />
+        <limit lower="0" upper="2.8" effort="300"/>
+        <dynamics damping="1" />
+    </joint>
+
+</robot>

@@ -12,14 +12,14 @@ py_binary(
     srcs = ["signal-scope.py"],
     data = ["@signal_scope"],
     main = "signal-scope.py",
+    tags = ["manual"],
     deps = ["//lcmtypes:lcmtypes_robot_py"],
-    tags=["manual"]
 )
 
 load("@drake//tools/skylark:drake_runfiles_binary.bzl", "drake_runfiles_binary")
 
 drake_runfiles_binary(
     name = "signal-scope",
+    tags = ["manual"],
     target = ":signal-scope-py",
-    tags = ["manual"]
 )

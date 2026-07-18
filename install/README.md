@@ -7,12 +7,12 @@ To integrate with ROS (tested on ROS Noetic with 20.04), the following steps are
 
 Drake no longer supports Ubuntu 20.04. It is possible to compile against an older version of Drake, but there is not guarantee that all branches of dairlib will be compatible.
 There is ongoing work on some experimental branches to support ROS2.
- 
+
 1. Install ROS http://wiki.ros.org/ROS/Installation
 2. Do not forget to setup your environment. For instance, add these lines to `~/.bashrc`
 ```
 export ROS_MASTER_URI=http://localhost:11311
-source /opt/ros/noetic/setup.bash 
+source /opt/ros/noetic/setup.bash
 ```
 3. Install additional dependencies
 ```

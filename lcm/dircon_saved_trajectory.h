@@ -87,36 +87,36 @@ class DirconTrajectory : public LcmTrajectory {
   Eigen::MatrixXd GetStateSamples(int mode) const {
     DRAKE_DEMAND(mode >= 0);
     DRAKE_DEMAND(mode < num_modes_);
-    return state_map_ * x_[mode]->datapoints;
+    return state_map_ * x_.at(mode)->datapoints;
   }
   Eigen::MatrixXd GetStateDerivativeSamples(int mode) const {
     DRAKE_DEMAND(mode >= 0);
     DRAKE_DEMAND(mode < num_modes_);
-    return state_map_ * xdot_[mode]->datapoints;
+    return state_map_ * xdot_.at(mode)->datapoints;
   }
   Eigen::MatrixXd GetStateBreaks(int mode) const {
     DRAKE_DEMAND(mode >= 0);
     DRAKE_DEMAND(mode < num_modes_);
-    return x_[mode]->time_vector;
+    return x_.at(mode)->time_vector;
   }
   Eigen::MatrixXd GetInputSamples() const {
     return actuator_map_ * u_->datapoints;
   }
   Eigen::MatrixXd GetBreaks() const { return u_->time_vector; }
   Eigen::MatrixXd GetForceSamples(int mode) const {
-    return lambda_[mode]->datapoints;
+    return lambda_.at(mode)->datapoints;
   }
   Eigen::MatrixXd GetForceBreaks(int mode) const {
-    return lambda_[mode]->time_vector;
+    return lambda_.at(mode)->time_vector;
   }
   Eigen::MatrixXd GetImpulseSamples(int mode) const {
-    return impulse_[mode - 1]->datapoints;
+    return impulse_.at(mode - 1)->datapoints;
   }
   Eigen::MatrixXd GetCollocationForceSamples(int mode) const {
-    return lambda_c_[mode]->datapoints;
+    return lambda_c_.at(mode)->datapoints;
   }
   Eigen::MatrixXd GetCollocationForceBreaks(int mode) const {
-    return lambda_c_[mode]->time_vector;
+    return lambda_c_.at(mode)->time_vector;
   }
   Eigen::VectorXd GetDecisionVariables() const {
     return decision_vars_->datapoints;

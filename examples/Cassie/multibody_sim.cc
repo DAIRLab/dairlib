@@ -1,8 +1,8 @@
+#include <iostream>
 #include <memory>
 
 #include <drake/systems/primitives/multiplexer.h>
 #include <gflags/gflags.h>
-#include <iostream>
 
 #include "dairlib/lcmt_cassie_out.hpp"
 #include "dairlib/lcmt_robot_input.hpp"
@@ -71,7 +71,7 @@ DEFINE_double(start_time, 0.0,
 DEFINE_string(contact_solver, "SAP",
               "Contact solver to use. Either TAMSI or SAP.");
 
-    int do_main(int argc, char* argv[]) {
+int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Plant/System initialization
@@ -93,11 +93,11 @@ DEFINE_string(contact_solver, "SAP",
   }
 
   if (FLAGS_contact_solver == "SAP") {
-    plant.set_discrete_contact_solver(
-        drake::multibody::DiscreteContactSolver::kSap);
+    plant.set_discrete_contact_approximation(
+        drake::multibody::DiscreteContactApproximation::kSap);
   } else if (FLAGS_contact_solver == "TAMSI") {
-    plant.set_discrete_contact_solver(
-        drake::multibody::DiscreteContactSolver::kTamsi);
+    plant.set_discrete_contact_approximation(
+        drake::multibody::DiscreteContactApproximation::kTamsi);
   } else {
     std::cerr << "Unknown contact solver setting." << std::endl;
   }
@@ -165,7 +165,7 @@ DEFINE_string(contact_solver, "SAP",
                   state_sender->get_input_port_effort());
   builder.Connect(*state_sender, *state_pub);
   builder.Connect(
-      plant.get_geometry_poses_output_port(),
+      plant.get_geometry_pose_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
   builder.Connect(scene_graph.get_query_output_port(),
                   plant.get_geometry_query_input_port());
@@ -180,7 +180,7 @@ DEFINE_string(contact_solver, "SAP",
 
   auto diagram = builder.Build();
   diagram->set_name(("multibody_sim"));
-  //  DrawAndSaveDiagramGraph(*diagram);
+  DrawAndSaveDiagramGraph(*diagram);
 
   // Create a context for this system:
   std::unique_ptr<Context<double>> diagram_context =
@@ -197,9 +197,9 @@ DEFINE_string(contact_solver, "SAP",
   double toe_spread = FLAGS_toe_spread;
   // Create a plant for CassieFixedPointSolver.
   // Note that we cannot use the plant from the above diagram, because after the
-  // diagram is built, plant.get_actuation_input_port().HasValue(*context)
+  // diagram is built, plant.get_input_port_actuation().HasValue(*context)
   // throws a segfault error
-  drake::multibody::MultibodyPlant<double> plant_for_solver(0.0);
+  drake::multibody::MultibodyPlant<double> plant_for_solver(FLAGS_dt);
   AddCassieMultibody(&plant_for_solver, nullptr,
                      FLAGS_floating_base /*floating base*/, urdf,
                      FLAGS_spring_model, false);

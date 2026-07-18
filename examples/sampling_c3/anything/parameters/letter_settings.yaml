@@ -1,0 +1,77 @@
+# Some hard-coded initial goals.  For each shape name, the list contains two
+# elements:
+#  1. (x, y) offsets.  THese are represented as offsets to be added to the
+#     generated (x, y, z) pose.
+#  2. (w, x, y, z) quaternion.
+P_shape_texture: [
+  [-0.01, 0],
+  [1, 0, 0, 0]
+]
+U_shape_texture: [
+  [0.01, 0],
+  [0.71, 0, 0, -0.71]
+]
+S_shape_texture: [
+  [0, 0],
+  [1, 0, 0, 0.02]
+]
+H_shape_texture: [
+  [0, 0],
+  [0.71, 0, 0, -0.73]
+]
+I_shape_texture: [
+  [0, 0],
+  [1, 0, 0, 0.01]
+]
+C_shape_texture: [
+  [0, 0],
+  [1, 0, 0, -0.01]
+]
+R_shape_texture: [
+  [0, 0],
+  [1, 0, 0, 0.05]
+]
+A_shape_video: [
+  [0.01, 0],
+  [0.71, 0, 0, -0.73]
+]
+D_shape_texture: [
+  [0, 0],
+  [1, 0, 0, -0.01]
+]
+F_shape_texture: [
+  [-0.01, 0],
+  [1, 0, 0, 0.04]
+]
+3_shape_video: [
+  [0, 0],
+  [1, 0, 0, 0]
+]
+O_shape_texture: [
+  [0, 0],
+  [1, 0, 0, 0]
+]
+Y_shape_video: [
+  [-0.01, 0],
+  [0.71, 0, 0, 0.68]
+]
+plus_video: [
+  [0, 0],
+  [0.71, 0, 0, 0.68]
+]
+E_shape_video: [
+  [0, 0],
+  [1, 0, 0, -0.04]
+]
+G_shape_video: [
+  [0.01, 0],
+  [0.71, 0, 0, 0.71]
+]
+B_shape_video: [
+  [0.01, 0],
+  [1, 0, 0, 0]
+]
+T_small_video: [
+  [-0.02, 0],
+  [1, 0, 0, 0.01]
+]

@@ -35,6 +35,7 @@ using drake::geometry::SceneGraph;
 using drake::multibody::Frame;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
+using drake::systems::Diagram;
 using drake::systems::DiagramBuilder;
 using drake::systems::TriggerType;
 using drake::systems::TriggerTypeSet;
@@ -146,15 +147,14 @@ int DoMain(int argc, char* argv[]) {
       plant, foot_contact_disp, plant.GetBodyByName("right_foot").body_frame(),
       Matrix3d::Identity(), Vector3d::Zero(), {0, 2});
 
-  osc->AddContactPoint(
-      "left_foot",
-      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&left_foot_evaluator),
-      {0});
-  osc->AddContactPoint(
-      "right_foot",
-      std::unique_ptr<multibody::WorldPointEvaluator<double>>(&right_foot_evaluator),
-      {1});
-
+  osc->AddContactPoint("left_foot",
+                       std::unique_ptr<multibody::WorldPointEvaluator<double>>(
+                           &left_foot_evaluator),
+                       {0});
+  osc->AddContactPoint("right_foot",
+                       std::unique_ptr<multibody::WorldPointEvaluator<double>>(
+                           &right_foot_evaluator),
+                       {1});
 
   // Create maps for joints
   map<string, int> pos_map_wo_spr = multibody::MakeNameToPositionsMap(plant);
@@ -185,8 +185,7 @@ int DoMain(int argc, char* argv[]) {
     builder.Connect(joint_trajs[joint_idx]->get_output_port(),
                     osc->get_input_port_tracking_data(joint_name + "_traj"));
   }
-  osc->SetOsqpSolverOptionsFromYaml(
-      FLAGS_osqp_settings);
+  osc->SetOsqpSolverOptionsFromYaml(FLAGS_osqp_settings);
   // Build OSC problem
   osc->Build();
   std::cout << "Built OSC" << std::endl;
@@ -208,16 +207,18 @@ int DoMain(int argc, char* argv[]) {
                   command_sender->get_input_port(0));
   builder.Connect(command_sender->get_output_port(0),
                   command_pub->get_input_port());
-  builder.Connect(osc->get_output_port_osc_debug(), osc_debug_pub->get_input_port());
+  builder.Connect(osc->get_output_port_osc_debug(),
+                  osc_debug_pub->get_input_port());
 
   // Run lcm-driven simulation
   // Create the diagram
   auto owned_diagram = builder.Build();
-  owned_diagram->set_name(("id_walking_controller"));
+  std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
+  shared_diagram->set_name(("id_walking_controller"));
 
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &lcm, std::move(owned_diagram), state_receiver, FLAGS_channel_x, true);
+      &lcm, shared_diagram, state_receiver, FLAGS_channel_x, true);
   loop.Simulate();
 
   return 0;

@@ -11,8 +11,8 @@
 #include "drake/common/drake_copyable.h"
 #include "drake/common/symbolic/expression.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
-#include "drake/solvers/constraint.h"
 #include "drake/planning/trajectory_optimization/multiple_shooting.h"
+#include "drake/solvers/constraint.h"
 
 namespace dairlib {
 namespace systems {
@@ -188,7 +188,7 @@ class Dircon
 
   using drake::planning::trajectory_optimization::MultipleShooting::N;
   using drake::planning::trajectory_optimization::MultipleShooting::
-  SubstitutePlaceholderVariables;
+      SubstitutePlaceholderVariables;
 
   int num_modes() const;
 
@@ -202,6 +202,8 @@ class Dircon
   const DirconMode<T>& get_mode(int mode) const {
     return mode_sequence_.mode(mode);
   }
+
+  const int get_mode_start(int index) { return mode_start_[index]; }
 
   const drake::systems::Context<T>& get_context(int mode, int knotpoint_index) {
     return *contexts_.at(mode).at(knotpoint_index);

@@ -7,7 +7,10 @@
 #include "systems/primitives/subvector_pass_through.h"
 #include "systems/robot_lcm_systems.h"
 
+#include "drake/common/text_logging.h"
 #include "drake/geometry/drake_visualizer.h"
+#include "drake/geometry/meshcat_visualizer.h"
+#include "drake/geometry/meshcat_visualizer_params.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -26,13 +29,13 @@ DEFINE_bool(
 
 using dairlib::systems::RobotOutputReceiver;
 using dairlib::systems::SubvectorPassThrough;
+using drake::geometry::DrakeVisualizer;
 using drake::geometry::SceneGraph;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
 using drake::systems::Simulator;
 using drake::systems::lcm::LcmSubscriberSystem;
 using drake::systems::rendering::MultibodyPositionToGeometryPose;
-using drake::geometry::DrakeVisualizer;
 
 using drake::geometry::Sphere;
 using drake::math::RigidTransformd;
@@ -118,6 +121,21 @@ int do_main(int argc, char* argv[]) {
         ball_to_pose->get_output_port(),
         scene_graph->get_source_pose_port(ball_plant->get_source_id().value()));
   }
+  drake::geometry::MeshcatVisualizerParams params;
+  params.publish_period = 1.0 / 60.0;
+  auto meshcat = std::make_shared<drake::geometry::Meshcat>();
+  auto visualizer = &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
+      &builder, *scene_graph, meshcat, std::move(params));
+
+  auto ortho_camera = drake::geometry::Meshcat::OrthographicCamera();
+  ortho_camera.top = 2;
+  ortho_camera.bottom = -0.1;
+  ortho_camera.left = -1;
+  ortho_camera.right = 4;
+  ortho_camera.near = 0;
+  ortho_camera.far = 500;
+  ortho_camera.zoom = 1;
+  meshcat->SetCamera(ortho_camera);
 
   DrakeVisualizer<double>::AddToBuilder(&builder, *scene_graph);
 

@@ -7,6 +7,7 @@
 
 #include "dairlib/lcmt_controller_switch.hpp"
 
+#include "drake/common/text_logging.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
@@ -67,7 +68,7 @@ class CassieLcmDrivenLoop {
   ///     @param input_channel The name of the input channel
   ///     @param is_forced_publish A flag which enables publishing via diagram.
   CassieLcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
-                      std::unique_ptr<drake::systems::Diagram<double>> diagram,
+                      std::shared_ptr<drake::systems::Diagram<double>> diagram,
                       const drake::systems::LeafSystem<double>* lcm_parser,
                       const std::string& input_channel, bool is_forced_publish)
       : CassieLcmDrivenLoop(drake_lcm, std::move(diagram), lcm_parser,
@@ -84,7 +85,7 @@ class CassieLcmDrivenLoop {
   ///     @param switch_channel The name of the switch channel
   ///     @param is_forced_publish A flag which enables publishing via diagram.
   CassieLcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
-                      std::unique_ptr<drake::systems::Diagram<double>> diagram,
+                      std::shared_ptr<drake::systems::Diagram<double>> diagram,
                       const drake::systems::LeafSystem<double>* lcm_parser,
                       std::vector<std::string> input_channels,
                       const std::string& active_channel,
@@ -98,8 +99,7 @@ class CassieLcmDrivenLoop {
       diagram_name_ = diagram->get_name();
     }
     diagram_ptr_ = diagram.get();
-    simulator_ =
-        std::make_unique<drake::systems::Simulator<double>>(std::move(diagram));
+    simulator_ = std::make_unique<drake::systems::Simulator<double>>(*diagram);
 
     // Create subscriber for the switch (in the case of multi-input)
     DRAKE_DEMAND(!input_channels.empty());
@@ -145,7 +145,7 @@ class CassieLcmDrivenLoop {
   ///     @param is_forced_publish A flag which enables publishing via diagram.
   /// The use case is that the user only need the time from lcm message.
   CassieLcmDrivenLoop(drake::lcm::DrakeLcm* drake_lcm,
-                      std::unique_ptr<drake::systems::Diagram<double>> diagram,
+                      std::shared_ptr<drake::systems::Diagram<double>> diagram,
                       const std::string& input_channel, bool is_forced_publish)
       : CassieLcmDrivenLoop(drake_lcm, std::move(diagram), nullptr,
                             std::vector<std::string>(1, input_channel),
@@ -314,8 +314,6 @@ class CassieLcmDrivenLoop {
         // the LCM message used here successfully arrives at the input port of
         // the other LcmSubscriberSystem
         simulator_->AdvanceTo(time);
-        diagram_ptr_->CalcForcedUnrestrictedUpdate(
-            diagram_context, &diagram_context.get_mutable_state());
         diagram_ptr_->CalcForcedDiscreteVariableUpdate(
             diagram_context, &diagram_context.get_mutable_discrete_state());
         if (is_forced_publish_) {

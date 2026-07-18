@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "systems/framework/output_vector.h"
+
 #include "drake/common/trajectories/piecewise_polynomial.h"
 
 using Eigen::MatrixXd;
@@ -10,8 +11,8 @@ using Eigen::Vector3d;
 using Eigen::Vector4d;
 using Eigen::VectorXd;
 
-using drake::trajectories::PiecewisePolynomial;
 using drake::Polynomial;
+using drake::trajectories::PiecewisePolynomial;
 
 int main() {
   // Create a piecewise polynomial
@@ -48,7 +49,7 @@ int main() {
   Y2[1](0, 0) = 2;
   PiecewisePolynomial<double> spline2 =
       PiecewisePolynomial<double>::CubicShapePreserving(T2_breakpoint, Y2,
-          true);
+                                                        true);
   for (double d = 0; d <= 1; d += 0.1) std::cout << spline2.value(d) << " ";
   std::cout << std::endl;
 

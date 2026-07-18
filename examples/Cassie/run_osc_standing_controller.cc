@@ -8,8 +8,8 @@
 #include "examples/Cassie/osc/standing_com_traj.h"
 #include "examples/Cassie/osc/standing_pelvis_orientation_traj.h"
 #include "examples/Cassie/systems/cassie_out_to_radio.h"
-#include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/kinematic/fixed_joint_evaluator.h"
+#include "multibody/kinematic/kinematic_evaluator_set.h"
 #include "multibody/multibody_utils.h"
 #include "systems/controllers/osc/com_tracking_data.h"
 #include "systems/controllers/osc/joint_space_tracking_data.h"
@@ -163,22 +163,18 @@ int DoMain(int argc, char* argv[]) {
 
   auto pos_idx_map = multibody::MakeNameToPositionsMap(plant_w_springs);
   auto vel_idx_map = multibody::MakeNameToVelocitiesMap(plant_w_springs);
-  auto left_fixed_knee_spring =
-      multibody::FixedJointEvaluator(plant_w_springs, pos_idx_map.at
-      ("knee_joint_left"),
-                          vel_idx_map.at("knee_joint_leftdot"), 0);
-  auto right_fixed_knee_spring =
-      multibody::FixedJointEvaluator(plant_w_springs, pos_idx_map.at
-      ("knee_joint_right"),
-                          vel_idx_map.at("knee_joint_rightdot"), 0);
-  auto left_fixed_ankle_spring =
-      multibody::FixedJointEvaluator(plant_w_springs, pos_idx_map.at
-      ("ankle_spring_joint_left"),
-                          vel_idx_map.at("ankle_spring_joint_leftdot"), 0);
-  auto right_fixed_ankle_spring =
-      multibody::FixedJointEvaluator(plant_w_springs, pos_idx_map.at
-      ("ankle_spring_joint_right"),
-                          vel_idx_map.at("ankle_spring_joint_rightdot"), 0);
+  auto left_fixed_knee_spring = multibody::FixedJointEvaluator(
+      plant_w_springs, pos_idx_map.at("knee_joint_left"),
+      vel_idx_map.at("knee_joint_leftdot"), 0);
+  auto right_fixed_knee_spring = multibody::FixedJointEvaluator(
+      plant_w_springs, pos_idx_map.at("knee_joint_right"),
+      vel_idx_map.at("knee_joint_rightdot"), 0);
+  auto left_fixed_ankle_spring = multibody::FixedJointEvaluator(
+      plant_w_springs, pos_idx_map.at("ankle_spring_joint_left"),
+      vel_idx_map.at("ankle_spring_joint_leftdot"), 0);
+  auto right_fixed_ankle_spring = multibody::FixedJointEvaluator(
+      plant_w_springs, pos_idx_map.at("ankle_spring_joint_right"),
+      vel_idx_map.at("ankle_spring_joint_rightdot"), 0);
   evaluators.add_evaluator(&left_fixed_knee_spring);
   evaluators.add_evaluator(&right_fixed_knee_spring);
   evaluators.add_evaluator(&left_fixed_ankle_spring);
@@ -210,20 +206,16 @@ int DoMain(int argc, char* argv[]) {
 
   osc->AddContactPoint(
       "left_toe",
-      unique_ptr<multibody::WorldPointEvaluator<double>>(&left_toe_evaluator)
-  );
+      unique_ptr<multibody::WorldPointEvaluator<double>>(&left_toe_evaluator));
   osc->AddContactPoint(
       "left_heel",
-      unique_ptr<multibody::WorldPointEvaluator<double>>(&left_heel_evaluator)
-  );
+      unique_ptr<multibody::WorldPointEvaluator<double>>(&left_heel_evaluator));
   osc->AddContactPoint(
       "right_toe",
-      unique_ptr<multibody::WorldPointEvaluator<double>>(&right_toe_evaluator)
-  );
-  osc->AddContactPoint(
-      "right_heel",
-      unique_ptr<multibody::WorldPointEvaluator<double>>(&right_heel_evaluator)
-  );
+      unique_ptr<multibody::WorldPointEvaluator<double>>(&right_toe_evaluator));
+  osc->AddContactPoint("right_heel",
+                       unique_ptr<multibody::WorldPointEvaluator<double>>(
+                           &right_heel_evaluator));
   // Cost
   int n_v = plant_w_springs.num_velocities();
   MatrixXd Q_accel = gains.w_accel * MatrixXd::Identity(n_v, n_v);

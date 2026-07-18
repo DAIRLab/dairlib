@@ -66,6 +66,7 @@ PYBIND11_MODULE(lcm_trajectory, m) {
       .def("GetBreaks", &DirconTrajectory::GetBreaks)
       .def("GetForceSamples", &DirconTrajectory::GetForceSamples)
       .def("GetForceBreaks", &DirconTrajectory::GetForceBreaks)
+      .def("GetImpulseSamples", &DirconTrajectory::GetImpulseSamples)
       .def("GetCollocationForceSamples",
            &DirconTrajectory::GetCollocationForceSamples)
       .def("GetCollocationForceBreaks",
@@ -81,7 +82,10 @@ PYBIND11_MODULE(lcm_trajectory, m) {
       .def("ReconstructLambdaCTrajectory",
            &DirconTrajectory::ReconstructLambdaCTrajectory)
       .def("ReconstructGammaCTrajectory",
-           &DirconTrajectory::ReconstructGammaCTrajectory);
+           &DirconTrajectory::ReconstructGammaCTrajectory)
+      .def("ReconstructStateTrajectoryWithSprings",
+           &DirconTrajectory::ReconstructStateTrajectoryWithSprings,
+           py::arg("wo_spr_to_spr_map"));
 }
 
 }  // namespace pydairlib

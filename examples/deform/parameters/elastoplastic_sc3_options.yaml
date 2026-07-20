@@ -53,7 +53,7 @@ qp_projection_scaling: 1
 # For reference, the box has bounds x = [0.2, 0.6], y = [0.05, 0.45].
 workspace_limits: [[1, 0, 0, 0.15, 0.65],
                    [0, 1, 0, 0.0, 0.5],
-                   [0, 0, 1, 0.119, 0.3]]
+                   [0, 0, 1, 0.1, 0.32]]  # probably too low for hardware
 robot_radius_limits: [0.25, 0.75]
 workspace_margins: 0.02
 u_horizontal_limits: [-50, 50]
@@ -77,7 +77,7 @@ resolve_as_planar_contacts_list: [0, 0, 0, 0]
 
 # Index into this list to choose number of contacts for C3 solve and cost.
 num_contacts_index: 0
-num_contacts_index_for_cost: 1
+num_contacts_index_for_cost: 0
 
 planning_dt_pose: 0.05
 

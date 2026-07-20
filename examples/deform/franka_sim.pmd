@@ -37,3 +37,18 @@ group "debug" {
         host = "localhost";
     }
 }
+
+
+script "start_experiment_no_logs"{
+    stop cmd "start_logging";
+    restart cmd "franka_osc";
+    restart cmd "sampling_c3";
+    wait ms 50;
+    restart cmd "simulator";
+}
+
+script "end_experiment"{
+    stop cmd "simulator";
+    stop cmd "sampling_c3";
+    stop cmd "franka_osc";
+}

@@ -22,9 +22,9 @@ lookahead_step_size: 0.15   # meters
 # Initial goal (and only goal for fixed goal mode).
 # The initial configuration of the dough is roughly:
 # Based on the simulation initial conditions:
-#   x:  0.35 to 0.41
-#   y:  0.22 to 0.28
-#   z:  0.12 to 0.18
+#   x:  0.35 to 0.41     --> center = 0.38, total dimension = 0.06
+#   y:  0.22 to 0.28     --> center = 0.25, total dimension = 0.06
+#   z:  0.12 to 0.18     --> center = 0.15, total dimension = 0.06
 #  [[0.41, 0.28, 0.18],  +++
 #   [0.35, 0.28, 0.18],  -++
 #   [0.35, 0.22, 0.18],  --+
@@ -46,14 +46,30 @@ lookahead_step_size: 0.15   # meters
 #   [0.351, 0.279, 0.106],  -+-
 #   [0.350, 0.220, 0.104],  ---
 #   [0.409, 0.220, 0.102]]  +--
-fixed_node_targets_vector: [[0.46, 0.33, 0.145],
-                            [0.41, 0.33, 0.145],
-                            [0.41, 0.28, 0.145],
-                            [0.46, 0.28, 0.145],
-                            [0.46, 0.33, 0.106],
-                            [0.41, 0.33, 0.106],
+fixed_node_targets_vector: [[0.41, 0.28, 0.126],  # squishing (shorter z)
+                            [0.35, 0.28, 0.126],
+                            [0.35, 0.22, 0.126],
+                            [0.41, 0.22, 0.126],
                             [0.41, 0.28, 0.106],
-                            [0.46, 0.28, 0.106]]
+                            [0.35, 0.28, 0.106],
+                            [0.35, 0.22, 0.106],
+                            [0.41, 0.22, 0.106]]
+# fixed_node_targets_vector: [[0.43, 0.30, 0.126],  # flattening (shorter z, wider x and y)
+#                             [0.33, 0.30, 0.126],
+#                             [0.33, 0.20, 0.126],
+#                             [0.43, 0.20, 0.126],
+#                             [0.43, 0.30, 0.106],
+#                             [0.33, 0.30, 0.106],
+#                             [0.33, 0.20, 0.106],
+#                             [0.43, 0.20, 0.106]]
+# fixed_node_targets_vector: [[0.46, 0.33, 0.145],  # translation
+#                             [0.41, 0.33, 0.145],
+#                             [0.41, 0.28, 0.145],
+#                             [0.46, 0.28, 0.145],
+#                             [0.46, 0.33, 0.106],
+#                             [0.41, 0.33, 0.106],
+#                             [0.41, 0.28, 0.106],
+#                             [0.46, 0.28, 0.106]]
 ee_target_z_offset_above_object: 0.06   # defines EE goal w.r.t. highest node
 
 # Random-specific parameters.

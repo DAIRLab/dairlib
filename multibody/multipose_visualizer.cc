@@ -92,7 +92,7 @@ MultiposeVisualizer::MultiposeVisualizer(
           } else {
             phong.set(phong.r(), phong.g(), phong.b(), new_alpha);
             if (!set_color) {
-              color_ = drake::geometry::Rgba(rgb(0), rgb(1), rgb(2));
+              color_ = drake::geometry::Rgba(phong.r(), phong.g(), phong.b());
               set_color = true;
             }
           }

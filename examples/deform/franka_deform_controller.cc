@@ -373,24 +373,6 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.is_c3_mode_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
-  // Dynamically feasible plan publishers.
-  auto dynamically_feasible_curr_plan_actor_publisher = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.dynamically_feasible_curr_actor_plan_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
-  auto dynamically_feasible_curr_plan_object_publisher = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.dynamically_feasible_curr_plan_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
-  auto dynamically_feasible_best_plan_actor_publisher = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.dynamically_feasible_best_actor_plan_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
-  auto dynamically_feasible_best_plan_object_publisher = builder.AddSystem(
-      LcmPublisherSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
-          lcm_channel_params.dynamically_feasible_best_plan_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
-
   C3OutputGenerator::AddLcmPublisherToBuilder(
       builder, controller->get_output_port_c3_solution_curr_plan(),
       controller->get_output_port_c3_intermediates_curr_plan(),
@@ -411,19 +393,18 @@ int DoMain(int argc, char* argv[]) {
       controller->get_output_port_lcs_contact_jacobian_best_plan(),
       lcm_channel_params.c3_force_best_channel, &lcm,
       TriggerTypeSet({TriggerType::kForced}));
-
-  builder.Connect(
-      controller->get_output_port_dynamically_feasible_curr_plan_actor(),
-      dynamically_feasible_curr_plan_actor_publisher->get_input_port());
-  builder.Connect(
-      controller->get_output_port_dynamically_feasible_best_plan_actor(),
-      dynamically_feasible_best_plan_actor_publisher->get_input_port());
-  builder.Connect(
-      controller->get_output_port_dynamically_feasible_curr_plan_object(),
-      dynamically_feasible_curr_plan_object_publisher->get_input_port());
-  builder.Connect(
-      controller->get_output_port_dynamically_feasible_curr_plan_object(),
-      dynamically_feasible_best_plan_object_publisher->get_input_port());
+  C3OutputGenerator::AddLcmPublisherToBuilder(
+      builder,
+      controller->get_output_port_dynamically_feasible_debug_curr_plan(),
+      controller->get_output_port_dynamically_feasible_debug_intermediates(),
+      lcm_channel_params.dynamically_feasible_debug_curr_channel, &lcm,
+      TriggerTypeSet({TriggerType::kForced}));
+  C3OutputGenerator::AddLcmPublisherToBuilder(
+      builder,
+      controller->get_output_port_dynamically_feasible_debug_best_plan(),
+      controller->get_output_port_dynamically_feasible_debug_intermediates(),
+      lcm_channel_params.dynamically_feasible_debug_best_channel, &lcm,
+      TriggerTypeSet({TriggerType::kForced}));
 
   builder.Connect(controller->get_output_port_c3_traj_execute_actor(),
                   actor_c3_execution_trajectory_sender->get_input_port());

@@ -321,29 +321,62 @@ SamplingC3Controller::SamplingC3Controller(
 
   // Output ports for dynamically feasible plans used for cost computation and
   // visualization.
-  dynamically_feasible_curr_plan_actor_port_ =
+  if (declare_actor_object_plan_ports) {
+    dynamically_feasible_curr_plan_actor_port_ =
+        this->DeclareAbstractOutputPort(
+                "dynamically_feasible_curr_plan_actor",
+                dairlib::lcmt_timestamped_saved_traj(),
+                &SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanActor)
+            .get_index();
+    dynamically_feasible_curr_plan_object_port_ =
+        this->DeclareAbstractOutputPort(
+                "dynamically_feasible_curr_plan_object",
+                dairlib::lcmt_timestamped_saved_traj(),
+                &SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject)
+            .get_index();
+    dynamically_feasible_best_plan_actor_port_ =
+        this->DeclareAbstractOutputPort(
+                "dynamically_feasible_best_plan_actor",
+                dairlib::lcmt_timestamped_saved_traj(),
+                &SamplingC3Controller::OutputDynamicallyFeasibleBestPlanActor)
+            .get_index();
+    dynamically_feasible_best_plan_object_port_ =
+        this->DeclareAbstractOutputPort(
+                "dynamically_feasible_best_plan_object",
+                dairlib::lcmt_timestamped_saved_traj(),
+                &SamplingC3Controller::OutputDynamicallyFeasibleBestPlanObject)
+            .get_index();
+  }
+
+  // Debug output ports for the cost-driven ("dynamically feasible") plans, as
+  // a c3::lcmt_output with only the x_sol trajectory filled in (there is no
+  // QP solve for these rollouts, so no lambda/u to report).
+  auto dynamically_feasible_debug_solution = C3Output::C3Solution();
+  dynamically_feasible_debug_solution.x_sol_ = MatrixXf::Zero(n_x_, N_);
+  dynamically_feasible_debug_solution.lambda_sol_ = MatrixXf::Zero(0, N_);
+  dynamically_feasible_debug_solution.lambda_internal_sol_ =
+      MatrixXf::Zero(0, N_);
+  dynamically_feasible_debug_solution.u_sol_ = MatrixXf::Zero(0, N_);
+  dynamically_feasible_debug_solution.time_vector_ = VectorXf::Zero(N_);
+  auto dynamically_feasible_debug_intermediates = C3Output::C3Intermediates();
+  dynamically_feasible_debug_curr_plan_port_ =
       this->DeclareAbstractOutputPort(
-              "dynamically_feasible_curr_plan_actor",
-              dairlib::lcmt_timestamped_saved_traj(),
-              &SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanActor)
+              "dynamically_feasible_debug_curr_plan",
+              dynamically_feasible_debug_solution,
+              &SamplingC3Controller::OutputDynamicallyFeasibleDebugCurrPlan)
           .get_index();
-  dynamically_feasible_curr_plan_object_port_ =
+  dynamically_feasible_debug_best_plan_port_ =
       this->DeclareAbstractOutputPort(
-              "dynamically_feasible_curr_plan_object",
-              dairlib::lcmt_timestamped_saved_traj(),
-              &SamplingC3Controller::OutputDynamicallyFeasibleCurrPlanObject)
+              "dynamically_feasible_debug_best_plan",
+              dynamically_feasible_debug_solution,
+              &SamplingC3Controller::OutputDynamicallyFeasibleDebugBestPlan)
           .get_index();
-  dynamically_feasible_best_plan_actor_port_ =
+  dynamically_feasible_debug_intermediates_port_ =
       this->DeclareAbstractOutputPort(
-              "dynamically_feasible_best_plan_actor",
-              dairlib::lcmt_timestamped_saved_traj(),
-              &SamplingC3Controller::OutputDynamicallyFeasibleBestPlanActor)
-          .get_index();
-  dynamically_feasible_best_plan_object_port_ =
-      this->DeclareAbstractOutputPort(
-              "dynamically_feasible_best_plan_object",
-              dairlib::lcmt_timestamped_saved_traj(),
-              &SamplingC3Controller::OutputDynamicallyFeasibleBestPlanObject)
+              "dynamically_feasible_debug_intermediates",
+              dynamically_feasible_debug_intermediates,
+              &SamplingC3Controller::
+                  OutputDynamicallyFeasibleDebugIntermediates)
           .get_index();
 
   // Sample location related output ports.
@@ -2933,6 +2966,44 @@ void SamplingC3Controller::OutputDynamicallyFeasibleBestPlanObject(
   dynamically_feasible_best_plan->saved_traj = lcm_traj.GenerateLcmObject();
   dynamically_feasible_best_plan->utime = context.get_time() * 1e6;
 }
+
+// Output port handler for the cost-driven ("dynamically feasible") plan for
+// the current location, reported as a C3Solution with only x_sol_ filled in
+// (rows 1..N_ of the N_+1-knot rollout, to align in time with the raw C3
+// plan's x_sol_, which starts from the first predicted state).
+void SamplingC3Controller::OutputDynamicallyFeasibleDebugCurrPlan(
+    const drake::systems::Context<double>& context,
+    C3Output::C3Solution* c3_solution) const {
+  double t = context.get_discrete_state(plan_start_time_index_)[0] +
+             filtered_solve_time_;
+  const auto& dynamically_feasible_traj =
+      all_sample_dynamically_feasible_plans_.at(SampleIndex::kCurrentLocation);
+  for (int i = 0; i < N_; i++) {
+    c3_solution->time_vector_(i) = t + i * dt_;
+    c3_solution->x_sol_.col(i) = dynamically_feasible_traj[i + 1].cast<float>();
+  }
+}
+
+// Output port handler for the cost-driven ("dynamically feasible") plan for
+// the best sample location.  See OutputDynamicallyFeasibleDebugCurrPlan.
+void SamplingC3Controller::OutputDynamicallyFeasibleDebugBestPlan(
+    const drake::systems::Context<double>& context,
+    C3Output::C3Solution* c3_solution) const {
+  double t = context.get_discrete_state(plan_start_time_index_)[0] +
+             filtered_solve_time_;
+  const auto& dynamically_feasible_traj =
+      all_sample_dynamically_feasible_plans_.at(best_sample_index_);
+  for (int i = 0; i < N_; i++) {
+    c3_solution->time_vector_(i) = t + i * dt_;
+    c3_solution->x_sol_.col(i) = dynamically_feasible_traj[i + 1].cast<float>();
+  }
+}
+
+// No-op: the dynamically feasible debug output has no intermediates to
+// report, so this leaves the zero-sized prototype value unchanged.
+void SamplingC3Controller::OutputDynamicallyFeasibleDebugIntermediates(
+    const drake::systems::Context<double>& context,
+    C3Output::C3Intermediates* c3_intermediates) const {}
 
 // Output port handlers for sample-related ports
 void SamplingC3Controller::OutputAllSampleLocations(

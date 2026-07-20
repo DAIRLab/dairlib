@@ -27,6 +27,9 @@ ee_vis_model: examples/deform/models/ee_visualization_model.urdf
 visualize_c3_plan_object: true
 visualize_c3_plan_robot: true
 
+visualize_cost_plan_object: true
+visualize_cost_plan_robot: true
+
 # Note:  Colors can either be empty ([]) or RGB values between 0 and 1.  If left
 # empty, the colors defined in the URDF/SDF files will be used.
 c3_state_actual_color: [1.0, 0.7, 0.2]

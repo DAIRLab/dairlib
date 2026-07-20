@@ -29,6 +29,9 @@ struct DeformVisualizerParams {
   bool visualize_c3_plan_object;
   bool visualize_c3_plan_robot;
 
+  bool visualize_cost_plan_object;
+  bool visualize_cost_plan_robot;
+
   bool visualize_mpm_points;
   double mpm_point_size;
 
@@ -67,6 +70,8 @@ struct DeformVisualizerParams {
     a->Visit(DRAKE_NVP(sample_buffer_point_size));
     a->Visit(DRAKE_NVP(visualize_c3_plan_object));
     a->Visit(DRAKE_NVP(visualize_c3_plan_robot));
+    a->Visit(DRAKE_NVP(visualize_cost_plan_object));
+    a->Visit(DRAKE_NVP(visualize_cost_plan_robot));
     a->Visit(DRAKE_NVP(visualize_mpm_points));
     a->Visit(DRAKE_NVP(mpm_point_size));
     a->Visit(DRAKE_NVP(visualize_model_reduction));

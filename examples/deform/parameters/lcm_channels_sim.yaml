@@ -11,14 +11,14 @@ reduced_model_channel: ELASTOPLASTIC_REDUCED_MODEL  # lcmt_elastoplastic_network
 osc_channel: OSC_FRANKA                             # lcmt_robot_input
 osc_debug_channel: OSC_DEBUG_FRANKA                 # lcmt_osc_output
 
-c3_actor_curr_plan_channel: C3_TRAJECTORY_CURR_ACTOR_PLAN
-c3_object_curr_plan_channel: C3_TRAJECTORY_CURR_OBJECT_PLAN
-c3_actor_best_plan_channel: C3_TRAJECTORY_BEST_ACTOR_PLAN
-c3_object_best_plan_channel: C3_TRAJECTORY_BEST_OBJECT_PLAN
+c3_actor_curr_plan_channel: UNUSED
+c3_object_curr_plan_channel: UNUSED
+c3_actor_best_plan_channel: UNUSED
+c3_object_best_plan_channel: UNUSED
 c3_force_curr_channel: C3_FORCES_CURR               # lcmt_c3_forces
 c3_force_best_channel: C3_FORCES_BEST               # lcmt_c3_forces
-c3_debug_output_curr_channel: C3_DEBUG_CURR         # lcmt_c3_output
-c3_debug_output_best_channel: C3_DEBUG_BEST         # lcmt_c3_output
+c3_debug_output_curr_channel: C3_DEBUG_CURR         # c3::lcmt_output
+c3_debug_output_best_channel: C3_DEBUG_BEST         # c3::lcmt_output
 c3_costs_channel: C3_COSTS                          # lcmt_c3_costs
 
 c3_trajectory_exec_actor_channel: C3_TRAJECTORY_EXEC_ACTOR
@@ -29,10 +29,12 @@ c3_final_target_state_channel: C3_FINAL_TARGET      # lcmt_c3_state
 c3_target_state_channel: C3_TARGET                  # lcmt_c3_state
 c3_actual_state_channel: C3_ACTUAL                  # lcmt_c3_state
 
-dynamically_feasible_curr_actor_plan_channel: DYNAMICALLY_FEASIBLE_CURR_ACTOR_PLAN
-dynamically_feasible_curr_plan_channel: DYNAMICALLY_FEASIBLE_CURR_PLAN
-dynamically_feasible_best_actor_plan_channel: DYNAMICALLY_FEASIBLE_BEST_ACTOR_PLAN
-dynamically_feasible_best_plan_channel: DYNAMICALLY_FEASIBLE_BEST_PLAN
+dynamically_feasible_curr_actor_plan_channel: UNUSED
+dynamically_feasible_curr_plan_channel: UNUSED
+dynamically_feasible_best_actor_plan_channel: UNUSED
+dynamically_feasible_best_plan_channel: UNUSED
+dynamically_feasible_debug_curr_channel: DYNAMICALLY_FEASIBLE_DEBUG_CURR  # c3::lcmt_output
+dynamically_feasible_debug_best_channel: DYNAMICALLY_FEASIBLE_DEBUG_BEST  # c3::lcmt_output
 
 sample_buffer_channel: SAMPLE_BUFFER
 unsuccessful_sample_buffer_channel: UNSUCCESSFUL_SAMPLE_BUFFER

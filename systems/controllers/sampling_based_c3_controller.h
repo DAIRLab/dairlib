@@ -124,6 +124,15 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
     return this->get_output_port(dynamically_feasible_curr_plan_object_port_);
   }
   const drake::systems::OutputPort<double>&
+  get_output_port_dynamically_feasible_debug_curr_plan() const {
+    return this->get_output_port(dynamically_feasible_debug_curr_plan_port_);
+  }
+  const drake::systems::OutputPort<double>&
+  get_output_port_dynamically_feasible_debug_intermediates() const {
+    return this->get_output_port(
+        dynamically_feasible_debug_intermediates_port_);
+  }
+  const drake::systems::OutputPort<double>&
   get_output_port_c3_solution_best_plan() const {
     return this->get_output_port(c3_solution_best_plan_port_);
   }
@@ -150,6 +159,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   const drake::systems::OutputPort<double>&
   get_output_port_dynamically_feasible_best_plan_object() const {
     return this->get_output_port(dynamically_feasible_best_plan_object_port_);
+  }
+  const drake::systems::OutputPort<double>&
+  get_output_port_dynamically_feasible_debug_best_plan() const {
+    return this->get_output_port(dynamically_feasible_debug_best_plan_port_);
   }
   const drake::systems::OutputPort<double>&
   get_output_port_c3_traj_execute_actor() const {
@@ -436,6 +449,15 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void OutputDynamicallyFeasibleBestPlanObject(
       const drake::systems::Context<double>& context,
       lcmt_timestamped_saved_traj* dynamically_feasible_best_plan_object) const;
+  void OutputDynamicallyFeasibleDebugCurrPlan(
+      const drake::systems::Context<double>& context,
+      c3::systems::C3Output::C3Solution* c3_solution) const;
+  void OutputDynamicallyFeasibleDebugBestPlan(
+      const drake::systems::Context<double>& context,
+      c3::systems::C3Output::C3Solution* c3_solution) const;
+  void OutputDynamicallyFeasibleDebugIntermediates(
+      const drake::systems::Context<double>& context,
+      c3::systems::C3Output::C3Intermediates* c3_intermediates) const;
   void OutputAllSampleLocations(
       const drake::systems::Context<double>& context,
       dairlib::lcmt_timestamped_saved_traj* all_sample_locations) const;
@@ -489,6 +511,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex dynamically_feasible_curr_plan_object_port_;
   drake::systems::OutputPortIndex dynamically_feasible_best_plan_actor_port_;
   drake::systems::OutputPortIndex dynamically_feasible_best_plan_object_port_;
+  drake::systems::OutputPortIndex dynamically_feasible_debug_curr_plan_port_;
+  drake::systems::OutputPortIndex dynamically_feasible_debug_best_plan_port_;
+  drake::systems::OutputPortIndex
+      dynamically_feasible_debug_intermediates_port_;
   // Sample related output port indices
   drake::systems::OutputPortIndex all_sample_locations_port_;
   drake::systems::OutputPortIndex all_sample_costs_port_;

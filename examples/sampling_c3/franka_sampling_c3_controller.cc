@@ -688,7 +688,7 @@ int DoMain(int argc, char* argv[]) {
       controller->get_output_port_dynamically_feasible_curr_plan_object(),
       dynamically_feasible_curr_plan_object_publisher->get_input_port());
   builder.Connect(
-      controller->get_output_port_dynamically_feasible_curr_plan_object(),
+      controller->get_output_port_dynamically_feasible_best_plan_object(),
       dynamically_feasible_best_plan_object_publisher->get_input_port());
   builder.Connect(target_state_mux->get_output_port(),
                   c3_state_sender->get_input_port_target_state());

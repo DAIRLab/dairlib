@@ -1388,13 +1388,18 @@ drake::systems::EventStatus LcmC3PlanDrawer::DrawC3Plan(
 LcmC3PlanDrawer::LcmC3PlanDrawer(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat, const int& N,
     const int& num_nodes, const std::string& node_model_file,
-    const std::string& robot_model_file, const std::string& weld_frame_to_world,
+    const std::string& robot_model_file,
+    const std::string& meshcat_path_prefix,
+    const std::string& weld_frame_to_world,
     const RigidTransformd& object_world_offset,
     const RigidTransformd& robot_world_offset,
     const Eigen::VectorXd& object_rgb, const Eigen::VectorXd& robot_rgb,
     const bool& show_object, const bool& show_robot)
-    : N_(N), num_nodes_(num_nodes), meshcat_(meshcat) {
-  this->set_name("LcmC3PlanDrawer");
+    : N_(N),
+      num_nodes_(num_nodes),
+      meshcat_path_prefix_(meshcat_path_prefix),
+      meshcat_(meshcat) {
+  this->set_name("LcmC3PlanDrawer_" + meshcat_path_prefix);
   c3_plan_input_port_ =
       this->DeclareAbstractInputPort("c3::lcmt_output",
                                      drake::Value<c3::lcmt_output>{})
@@ -1410,14 +1415,16 @@ LcmC3PlanDrawer::LcmC3PlanDrawer(
   if (show_robot) {
     robot_plan_visualizer_ = std::make_unique<multibody::MultiposeVisualizer>(
         robot_model_file, N_, alpha_scale, weld_frame_to_world,
-        robot_world_offset, meshcat, "robot", robot_rgb, "c3_plans/curr/robot");
+        robot_world_offset, meshcat, "robot", robot_rgb,
+        meshcat_path_prefix_ + "/robot");
   }
   if (show_object) {
     object_plan_step_visualizers_.resize(N_);
     object_plan_step_colors_.resize(N_);
     for (int t = 0; t < N_; ++t) {
-      const std::string step_path =
-          "c3_plans/curr/deformable_network/step_" + std::to_string(t);
+      const std::string step_path = meshcat_path_prefix_ +
+                                    "/deformable_network/step_" +
+                                    std::to_string(t);
       object_plan_step_visualizers_[t] =
           std::make_unique<multibody::MultiposeVisualizer>(
               node_model_file, num_nodes_,
@@ -1482,7 +1489,8 @@ drake::systems::EventStatus LcmC3PlanDrawer::DrawC3PlanDeformableNetwork(
       DrawDeformableNetworkEdges(
           meshcat_, cylinder_for_deformable_, elastoplastic_model,
           node_locations,
-          "c3_plans/curr/deformable_network/step_" + std::to_string(t),
+          meshcat_path_prefix_ + "/deformable_network/step_" +
+              std::to_string(t),
           object_plan_step_colors_[t], timestamp);
     }
   }

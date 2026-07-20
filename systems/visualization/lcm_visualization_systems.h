@@ -351,10 +351,15 @@ class LcmC3PlanDrawer : public drake::systems::LeafSystem<double> {
   /// multiple deformable network nodes (3 DoF each), drawn across the full C3
   /// plan horizon. Consumes the raw `c3::lcmt_output` message (the LCM type
   /// published by C3OutputGenerator), not `dairlib::lcmt_c3_output`.
+  /// `meshcat_path_prefix` roots all of this instance's meshcat geometry (the
+  /// robot and per-horizon-step deformable network draws); pass distinct
+  /// prefixes for multiple instances (e.g. drawing both a C3 plan and a
+  /// dynamically feasible plan) so they don't collide.
   explicit LcmC3PlanDrawer(
       const std::shared_ptr<drake::geometry::Meshcat>& meshcat, const int& N,
       const int& num_nodes, const std::string& node_model_file,
       const std::string& robot_model_file,
+      const std::string& meshcat_path_prefix,
       const std::string& weld_frame_to_world = "",
       const drake::math::RigidTransformd& object_world_offset =
           drake::math::RigidTransformd(),
@@ -384,6 +389,7 @@ class LcmC3PlanDrawer : public drake::systems::LeafSystem<double> {
 
   const int N_;
   int num_nodes_ = 0;
+  std::string meshcat_path_prefix_;
   drake::systems::InputPortIndex c3_plan_input_port_;
   drake::systems::InputPortIndex lcmt_elastoplastic_network_input_port_;
   std::shared_ptr<drake::geometry::Meshcat> meshcat_;

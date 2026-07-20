@@ -429,9 +429,9 @@ int DoMain(int argc, char* argv[]) {
 
     for (int j = 0; j < ramp_geoms.size(); j++) {
         for (int k = 1; k < object_geoms.size(); k++) {
-            wall_object_contact_pairs.push_back(
-                std::vector<SortedPair<GeometryId>>{
-                    SortedPair(ramp_geoms[j], object_geoms[k])});
+            ground_object_contact_pairs.push_back(
+                
+                    SortedPair(ramp_geoms[j], object_geoms[k]));
         }
         ee_contact_pairs.push_back(
             SortedPair(contact_geoms["EE"], ramp_geoms[j]));
@@ -473,7 +473,7 @@ int DoMain(int argc, char* argv[]) {
   } else {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
   }
-  // Order:  EE-ground, EE-object, object-ground, object-object
+  // Order:  EE-ground, EE-object, object-ground, object-object, object-wall
   contact_pairs.push_back(ee_ground_contact);
   contact_pairs.push_back(ee_contact_pairs);
   contact_pairs.push_back(ground_object_contact_pairs);
@@ -483,12 +483,6 @@ int DoMain(int argc, char* argv[]) {
   for (const auto& wall_obj_pair : wall_object_contact_pairs) {
     contact_pairs.push_back(wall_obj_pair);
   }
-  std::cout << "Debug: Contact pairs assembled: ee_ground="
-            << ee_ground_contact.size() << " ee_object="
-            << ee_contact_pairs.size() << " ground_object="
-            << ground_object_contact_pairs.size() << " object_object="
-            << object_object_contact_pairs.size() << " wall_object="
-            << wall_object_contact_pairs.size() << std::endl;
 
   // Piece together the diagram.
   std::cout << "Debug: Starting diagram construction." << std::endl;

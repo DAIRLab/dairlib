@@ -17,6 +17,7 @@
     </inertial>
 
     <!-- Ramp (mesh) -->
+
     <visual name="ramp_part_1">
       <origin xyz="0 0 0" rpy="1.5708 0 0"/>
       <geometry>
@@ -134,6 +135,7 @@
       </geometry>
     </collision>  
 
+
     <visual name="ramp_part_8">
       <origin xyz="0 0 0" rpy="1.5708 0 0"/>
       <geometry>
@@ -245,7 +247,7 @@
         <mesh filename="/mnt/data0/three_d_printer/dairlib/examples/sampling_c3/urdf/3d_Printer/ramp/ramp14.obj"  scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
-
+    
 
   </link>
 

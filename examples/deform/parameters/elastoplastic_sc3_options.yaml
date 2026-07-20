@@ -72,12 +72,15 @@ planar_demo: false
 # deformable-ground, deformable-walls).
 mu_per_pair_type: [0.4165, 1, 0.4615]   # match URDFs with (2mu1*mu2)/(mu1+mu2)
 resolve_contacts_to_lists: [[0, 1, 4, 0],
-                            [1, 8, 8, 0]]
+                            [1, 8, 8, 0],
+                            [0, 0, 0, 0],
+                            [0, 0, 8, 0],
+                            ]
 resolve_as_planar_contacts_list: [0, 0, 0, 0]
 
 # Index into this list to choose number of contacts for C3 solve and cost.
 num_contacts_index: 0
-num_contacts_index_for_cost: 0
+num_contacts_index_for_cost: 2
 
 planning_dt_pose: 0.05
 

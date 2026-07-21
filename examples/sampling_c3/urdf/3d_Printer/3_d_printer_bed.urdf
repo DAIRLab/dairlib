@@ -11,28 +11,26 @@
   -->
   <link name="ground">
     <inertial>
-      <origin xyz="0.175 0.175 -0.05" rpy="0 0 0"/>
-      <mass value="15.0"/>
+      <origin xyz="0.175 0.175 -0.1" rpy="0 0 0"/>
+      <mass value="1.0"/>
       <inertia
-        ixx="0.50" ixy="0.0" ixz="0.0"
-        iyy="0.50" iyz="0.0"
-        izz="0.50"/>
+        ixx="0.02" ixy="0.0" ixz="0.0"
+        iyy="0.02" iyz="0.0"
+        izz="0.02"/>
     </inertial>
-
     <visual>
-      <origin xyz="0.175 0.175 -0.05" rpy="0 0 0"/>
+      <origin xyz="0.175 0.175 -0.1" rpy="0 0 0"/>
       <geometry>
-        <box size="0.55 0.537 0.0596"/>
+        <box size="0.355 0.355 0.2"/>
       </geometry>
-      <material name="dark_gray">
-        <color rgba="0.25 0.25 0.25 1.0"/>
+      <material name="black">
+        <color rgba="0.15 0.15 0.15 1.0"/>
       </material>
     </visual>
-
     <collision>
-      <origin xyz="0.175 0.175 -0.05" rpy="0 0 0"/>
+      <origin xyz="0.175 0.175 -0.1" rpy="0 0 0"/>
       <geometry>
-        <box size="0.55 0.537 0.0596"/>
+        <box size="0.355 0.355 0.2"/>
       </geometry>
     </collision>
   </link>

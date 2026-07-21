@@ -149,7 +149,7 @@
         <pose> 0.0494 0 0 0 0 0</pose>
       </visual>
 
-
+<!--
       <collision name="corner_0">
         <geometry>
           <sphere>
@@ -270,7 +270,7 @@
 
         <pose> 0.0494 0 0 0 0 0</pose>
       </collision>
-
+-->
     </link>
 
   </model>

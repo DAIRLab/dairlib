@@ -16,14 +16,14 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <sphere radius="0.001"/>
+        <sphere radius="0.01"/>
       </geometry>
       <material name="finger_0_material"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <sphere radius="0.001"/>
+        <sphere radius="0.01"/>
       </geometry>
       <drake:proximity_properties>
         <drake:mu_static value="1"/>

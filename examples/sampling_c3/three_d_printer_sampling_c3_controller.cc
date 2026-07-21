@@ -427,15 +427,15 @@ int DoMain(int argc, char* argv[]) {
     ground_object_contact_pairs.push_back(
         SortedPair(contact_geoms["HIGH_BOTTOM_RIGHT_SPHERE"], contact_geoms["GROUND"]));
 
-    for (int j = 0; j < ramp_geoms.size(); j++) {
-        for (int k = 1; k < object_geoms.size(); k++) {
-            ground_object_contact_pairs.push_back(
+    // for (int j = 0; j < ramp_geoms.size(); j++) {
+    //     for (int k = 1; k < object_geoms.size(); k++) {
+    //         ground_object_contact_pairs.push_back(
                 
-                    SortedPair(ramp_geoms[j], object_geoms[k]));
-        }
-        ee_contact_pairs.push_back(
-            SortedPair(contact_geoms["EE"], ramp_geoms[j]));
-      }
+    //                 SortedPair(ramp_geoms[j], object_geoms[k]));
+    //     }
+    //     ee_contact_pairs.push_back(
+    //         SortedPair(contact_geoms["EE"], ramp_geoms[j]));
+    //   }
 
 
 

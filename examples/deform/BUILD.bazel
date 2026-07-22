@@ -211,3 +211,17 @@ cc_binary(
         "@gflags",
     ],
 )
+
+py_binary(
+    name = "xbox_script",
+    srcs = ["xbox_script.py"],
+    data = [
+        "@lcm//lcm-python:lcm-python",
+        "parameters/deform_controller_params.yaml",
+        "parameters/lcm_channels_sim.yaml",
+    ],
+    main = "xbox_script.py",
+    deps = [
+        "//lcmtypes:lcmtypes_robot_py",
+    ],
+)

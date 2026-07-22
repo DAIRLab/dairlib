@@ -314,6 +314,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // variables are in the protected section, others are private).
   mutable int best_progress_steps_ago_;
   mutable double lowest_cost_;
+  mutable double lowest_pos_and_rot_current_cost_;
+  mutable double lowest_position_error_;
+  mutable double current_position_error_;
 
   // Samples and associated costs computed in current control loop.
   mutable std::vector<Eigen::Vector3d> all_sample_locations_;
@@ -540,10 +543,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   // Keep track of current C3 execution's best seen cost (some of these
   // variables are in the protected section, others are private).
-  mutable double lowest_pos_and_rot_current_cost_;
-  mutable double lowest_position_error_;
   mutable double lowest_orientation_error_;
-  mutable double current_position_error_;
   mutable double current_orientation_error_;
   mutable std::queue<double> object_config_cost_history_;
 

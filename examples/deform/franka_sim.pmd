@@ -14,6 +14,10 @@ group "operator" {
         exec = "python examples/deform/test/radio.py";
         host = "localhost";
     }
+    cmd "xbox" {
+        exec = "bazel-bin/examples/deform/xbox_script --is_simulation=true";
+        host = "localhost";
+    }
     cmd "start_logging" {
         exec = "python examples/deform/start_logging.py sim /mnt/data0/bibit/logs/";
         host = "localhost";

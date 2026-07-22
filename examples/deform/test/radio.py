@@ -9,12 +9,14 @@ Key bindings:
   ESC: Quit
 """
 
+import argparse
 import lcm
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import os.path as op
 import sys
+import yaml
 
 DAIRLIB_DIR = op.abspath(
     op.dirname(op.dirname(op.dirname(op.dirname(__file__))))
@@ -26,8 +28,44 @@ import dairlib
 RATE = 60  # target rate (Hz) for radio publishing
 MS_INTERVAL = 1000.0 / RATE  # in milliseconds
 
+CONTROLLER_PARAMS_PATH = op.join(
+    DAIRLIB_DIR, "examples/deform/parameters/deform_controller_params.yaml"
+)
+
+
+def str2bool(v: str) -> bool:
+    if v.lower() in ("true", "false"):
+        return v.lower() == "true"
+    raise argparse.ArgumentTypeError(f"Expected true/false, got: {v}")
+
+
+def get_radio_channel(is_simulation: bool) -> str:
+    with open(CONTROLLER_PARAMS_PATH, "r") as f:
+        controller_params = yaml.safe_load(f)
+
+    channels_key = (
+        "lcm_channels_simulation_file"
+        if is_simulation
+        else "lcm_channels_hardware_file"
+    )
+    channels_path = op.join(DAIRLIB_DIR, controller_params[channels_key])
+    with open(channels_path, "r") as f:
+        channels = yaml.safe_load(f)
+    return channels["radio_channel"]
+
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--is_simulation",
+        type=str2bool,
+        default=True,
+        help="Whether to use the simulation or hardware radio channel name "
+        "(true/false).",
+    )
+    args = parser.parse_args()
+    radio_channel = get_radio_channel(args.is_simulation)
+
     # publisher = lcm.LCM()
     publisher = lcm.LCM("udpm://239.255.76.67:7667?ttl=0")
 
@@ -88,7 +126,7 @@ def main():
         msg.channel[1] = axis_inputs[1]
         msg.channel[2] = axis_inputs[2]
         msg.channel[14] = latching["a"]
-        publisher.publish("DEFORM_RADIO", msg.encode())
+        publisher.publish(radio_channel, msg.encode())
 
         # Update the text in the figure.
         lines = [

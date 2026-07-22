@@ -975,8 +975,14 @@ void ElastoPlasticSC3Controller::KeepTrackOfC3ModeProgress(
     updated_error = true;
   }
 
-  // One of the progress metrics requires a history of object configuration
-  // costs.  Maintain this history and check for progress.
+  // So that the SamplingC3Controller::OutputDebug can report the node costs,
+  // set these variables too.
+  current_position_error_ = current_node_error_;
+  lowest_pos_and_rot_current_cost_ = lowest_node_current_cost_;
+  lowest_position_error_ = lowest_node_error_;
+
+  // One of the progress metrics requires a history of object
+  // configuration costs.  Maintain this history and check for progress.
   node_cost_history_.push(curr_node_cost);
   int max_history_length = progress_params_.progress_enforced_over_n_loops;
   if (node_cost_history_.size() > max_history_length) {

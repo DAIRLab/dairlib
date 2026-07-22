@@ -112,7 +112,7 @@ ModelInstanceIndex Add3DPrinterToPlant(MultibodyPlant<double>* plant,
 
   RigidTransform<double> T_Ramp_W(
         drake::math::RotationMatrix<double>(
-            drake::math::RollPitchYaw<double>(0, 0, 3.14159)),
+            drake::math::RollPitchYaw<double>(0, 0, 0)),
         k3dPrinterRampAttachmentFrame);
 
 

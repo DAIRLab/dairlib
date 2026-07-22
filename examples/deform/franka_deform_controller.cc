@@ -136,7 +136,7 @@ int DoMain(int argc, char* argv[]) {
   auto tetrahedra_to_elastoplastic_network =
       builder.AddSystem<dairlib::systems::TetrahedraToElastoPlasticNetwork>(
           reduced_model_params.youngs_modulus,
-          reduced_model_params.yield_stress,
+          reduced_model_params.yield_stress, reduced_model_params.mass,
           reduced_model_params.spring_constant_method);
   auto tetrahedra_publisher =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_tetrahedra>(
@@ -160,8 +160,7 @@ int DoMain(int argc, char* argv[]) {
   // 4) LCS state.  Requires a plant with the deformable LCS model.
   MultibodyPlant<double> plant_deform_network(0.0);
   vector<ModelInstanceIndex> node_indices = AddDeformableLCSModelToPlant(
-      &plant_deform_network, nullptr, n_internal_contact_geometries,
-      reduced_model_params.mass);
+      &plant_deform_network, nullptr, n_internal_contact_geometries);
   plant_deform_network.Finalize();
   auto deform_context = plant_deform_network.CreateDefaultContext();
 
@@ -183,9 +182,8 @@ int DoMain(int argc, char* argv[]) {
   auto [plant_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
   vector<ModelInstanceIndex> object_indices_lcs =
-      AddLCSModelsForDeformableToPlant(&plant_lcs, &scene_graph,
-                                       n_internal_contact_geometries,
-                                       reduced_model_params.mass, true);
+      AddLCSModelsForDeformableToPlant(
+          &plant_lcs, &scene_graph, n_internal_contact_geometries, true);
   plant_lcs.Finalize();
 
   // Get the autodiff plant and contexts.

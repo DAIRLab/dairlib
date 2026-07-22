@@ -123,10 +123,11 @@ MpmPointsToTetrahedra::ComputeTetrahedraFromSupportFunction(
 /// Converts tetrahedra representing an approximately volumetrically homogeneous
 /// solid to LCM type lcmt_elastoplastic_network.
 TetrahedraToElastoPlasticNetwork::TetrahedraToElastoPlasticNetwork(
-    double youngs_modulus, double yield_stress,
+    double youngs_modulus, double yield_stress, double mass,
     SpringConstantMethods spring_constant_method)
     : youngs_modulus_(youngs_modulus),
       yield_stress_(yield_stress),
+      mass_(mass),
       spring_constant_method_(spring_constant_method) {
   this->set_name("TetrahedraToElastoPlasticNetwork");
 
@@ -155,6 +156,7 @@ void TetrahedraToElastoPlasticNetwork::OutputElastoPlasticNetworkLcm(
   int n_connections = 0;
   Matrix3Xd points = Matrix3Xd::Zero(3, n_points);
   std::map<std::pair<int, int>, std::pair<double, double>> ks_and_ls_map;
+  VectorXd tributary_volume = VectorXd::Zero(0);
   if ((tetrahedra_lcmt->utime > 1e-3) && (tetrahedra_lcmt->num_points > 1)) {
     // Extract the vertices.
     n_points = tetrahedra_lcmt->num_points;
@@ -165,6 +167,7 @@ void TetrahedraToElastoPlasticNetwork::OutputElastoPlasticNetworkLcm(
         points(dim_i, point_i) = point[dim_i];
       }
     }
+    tributary_volume = VectorXd::Zero(n_points);
 
     // Compute volumes, edge lengths, and spring constant contributions for each
     // tetrahedron.
@@ -178,6 +181,13 @@ void TetrahedraToElastoPlasticNetwork::OutputElastoPlasticNetworkLcm(
         vertices_ones.block<3, 1>(0, i) = points.col(tet[i]);
       }
       double volume = std::abs(vertices_ones.determinant()) / 6.0;
+
+      // Lump this tetrahedron's mass contribution evenly across its 4 vertices,
+      // using its current (state-dependent) volume, so each node's mass
+      // reflects its tributary share of the live network.
+      for (int i = 0; i < 4; i++) {
+        tributary_volume(tet[i]) += volume / 4.0;
+      }
 
       // For each edge in the tetrahedron, add a contribution to each
       // connection's spring constant.
@@ -246,6 +256,17 @@ void TetrahedraToElastoPlasticNetwork::OutputElastoPlasticNetworkLcm(
     }
   }
 
+  // Distribute the total mass across nodes in proportion to each node's
+  // tributary volume in the live network.
+  vector<double> node_masses(n_points, 0.0);
+  if (n_points > 0) {
+    VectorXd node_masses_vec =
+        mass_ * tributary_volume / tributary_volume.sum();
+    for (int i = 0; i < n_points; i++) {
+      node_masses[i] = node_masses_vec(i);
+    }
+  }
+
   // Set the fields of the LCM message.
   output->utime = context.get_time() * 1e6;
   output->num_points = n_points;
@@ -254,6 +275,8 @@ void TetrahedraToElastoPlasticNetwork::OutputElastoPlasticNetworkLcm(
   output->connections = connections_data;
   output->spring_constants = spring_constants;
   output->yield_forces = yield_forces;
+  output->total_mass = mass_;
+  output->node_masses = node_masses;
 }
 
 }  // namespace systems

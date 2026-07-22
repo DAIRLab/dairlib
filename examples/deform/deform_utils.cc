@@ -1,10 +1,5 @@
 #include "deform_utils.h"
 
-#include <fstream>
-#include <iostream>
-#include <regex>
-#include <sstream>
-
 #include "common/find_resource.h"
 
 #include "drake/multibody/parsing/parser.h"
@@ -211,8 +206,7 @@ void SetDefaultSpringDamperPositions(
 
 vector<ModelInstanceIndex> AddLCSModelsForDeformableToPlant(
     MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph,
-    const int& n_nodes, const double& deformable_mass,
-    const bool& include_box) {
+    const int& n_nodes, const bool& include_box) {
   Parser parser_lcs(plant);
   parser_lcs.SetAutoRenaming(true);
   ModelInstanceIndex ee_model_index =
@@ -227,8 +221,8 @@ vector<ModelInstanceIndex> AddLCSModelsForDeformableToPlant(
   plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("ground"),
                     X_W_G);
 
-  vector<ModelInstanceIndex> node_model_indices = AddDeformableLCSModelToPlant(
-      plant, scene_graph, n_nodes, deformable_mass);
+  vector<ModelInstanceIndex> node_model_indices =
+      AddDeformableLCSModelToPlant(plant, scene_graph, n_nodes);
 
   if (include_box) {
     parser_lcs.AddModels(FindResourceOrThrow(kBoxModel));
@@ -241,26 +235,17 @@ vector<ModelInstanceIndex> AddLCSModelsForDeformableToPlant(
 
 vector<ModelInstanceIndex> AddDeformableLCSModelToPlant(
     MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph,
-    const int& n_nodes, const double& deformable_mass) {
+    const int& n_nodes) {
   Parser parser_lcs(plant);
   parser_lcs.SetAutoRenaming(true);
 
-  // Create a new URDF string with an edited mass value corresponding to an even
-  // share of the total deformable mass for each node.
-  std::ifstream point_model_file(FindResourceOrThrow(kPointModel));
-  std::stringstream point_model_buffer;
-  point_model_buffer << point_model_file.rdbuf();
-  const std::string point_model_template = point_model_buffer.str();
-  const std::regex mass_regex(R"(mass value="[^"]*")");
-  const double mass_per_node = deformable_mass / n_nodes;
-  const std::string point_model = std::regex_replace(
-      point_model_template, mass_regex,
-      "mass value=\"" + std::to_string(mass_per_node) + "\"");
-
+  // Each node keeps the point-model URDF's own (placeholder) mass; node
+  // masses are state-dependent and get overwritten at runtime once the plant
+  // is finalized (see ElastoPlasticSC3Controller::SetNodeMasses).
   vector<ModelInstanceIndex> node_model_indices;
   for (int i = 0; i < n_nodes; ++i) {
     node_model_indices.push_back(
-        parser_lcs.AddModelsFromString(point_model, "urdf")[0]);
+        parser_lcs.AddModels(FindResourceOrThrow(kPointModel))[0]);
     plant->WeldFrames(plant->world_frame(),
                       plant->GetFrameByName("base_link", node_model_indices[i]),
                       RigidTransformd());

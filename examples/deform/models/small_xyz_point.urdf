@@ -10,6 +10,11 @@
   <link name="pt">
     <inertial>
       <origin rpy="0 0 0" xyz="0 0 0"/>
+      <!-- Placeholder mass: when used as a deformable network node, this is
+           state-dependent and gets overwritten at runtime (see
+           ElastoPlasticSC3Controller::SetNodeMasses) once the plant is
+           finalized.  Since the node can only move in xyz (and not rotate), the
+           inertia values are inconsequential and are set here arbitrarily. -->
       <mass value="0.01"/>
       <inertia ixx="4e-7" ixy="0.0" ixz="0.0" iyy="4e-7" iyz="0.0" izz="4e-7"/>
     </inertial>

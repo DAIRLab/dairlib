@@ -7,6 +7,8 @@
 #include "examples/deform/parameter_headers/goal_params.h"
 #include "systems/controllers/sampling_based_c3_controller.h"
 
+#include "drake/multibody/plant/multibody_plant.h"
+
 namespace dairlib {
 namespace systems {
 
@@ -80,9 +82,18 @@ class ElastoPlasticSC3Controller : public SamplingC3Controller {
   GetCurrentElastoPlasticProperties(const dairlib::lcmt_elastoplastic_network&
                                         elastoplastic_network_lcmt) const;
 
+  // Sets each node body's mass in context_/context_ad_ from the latest
+  // state-dependent per-node masses reported over LCM, so the LCS planning
+  // model's dynamics reflect the deformable's current mass distribution.
+  void SetNodeMasses(const dairlib::lcmt_elastoplastic_network&
+                         elastoplastic_network_lcmt) const;
+
   drake::systems::InputPortIndex elastoplastic_input_port_;
   const int n_nodes_;
   const std::vector<drake::geometry::GeometryId> internal_contact_geometries_;
+  // Index-aligned with internal_contact_geometries_/node_masses; populated
+  // once at construction since node body topology never changes.
+  std::vector<drake::multibody::BodyIndex> node_body_indices_;
   const ElastoPlasticGoalParams goal_params_;
   const ElastoPlasticSC3Options elastoplastic_sc3_options_;
 

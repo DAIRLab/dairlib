@@ -4,10 +4,13 @@ struct lcmt_elastoplastic_network {
   int64_t utime;
   int32_t num_points;
   int32_t num_connections;
+  double total_mass;
 
   float points[num_points][3];
   int32_t connections[num_connections][2];
 
   double spring_constants[num_connections];
   double yield_forces[num_connections];
+
+  double node_masses[num_points];
 }

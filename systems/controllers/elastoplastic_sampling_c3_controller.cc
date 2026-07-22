@@ -21,7 +21,9 @@ using c3::multibody::ElastoPlasticLCSFactory;
 using c3::multibody::LCSFactory;
 using c3::traj_eval::TrajectoryEvaluator;
 using drake::SortedPair;
+using drake::geometry::FrameId;
 using drake::geometry::GeometryId;
+using drake::geometry::QueryObject;
 using drake::systems::Context;
 using drake::systems::DiscreteValues;
 using Eigen::MatrixXd;
@@ -43,9 +45,7 @@ ElastoPlasticSC3Controller::ElastoPlasticSC3Controller(
     : SamplingC3Controller(
           plant, context, plant_ad, context_ad, external_contact_pair_lists,
           std::move(controller_params.sampling_c3_controller_params), verbose,
-          3 *
-              controller_params.elastoplastic_sc3_options
-                  .num_internal_contacts,
+          3 * controller_params.elastoplastic_sc3_options.num_internal_contacts,
           /*declare_actor_object_plan_ports=*/false),
       goal_params_(controller_params.elastoplastic_goal_params),
       internal_contact_geometries_(internal_contact_geometries),
@@ -99,6 +99,16 @@ ElastoPlasticSC3Controller::ElastoPlasticSC3Controller(
   }  // No need to throw error otherwise since done by parent constructor.
   n_z_ = c3_curr_plan_->GetZSize();
 
+  // Look up each node's BodyIndex once (topology is fixed; only mass changes).
+  // The same BodyIndex numbering is shared between plant_ and plant_ad_.
+  const auto& query_object =
+      plant_.get_geometry_query_input_port().template Eval<QueryObject<double>>(
+          *context_);
+  for (const auto& geom_id : internal_contact_geometries_) {
+    FrameId frame_id = query_object.inspector().GetFrameId(geom_id);
+    node_body_indices_.push_back(plant_.GetBodyFromFrameId(frame_id)->index());
+  }
+
   // New input port for elastoplastic network.
   elastoplastic_input_port_ =
       this->DeclareAbstractInputPort(
@@ -150,6 +160,10 @@ drake::systems::EventStatus ElastoPlasticSC3Controller::ComputePlan(
 
   // Check for workspace limit violations; if any, the controller stops.
   CheckForWorkspaceLimitViolations(lcs_x_curr);
+
+  // Update the node masses in the plant to reflect the current state of the
+  // deformable network.
+  SetNodeMasses(*elastoplastic_network_lcmt);
 
   // Compute the current deformable graph node position errors.
   current_node_error_ = (x_lcs_curr.segment(3, n_q_ - 3) -
@@ -1040,6 +1054,17 @@ ElastoPlasticSC3Controller::GetCurrentElastoPlasticProperties(
   }
 
   return std::make_pair(internal_contact_pairs, yield_forces);
+}
+
+void ElastoPlasticSC3Controller::SetNodeMasses(
+    const dairlib::lcmt_elastoplastic_network& elastoplastic_network_lcmt)
+    const {
+  for (int i = 0; i < n_nodes_; i++) {
+    double node_mass = elastoplastic_network_lcmt.node_masses.at(i);
+    plant_.get_body(node_body_indices_[i]).SetMass(context_, node_mass);
+    plant_ad_.get_body(node_body_indices_[i])
+        .SetMass(context_ad_, drake::AutoDiffXd(node_mass));
+  }
 }
 
 }  // namespace systems

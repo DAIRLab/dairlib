@@ -107,7 +107,7 @@ int do_main(int argc, char* argv[]) {
   // Build the deformable network plant.
   MultibodyPlant<double> plant_deform_network(0.0);
   vector<ModelInstanceIndex> node_indices = AddDeformableLCSModelToPlant(
-      &plant_deform_network, nullptr, n_nodes, reduced_model_params.mass);
+      &plant_deform_network, nullptr, n_nodes);
   plant_deform_network.Finalize();
   auto deform_context = plant_deform_network.CreateDefaultContext();
 

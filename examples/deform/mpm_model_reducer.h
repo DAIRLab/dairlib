@@ -50,7 +50,7 @@ class TetrahedraToElastoPlasticNetwork
     : public drake::systems::LeafSystem<double> {
  public:
   TetrahedraToElastoPlasticNetwork(
-      double youngs_modulus, double yield_stress,
+      double youngs_modulus, double yield_stress, double mass,
       SpringConstantMethods spring_constant_method);
 
   const drake::systems::InputPort<double>& get_input_port_lcmt_tetrahedra()
@@ -69,6 +69,7 @@ class TetrahedraToElastoPlasticNetwork
 
   const double youngs_modulus_;
   const double yield_stress_;
+  const double mass_;
   const SpringConstantMethods spring_constant_method_;
 
   drake::systems::InputPortIndex lcmt_tetrahedra_input_port_;

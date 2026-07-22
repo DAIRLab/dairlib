@@ -125,13 +125,15 @@ std::vector<drake::multibody::ModelInstanceIndex>
 AddLCSModelsForDeformableToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph, const int& n_nodes,
-    const bool& include_box);
+    const double& deformable_mass, const bool& include_box);
 
 /// Add the deformable LCS model to the plant for the deformable graph network
-/// demo.  This adds the deformable nodes.
+/// demo.  This adds the deformable nodes and assigns the deformable mass
+/// divided by the number of nodes to each node.
 std::vector<drake::multibody::ModelInstanceIndex> AddDeformableLCSModelToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
-    drake::geometry::SceneGraph<double>* scene_graph, const int& n_nodes);
+    drake::geometry::SceneGraph<double>* scene_graph, const int& n_nodes,
+    const double& deformable_mass);
 
 /// Returns the robot and object ModelInstanceIndexs added to the plant.
 std::vector<drake::multibody::ModelInstanceIndex> AddLCSModelsToPlant(

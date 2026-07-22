@@ -10,7 +10,7 @@ tetrahedra_vec: [[2, 5, 6, 7],
                  [0, 2, 3, 7],
                  [0, 2, 5, 7],
                  [0, 1, 2, 5],
-                 [0, 4, 5, 7]]  # results in 18 unique connections:
+                 [0, 4, 5, 7]] # results in 18 unique connections:
                                 # 12 for the wireframe of a cube,
                                 # +6 for a diagonal on each cube face.
 
@@ -24,11 +24,20 @@ tetrahedra_vec: [[2, 5, 6, 7],
 #      simulation" 2007
 spring_constant_method: 1
 
-# Settings for MPM simulation:  for good sim agreement, match the settings in
+# Deformable model parameters:  for good sim agreement, match the settings in
 # mpm_drake/examples/multibody/deformable/parameters/mpm_params.yaml
-youngs_modulus: 2e4
-yield_stress: 1e3
+sim_youngs_modulus: 2e4         # match MPM sim
+sim_yield_stress: 1e3           # match MPM sim
+sim_to_control_stiffness_multiplier: 1.0  # a multiplier so the reduced model is
+                                          # stiffer than the MPM sim, to
+                                          # encourage the controller to exert
+                                          # more force.
 
 # For good sim agreement, match the settings in
 # mpm_drake/examples/multibody/deformable/parameters/elastoplastic_sim_params.yaml
-object_half_widths: [0.03, 0.03, 0.03]
+sim_density: 1000.0                     # match MPM sim
+sim_to_control_density_multiplier: 1.0  # a multiplier so the reduced model has
+                                        # more inertia than the MPM sim.  The
+                                        # reduced model will distribute the
+                                        # total mass evenly across the nodes.
+object_half_widths: [0.03, 0.03, 0.03]  # match MPM sim

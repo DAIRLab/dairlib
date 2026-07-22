@@ -27,13 +27,22 @@ struct ReducedModelParams {
   std::vector<Eigen::Vector3d> support_directions_vec;
   std::vector<Eigen::Vector4i> tetrahedra_vec;
   SpringConstantMethods spring_constant_method;
-  double youngs_modulus;
-  double yield_stress;
+  double sim_youngs_modulus;
+  double sim_yield_stress;
+  double sim_to_control_stiffness_multiplier;
+  double sim_density;
+  double sim_to_control_density_multiplier;
   Eigen::Vector3d object_half_widths;
 
   // Build as matrix type when serializing.
   Eigen::Matrix3Xd support_directions;
   Eigen::Matrix4Xi tetrahedra;
+
+  // Separate effective Young's modulus, yield stress, and mass for the reduced
+  // model.
+  double youngs_modulus;
+  double yield_stress;
+  double mass;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -41,8 +50,11 @@ struct ReducedModelParams {
     ENUM_DESERIALIZE(a, spring_constant_method);
     a->Visit(DRAKE_NVP(support_directions_vec));
     a->Visit(DRAKE_NVP(tetrahedra_vec));
-    a->Visit(DRAKE_NVP(youngs_modulus));
-    a->Visit(DRAKE_NVP(yield_stress));
+    a->Visit(DRAKE_NVP(sim_youngs_modulus));
+    a->Visit(DRAKE_NVP(sim_yield_stress));
+    a->Visit(DRAKE_NVP(sim_to_control_stiffness_multiplier));
+    a->Visit(DRAKE_NVP(sim_density));
+    a->Visit(DRAKE_NVP(sim_to_control_density_multiplier));
     a->Visit(DRAKE_NVP(object_half_widths));
 
     // Convert vectors to matrices.
@@ -66,5 +78,11 @@ struct ReducedModelParams {
         }
       }
     }
+
+    // Set the Young's modulus, yield stress, and mass for the reduced model.
+    youngs_modulus = sim_youngs_modulus * sim_to_control_stiffness_multiplier;
+    yield_stress = sim_yield_stress * sim_to_control_stiffness_multiplier;
+    mass = sim_density * sim_to_control_density_multiplier *
+           (2.0 * object_half_widths).prod();
   }
 };

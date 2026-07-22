@@ -106,8 +106,8 @@ int do_main(int argc, char* argv[]) {
 
   // Build the deformable network plant.
   MultibodyPlant<double> plant_deform_network(0.0);
-  vector<ModelInstanceIndex> node_indices =
-      AddDeformableLCSModelToPlant(&plant_deform_network, nullptr, n_nodes);
+  vector<ModelInstanceIndex> node_indices = AddDeformableLCSModelToPlant(
+      &plant_deform_network, nullptr, n_nodes, reduced_model_params.mass);
   plant_deform_network.Finalize();
   auto deform_context = plant_deform_network.CreateDefaultContext();
 
@@ -316,15 +316,16 @@ int do_main(int argc, char* argv[]) {
   // current C3 solve.
   if (vis_params.visualize_c3_plan_object ||
       vis_params.visualize_c3_plan_robot) {
-    auto c3_plan_sub = builder.AddSystem(
-        LcmSubscriberSystem::Make<c3::lcmt_output>(
+    auto c3_plan_sub =
+        builder.AddSystem(LcmSubscriberSystem::Make<c3::lcmt_output>(
             lcm_channel_params.c3_debug_output_curr_channel, lcm));
     auto c3_plan_drawer = builder.AddSystem<systems::LcmC3PlanDrawer>(
         meshcat, elastoplastic_sc3_options.N, n_nodes,
         vis_params.model_reduction_point_model, vis_params.ee_vis_model,
         "c3_plans/curr", "base_link", RigidTransformd(), RigidTransformd(),
         vis_params.c3_object_color, vis_params.c3_ee_color,
-        vis_params.visualize_c3_plan_object, vis_params.visualize_c3_plan_robot);
+        vis_params.visualize_c3_plan_object,
+        vis_params.visualize_c3_plan_robot);
     builder.Connect(c3_plan_sub->get_output_port(),
                     c3_plan_drawer->get_input_port_c3_plan());
     builder.Connect(
@@ -336,8 +337,8 @@ int do_main(int argc, char* argv[]) {
   // nodes, connections, and EE) for the current location.
   if (vis_params.visualize_cost_plan_object ||
       vis_params.visualize_cost_plan_robot) {
-    auto cost_plan_sub = builder.AddSystem(
-        LcmSubscriberSystem::Make<c3::lcmt_output>(
+    auto cost_plan_sub =
+        builder.AddSystem(LcmSubscriberSystem::Make<c3::lcmt_output>(
             lcm_channel_params.dynamically_feasible_debug_curr_channel, lcm));
     auto cost_plan_drawer = builder.AddSystem<systems::LcmC3PlanDrawer>(
         meshcat, elastoplastic_sc3_options.N, n_nodes,

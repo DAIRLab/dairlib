@@ -307,20 +307,18 @@ std::vector<ModelInstanceIndex> AddLCSModelsTo3DPrinterPlant(
   }
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  RigidTransform<double> X_W_G = RigidTransform<double>(
-      drake::math::RotationMatrix<double>(), kWorldToGroundOffset);
   plant->WeldFrames(plant->world_frame(),
                     plant->GetFrameByName("base_ee_link"), X_WI);
   plant->WeldFrames(plant->world_frame(),
-                    plant->GetFrameByName("ground"), X_W_G);
+                    plant->GetFrameByName("ground"), X_WI);
 
   RigidTransform<double> T_Ramp_W(
         drake::math::RotationMatrix<double>(
-            drake::math::RollPitchYaw<double>(0, 0, 0)),
+            drake::math::RollPitchYaw<double>(0, 0, 3.14159)),
         k3dPrinterRampAttachmentFrame);
 
 
-  plant->WeldFrames(plant->GetFrameByName("ground"),
+  plant->WeldFrames(plant->world_frame(),
                     plant->GetFrameByName("ramp_link"),
                     T_Ramp_W);
 

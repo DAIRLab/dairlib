@@ -38,7 +38,7 @@ unsuccessful_radius: 0.01
 # Shared across multiple sampling strategies.
 sampling_radius: 0.16  # kRadiallySymmetric, kRandomOnCircle, kRandomOnSphere
 sampling_height: 0.02 # kRadiallySymmetric, kRandomOnCircle, kRandomOnPerimeter
-sample_projection_clearance: 0.027   # kRandomOnPerimeter, kRandomOnShell, kMeshNormal
+sample_projection_clearance: 0.01   # kRandomOnPerimeter, kRandomOnShell, kMeshNormal
 min_angle_from_vertical: 1.49       # kRandomOnSphere, kRandomOnShell
 max_angle_from_vertical: 1.5        # kRandomOnSphere, kRandomOnShell
 

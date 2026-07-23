@@ -26,7 +26,7 @@ qp_projection_scaling: 1
 
 ### Limits
 # Workspace limits specified as linear constraints [x, y, z, lb, ub]
-workspace_limits: [[1, 0, 0, 0.0, 0.35], [0, 1, 0, -0.0075, 0.3475], [0, 0, 1, 0.01, 0.248]]  # for big object like egg carton, x limits should be [0.23, 0.8]
+workspace_limits: [[1, 0, 0, 0.0, 0.35], [0, 1, 0, -0.0075, 0.3475], [0, 0, 1, 0.005, 0.248]]  # for big object like egg carton, x limits should be [0.23, 0.8]
  # for big object like egg carton, x limits should be [0.23, 0.8]
 # Table is x = 0.075 -> 0.71, y = -0.457 -> 0.457
 
@@ -50,7 +50,7 @@ use_predicted_x0_reset_mechanism: false  # Resets if prediction is too far.
 #   5. object-wall (N sub-lists, where N is the number of objects)
 mu_per_pair_type: [0.823, 0.42, 0.46, 0.375]                                                                     # match URDFs with (2mu1*mu2)/(mu1+mu2)
 
-resolve_contacts_to_lists: [[0, 1, 4, 0]]
+resolve_contacts_to_lists: [[0, 1, 4, 0],[0,1,6,0]]
 # Per-group contact model flags (same length/order as resolve_contacts_to_lists):
 #   0 → keep original friction directions (use all num_friction_directions)
 #   1 → treat as planar contact (reduce to 2 friction directions per contact)
@@ -58,7 +58,7 @@ resolve_as_planar_contacts_list: [0, 0, 0, 1]
 
 # Index into this list to choose number of contacts for C3 solve and cost.
 num_contacts_index: 0
-num_contacts_index_for_cost: 0
+num_contacts_index_for_cost: 1
 
 planning_dt_position: 0.075
 planning_dt_pose: 0.075

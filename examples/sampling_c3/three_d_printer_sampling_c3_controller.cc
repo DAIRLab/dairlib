@@ -379,27 +379,13 @@ int DoMain(int argc, char* argv[]) {
               plant_lcs.GetBodyByName("ramp_link"));
 
       
-    drake::geometry::GeometryId bottom_right_sphere_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("cone"))[1];
-    drake::geometry::GeometryId top_right_sphere_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("cone"))[2];
-    drake::geometry::GeometryId top_left_sphere_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("cone"))[3];
-    drake::geometry::GeometryId bottom_left_sphere_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("cone"))[4];
-    drake::geometry::GeometryId high_bottom_right_sphere_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("cone"))[5];
-    drake::geometry::GeometryId high_top_right_sphere_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("cone"))[6];
-    drake::geometry::GeometryId high_top_left_sphere_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("cone"))[7];
+    drake::geometry::GeometryId bottom_right_sphere_geoms = object_geoms[1];
+    drake::geometry::GeometryId top_right_sphere_geoms = object_geoms[2];
+    drake::geometry::GeometryId top_left_sphere_geoms = object_geoms[3];
+    drake::geometry::GeometryId bottom_left_sphere_geoms = object_geoms[4];
+    drake::geometry::GeometryId high_bottom_right_sphere_geoms = object_geoms[5];
+    drake::geometry::GeometryId high_top_right_sphere_geoms = object_geoms[6];
+    drake::geometry::GeometryId high_top_left_sphere_geoms = object_geoms[7];
 
 
     contact_geoms["TOP_LEFT_SPHERE"] = top_left_sphere_geoms;
@@ -414,27 +400,36 @@ int DoMain(int argc, char* argv[]) {
 
     ground_object_contact_pairs.push_back(
         SortedPair(contact_geoms["TOP_LEFT_SPHERE"], contact_geoms["GROUND"]));
+    std::cout << "Debug: Added contact pair between " << contact_geoms["TOP_LEFT_SPHERE"] << " and " << contact_geoms["GROUND"] << std::endl;
     ground_object_contact_pairs.push_back(
         SortedPair(contact_geoms["TOP_RIGHT_SPHERE"], contact_geoms["GROUND"]));
+    std::cout << "Debug: Added contact pair between " << contact_geoms["TOP_RIGHT_SPHERE"] << " and " << contact_geoms["GROUND"] << std::endl;
     ground_object_contact_pairs.push_back(
         SortedPair(contact_geoms["BOTTOM_RIGHT_SPHERE"], contact_geoms["GROUND"]));
+    std::cout << "Debug: Added contact pair between " << contact_geoms["BOTTOM_RIGHT_SPHERE"] << " and " << contact_geoms["GROUND"] << std::endl;
     ground_object_contact_pairs.push_back(
         SortedPair(contact_geoms["BOTTOM_LEFT_SPHERE"], contact_geoms["GROUND"]));
+    std::cout << "Debug: Added contact pair between " << contact_geoms["BOTTOM_LEFT_SPHERE"] << " and " << contact_geoms["GROUND"] << std::endl;
     ground_object_contact_pairs.push_back(
         SortedPair(contact_geoms["HIGH_TOP_LEFT_SPHERE"], contact_geoms["GROUND"]));
+    std::cout << "Debug: Added contact pair between " << contact_geoms["HIGH_TOP_LEFT_SPHERE"] << " and " << contact_geoms["GROUND"] << std::endl;
     ground_object_contact_pairs.push_back(
         SortedPair(contact_geoms["HIGH_TOP_RIGHT_SPHERE"], contact_geoms["GROUND"]));
+    std::cout << "Debug: Added contact pair between " << contact_geoms["HIGH_TOP_RIGHT_SPHERE"] << " and " << contact_geoms["GROUND"] << std::endl;
     ground_object_contact_pairs.push_back(
         SortedPair(contact_geoms["HIGH_BOTTOM_RIGHT_SPHERE"], contact_geoms["GROUND"]));
+    std::cout << "Debug: Added contact pair between " << contact_geoms["HIGH_BOTTOM_RIGHT_SPHERE"] << " and " << contact_geoms["GROUND"] << std::endl;
 
     for (int j = 0; j < ramp_geoms.size(); j++) {
         for (int k = 1; k < object_geoms.size(); k++) {
+            std::cout << "Debug: Adding contact pair between ramp geometry name: " << ramp_geoms[j] << " (index " << j << ") "
+                      << " and object geometry name: " << object_geoms[k] << " (index " << k << ")" << std::endl;
             ground_object_contact_pairs.push_back(
-                
                     SortedPair(ramp_geoms[j], object_geoms[k]));
         }
         ee_contact_pairs.push_back(
             SortedPair(contact_geoms["EE"], ramp_geoms[j]));
+        std::cout << "Debug: Added contact pair between EE and ramp geometry name: " << ramp_geoms[j] << " (index " << j << ")" << std::endl;
       }
 
 
@@ -450,6 +445,7 @@ int DoMain(int argc, char* argv[]) {
 
       ee_contact_pairs.push_back(
             SortedPair(contact_geoms["EE"], object_geoms[0]));
+      std::cout << "Debug: Added contact pair between EE and object geometry name: " << object_geoms[0] << std::endl;
       all_object_geoms.push_back(object_geoms_without_spheres);
     }
 

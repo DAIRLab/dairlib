@@ -90,7 +90,7 @@ ModelInstanceIndex Add3DPrinterToPlant(MultibodyPlant<double>* plant,
       plant->GetJointByName("z_axis_joint", printer_model_instance));
 
   if (plant->time_step() > 0.0) {
-    const drake::multibody::PdControllerGains gains{25000.0, 2500.0};
+    const drake::multibody::PdControllerGains gains{250000.0, 25000.0};
 
     plant->get_mutable_joint_actuator(
         plant->GetJointActuatorByName("x_axis_actuator").index())

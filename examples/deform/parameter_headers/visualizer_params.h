@@ -25,6 +25,7 @@ struct DeformVisualizerParams {
   bool visualize_sample_locations;
   bool visualize_sample_buffer;
   double sample_buffer_point_size;
+  bool visualize_unsuccessful_sample_buffer;
 
   bool visualize_c3_plan_object;
   bool visualize_c3_plan_robot;
@@ -43,6 +44,7 @@ struct DeformVisualizerParams {
 
   Eigen::VectorXd is_c3_mode_color;
   Eigen::VectorXd sample_color;
+  Eigen::VectorXd unsuccessful_sample_buffer_color;
   Eigen::VectorXd c3_state_object_color;
   Eigen::VectorXd c3_state_ee_color;
   Eigen::VectorXd c3_object_color;
@@ -68,6 +70,7 @@ struct DeformVisualizerParams {
     a->Visit(DRAKE_NVP(visualize_sample_locations));
     a->Visit(DRAKE_NVP(visualize_sample_buffer));
     a->Visit(DRAKE_NVP(sample_buffer_point_size));
+    a->Visit(DRAKE_NVP(visualize_unsuccessful_sample_buffer));
     a->Visit(DRAKE_NVP(visualize_c3_plan_object));
     a->Visit(DRAKE_NVP(visualize_c3_plan_robot));
     a->Visit(DRAKE_NVP(visualize_cost_plan_object));
@@ -80,6 +83,7 @@ struct DeformVisualizerParams {
     a->Visit(DRAKE_NVP(ee_vis_model));
     a->Visit(DRAKE_NVP(is_c3_mode_color));
     a->Visit(DRAKE_NVP(sample_color));
+    a->Visit(DRAKE_NVP(unsuccessful_sample_buffer_color));
     a->Visit(DRAKE_NVP(c3_state_object_color));
     a->Visit(DRAKE_NVP(c3_state_ee_color));
     a->Visit(DRAKE_NVP(c3_object_color));

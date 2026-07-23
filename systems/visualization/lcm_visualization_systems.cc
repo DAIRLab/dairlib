@@ -5,6 +5,7 @@
 #include <dairlib/lcmt_c3_output.hpp>
 #include <dairlib/lcmt_c3_state.hpp>
 #include <dairlib/lcmt_elastoplastic_network.hpp>
+#include <dairlib/lcmt_sample_buffer.hpp>
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
 
 #include "common/eigen_utils.h"
@@ -1388,8 +1389,7 @@ drake::systems::EventStatus LcmC3PlanDrawer::DrawC3Plan(
 LcmC3PlanDrawer::LcmC3PlanDrawer(
     const std::shared_ptr<drake::geometry::Meshcat>& meshcat, const int& N,
     const int& num_nodes, const std::string& node_model_file,
-    const std::string& robot_model_file,
-    const std::string& meshcat_path_prefix,
+    const std::string& robot_model_file, const std::string& meshcat_path_prefix,
     const std::string& weld_frame_to_world,
     const RigidTransformd& object_world_offset,
     const RigidTransformd& robot_world_offset,
@@ -1486,15 +1486,79 @@ drake::systems::EventStatus LcmC3PlanDrawer::DrawC3PlanDeformableNetwork(
         }
       }
       object_plan_step_visualizers_[t]->DrawPoses(node_configs);
-      DrawDeformableNetworkEdges(
-          meshcat_, cylinder_for_deformable_, elastoplastic_model,
-          node_locations,
-          meshcat_path_prefix_ + "/deformable_network/step_" +
-              std::to_string(t),
-          object_plan_step_colors_[t], timestamp);
+      DrawDeformableNetworkEdges(meshcat_, cylinder_for_deformable_,
+                                 elastoplastic_model, node_locations,
+                                 meshcat_path_prefix_ +
+                                     "/deformable_network/step_" +
+                                     std::to_string(t),
+                                 object_plan_step_colors_[t], timestamp);
     }
   }
 
+  return drake::systems::EventStatus::Succeeded();
+}
+
+LcmSampleBufferSphereDrawer::LcmSampleBufferSphereDrawer(
+    const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
+    const std::string& path, int max_num_samples, double radius,
+    const VectorXd& rgb, double alpha)
+    : meshcat_(meshcat), path_(path), max_num_samples_(max_num_samples) {
+  this->set_name("LcmSampleBufferSphereDrawer: " + path_);
+
+  lcmt_sample_buffer_input_port_ =
+      this->DeclareAbstractInputPort(
+              "lcmt_sample_buffer", drake::Value<dairlib::lcmt_sample_buffer>{})
+          .get_index();
+
+  last_update_time_index_ = this->DeclareDiscreteState(1);
+
+  Rgba color = rgb.size() == 3 ? Rgba(rgb(0), rgb(1), rgb(2), alpha)
+                               : Rgba(0.4, 0.4, 0.4, alpha);
+  drake::geometry::Sphere sphere(radius);
+  for (int i = 0; i < max_num_samples_; ++i) {
+    meshcat_->SetObject(SpherePath(i), sphere, color);
+    meshcat_->SetProperty(SpherePath(i), "visible", false);
+  }
+
+  DeclarePerStepDiscreteUpdateEvent(
+      &LcmSampleBufferSphereDrawer::DrawSampleBuffer);
+}
+
+std::string LcmSampleBufferSphereDrawer::SpherePath(int index) const {
+  return path_ + "/sample_" + std::to_string(index);
+}
+
+drake::systems::EventStatus LcmSampleBufferSphereDrawer::DrawSampleBuffer(
+    const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+  const auto& sample_buffer = this->EvalInputValue<dairlib::lcmt_sample_buffer>(
+      context, lcmt_sample_buffer_input_port_);
+
+  if (sample_buffer->utime < 1e-3) {
+    return drake::systems::EventStatus::Succeeded();
+  }
+  // Don't needlessly update.
+  if (discrete_state->get_value(last_update_time_index_)[0] ==
+      sample_buffer->utime * 1e-6) {
+    return drake::systems::EventStatus::Succeeded();
+  }
+  discrete_state->get_mutable_value(last_update_time_index_)[0] =
+      sample_buffer->utime * 1e-6;
+
+  int n_in_buffer = std::min(sample_buffer->num_in_buffer, max_num_samples_);
+  for (int i = 0; i < max_num_samples_; ++i) {
+    if (i < n_in_buffer) {
+      const std::vector<float>& configuration =
+          sample_buffer->configurations[i];
+      Vector3d position(configuration[0], configuration[1], configuration[2]);
+      meshcat_->SetTransform(SpherePath(i), RigidTransformd(position),
+                             context.get_time());
+      meshcat_->SetProperty(SpherePath(i), "visible", true, context.get_time());
+    } else {
+      meshcat_->SetProperty(SpherePath(i), "visible", false,
+                            context.get_time());
+    }
+  }
   return drake::systems::EventStatus::Succeeded();
 }
 

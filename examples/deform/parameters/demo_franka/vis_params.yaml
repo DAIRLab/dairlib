@@ -13,8 +13,9 @@ visualize_c3_forces: false
 
 visualize_is_c3_mode: true
 visualize_sample_locations: true
-visualize_sample_buffer: true
+visualize_sample_buffer: true               # as point cloud colored by cost
 sample_buffer_point_size: 0.01
+visualize_unsuccessful_sample_buffer: true  # as spheres sized by restriction radius
 
 visualize_mpm_points: true
 mpm_point_size: 0.005
@@ -38,6 +39,7 @@ c3_state_final_target_color: [0.2, 1.0, 0.2]
 reduced_model_color: [1.0, 0.7, 0.2]
 is_c3_mode_color: [1.0, 0.43, 1.0]
 sample_color: [1.0, 1.0, 0.0]
+unsuccessful_sample_buffer_color: [0.4, 0.4, 0.4]
 c3_state_object_color: [0.2, 0.8, 0.2]  # For visualizing C3 states
 c3_state_ee_color: [0.2, 0.8, 0.2]
 c3_object_color: [0.2, 0.8, 0.8]        # For visualizing C3 plans

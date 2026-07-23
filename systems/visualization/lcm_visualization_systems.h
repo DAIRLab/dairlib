@@ -407,5 +407,39 @@ class LcmC3PlanDrawer : public drake::systems::LeafSystem<double> {
   std::vector<drake::geometry::Rgba> object_plan_step_colors_;
 };
 
+/// Draws the EE samples of a lcmt_sample_buffer as fixed-color, fixed-radius,
+/// semi-transparent spheres in meshcat.  Unlike LcmPoseDrawer, this reads
+/// directly from a lcmt_sample_buffer (rather than a
+/// lcmt_timestamped_saved_traj trajectory) and draws exactly num_in_buffer
+/// spheres out of a fixed pool of max_num_samples, toggling visibility on the
+/// unused pool entries rather than moving them.  The radius corresponds to the
+/// restriction radius of the unsuccessful sample, i.e. if sampling_params'
+/// avoid_choosing_unsuccessful_samples is true, no considered samples will be
+/// within the drawn sphere.
+class LcmSampleBufferSphereDrawer : public drake::systems::LeafSystem<double> {
+ public:
+  LcmSampleBufferSphereDrawer(
+      const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
+      const std::string& path, int max_num_samples, double radius,
+      const Eigen::VectorXd& rgb, double alpha = 0.3);
+
+  const drake::systems::InputPort<double>& get_input_port_lcmt_sample_buffer()
+      const {
+    return this->get_input_port(lcmt_sample_buffer_input_port_);
+  }
+
+ private:
+  drake::systems::EventStatus DrawSampleBuffer(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+  std::string SpherePath(int index) const;
+
+  std::shared_ptr<drake::geometry::Meshcat> meshcat_;
+  std::string path_;
+  int max_num_samples_;
+  drake::systems::InputPortIndex lcmt_sample_buffer_input_port_;
+  drake::systems::DiscreteStateIndex last_update_time_index_;
+};
+
 }  // namespace systems
 }  // namespace dairlib

@@ -1371,15 +1371,20 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         mode_switch_reason_ = ModeSwitchReason::kToC3ReachedReposTarget;
         std::cout << "Switching to C3 because reached repositioning target"
                   << std::endl;
+        // Add the repositioning target to the unsuccessful sample buffer.  It
+        // gets automatically removed if the object moves beyond the buffer
+        // movement thresholds.
+        AddToUnsuccessfulBuffer(
+            candidate_states[SampleIndex::kCurrentReposTarget]);
       } else {
         mode_switch_reason_ = ModeSwitchReason::kToC3Cost;
         std::cout << "Switching to C3 because lower in cost" << std::endl;
+        // Add the current state to the unsuccessful sample buffer.  It gets
+        // automatically removed if the object moves beyond the buffer movement
+        // thresholds.
+        AddToUnsuccessfulBuffer(candidate_states[0]);
       }
       pursued_target_source_ = PursuedTargetSource::kNoTarget;
-      // Add the current state to the unsuccessful sample buffer.  It gets
-      // automatically removed if the object moves beyond the buffer movement
-      // thresholds.
-      AddToUnsuccessfulBuffer(candidate_states[0]);
     }
   }
 

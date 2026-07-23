@@ -27,7 +27,7 @@ u_eta_internal_sigma: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 admm_iter: 3
 rho_scale: 3
 num_threads: 5
-num_outer_threads: 4
+num_outer_threads: 5
 delta_option: 1
 projection_type: 'C3+'     # 'MIQP' or 'QP' or 'C3+'
 contact_model: 'anitescu'   # 'stewart_and_trinkle' or 'anitescu'.
@@ -128,10 +128,10 @@ q_vector: [0.01, 0.01, 0.01,    # EE position
 r_vector: [0.01, 0.01, 0.01]
 
 # Penalty on matching projected variables
-g_x: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+g_x: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   # unused w/ C3+
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-g_u: [0, 0, 0]
+g_u: [0, 0, 0]                                                # unused w/ C3+
 g_gamma_list:  [[1, 1], [1, 1]]      # Improperly sized but unused w/ Anitescu
 g_lambda_n_list:  [[1, 1], [1, 1]]   # Improperly sized but unused w/ Anitescu
 g_lambda_t_list:  [[1, 1], [1, 1]]   # Improperly sized but unused w/ Anitescu
@@ -139,17 +139,21 @@ g_eta_slack_list: [[1, 1], [1, 1]]   # Improperly sized but unused w/ Anitescu
 g_eta_n_list: [[1, 1], [1, 1]]       # Improperly sized but unused w/ Anitescu
 g_eta_t_list: [[1, 1], [1, 1]]       # Improperly sized but unused w/ Anitescu
 g_lambda_list: [
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+  [1, 1, 1, 1,  # EE-deformable
+   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [1, 1, 1, 1,  # EE-deformable
+   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 g_eta_list: [
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+  [100, 100, 100, 100,  # EE-deformable
+   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [100, 100, 100, 100,  # EE-deformable
+   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 
 # Penalty on matching the QP variables
-u_x: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+u_x: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   # unused w/ C3+
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-u_u: [0, 0, 0]
+u_u: [0, 0, 0]                                                # unused w/ C3+
 u_gamma_list:  [[1, 1], [1, 1]]      # Improperly sized but unused w/ Anitescu
 u_lambda_n_list:  [[1, 1], [1, 1]]   # Improperly sized but unused w/ Anitescu
 u_lambda_t_list:  [[1, 1], [1, 1]]   # Improperly sized but unused w/ Anitescu
@@ -158,12 +162,18 @@ u_eta_n_list: [[1, 1], [1, 1]]       # Improperly sized but unused w/ Anitescu
 u_eta_t_list: [[1, 1], [1, 1]]       # Improperly sized but unused w/ Anitescu
 # u_lambda_list is not used for the QP projection; overwritten by alpha*F.
 u_lambda_list: [
-  [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-  [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]]
+  [400, 400, 400, 400,  # EE-deformable
+   4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+  [400, 400, 400, 400,  # EE-deformable
+   4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]]
 u_eta_list: [
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+  [1, 1, 1, 1,  # EE-deformable
+   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [1, 1, 1, 1,  # EE-deformable
+   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 
+final_augmented_cost_contact_scaling: 1000
+final_augmented_cost_contact_indices: [0, 1, 2, 3]
 
 
 ### NO NEED TO CHANGE THE BELOW.  Parameters needed for the C3Options struct but

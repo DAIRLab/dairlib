@@ -28,7 +28,7 @@ spring_constant_method: 1
 # mpm_drake/examples/multibody/deformable/parameters/mpm_params.yaml
 sim_youngs_modulus: 2e4         # match MPM sim
 sim_yield_stress: 1e3           # match MPM sim
-sim_to_control_stiffness_multiplier: 1.0  # a multiplier so the reduced model is
+sim_to_control_stiffness_multiplier: 8.0  # a multiplier so the reduced model is
                                           # stiffer than the MPM sim, to
                                           # encourage the controller to exert
                                           # more force.

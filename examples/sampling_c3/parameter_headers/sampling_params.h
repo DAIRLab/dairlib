@@ -21,6 +21,11 @@
                                        whose center and radius are determined by
                                        the node locations of a deformable
                                        network.
+  9. kRandomAroundDeformableFixedDistance:  starts as
+                                            kRandomOnSphereAroundDeformable,
+                                            then projects the samples to a fixed
+                                            distance from the nearest deformable
+                                            node.
 */
 enum SamplingStrategy {
   kRadiallySymmetric,
@@ -31,7 +36,8 @@ enum SamplingStrategy {
   kRandomOnShell,
   kMeshNormal,
   kMeshNormalMultiObject,
-  kRandomOnSphereAroundDeformable
+  kRandomOnSphereAroundDeformable,
+  kRandomAroundDeformableFixedDistance,
 };
 
 struct SamplingParams {

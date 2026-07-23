@@ -121,7 +121,9 @@ ElastoPlasticSC3Controller::ElastoPlasticSC3Controller(
   // Use sampling and repositioning strategies compatible with the state
   // representation of a deformable object.
   DRAKE_DEMAND(sampling_params_.sampling_strategy ==
-               SamplingStrategy::kRandomOnSphereAroundDeformable);
+                   SamplingStrategy::kRandomOnSphereAroundDeformable ||
+               sampling_params_.sampling_strategy ==
+                   SamplingStrategy::kRandomAroundDeformableFixedDistance);
   DRAKE_DEMAND(reposition_params_.traj_type ==
                RepositioningTrajectoryType::kPiecewiseLinear);
 

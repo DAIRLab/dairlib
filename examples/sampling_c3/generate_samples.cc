@@ -114,6 +114,23 @@ vector<VectorXd> GenerateSampleStates(
                                    sampling_c3_options,
                                    unsuccessful_sample_buffer));
     }
+  } else if (strategy ==
+             SamplingStrategy::kRandomAroundDeformableFixedDistance) {
+    DRAKE_DEMAND(internal_contact_geoms.size() > 0);
+    double ee_radius = GetEERadius(query_object, contact_geoms);
+    double node_radius = GetNodeRadius(query_object, internal_contact_geoms);
+    for (int i = 0; i < num_samples; i++) {
+      do {
+        candidate_states[i].head(3) =
+            RandomAroundDeformableFixedDistanceSampling(
+                n_q, n_v, x_lcs, internal_contact_geoms.size(), ee_radius,
+                node_radius, sampling_params.sample_projection_clearance,
+                sampling_params.min_angle_from_vertical,
+                sampling_params.max_angle_from_vertical);
+      } while (!SampleIsAcceptable(candidate_states[i], sampling_params,
+                                   sampling_c3_options,
+                                   unsuccessful_sample_buffer));
+    }
   } else if (strategy == SamplingStrategy::kFixed) {
     if (num_samples > sampling_params.fixed_sample_locations.size()) {
       throw std::runtime_error(
@@ -325,6 +342,43 @@ Vector3d RandomOnSphereAroundDeformableSampling(
               sampling_radius * sin(theta) * sin(elevation_theta);
   sample[2] = deformable_centroid[2] + sampling_radius * cos(elevation_theta);
   return sample;
+}
+
+// kRandomAroundDeformableFixedDistance:  Starts as
+// kRandomOnSphereAroundDeformable to get a candidate direction/point that is
+// clear of all deformable network nodes, then project it to a fixed distance
+// from the nearest node.
+Vector3d RandomAroundDeformableFixedDistanceSampling(
+    const int& n_q, const int& n_v, const VectorXd& x_lcs,
+    const int& n_deformable_nodes, const double& ee_radius,
+    const double& node_radius, const double& sample_projection_clearance,
+    const double& min_angle_from_vertical,
+    const double& max_angle_from_vertical) {
+  Vector3d sample = RandomOnSphereAroundDeformableSampling(
+      n_q, n_v, x_lcs, n_deformable_nodes, ee_radius, node_radius,
+      sample_projection_clearance, min_angle_from_vertical,
+      max_angle_from_vertical);
+
+  // Find the nearest deformable node to the candidate sample.
+  Vector3d nearest_node_location = x_lcs.segment(3, 3);
+  double nearest_distance = (sample - nearest_node_location).norm();
+  for (int i = 1; i < n_deformable_nodes; i++) {
+    Vector3d node_location = x_lcs.segment(3 + 3 * i, 3);
+    double distance_to_node = (sample - node_location).norm();
+    if (distance_to_node < nearest_distance) {
+      nearest_distance = distance_to_node;
+      nearest_node_location = node_location;
+    }
+  }
+
+  // Project the sample along the same direction from the nearest node so
+  // that it lands exactly at the target center-to-center distance (a gap of
+  // sample_projection_clearance once the EE and node radii are removed).
+  // RandomOnSphereAroundDeformableSampling guarantees nearest_distance > 0.
+  double target_distance =
+      sample_projection_clearance + ee_radius + node_radius;
+  Vector3d direction = (sample - nearest_node_location) / nearest_distance;
+  return nearest_node_location + target_distance * direction;
 }
 
 // kFixed
@@ -828,9 +882,11 @@ bool IsSampleInWorkspace(const VectorXd& candidate_state,
       candidate_state[1] > sampling_c3_options.workspace_limits[1][4] -
                                sampling_c3_options.workspace_margins  // y max
       ||
-      candidate_state[2] < sampling_c3_options.workspace_limits[2][3]  // z min
+      candidate_state[2] < sampling_c3_options.workspace_limits[2][3] +
+                               sampling_c3_options.workspace_margins  // z min
       ||
-      candidate_state[2] > sampling_c3_options.workspace_limits[2][4]  // z max
+      candidate_state[2] > sampling_c3_options.workspace_limits[2][4] -
+                               sampling_c3_options.workspace_margins  // z max
       || candidate_radius > sampling_c3_options.robot_radius_limits[1] -
                                 sampling_c3_options.workspace_margins  // r max
       || candidate_radius < sampling_c3_options.robot_radius_limits[0] +

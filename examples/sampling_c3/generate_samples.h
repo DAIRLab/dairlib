@@ -77,6 +77,13 @@ Eigen::Vector3d RandomOnSphereAroundDeformableSampling(
     const double& min_angle_from_vertical,
     const double& max_angle_from_vertical);
 
+Eigen::Vector3d RandomAroundDeformableFixedDistanceSampling(
+    const int& n_q, const int& n_v, const Eigen::VectorXd& x_lcs,
+    const int& n_deformable_nodes, const double& ee_radius,
+    const double& node_radius, const double& sample_projection_clearance,
+    const double& min_angle_from_vertical,
+    const double& max_angle_from_vertical);
+
 Eigen::Vector3d FixedSample(const Eigen::Vector3d& fixed_sample_location);
 
 Eigen::Vector3d PerimeterSampling(

@@ -15,7 +15,12 @@
 #                                        whose center and radius are determined by
 #                                        the node locations of a deformable
 #                                        network.
-sampling_strategy: 8
+#   9. kRandomAroundDeformableFixedDistance:  starts as
+#                                             kRandomOnSphereAroundDeformable,
+#                                             then projects the samples to a fixed
+#                                             distance from the nearest deformable
+#                                             node.
+sampling_strategy: 9
 
 ### Parameters relevant for all sampling strategies.
 filter_samples_for_safety: true
@@ -43,7 +48,8 @@ unsuccessful_radius: 0.01
 sampling_radius: 0.10  # kRadiallySymmetric, kRandomOnCircle, kRandomOnSphere
 sampling_height: 0.04  # kRadiallySymmetric, kRandomOnCircle, kRandomOnPerimeter
 sample_projection_clearance: 0.008  # kRandomOnPerimeter, kRandomOnShell,
-                                    # kRandomOnSphereAroundDeformable
+                                    # kRandomOnSphereAroundDeformable,
+                                    # kRandomAroundDeformableFixedDistance
 min_angle_from_vertical: 0.2        # kRandomOnSphere, kRandomOnShell,
                                     # kRandomOnSphereAroundDeformable
 max_angle_from_vertical: 1.95       # kRandomOnSphere, kRandomOnShell,

@@ -55,11 +55,11 @@ fixed_node_targets_vector: [[0.41, 0.28, 0.126],  # squishing (shorter z)
                             [0.35, 0.22, 0.106],
                             [0.41, 0.22, 0.106]]
 # fixed_node_targets_vector: [[0.43, 0.30, 0.126],  # flattening (shorter z, wider x and y)
-#                             [0.33, 0.30, 0.126],
-#                             [0.33, 0.20, 0.126],
-#                             [0.43, 0.20, 0.126],
-#                             [0.43, 0.30, 0.106],
-#                             [0.33, 0.30, 0.106],
+#                             [0.33, 0.30, 0.126],  # I don't think this is very
+#                             [0.33, 0.20, 0.126],  # close to how the MPM sim
+#                             [0.43, 0.20, 0.126],  # behaves, which looks
+#                             [0.43, 0.30, 0.106],  # closer to the squishing
+#                             [0.33, 0.30, 0.106],  # example.
 #                             [0.33, 0.20, 0.106],
 #                             [0.43, 0.20, 0.106]]
 # fixed_node_targets_vector: [[0.46, 0.33, 0.145],  # translation

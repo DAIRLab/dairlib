@@ -61,7 +61,7 @@ max_attempts: 100   # kMeshNormalMultiObject, kRandomOnSphereAroundDeformable,
                     # kRandomAroundDeformableFixedDistance
 
 # kFixed parameters.
-fixed_sample_locations: [[0.45, 0.340, 0.04],    # sample 1
+fixed_sample_locations: [[0.45, 0.340, 0.04],   # sample 1
                          [0.27, 0.455, 0.04],   # sample 2
                          [0.27, 0.225, 0.04]]   # sample 3
 

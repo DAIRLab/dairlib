@@ -218,7 +218,7 @@ drake::systems::EventStatus ElastoPlasticSC3Controller::ComputePlan(
                           : sampling_params_.num_additional_samples_repos;
     for (int i = 0; i < num_samples; i++) {
       candidate_states.push_back(x_lcs_curr);
-      candidate_states[i].head(3) << 0.3, 0.4, 0.1;  // TODO: fixed EE end spot
+      candidate_states[i].head(3) << 0.3, 0.4, 0.15;  // TODO: fixed EE end spot
     }
   }
   // Generate new samples according to sampling strategy.

@@ -107,7 +107,7 @@ w_R: 1
 w_G: 0.03
 w_U: 0.26
 
-q_vector: [0.01, 0.01, 0.01,    # EE position
+q_vector: [10, 10, 0.01,        # EE position
            200, 200, 200,       # node positions (0 through 7)
            200, 200, 200,
            200, 200, 200,

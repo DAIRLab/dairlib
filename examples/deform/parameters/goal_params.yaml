@@ -14,7 +14,7 @@ goal_mode: 2
 
 ### Parameters used for multiple goal modes.
 # Success thresholds for position and orientation.
-node_success_threshold: 0.02
+node_success_threshold: 0.01
 
 # Lookahead parameters to define a sub-goal for C3.
 lookahead_step_size: 0.15   # meters

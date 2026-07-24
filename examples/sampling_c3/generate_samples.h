@@ -75,14 +75,20 @@ Eigen::Vector3d RandomOnSphereAroundDeformableSampling(
     const int& n_deformable_nodes, const double& ee_radius,
     const double& node_radius, const double& sample_projection_clearance,
     const double& min_angle_from_vertical,
-    const double& max_angle_from_vertical);
+    const double& max_angle_from_vertical,
+    const std::vector<bool>& node_on_target,
+    const bool& avoid_sampling_by_nodes_near_their_goal,
+    const int& max_attempts);
 
 Eigen::Vector3d RandomAroundDeformableFixedDistanceSampling(
     const int& n_q, const int& n_v, const Eigen::VectorXd& x_lcs,
     const int& n_deformable_nodes, const double& ee_radius,
     const double& node_radius, const double& sample_projection_clearance,
     const double& min_angle_from_vertical,
-    const double& max_angle_from_vertical);
+    const double& max_angle_from_vertical,
+    const std::vector<bool>& node_on_target,
+    const bool& avoid_sampling_by_nodes_near_their_goal,
+    const int& max_attempts);
 
 Eigen::Vector3d FixedSample(const Eigen::Vector3d& fixed_sample_location);
 
@@ -161,6 +167,19 @@ double GetEERadius(
 double GetNodeRadius(
     const drake::geometry::QueryObject<double>& query_object,
     const std::vector<drake::geometry::GeometryId>& internal_contact_geoms);
+
+/// Return a list of deformable node indices that are eligible to sample around.
+/// This is either all of the nodes (if avoid_sampling_by_nodes_near_their_goal
+/// is false), or only the nodes that are not yet on target.
+std::vector<int> SelectActiveDeformableNodeIndices(
+    const std::vector<bool>& node_on_target,
+    const bool& avoid_sampling_by_nodes_near_their_goal);
+
+/// Return the deformable node index in candidate_node_indices that is closest
+/// to point.
+int FindNearestNodeIndex(const Eigen::Vector3d& point,
+                         const Eigen::VectorXd& x_lcs,
+                         const std::vector<int>& candidate_node_indices);
 
 /// Whether the candidate state's EE location is within a clearance distance of
 /// the surface of the object.  Can factor in the EE radius if a real clearance

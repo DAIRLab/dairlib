@@ -44,6 +44,9 @@ unsuccessful_pos_error_sample_retention: 0.006
 unsuccessful_ang_error_sample_retention: 0.05  # 0.0349 rad = 2 deg
 unsuccessful_radius: 0.01
 
+# Deformable-related parameters (applies to all deformable sampling strategies).
+avoid_sampling_by_nodes_near_their_goal: true
+
 # Shared across multiple sampling strategies.
 sampling_radius: 0.10  # kRadiallySymmetric, kRandomOnCircle, kRandomOnSphere
 sampling_height: 0.04  # kRadiallySymmetric, kRandomOnCircle, kRandomOnPerimeter
@@ -54,6 +57,8 @@ min_angle_from_vertical: 0.2        # kRandomOnSphere, kRandomOnShell,
                                     # kRandomOnSphereAroundDeformable
 max_angle_from_vertical: 1.95       # kRandomOnSphere, kRandomOnShell,
                                     # kRandomOnSphereAroundDeformable
+max_attempts: 100   # kMeshNormalMultiObject, kRandomOnSphereAroundDeformable,
+                    # kRandomAroundDeformableFixedDistance
 
 # kFixed parameters.
 fixed_sample_locations: [[0.45, 0.340, 0.04],    # sample 1
@@ -70,7 +75,6 @@ max_sampling_radius: 0.10
 
 # kMeshNormal parameters
 buffer_distance: 0.05
-max_attempts: 100
 barycentric_bias: 0
 
 z_height: -0.004568184999999999

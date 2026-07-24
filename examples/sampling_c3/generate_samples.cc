@@ -2,6 +2,7 @@
 
 #include <math.h>
 
+#include <algorithm>
 #include <iostream>
 
 #include "multibody/geom_geom_collider.h"
@@ -101,6 +102,7 @@ vector<VectorXd> GenerateSampleStates(
     }
   } else if (strategy == SamplingStrategy::kRandomOnSphereAroundDeformable) {
     DRAKE_DEMAND(internal_contact_geoms.size() > 0);
+    DRAKE_DEMAND(object_on_target.size() == internal_contact_geoms.size());
     double ee_radius = GetEERadius(query_object, contact_geoms);
     double node_radius = GetNodeRadius(query_object, internal_contact_geoms);
     for (int i = 0; i < num_samples; i++) {
@@ -109,7 +111,9 @@ vector<VectorXd> GenerateSampleStates(
             n_q, n_v, x_lcs, internal_contact_geoms.size(), ee_radius,
             node_radius, sampling_params.sample_projection_clearance,
             sampling_params.min_angle_from_vertical,
-            sampling_params.max_angle_from_vertical);
+            sampling_params.max_angle_from_vertical, object_on_target,
+            sampling_params.avoid_sampling_by_nodes_near_their_goal,
+            sampling_params.max_attempts);
       } while (!SampleIsAcceptable(candidate_states[i], sampling_params,
                                    sampling_c3_options,
                                    unsuccessful_sample_buffer));
@@ -117,6 +121,7 @@ vector<VectorXd> GenerateSampleStates(
   } else if (strategy ==
              SamplingStrategy::kRandomAroundDeformableFixedDistance) {
     DRAKE_DEMAND(internal_contact_geoms.size() > 0);
+    DRAKE_DEMAND(object_on_target.size() == internal_contact_geoms.size());
     double ee_radius = GetEERadius(query_object, contact_geoms);
     double node_radius = GetNodeRadius(query_object, internal_contact_geoms);
     for (int i = 0; i < num_samples; i++) {
@@ -126,7 +131,9 @@ vector<VectorXd> GenerateSampleStates(
                 n_q, n_v, x_lcs, internal_contact_geoms.size(), ee_radius,
                 node_radius, sampling_params.sample_projection_clearance,
                 sampling_params.min_angle_from_vertical,
-                sampling_params.max_angle_from_vertical);
+                sampling_params.max_angle_from_vertical, object_on_target,
+                sampling_params.avoid_sampling_by_nodes_near_their_goal,
+                sampling_params.max_attempts);
       } while (!SampleIsAcceptable(candidate_states[i], sampling_params,
                                    sampling_c3_options,
                                    unsuccessful_sample_buffer));
@@ -302,26 +309,70 @@ Vector3d RandomOnSphereSampling(const int& n_q, const int& n_v,
   return sample;
 }
 
+// Returns a list of all deformable node indices that are eligible to sample
+// around.
+vector<int> SelectActiveDeformableNodeIndices(
+    const vector<bool>& node_on_target,
+    const bool& avoid_sampling_by_nodes_near_their_goal) {
+  vector<int> active_indices;
+  for (int i = 0; i < node_on_target.size(); i++) {
+    if (!node_on_target[i] || !avoid_sampling_by_nodes_near_their_goal) {
+      active_indices.push_back(i);
+    }
+  }
+  return active_indices;
+}
+
+// Return the deformable node index in candidate_node_indices that is closest to
+// point.
+int FindNearestNodeIndex(const Vector3d& point, const VectorXd& x_lcs,
+                         const vector<int>& candidate_node_indices) {
+  int nearest_idx = candidate_node_indices.front();
+  double nearest_distance =
+      (point - Vector3d(x_lcs.segment(3 + 3 * nearest_idx, 3))).norm();
+  for (int idx : candidate_node_indices) {
+    double distance_to_node =
+        (point - Vector3d(x_lcs.segment(3 + 3 * idx, 3))).norm();
+    if (distance_to_node < nearest_distance) {
+      nearest_distance = distance_to_node;
+      nearest_idx = idx;
+    }
+  }
+  return nearest_idx;
+}
+
 // kRandomOnSphereAroundDeformable:  Random on surface of sphere of adaptable
 // radius that guarantees a minimum clearance around a set of deformable network
-// nodes, within elevation angles.
+// nodes, within elevation angles.  If avoid_sampling_by_nodes_near_their_goal
+// is set, nodes already on target are excluded both from the sphere's
+// centroid/radius computation and (via rejection sampling) from being the
+// nearest node to the generated sample.
 Vector3d RandomOnSphereAroundDeformableSampling(
     const int& n_q, const int& n_v, const VectorXd& x_lcs,
     const int& n_deformable_nodes, const double& ee_radius,
     const double& node_radius, const double& sample_projection_clearance,
     const double& min_angle_from_vertical,
-    const double& max_angle_from_vertical) {
-  // Get the centroid of the deformable network nodes.
-  Vector3d deformable_centroid = Vector3d::Zero();
+    const double& max_angle_from_vertical, const vector<bool>& node_on_target,
+    const bool& avoid_sampling_by_nodes_near_their_goal,
+    const int& max_attempts) {
+  vector<int> active_indices = SelectActiveDeformableNodeIndices(
+      node_on_target, avoid_sampling_by_nodes_near_their_goal);
+  vector<int> all_indices;
   for (int i = 0; i < n_deformable_nodes; i++) {
-    Vector3d node_location = x_lcs.segment(3 + 3 * i, 3);
-    deformable_centroid += node_location / n_deformable_nodes;
+    all_indices.push_back(i);
   }
-  // Set the sampling radius to be the maximum distance from the average node
-  // location to any node, plus the desired clearance.
+
+  // Get the centroid of the active deformable network nodes.
+  Vector3d deformable_centroid = Vector3d::Zero();
+  for (int i : active_indices) {
+    Vector3d node_location = x_lcs.segment(3 + 3 * i, 3);
+    deformable_centroid += node_location / active_indices.size();
+  }
+  // Set the sampling radius to be the maximum distance from the average
+  // active node location to any active node, plus the desired clearance.
   double sampling_radius =
       sample_projection_clearance + ee_radius + node_radius;
-  for (int i = 0; i < n_deformable_nodes; i++) {
+  for (int i : active_indices) {
     Vector3d node_location = x_lcs.segment(3 + 3 * i, 3);
     double distance_to_node = (node_location - deformable_centroid).norm();
     sampling_radius = std::max(sampling_radius,
@@ -329,47 +380,62 @@ Vector3d RandomOnSphereAroundDeformableSampling(
                                    ee_radius + node_radius);
   }
 
-  // Generate a random theta about and elevation angle from the vertical axis.
-  double theta = RandomUniform(0, 2 * M_PI);
-  double elevation_theta =
-      RandomUniform(min_angle_from_vertical, max_angle_from_vertical);
-
-  // Update the hypothetical state's EE location.
   Vector3d sample = Vector3d::Zero();
-  sample[0] = deformable_centroid[0] +
-              sampling_radius * cos(theta) * sin(elevation_theta);
-  sample[1] = deformable_centroid[1] +
-              sampling_radius * sin(theta) * sin(elevation_theta);
-  sample[2] = deformable_centroid[2] + sampling_radius * cos(elevation_theta);
-  return sample;
+  int attempts = 0;
+  do {
+    // Generate a random theta about and elevation angle from the vertical
+    // axis.
+    double theta = RandomUniform(0, 2 * M_PI);
+    double elevation_theta =
+        RandomUniform(min_angle_from_vertical, max_angle_from_vertical);
+
+    // Update the hypothetical state's EE location.
+    sample[0] = deformable_centroid[0] +
+                sampling_radius * cos(theta) * sin(elevation_theta);
+    sample[1] = deformable_centroid[1] +
+                sampling_radius * sin(theta) * sin(elevation_theta);
+    sample[2] = deformable_centroid[2] + sampling_radius * cos(elevation_theta);
+
+    // Only accept the sample if its nearest deformable node is not yet on
+    // target.
+    int nearest_idx = FindNearestNodeIndex(sample, x_lcs, all_indices);
+    if (std::find(active_indices.begin(), active_indices.end(), nearest_idx) !=
+        active_indices.end()) {
+      return sample;
+    }
+    ++attempts;
+  } while (attempts < max_attempts);
+  throw std::runtime_error(
+      "Failed to generate a deformable sample whose nearest node is not "
+      "on-target after " +
+      std::to_string(max_attempts) + " attempts.");
 }
 
 // kRandomAroundDeformableFixedDistance:  Starts as
 // kRandomOnSphereAroundDeformable to get a candidate direction/point that is
 // clear of all deformable network nodes, then project it to a fixed distance
-// from the nearest node.
+// from the nearest active (not-yet-on-target) node.
 Vector3d RandomAroundDeformableFixedDistanceSampling(
     const int& n_q, const int& n_v, const VectorXd& x_lcs,
     const int& n_deformable_nodes, const double& ee_radius,
     const double& node_radius, const double& sample_projection_clearance,
     const double& min_angle_from_vertical,
-    const double& max_angle_from_vertical) {
+    const double& max_angle_from_vertical, const vector<bool>& node_on_target,
+    const bool& avoid_sampling_by_nodes_near_their_goal,
+    const int& max_attempts) {
   Vector3d sample = RandomOnSphereAroundDeformableSampling(
       n_q, n_v, x_lcs, n_deformable_nodes, ee_radius, node_radius,
       sample_projection_clearance, min_angle_from_vertical,
-      max_angle_from_vertical);
+      max_angle_from_vertical, node_on_target,
+      avoid_sampling_by_nodes_near_their_goal, max_attempts);
 
-  // Find the nearest deformable node to the candidate sample.
-  Vector3d nearest_node_location = x_lcs.segment(3, 3);
+  vector<int> active_indices = SelectActiveDeformableNodeIndices(
+      node_on_target, avoid_sampling_by_nodes_near_their_goal);
+
+  // Find the nearest active deformable node to the candidate sample.
+  int nearest_idx = FindNearestNodeIndex(sample, x_lcs, active_indices);
+  Vector3d nearest_node_location = x_lcs.segment(3 + 3 * nearest_idx, 3);
   double nearest_distance = (sample - nearest_node_location).norm();
-  for (int i = 1; i < n_deformable_nodes; i++) {
-    Vector3d node_location = x_lcs.segment(3 + 3 * i, 3);
-    double distance_to_node = (sample - node_location).norm();
-    if (distance_to_node < nearest_distance) {
-      nearest_distance = distance_to_node;
-      nearest_node_location = node_location;
-    }
-  }
 
   // Project the sample along the same direction from the nearest node so
   // that it lands exactly at the target center-to-center distance (a gap of

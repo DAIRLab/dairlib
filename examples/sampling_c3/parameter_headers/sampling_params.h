@@ -87,6 +87,10 @@ struct SamplingParams {
   double min_sampling_radius;
   double max_sampling_radius;
 
+  /// Deformable-related parameters (applies to all deformable sampling
+  /// strategies).
+  bool avoid_sampling_by_nodes_near_their_goal;
+
   // kMeshNormal parameters
   double buffer_distance;
   int max_attempts;
@@ -112,6 +116,7 @@ struct SamplingParams {
     a->Visit(DRAKE_NVP(sample_projection_clearance));
     a->Visit(DRAKE_NVP(min_sampling_radius));
     a->Visit(DRAKE_NVP(max_sampling_radius));
+    a->Visit(DRAKE_NVP(avoid_sampling_by_nodes_near_their_goal));
     a->Visit(DRAKE_NVP(num_additional_samples_repos));
     a->Visit(DRAKE_NVP(num_additional_samples_c3));
     a->Visit(DRAKE_NVP(consider_best_buffer_sample_when_leaving_c3));

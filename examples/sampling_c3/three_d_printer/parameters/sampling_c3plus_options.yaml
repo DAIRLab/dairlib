@@ -26,7 +26,7 @@ qp_projection_scaling: 1
 
 ### Limits
 # Workspace limits specified as linear constraints [x, y, z, lb, ub]
-workspace_limits: [[1, 0, 0, 0.0, 0.35], [0, 1, 0, -0.0075, 0.3475], [0, 0, 1, 0.005, 0.248]]  # for big object like egg carton, x limits should be [0.23, 0.8]
+workspace_limits: [[1, 0, 0, 0.0, 0.35], [0, 1, 0, -0.0075, 0.3475], [0, 0, 1, 0.0, 0.248]]  # for big object like egg carton, x limits should be [0.23, 0.8]
  # for big object like egg carton, x limits should be [0.23, 0.8]
 # Table is x = 0.075 -> 0.71, y = -0.457 -> 0.457
 
@@ -86,8 +86,13 @@ w_R: 6
 w_G: 0.18
 w_U: 0.5
 
-q_vector: [0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.1, 150, 150, 120, 15, 15, 10, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]                                                                                                                                                                                                                                                                                                                                                                    # object 1 linear velocity
-r_vector: [0.01, 0.01, 1]
+q_vector: [0.01, 0.01, 0.01,    # EE position
+           0.1, 0.1, 0.1, 0.1,  # object orientation
+           200, 200, 120,       # object position
+           5, 5, 5,             # EE linear velocity
+           0.05, 0.05, 0.05,    # object angular velocity
+           0.05, 0.05, 0.05]    # object linear velocity
+r_vector: [0.01, 0.01, 0.01]
 
 # Penalty on matching projected variables
 g_x: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -120,8 +125,13 @@ w_R_position: 6
 w_G_position: 0.18
 w_U_position: 0.26
 
-q_vector_position: [0.01, 0.01, 0.01, 0, 0, 0, 0, 200, 200, 120, 15, 15, 10, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]                                                                                                                                                                                                                                                                                                                            # object 2 linear velocity
-r_vector_position: [0.01, 0.01, 1]
+q_vector_position: [0.01, 0.01, 0.01,       # EE position
+                    0.1, 0.1, 0.1, 0.1,     # object orientation
+                    1500, 1500, 1500,       # object position
+                    5, 5, 5,                # EE linear velocity
+                    0.01, 0.01, 0.01,       # object angular velocity
+                    1, 1, 1]                # object linear velocity
+r_vector_position: [0.01, 0.01, 0.01]
 
 # Penalty on matching projected variables
 g_x_position: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]

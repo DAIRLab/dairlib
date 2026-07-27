@@ -58,6 +58,7 @@ ModelInstanceIndex AddFrankaToPlant(MultibodyPlant<double>* plant,
 
   return franka_index;
 }
+
 ModelInstanceIndex Add3DPrinterToPlant(MultibodyPlant<double>* plant,
                                        SceneGraph<double>* scene_graph,
                                        const bool& include_ee,
@@ -67,17 +68,15 @@ ModelInstanceIndex Add3DPrinterToPlant(MultibodyPlant<double>* plant,
   parser.SetAutoRenaming(true);
 
   ModelInstanceIndex printer_index =
-    parser.AddModelsFromUrl(k3DPrinterModel)[0];
-
+      parser.AddModels(FindResourceOrThrow(k3DPrinterModel))[0];
   ModelInstanceIndex ramp_index =
-    parser.AddModelsFromUrl(k3DPrinterRampModel)[0];
+      parser.AddModels(FindResourceOrThrow(k3DPrinterRampModel))[0];
 
-// Disable gravity for the entire printer model instance.
+  // Disable gravity for the entire printer model instance.
   plant->set_gravity_enabled(printer_index, false);
   plant->set_gravity_enabled(ramp_index, false);
 
   std::optional<ModelInstanceIndex> printer_model_instance{printer_index};
-
 
   plant->AddJointActuator(
       "x_axis_actuator",
@@ -92,33 +91,33 @@ ModelInstanceIndex Add3DPrinterToPlant(MultibodyPlant<double>* plant,
   if (plant->time_step() > 0.0) {
     const drake::multibody::PdControllerGains gains{250000.0, 25000.0};
 
-    plant->get_mutable_joint_actuator(
-        plant->GetJointActuatorByName("x_axis_actuator").index())
+    plant
+        ->get_mutable_joint_actuator(
+            plant->GetJointActuatorByName("x_axis_actuator").index())
         .set_controller_gains(gains);
 
-    plant->get_mutable_joint_actuator(
-        plant->GetJointActuatorByName("y_axis_actuator").index())
+    plant
+        ->get_mutable_joint_actuator(
+            plant->GetJointActuatorByName("y_axis_actuator").index())
         .set_controller_gains(gains);
 
-    plant->get_mutable_joint_actuator(
-        plant->GetJointActuatorByName("z_axis_actuator").index())
+    plant
+        ->get_mutable_joint_actuator(
+            plant->GetJointActuatorByName("z_axis_actuator").index())
         .set_controller_gains(gains);
   }
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  plant->WeldFrames(plant->world_frame(),
-                    plant->GetFrameByName("base_link"),
+  plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("base_link"),
                     X_WI);
 
   RigidTransform<double> T_Ramp_W(
-        drake::math::RotationMatrix<double>(
-            drake::math::RollPitchYaw<double>(0, 0, 3.14159)),
-        k3dPrinterRampAttachmentFrame);
-
+      drake::math::RotationMatrix<double>(
+          drake::math::RollPitchYaw<double>(0, 0, 3.14159)),
+      k3dPrinterRampAttachmentFrame);
 
   plant->WeldFrames(plant->GetFrameByName("base_link"),
-                    plant->GetFrameByName("ramp_link"),
-                    T_Ramp_W);
+                    plant->GetFrameByName("ramp_link"), T_Ramp_W);
 
   if (include_ee) {
     ModelInstanceIndex ee_index = parser.AddModels(k3dEndEffectorModel)[0];
@@ -132,13 +131,11 @@ ModelInstanceIndex Add3DPrinterToPlant(MultibodyPlant<double>* plant,
         k3dPrinterToolAttachmentFrame);
 
     plant->WeldFrames(plant->GetFrameByName("x_carriage"),
-                      plant->GetFrameByName("ee_link"),
-                      T_EE_W);
+                      plant->GetFrameByName("ee_link"), T_EE_W);
   }
 
   return printer_index;
 }
-
 
 void AddWallsToPlant(drake::multibody::MultibodyPlant<double>* plant,
                      drake::geometry::SceneGraph<double>* scene_graph,
@@ -260,7 +257,6 @@ std::vector<ModelInstanceIndex> AddLCSModelsToPlant(
   parser_lcs.AddModels(kEndEffectorSimpleModel);
   parser_lcs.AddModels(kGroundModel);
 
-
   for (const auto& model : object_models) {
     obj_models.push_back(parser_lcs.AddModels(FindResourceOrThrow(model))[0]);
   }
@@ -282,11 +278,9 @@ std::vector<ModelInstanceIndex> AddLCSModelsToPlant(
 }
 
 std::vector<ModelInstanceIndex> AddLCSModelsTo3DPrinterPlant(
-    MultibodyPlant<double>* plant,
-    SceneGraph<double>* scene_graph,
+    MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph,
     std::vector<std::string> object_models,
-    const bool& include_end_effector_orientation,
-    const bool& include_walls) {
+    const bool& include_end_effector_orientation, const bool& include_walls) {
   // Cannot currently handle end effector orientation (would just require new
   // EE simple model with orientation DOFs).
   DRAKE_ASSERT(!include_end_effector_orientation);
@@ -297,37 +291,27 @@ std::vector<ModelInstanceIndex> AddLCSModelsTo3DPrinterPlant(
   parser_lcs.SetAutoRenaming(true);
   parser_lcs.AddModels(k3dEndEffectorSimpleModel);
   parser_lcs.AddModels(kBaseModel);
-  parser_lcs.AddModelsFromUrl(k3DPrinterRampModel);
-
+  parser_lcs.AddModels(FindResourceOrThrow(k3DPrinterRampModel));
 
   for (const auto& model : object_models) {
-    obj_models.push_back(
-      parser_lcs.AddModels(FindResourceOrThrow(model))[0]
-    );
+    obj_models.push_back(parser_lcs.AddModels(FindResourceOrThrow(model))[0]);
   }
 
   RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  plant->WeldFrames(plant->world_frame(),
-                    plant->GetFrameByName("base_ee_link"), X_WI);
-  plant->WeldFrames(plant->world_frame(),
-                    plant->GetFrameByName("ground"), X_WI);
+  plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("base_ee_link"),
+                    X_WI);
+  plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("ground"),
+                    X_WI);
 
   RigidTransform<double> T_Ramp_W(
-        drake::math::RotationMatrix<double>(
-            drake::math::RollPitchYaw<double>(0, 0, 3.14159)),
-        k3dPrinterRampAttachmentFrame);
+      drake::math::RotationMatrix<double>(
+          drake::math::RollPitchYaw<double>(0, 0, 3.14159)),
+      k3dPrinterRampAttachmentFrame);
 
-
-  plant->WeldFrames(plant->world_frame(),
-                    plant->GetFrameByName("ramp_link"),
+  plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("ramp_link"),
                     T_Ramp_W);
-
-
 
   return obj_models;
 }
-
-
-
 
 }  // namespace dairlib

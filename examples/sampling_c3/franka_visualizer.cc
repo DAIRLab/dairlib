@@ -187,7 +187,7 @@ int do_main(int argc, char* argv[]) {
   // LCM subscribers.
   auto franka_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-          lcm_channel_params.franka_state_channel, lcm));
+          lcm_channel_params.robot_state_channel, lcm));
 
   std::vector<LcmSubscriberSystem*> object_state_subs;
   for (int i = 0; i < object_state_receivers.size(); i++) {

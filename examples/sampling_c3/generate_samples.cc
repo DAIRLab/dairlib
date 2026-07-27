@@ -60,10 +60,8 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
   const auto& query_port = plant.get_geometry_query_input_port();
   const auto& query_object =
       query_port.template Eval<drake::geometry::QueryObject<double>>(*context);
-  const auto& inspector = query_object.inspector();
-  const auto collision_ids =
-      inspector.GetAllGeometryIds(drake::geometry::Role::kProximity);
-  //Split function calls based on sampling strategy.
+
+  // Split function calls based on sampling strategy.
   SamplingStrategy strategy = sampling_params.sampling_strategy;
   if (strategy == SamplingStrategy::kRadiallySymmetric) {
     for (int i = 0; i < num_samples; i++) {
@@ -700,8 +698,11 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
         projected_sample_point[2] = z_height;
       }
 
-    } // else {
-    //   if (projected_sample_point[2] < -0.008) {  // require ee radius clearance
+    }  // TODO(bibit):  This should really be a lower limit that depends on the
+       // EE radius, clearance distance, and ground height.
+    // else {
+    //   if (projected_sample_point[2] < -0.008) {  // require ee radius
+    //   clearance
     //     projected_sample_point[2] = -0.008;
     //   }
     // }
@@ -737,19 +738,8 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
     }
 
     // Detect samples too close to object(s)
-    const auto& inspector = query_object.inspector();
-    const auto collision_ids =
-        inspector.GetAllGeometryIds(drake::geometry::Role::kProximity);
-    // std::cout << "Len(results) = " << results.size() << std::endl;
-    // std::cout << "Len(collision_ids) = " << collision_ids.size() << std::endl;
-    
     for (int i = 1; i < results.size() - offset; i++) {
-      //  std::cout<<"position of sample: "<<projected_sample_point.transpose()<<std::endl;
-      //  std::cout << "Distance to object " << i - 1 << " (" << inspector.GetName(collision_ids[i]) << "): "
-      //            << results[i].distance << std::endl;
       if (results[i].distance <= sampling_params.sample_projection_clearance) {
-        // std::cout << "Sample is too close to object " << i - 1
-        //           << " (inspector.GetName(collision_ids[i]))" << ", distance: " << results[i].distance << std::endl;
         in_collision = true;
         break;
       }

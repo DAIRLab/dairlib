@@ -14,15 +14,15 @@ namespace dairlib {
 static constexpr const char* kFrankaModel =
     "package://drake_models/franka_description/urdf/panda_arm.urdf";
 static constexpr const char* k3DPrinterModel =
-    "examples/sampling_c3/urdf/3d_Printer/3_d_printer.urdf";
+    "examples/sampling_c3/urdf/three_d_printer/3_d_printer.urdf";
 static constexpr const char* k3DPrinterRampModel =
-    "examples/sampling_c3/urdf/3d_Printer/ramp/new_ramp.urdf";
+    "examples/sampling_c3/urdf/three_d_printer/ramp/new_ramp.urdf";
 static constexpr const char* kEndEffectorModel =
     "examples/sampling_c3/urdf/end_effector_full.urdf";
 static constexpr const char* k3dEndEffectorModel =
-    "examples/sampling_c3/urdf/3d_Printer/EE.urdf";
+    "examples/sampling_c3/urdf/three_d_printer/EE.urdf";
 static constexpr const char* k3dEndEffectorSimpleModel =
-    "examples/sampling_c3/urdf/3d_Printer/"
+    "examples/sampling_c3/urdf/three_d_printer/"
     "three_d_printer_end_effector_simple_model.urdf";
 static constexpr const char* kEndEffectorSimpleModel =
     "examples/sampling_c3/urdf/end_effector_simple_model.urdf";
@@ -32,7 +32,7 @@ static constexpr const char* k3dEndEffectorTipName = "end_effector_tip";
 static constexpr const char* kGroundModel =
     "examples/sampling_c3/urdf/ground.urdf";
 static constexpr const char* kBaseModel =
-    "examples/sampling_c3/urdf/3d_Printer/3_d_printer_bed.urdf";
+    "examples/sampling_c3/urdf/three_d_printer/3_d_printer_bed.urdf";
 static constexpr const char* kPlatformModel =
     "examples/sampling_c3/urdf/platform.urdf";
 

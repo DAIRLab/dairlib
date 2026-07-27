@@ -214,10 +214,6 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   void CheckForWorkspaceLimitViolations(
       const TimestampedVector<double>* lcs_x_curr) const;
-    
-  
-  void Check3dPrinterForWorkspaceLimitViolations(
-      const TimestampedVector<double>* lcs_x_curr) const;
 
   void UpdateCostMatrices(const drake::VectorX<double>& x_lcs_curr,
                           const BasicVector<double>& x_lcs_des,

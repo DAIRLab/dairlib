@@ -11,7 +11,7 @@ cc_library(
 )
 
 cc_library(
-    name = "lcm_channels_anything",
+    name = "lcm_channels_three_d_printer",
     hdrs = [],
     data = [
         "//examples/sampling_c3:shared_params_yamls",
@@ -24,7 +24,7 @@ cc_library(
 )
 
 cc_library(
-    name = "franka_sim_params_anything",
+    name = "franka_sim_params_three_d_printer",
     hdrs = [],
     data = [
         "parameters/sim_params.yaml",
@@ -36,7 +36,7 @@ cc_library(
 )
 
 cc_library(
-    name = "sampling_c3_controller_params_anything",
+    name = "sampling_c3_controller_params_three_d_printer",
     hdrs = [],
     data = [
         "parameters/sampling_c3_controller_params.yaml",
@@ -49,7 +49,7 @@ cc_library(
 )
 
 cc_library(
-    name = "goal_params_anything",
+    name = "goal_params_three_d_printer",
     hdrs = [],
     data = [
         "parameters/goal_params.yaml",
@@ -61,7 +61,7 @@ cc_library(
 )
 
 cc_library(
-    name = "franka_drake_lcm_driver_channels_anything",
+    name = "franka_drake_lcm_driver_channels_three_d_printer",
     hdrs = [],
     data = [
         "//common/parameters:franka_drake_lcm_driver_channels",

@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 
-#include <dairlib/lcmt_object_state.hpp>
 #include <Eigen/Core>
+#include <dairlib/lcmt_object_state.hpp>
 
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -15,8 +15,8 @@
 #include "systems/primitives/subvector_pass_through.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
-#include "drake/systems/framework/leaf_system.h"
 #include "drake/systems/framework/basic_vector.h"
+#include "drake/systems/framework/leaf_system.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
 
 namespace dairlib {
@@ -271,17 +271,14 @@ SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
     drake::multibody::ModelInstanceIndex model_instance_index,
     bool publish_efforts = true, double actuator_delay = 0);
 
-
 drake::systems::LeafSystem<double>* Add3dPrinterStateReceiverAndStateSenderLcm(
     drake::systems::DiagramBuilder<double>* builder,
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::lcm::LcmInterfaceSystem* lcm,
-    std::string state_input_channel,
-    std::string state_output_channel,
+    std::string state_input_channel, std::string state_output_channel,
     double publish_rate,
     drake::multibody::ModelInstanceIndex model_instance_index,
     bool publish_efforts);
-    
 
 }  // namespace systems
 }  // namespace dairlib

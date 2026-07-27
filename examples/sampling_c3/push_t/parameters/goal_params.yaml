@@ -10,6 +10,7 @@ goal_mode: 0
 position_success_threshold: 0.02
 orientation_success_threshold: 0.1  # 0.1 rad = 5.7 degrees
 only_use_xy_position: true
+ignore_roll_when_tracking_orientation: false
 
 resting_object_heights: [-0.009]   # in world frame
 ee_target_z_offset_above_object: 0.06   # defines EE goal w.r.t. object position

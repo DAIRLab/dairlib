@@ -10,9 +10,9 @@ goal_mode: 0
 position_success_threshold: 0.02
 orientation_success_threshold: 0.1  # 0.1 rad = 5.7 degrees
 only_use_xy_position: true
+ignore_roll_when_tracking_orientation: false
 
-# in world frame
-resting_object_heights: [-0.029]                                                                                                                        # in world frame
+resting_object_heights: [-0.002685910000000003, -0.0024437, -0.001956050000000001, 0.0001434999999999978]                                               # in world frame
 ee_target_z_offset_above_object: 0.06   # defines EE goal w.r.t. object position
 
 # Lookahead parameters to define a sub-goal for C3.
@@ -28,11 +28,9 @@ angle_hysteresis: 0.4
 # Factor to convert an angular error to angular velocity command (0=disabled).
 angle_err_to_vel_factor: 0
 
-# Initial goal (and only goal for fixed goal mode) DEPRECATED.
-
-
-fixed_target_positions: [[0.5, 0.0, -0.029]]
-fixed_target_orientations: [[0.707, 0, 0, 0.707]]
+# Initial goal (and only goal for fixed goal mode).
+fixed_target_positions: [[0.51, -0.30000000000000004, -0.002685910000000003], [0.5, -0.10000000000000003, -0.0024437], [0.51, 0.09999999999999998, -0.001956050000000001], [0.5, 0.30000000000000004, 0.0001434999999999978]]
+fixed_target_orientations: [[0.71, 0, 0, 0.71], [1, 0, 0, 0.05], [0.71, 0, 0, -0.73], [1, 0, 0, 0.02]]
 
 
 # Random-specific parameters.

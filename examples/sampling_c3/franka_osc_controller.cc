@@ -110,7 +110,7 @@ int DoMain(int argc, char* argv[]) {
           "end_effector_orientation_target");
   auto franka_command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
-          lcm_channel_params.franka_input_channel, &lcm,
+          lcm_channel_params.robot_input_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
   auto osc_command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_input>(
@@ -268,7 +268,7 @@ int DoMain(int argc, char* argv[]) {
   // Run lcm-driven simulation
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, shared_diagram, state_receiver,
-      lcm_channel_params.franka_state_channel, true);
+      lcm_channel_params.robot_state_channel, true);
   loop.Simulate();
   return 0;
 }

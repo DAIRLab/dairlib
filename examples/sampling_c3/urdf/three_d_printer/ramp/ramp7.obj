@@ -1,6 +1,5 @@
 # Blender 5.2.0 LTS
 # www.blender.org
-mtllib ramp7.mtl
 o new_ramp
 v -62.340557 52.078644 0.043458
 v -62.349869 52.083111 2.583446

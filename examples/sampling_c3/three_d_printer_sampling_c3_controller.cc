@@ -378,47 +378,50 @@ int DoMain(int argc, char* argv[]) {
           plant_lcs.GetCollisionGeometriesForBody(
               plant_lcs.GetBodyByName("ramp_link"));
 
-      
-    drake::geometry::GeometryId bottom_right_sphere_geoms = object_geoms[1];
-    drake::geometry::GeometryId top_right_sphere_geoms = object_geoms[2];
-    drake::geometry::GeometryId top_left_sphere_geoms = object_geoms[3];
-    drake::geometry::GeometryId bottom_left_sphere_geoms = object_geoms[4];
-    drake::geometry::GeometryId high_bottom_right_sphere_geoms = object_geoms[5];
-    drake::geometry::GeometryId high_top_right_sphere_geoms = object_geoms[6];
-    drake::geometry::GeometryId high_top_left_sphere_geoms = object_geoms[7];
 
 
-    contact_geoms["TOP_LEFT_SPHERE"] = top_left_sphere_geoms;
-    contact_geoms["TOP_RIGHT_SPHERE"] = top_right_sphere_geoms;
-    contact_geoms["BOTTOM_RIGHT_SPHERE"] = bottom_right_sphere_geoms;
-    contact_geoms["BOTTOM_LEFT_SPHERE"] = bottom_left_sphere_geoms;
-    contact_geoms["HIGH_TOP_LEFT_SPHERE"] = high_top_left_sphere_geoms;
-    contact_geoms["HIGH_TOP_RIGHT_SPHERE"] = high_top_right_sphere_geoms;
-    contact_geoms["HIGH_BOTTOM_RIGHT_SPHERE"] = high_bottom_right_sphere_geoms;
+    drake::geometry::GeometryId corner_1_sphere_geoms = object_geoms[1];
+    drake::geometry::GeometryId corner_2_sphere_geoms = object_geoms[2];
+    drake::geometry::GeometryId corner_3_sphere_geoms = object_geoms[3];
+    drake::geometry::GeometryId corner_4_sphere_geoms = object_geoms[4];
+    drake::geometry::GeometryId corner_5_sphere_geoms = object_geoms[5];
+    drake::geometry::GeometryId corner_6_sphere_geoms = object_geoms[6];
+    drake::geometry::GeometryId corner_7_sphere_geoms = object_geoms[7];
 
 
 
+    contact_geoms["CORNER_1_SPHERE"] = corner_1_sphere_geoms;
+    contact_geoms["CORNER_2_SPHERE"] = corner_2_sphere_geoms;
+    contact_geoms["CORNER_3_SPHERE"] = corner_3_sphere_geoms;
+    contact_geoms["CORNER_4_SPHERE"] = corner_4_sphere_geoms;
+    contact_geoms["CORNER_5_SPHERE"] = corner_5_sphere_geoms;
+    contact_geoms["CORNER_6_SPHERE"] = corner_6_sphere_geoms;
+    contact_geoms["CORNER_7_SPHERE"] = corner_7_sphere_geoms;
+
+
+
     ground_object_contact_pairs.push_back(
-        SortedPair(contact_geoms["TOP_LEFT_SPHERE"], contact_geoms["GROUND"]));
-    std::cout << "Debug: Added contact pair between " << contact_geoms["TOP_LEFT_SPHERE"] << " and " << contact_geoms["GROUND"] << std::endl;
+        SortedPair(contact_geoms["CORNER_1_SPHERE"], contact_geoms["GROUND"]));
+    std::cout << "Debug: Added contact pair between " << contact_geoms["CORNER_1_SPHERE"] << " and " << contact_geoms["GROUND"] << std::endl;
     ground_object_contact_pairs.push_back(
-        SortedPair(contact_geoms["TOP_RIGHT_SPHERE"], contact_geoms["GROUND"]));
-    std::cout << "Debug: Added contact pair between " << contact_geoms["TOP_RIGHT_SPHERE"] << " and " << contact_geoms["GROUND"] << std::endl;
+        SortedPair(contact_geoms["CORNER_2_SPHERE"], contact_geoms["GROUND"]));
+    std::cout << "Debug: Added contact pair between " << contact_geoms["CORNER_2_SPHERE"] << " and " << contact_geoms["GROUND"] << std::endl;
     ground_object_contact_pairs.push_back(
-        SortedPair(contact_geoms["BOTTOM_RIGHT_SPHERE"], contact_geoms["GROUND"]));
-    std::cout << "Debug: Added contact pair between " << contact_geoms["BOTTOM_RIGHT_SPHERE"] << " and " << contact_geoms["GROUND"] << std::endl;
+        SortedPair(contact_geoms["CORNER_3_SPHERE"], contact_geoms["GROUND"]));
+    std::cout << "Debug: Added contact pair between " << contact_geoms["CORNER_3_SPHERE"] << " and " << contact_geoms["GROUND"] << std::endl;
     ground_object_contact_pairs.push_back(
-        SortedPair(contact_geoms["BOTTOM_LEFT_SPHERE"], contact_geoms["GROUND"]));
-    std::cout << "Debug: Added contact pair between " << contact_geoms["BOTTOM_LEFT_SPHERE"] << " and " << contact_geoms["GROUND"] << std::endl;
+        SortedPair(contact_geoms["CORNER_4_SPHERE"], contact_geoms["GROUND"]));
+    std::cout << "Debug: Added contact pair between " << contact_geoms["CORNER_4_SPHERE"] << " and " << contact_geoms["GROUND"] << std::endl;
     ground_object_contact_pairs.push_back(
-        SortedPair(contact_geoms["HIGH_TOP_LEFT_SPHERE"], contact_geoms["GROUND"]));
-    std::cout << "Debug: Added contact pair between " << contact_geoms["HIGH_TOP_LEFT_SPHERE"] << " and " << contact_geoms["GROUND"] << std::endl;
+        SortedPair(contact_geoms["CORNER_5_SPHERE"], contact_geoms["GROUND"]));
+    std::cout << "Debug: Added contact pair between " << contact_geoms["CORNER_5_SPHERE"] << " and " << contact_geoms["GROUND"] << std::endl;
     ground_object_contact_pairs.push_back(
-        SortedPair(contact_geoms["HIGH_TOP_RIGHT_SPHERE"], contact_geoms["GROUND"]));
-    std::cout << "Debug: Added contact pair between " << contact_geoms["HIGH_TOP_RIGHT_SPHERE"] << " and " << contact_geoms["GROUND"] << std::endl;
+        SortedPair(contact_geoms["CORNER_6_SPHERE"], contact_geoms["GROUND"]));
+    std::cout << "Debug: Added contact pair between " << contact_geoms["CORNER_6_SPHERE"] << " and " << contact_geoms["GROUND"] << std::endl;
     ground_object_contact_pairs.push_back(
-        SortedPair(contact_geoms["HIGH_BOTTOM_RIGHT_SPHERE"], contact_geoms["GROUND"]));
-    std::cout << "Debug: Added contact pair between " << contact_geoms["HIGH_BOTTOM_RIGHT_SPHERE"] << " and " << contact_geoms["GROUND"] << std::endl;
+        SortedPair(contact_geoms["CORNER_7_SPHERE"], contact_geoms["GROUND"]));
+    std::cout << "Debug: Added contact pair between " << contact_geoms["CORNER_7_SPHERE"] << " and " << contact_geoms["GROUND"] << std::endl;
+
 
     for (int j = 0; j < ramp_geoms.size(); j++) {
         for (int k = 1; k < object_geoms.size(); k++) {

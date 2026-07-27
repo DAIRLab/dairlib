@@ -63,9 +63,6 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
   const auto& inspector = query_object.inspector();
   const auto collision_ids =
       inspector.GetAllGeometryIds(drake::geometry::Role::kProximity);
-  for (const auto& geom_id : collision_ids) {
-    std::cout << "geometry " << geom_id << ": " << "Geometry ID: " << inspector.GetName(geom_id) << std::endl;
-  }
   //Split function calls based on sampling strategy.
   SamplingStrategy strategy = sampling_params.sampling_strategy;
   if (strategy == SamplingStrategy::kRadiallySymmetric) {

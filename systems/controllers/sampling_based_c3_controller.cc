@@ -853,6 +853,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                          x_lcs_final_des.get_value()[5 + 7 * i],
                          x_lcs_final_des.get_value()[6 + 7 * i]);
     AngleAxisd angle_axis_diff(des_quat * curr_quat.inverse());
+    if (goal_params_.ignore_roll_when_tracking_orientation) {
+      angle_axis_diff.axis() = Vector3d(0, 0, 1);
+    }
     current_orientation_error_ += angle_axis_diff.angle();
   }
 
@@ -930,6 +933,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     Quaterniond q_curr(x_lcs_curr.segment<4>(3 + 7 * i));
 
     AngleAxisd angle_axis_diff(q_des * q_curr.inverse());
+    if (goal_params_.ignore_roll_when_tracking_orientation) {
+      angle_axis_diff.axis() = Vector3d(0, 0, 1);
+    }
     double object_angular_error = angle_axis_diff.angle();
 
     object_on_target.push_back(

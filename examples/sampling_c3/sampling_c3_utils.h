@@ -6,6 +6,8 @@
 
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 
+#include "drake/math/roll_pitch_yaw.h"
+#include "drake/math/rotation_matrix.h"
 #include "drake/multibody/plant/multibody_plant.h"
 
 namespace dairlib {
@@ -13,29 +15,32 @@ namespace dairlib {
 /// Constants for the Franka and end effector.
 static constexpr const char* kFrankaModel =
     "package://drake_models/franka_description/urdf/panda_arm.urdf";
+static constexpr const char* kEndEffectorModel =
+    "examples/sampling_c3/urdf/end_effector_full.urdf";
+static constexpr const char* kEndEffectorSimpleModel =
+    "examples/sampling_c3/urdf/end_effector_simple_model.urdf";
+static constexpr const char* kEndEffectorName = "end_effector_tip";
+static constexpr const char* kGroundModel =
+    "examples/sampling_c3/urdf/ground.urdf";
+static constexpr const char* kPlatformModel =
+    "examples/sampling_c3/urdf/platform.urdf";
+
+/// Constants for the 3D printer and end effector.
 static constexpr const char* k3DPrinterModel =
     "examples/sampling_c3/urdf/three_d_printer/3_d_printer.urdf";
 static constexpr const char* k3DPrinterRampModel =
     "examples/sampling_c3/urdf/three_d_printer/ramp/new_ramp.urdf";
-static constexpr const char* kEndEffectorModel =
-    "examples/sampling_c3/urdf/end_effector_full.urdf";
 static constexpr const char* k3dEndEffectorModel =
     "examples/sampling_c3/urdf/three_d_printer/EE.urdf";
 static constexpr const char* k3dEndEffectorSimpleModel =
     "examples/sampling_c3/urdf/three_d_printer/"
     "three_d_printer_end_effector_simple_model.urdf";
-static constexpr const char* kEndEffectorSimpleModel =
-    "examples/sampling_c3/urdf/end_effector_simple_model.urdf";
-static constexpr const char* kEndEffectorName = "end_effector_tip";
 static constexpr const char* k3dEndEffectorName = "ee_link";
 static constexpr const char* k3dEndEffectorTipName = "end_effector_tip";
-static constexpr const char* kGroundModel =
-    "examples/sampling_c3/urdf/ground.urdf";
 static constexpr const char* kBaseModel =
     "examples/sampling_c3/urdf/three_d_printer/3_d_printer_bed.urdf";
-static constexpr const char* kPlatformModel =
-    "examples/sampling_c3/urdf/platform.urdf";
 
+/// Constants for the walls (used in Franka examples).
 static constexpr const char* kLeftWallModel =
     "examples/sampling_c3/urdf/wall_left.urdf";
 static constexpr const char* kRightWallModel =
@@ -43,18 +48,31 @@ static constexpr const char* kRightWallModel =
 static constexpr const char* kFrontWallModel =
     "examples/sampling_c3/urdf/wall_front.urdf";
 
+/// Franka offsets.
 /// This is the offset from the Panda's link7 frame to its flange where an end
 /// effector can be attached.
 static const Eigen::Vector3d kToolAttachmentFrame = {0, 0, 0.107};
-static const Eigen::Vector3d k3dPrinterToolAttachmentFrame = {0, -0.0075,
-                                                              -0.0546};
-static const Eigen::Vector3d k3dPrinterRampAttachmentFrame = {0.0, 0.1, 0.0};
-
 static const Eigen::Vector3d kFrankaToGroundOffset = {0, 0, -0.029};
 static const Eigen::Vector3d kFrankaToPlatformOffset = {0, 0, -0.0145};
 static const Eigen::Vector3d kWorldToFrankaOffset = {0, 0, 0};
 static const Eigen::Vector3d kWorldToGroundOffset =
     kWorldToFrankaOffset + kFrankaToGroundOffset;
+
+/// 3D printer offsets and other constants.
+// TODO(bibit):  The z offset makes sense to have the stick start right at the
+// bottom of the x_carriage link (I believe the printer URDF "includes" the top
+// of the EE as part of the x_carriage link).  However I was expecting the x and
+// y offsets to be 0.  In CAD, there seems to be a slight offset of (-0.738mm,
+// -1.463mm) from nozzle to EE.  Perhaps the -0.0075 offset here is because the
+// nozzle isn't centered in Y on the x_carriage link?
+static const Eigen::Vector3d k3dPrinterToolAttachmentFrame = {0, -0.0075,
+                                                              -0.0546};
+static const Eigen::Vector3d k3dPrinterRampAttachmentFrame = {0.0, 0.1, 0.0};
+static const drake::math::RotationMatrix<double>
+    k3dPrinterRampAttachmentRotationMatrix(
+        drake::math::RollPitchYaw<double>(0, 0, 3.14159));
+static const drake::multibody::PdControllerGains k3dPrinterPdGains{250000.0,
+                                                                   25000.0};
 
 /// Bin wall constants.
 static const Eigen::Vector4d kWallColor = {0.7, 0.7, 0.7, 1.0};
@@ -82,22 +100,6 @@ static const Eigen::Vector3d kGroundToBackWallOffset = {
 /// added.
 /// @return the ModelInstanceIndex of the Franka in the plant
 drake::multibody::ModelInstanceIndex AddFrankaToPlant(
-    drake::multibody::MultibodyPlant<double>* plant,
-    drake::geometry::SceneGraph<double>* scene_graph = nullptr,
-    const bool& include_ee = true,
-    const bool& include_ground_and_platform = true,
-    const bool& include_walls = false);
-
-/// Add the 3D printer to a given multibody plant and scene graph.
-/// @param plant a pointer to the MultibodyPlant
-/// @param scene_graph a pointer to the SceneGraph--may be nullptr (or omitted)
-/// @param include_walls whether to add border walls to workspace
-/// @param include_ground_and_platform whether to include the ground and
-/// platform in the plant. If false, only the Franka and end effector will be
-/// added.
-/// @return the ModelInstanceIndex of the Franka in the plant
-
-drake::multibody::ModelInstanceIndex Add3DPrinterToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     const bool& include_ee = true,
@@ -158,11 +160,28 @@ std::vector<drake::multibody::ModelInstanceIndex> AddLCSModelsToPlant(
     const bool& include_end_effector_orientation = false,
     const bool& include_walls = false);
 
+/// Add the 3D printer to a given multibody plant and scene graph.
+/// @param plant a pointer to the MultibodyPlant
+/// @param scene_graph a pointer to the SceneGraph--may be nullptr (or omitted)
+/// @param include_walls whether to add border walls to workspace
+/// @param include_ground_and_platform whether to include the ground and
+/// platform in the plant. If false, only the Franka and end effector will be
+/// added.
+/// @return the ModelInstanceIndex of the Franka in the plant
+drake::multibody::ModelInstanceIndex Add3DPrinterToPlant(
+    drake::multibody::MultibodyPlant<double>* plant,
+    drake::geometry::SceneGraph<double>* scene_graph = nullptr,
+    const bool& include_ee = true,
+    const bool& include_ground_and_platform = true,
+    const bool& include_walls = false);
+
+/// Add 3D printer LCS models to a given multibody plant and scene graph.
+/// @param plant a pointer to the MultibodyPlant
+/// @param scene_graph a pointer to the SceneGraph--may be nullptr (or omitted)
+/// @param object_model the model of the object to add to the plant
 std::vector<drake::multibody::ModelInstanceIndex> AddLCSModelsTo3DPrinterPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
-    std::vector<std::string> object_models = {},
-    const bool& include_end_effector_orientation = false,
-    const bool& include_walls = false);
+    std::vector<std::string> object_models = {});
 
 }  // namespace dairlib

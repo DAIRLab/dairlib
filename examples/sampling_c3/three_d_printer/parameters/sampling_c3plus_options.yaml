@@ -66,7 +66,7 @@ planning_dt_pose: 0.075
 lcs_dt_resolution: 4
 nominal_ee_accel: 2
 
-include_walls: false
+include_walls: false     # Unused for 3D printer (walls never included).
 include_back_wall: false # if include_walls is true, then include_back_wall is ignored
 
 ### Cost parameters

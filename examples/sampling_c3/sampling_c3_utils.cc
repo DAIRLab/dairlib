@@ -13,6 +13,7 @@ using drake::math::RigidTransform;
 using drake::multibody::ModelInstanceIndex;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
+using std::vector;
 
 ModelInstanceIndex AddFrankaToPlant(MultibodyPlant<double>* plant,
                                     SceneGraph<double>* scene_graph,
@@ -29,12 +30,13 @@ ModelInstanceIndex AddFrankaToPlant(MultibodyPlant<double>* plant,
 
   if (include_ee) {
     parser.AddModels(FindResourceOrThrow(kEndEffectorModel));
-    RigidTransform<double> T_EE_W = RigidTransform<double>(
+    RigidTransform<double> T_Franka_EE = RigidTransform<double>(
         drake::math::RotationMatrix<double>(
             drake::math::RollPitchYaw<double>(3.1415, 0, 0)),
         kToolAttachmentFrame);
     plant->WeldFrames(plant->GetFrameByName("panda_link7"),
-                      plant->GetFrameByName("end_effector_flange"), T_EE_W);
+                      plant->GetFrameByName("end_effector_flange"),
+                      T_Franka_EE);
   }
 
   if (include_ground_and_platform) {
@@ -57,84 +59,6 @@ ModelInstanceIndex AddFrankaToPlant(MultibodyPlant<double>* plant,
   }
 
   return franka_index;
-}
-
-ModelInstanceIndex Add3DPrinterToPlant(MultibodyPlant<double>* plant,
-                                       SceneGraph<double>* scene_graph,
-                                       const bool& include_ee,
-                                       const bool& include_ground_and_platform,
-                                       const bool& include_walls) {
-  Parser parser(plant, scene_graph);
-  parser.SetAutoRenaming(true);
-
-  ModelInstanceIndex printer_index =
-      parser.AddModels(FindResourceOrThrow(k3DPrinterModel))[0];
-  ModelInstanceIndex ramp_index =
-      parser.AddModels(FindResourceOrThrow(k3DPrinterRampModel))[0];
-
-  // Disable gravity for the entire printer model instance.
-  plant->set_gravity_enabled(printer_index, false);
-  plant->set_gravity_enabled(ramp_index, false);
-
-  std::optional<ModelInstanceIndex> printer_model_instance{printer_index};
-
-  plant->AddJointActuator(
-      "x_axis_actuator",
-      plant->GetJointByName("x_axis_joint", printer_model_instance));
-  plant->AddJointActuator(
-      "y_axis_actuator",
-      plant->GetJointByName("y_axis_joint", printer_model_instance));
-  plant->AddJointActuator(
-      "z_axis_actuator",
-      plant->GetJointByName("z_axis_joint", printer_model_instance));
-
-  if (plant->time_step() > 0.0) {
-    const drake::multibody::PdControllerGains gains{250000.0, 25000.0};
-
-    plant
-        ->get_mutable_joint_actuator(
-            plant->GetJointActuatorByName("x_axis_actuator").index())
-        .set_controller_gains(gains);
-
-    plant
-        ->get_mutable_joint_actuator(
-            plant->GetJointActuatorByName("y_axis_actuator").index())
-        .set_controller_gains(gains);
-
-    plant
-        ->get_mutable_joint_actuator(
-            plant->GetJointActuatorByName("z_axis_actuator").index())
-        .set_controller_gains(gains);
-  }
-
-  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
-  plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("base_link"),
-                    X_WI);
-
-  RigidTransform<double> T_Ramp_W(
-      drake::math::RotationMatrix<double>(
-          drake::math::RollPitchYaw<double>(0, 0, 3.14159)),
-      k3dPrinterRampAttachmentFrame);
-
-  plant->WeldFrames(plant->GetFrameByName("base_link"),
-                    plant->GetFrameByName("ramp_link"), T_Ramp_W);
-
-  if (include_ee) {
-    ModelInstanceIndex ee_index = parser.AddModels(k3dEndEffectorModel)[0];
-
-    // Disable gravity for all end effector bodies.
-    plant->set_gravity_enabled(ee_index, false);
-
-    RigidTransform<double> T_EE_W(
-        drake::math::RotationMatrix<double>(
-            drake::math::RollPitchYaw<double>(0, 0, 0)),
-        k3dPrinterToolAttachmentFrame);
-
-    plant->WeldFrames(plant->GetFrameByName("x_carriage"),
-                      plant->GetFrameByName("ee_link"), T_EE_W);
-  }
-
-  return printer_index;
 }
 
 void AddWallsToPlant(drake::multibody::MultibodyPlant<double>* plant,
@@ -199,14 +123,14 @@ ModelInstanceIndex AddObjectToPlant(
   return parser.AddModels(FindResourceOrThrow(object_model))[0];
 }
 
-std::vector<ModelInstanceIndex> AddObjectsToPlant(
+vector<ModelInstanceIndex> AddObjectsToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph,
-    std::vector<std::string> object_models) {
+    vector<std::string> object_models) {
   Parser parser(plant, scene_graph);
   parser.SetAutoRenaming(true);
 
-  std::vector<ModelInstanceIndex> models;
+  vector<ModelInstanceIndex> models;
   for (const auto& model : object_models) {
     models.push_back(parser.AddModels(FindResourceOrThrow(model))[0]);
   }
@@ -242,15 +166,15 @@ void AddLCSModelToPlant(MultibodyPlant<double>* plant,
   }
 }
 
-std::vector<ModelInstanceIndex> AddLCSModelsToPlant(
+vector<ModelInstanceIndex> AddLCSModelsToPlant(
     MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph,
-    std::vector<std::string> object_models,
+    vector<std::string> object_models,
     const bool& include_end_effector_orientation, const bool& include_walls) {
   // Cannot currently handle end effector orientation (would just require new
   // EE simple model with orientation DOFs).
   DRAKE_ASSERT(!include_end_effector_orientation);
 
-  std::vector<ModelInstanceIndex> obj_models;
+  vector<ModelInstanceIndex> obj_models;
 
   Parser parser_lcs(plant);
   parser_lcs.SetAutoRenaming(true);
@@ -277,15 +201,70 @@ std::vector<ModelInstanceIndex> AddLCSModelsToPlant(
   return obj_models;
 }
 
-std::vector<ModelInstanceIndex> AddLCSModelsTo3DPrinterPlant(
-    MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph,
-    std::vector<std::string> object_models,
-    const bool& include_end_effector_orientation, const bool& include_walls) {
-  // Cannot currently handle end effector orientation (would just require new
-  // EE simple model with orientation DOFs).
-  DRAKE_ASSERT(!include_end_effector_orientation);
+ModelInstanceIndex Add3DPrinterToPlant(MultibodyPlant<double>* plant,
+                                       SceneGraph<double>* scene_graph,
+                                       const bool& include_ee,
+                                       const bool& include_ground_and_platform,
+                                       const bool& include_walls) {
+  Parser parser(plant, scene_graph);
+  parser.SetAutoRenaming(true);
 
-  std::vector<ModelInstanceIndex> obj_models;
+  ModelInstanceIndex printer_index =
+      parser.AddModels(FindResourceOrThrow(k3DPrinterModel))[0];
+  ModelInstanceIndex ramp_index =
+      parser.AddModels(FindResourceOrThrow(k3DPrinterRampModel))[0];
+
+  RigidTransform<double> X_WI = RigidTransform<double>::Identity();
+  plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("base_link"),
+                    X_WI);
+  RigidTransform<double> X_World_Ramp(k3dPrinterRampAttachmentRotationMatrix,
+                                      k3dPrinterRampAttachmentFrame);
+  plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("ramp_link"),
+                    X_World_Ramp);
+
+  // Disable gravity for the entire printer model instance.
+  plant->set_gravity_enabled(printer_index, false);
+  plant->set_gravity_enabled(ramp_index, false);
+
+  plant->AddJointActuator("x_axis_actuator",
+                          plant->GetJointByName("x_axis_joint", printer_index));
+  plant->AddJointActuator("y_axis_actuator",
+                          plant->GetJointByName("y_axis_joint", printer_index));
+  plant->AddJointActuator("z_axis_actuator",
+                          plant->GetJointByName("z_axis_joint", printer_index));
+
+  if (plant->time_step() > 0.0) {
+    plant
+        ->get_mutable_joint_actuator(
+            plant->GetJointActuatorByName("x_axis_actuator").index())
+        .set_controller_gains(k3dPrinterPdGains);
+    plant
+        ->get_mutable_joint_actuator(
+            plant->GetJointActuatorByName("y_axis_actuator").index())
+        .set_controller_gains(k3dPrinterPdGains);
+    plant
+        ->get_mutable_joint_actuator(
+            plant->GetJointActuatorByName("z_axis_actuator").index())
+        .set_controller_gains(k3dPrinterPdGains);
+  }
+
+  if (include_ee) {
+    ModelInstanceIndex ee_index = parser.AddModels(k3dEndEffectorModel)[0];
+    RigidTransform<double> T_Printer_EE(k3dPrinterToolAttachmentFrame);
+    plant->WeldFrames(plant->GetFrameByName("x_carriage"),
+                      plant->GetFrameByName("ee_link"), T_Printer_EE);
+
+    // Disable gravity for all end effector bodies.
+    plant->set_gravity_enabled(ee_index, false);
+  }
+
+  return printer_index;
+}
+
+vector<ModelInstanceIndex> AddLCSModelsTo3DPrinterPlant(
+    MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph,
+    vector<std::string> object_models) {
+  vector<ModelInstanceIndex> obj_models;
 
   Parser parser_lcs(plant);
   parser_lcs.SetAutoRenaming(true);
@@ -303,13 +282,11 @@ std::vector<ModelInstanceIndex> AddLCSModelsTo3DPrinterPlant(
   plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("ground"),
                     X_WI);
 
-  RigidTransform<double> T_Ramp_W(
-      drake::math::RotationMatrix<double>(
-          drake::math::RollPitchYaw<double>(0, 0, 3.14159)),
-      k3dPrinterRampAttachmentFrame);
+  RigidTransform<double> X_World_Ramp(k3dPrinterRampAttachmentRotationMatrix,
+                                      k3dPrinterRampAttachmentFrame);
 
   plant->WeldFrames(plant->world_frame(), plant->GetFrameByName("ramp_link"),
-                    T_Ramp_W);
+                    X_World_Ramp);
 
   return obj_models;
 }

@@ -16,6 +16,7 @@ lcm_channels_simulation_file: examples/sampling_c3/three_d_printer/parameters/lc
 object_models: [examples/sampling_c3/urdf/cone/cone_controller.sdf]
 base_names: [cone]
 
-include_end_effector_orientation: false
+include_end_effector_orientation: false  # Unused for 3D printer
+                                         # (orientation never included).
 
 control_loop_delay_ms: 0

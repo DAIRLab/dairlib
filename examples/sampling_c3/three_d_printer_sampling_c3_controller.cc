@@ -102,10 +102,8 @@ int DoMain(int argc, char* argv[]) {
   auto [plant_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
   std::vector<ModelInstanceIndex> object_indices_lcs =
-      AddLCSModelsTo3DPrinterPlant(
-          &plant_lcs, &scene_graph, controller_params.object_models,
-          controller_params.include_end_effector_orientation,
-          sampling_c3_options.include_walls);
+      AddLCSModelsTo3DPrinterPlant(&plant_lcs, &scene_graph,
+                                   controller_params.object_models);
   plant_lcs.Finalize();
 
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_lcs_autodiff =

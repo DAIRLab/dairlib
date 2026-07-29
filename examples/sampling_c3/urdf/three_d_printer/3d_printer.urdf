@@ -1,0 +1,517 @@
+<?xml version="1.0"?>
+<robot name="sovol_sv08_simple">
+
+  <material name="orange_for_build_volume">
+    <color rgba="1.0 0.5 0.0 1.0"/>
+  </material>
+
+  <material name="silver_for_posts_and_rails">
+    <color rgba="0.7 0.7 0.7 1.0"/>
+  </material>
+
+  <material name="blue_for_z_gantry">
+    <color rgba="0.2 0.4 0.9 1.0"/>
+  </material>
+
+  <!--
+    Base:
+    Overall printer size from CAD:  (x, y, z) = (0.537, 0.547, 0.54485)
+
+    This geometry is not centered at its link origin to preserve the URDF's
+    origin at the 3D printer's build volume origin.
+
+    Offset the X by half the X build volume (0.35 / 2 = 0.175).
+    
+    Offset the Y by half the Y build volume plus the Y offset of the build
+    plate from the full base Y dimension (0.35 / 2 + 0.0345 = 0.2095).
+    
+    Offset the Z downwards by the build plate thickness plus half the base
+    thickness (0.0202 + 0.0596 / 2 = 0.05).
+  -->
+  <link name="base_link">
+    <inertial>
+      <origin xyz="0.175 0.2095 -0.05" rpy="0 0 0"/>
+      <mass value="15.0"/>
+      <inertia
+        ixx="0.50" ixy="0.0" ixz="0.0"
+        iyy="0.50" iyz="0.0"
+        izz="0.50"/>
+    </inertial>
+
+    <visual>
+      <origin xyz="0.175 0.2095 -0.05" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.537 0.547 0.0596"/>
+      </geometry>
+      <material name="dark_gray">
+        <color rgba="0.25 0.25 0.25 1.0"/>
+      </material>
+    </visual>
+
+    <collision>
+      <origin xyz="0.175 0.2095 -0.05" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.537 0.547 0.0596"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!--
+    Build plate:
+    Size matches the build volume in XY plus a 1cm border on all sides
+    (0.35 + 0.01*2 = 0.37, 0.35 + 0.01*2 = 0.37) and the "thickness" of the
+    build plate off the base from CAD (0.0202).
+  -->
+  <link name="build_plate">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.0"/>
+      <inertia
+        ixx="0.02" ixy="0.0" ixz="0.0"
+        iyy="0.02" iyz="0.0"
+        izz="0.02"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.37 0.37 0.0202"/>
+      </geometry>
+      <material name="black">
+        <color rgba="0.15 0.15 0.15 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.37 0.37 0.0202"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="build_plate_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="build_plate"/>
+    <origin xyz="0.175 0.175 -0.0101" rpy="0 0 0"/>
+  </joint>
+
+  <!--
+    Print volume wireframe:
+    This link's origin is at the center of the print volume in XY and at Z=0.
+
+    Print volume is (x, y, z) = (0.35, 0.35, 0.345).
+
+    Half dimensions are (0.175, 0.175, 0.1725).
+
+    Wireframe bar thickness = 0.002.
+  -->
+  <link name="print_volume_wireframe">
+    <!-- Bottom front edge -->
+    <visual>
+      <origin xyz="0 0.175 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.35 0.002 0.002"/>
+      </geometry>
+      <material name="orange_for_build_volume"/>
+    </visual>
+
+    <!-- Bottom rear edge -->
+    <visual>
+      <origin xyz="0 -0.175 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.35 0.002 0.002"/>
+      </geometry>
+      <material name="orange_for_build_volume"/>
+    </visual>
+
+    <!-- Bottom left edge -->
+    <visual>
+      <origin xyz="-0.175 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.002 0.35 0.002"/>
+      </geometry>
+      <material name="orange_for_build_volume"/>
+    </visual>
+
+    <!-- Bottom right edge -->
+    <visual>
+      <origin xyz="0.175 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.002 0.35 0.002"/>
+      </geometry>
+      <material name="orange_for_build_volume"/>
+    </visual>
+
+    <!-- Top front edge -->
+    <visual>
+      <origin xyz="0 0.175 0.345" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.35 0.002 0.002"/>
+      </geometry>
+      <material name="orange_for_build_volume"/>
+    </visual>
+
+    <!-- Top rear edge -->
+    <visual>
+      <origin xyz="0 -0.175 0.345" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.35 0.002 0.002"/>
+      </geometry>
+      <material name="orange_for_build_volume"/>
+    </visual>
+
+    <!-- Top left edge -->
+    <visual>
+      <origin xyz="-0.175 0 0.345" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.002 0.35 0.002"/>
+      </geometry>
+      <material name="orange_for_build_volume"/>
+    </visual>
+
+    <!-- Top right edge -->
+    <visual>
+      <origin xyz="0.175 0 0.345" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.002 0.35 0.002"/>
+      </geometry>
+      <material name="orange_for_build_volume"/>
+    </visual>
+
+    <!-- Front left vertical -->
+    <visual>
+      <origin xyz="-0.175 0.175 0.1725" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.002 0.002 0.345"/>
+      </geometry>
+      <material name="orange_for_build_volume"/>
+    </visual>
+
+    <!-- Front right vertical -->
+    <visual>
+      <origin xyz="0.175 0.175 0.1725" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.002 0.002 0.345"/>
+      </geometry>
+      <material name="orange_for_build_volume"/>
+    </visual>
+
+    <!-- Rear left vertical -->
+    <visual>
+      <origin xyz="-0.175 -0.175 0.1725" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.002 0.002 0.345"/>
+      </geometry>
+      <material name="orange_for_build_volume"/>
+    </visual>
+
+    <!-- Rear right vertical -->
+    <visual>
+      <origin xyz="0.175 -0.175 0.1725" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.002 0.002 0.345"/>
+      </geometry>
+      <material name="orange_for_build_volume"/>
+    </visual>
+  </link>
+
+  <joint name="base_to_print_volume_wireframe" type="fixed">
+    <parent link="base_link"/>
+    <child link="print_volume_wireframe"/>
+    <origin xyz="0.175 0.175 0.0" rpy="0 0 0"/>
+  </joint>
+
+  <!--
+    Posts and rails:
+    These bring the printer to its full height (from top of build plate to top
+    of the printer is 0.46505m).
+
+    Posts and rails link origin is at the center of the print volume in XY and
+    at Z=0.
+
+    All posts have 0.042 x 0.042 cross sections.  The upper rails are shorter in
+    the Z-direction than that, at 0.0345.
+  -->
+  <link name="posts_and_rails">
+    <!-- Front left post -->
+    <visual>
+      <origin xyz="-0.2475 -0.218 0.222425" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.042 0.042 0.48525"/>
+      </geometry>
+      <material name="silver_for_posts_and_rails"/>
+    </visual>
+
+    <!-- Front right post -->
+    <visual>
+      <origin xyz="0.2475 -0.218 0.222425" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.042 0.042 0.48525"/>
+      </geometry>
+      <material name="silver_for_posts_and_rails"/>
+    </visual>
+
+    <!-- Back left post -->
+    <visual>
+      <origin xyz="-0.2475 0.287 0.222425" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.042 0.042 0.48525"/>
+      </geometry>
+      <material name="silver_for_posts_and_rails"/>
+    </visual>
+
+    <!-- Back right post -->
+    <visual>
+      <origin xyz="0.2475 0.287 0.222425" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.042 0.042 0.48525"/>
+      </geometry>
+      <material name="silver_for_posts_and_rails"/>
+    </visual>
+
+    <!-- Top front rail -->
+    <visual>
+      <origin xyz="0 -0.218 0.4478" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.537 0.042 0.0345"/>
+      </geometry>
+      <material name="silver_for_posts_and_rails"/>
+    </visual>
+
+    <!-- Top rear rail -->
+    <visual>
+      <origin xyz="0 0.287 0.4478" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.537 0.042 0.0345"/>
+      </geometry>
+      <material name="silver_for_posts_and_rails"/>
+    </visual>
+
+    <!-- Top left rail -->
+    <visual>
+      <origin xyz="-0.2475 0.0345 0.4478" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.042 0.547 0.0345"/>
+      </geometry>
+      <material name="silver_for_posts_and_rails"/>
+    </visual>
+
+    <!-- Top right rail -->
+    <visual>
+      <origin xyz="0.2475 0.0345 0.4478" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.042 0.547 0.0345"/>
+      </geometry>
+      <material name="silver_for_posts_and_rails"/>
+    </visual>
+  </link>
+
+  <joint name="base_to_posts_and_rails" type="fixed">
+    <parent link="base_link"/>
+    <child link="posts_and_rails"/>
+    <origin xyz="0.175 0.175 0.0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- 
+    Z gantry:
+    This is a U-shaped set of bars that move in the Z-direction.
+
+    Z gantry link origin is at the center of the print volume in XY, and when
+    the z-axis joint is at configuration 0, the nozzle is at the printer's Z=0.
+  -->
+  <link name="z_gantry">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="3.0"/>
+      <inertia
+        ixx="0.05" ixy="0.0" ixz="0.0"
+        iyy="0.05" iyz="0.0"
+        izz="0.05"/>
+    </inertial>
+
+    <!-- Left beam running in y 
+    
+    Length of beam: 
+    0.547 - 2*0.042 = 0.463 m
+    -->
+    <visual>
+      <origin xyz="-0.2165 0.0345 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.02 0.463 0.0265"/>
+      </geometry>
+      <material name="blue_for_z_gantry"/>
+    </visual>
+    <collision>
+      <origin xyz="-0.2165 0.0345 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.02 0.463 0.0265"/>
+      </geometry>
+    </collision>
+
+    <!-- Right beam running in y -->
+    <visual>
+      <origin xyz="0.2165 0.0345 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.02 0.463 0.0265"/>
+      </geometry>
+      <material name="blue_for_z_gantry"/>
+    </visual>
+    <collision>
+      <origin xyz="0.2165 0.0345 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.02 0.463 0.0265"/>
+      </geometry>
+    </collision>
+
+    <!-- Rear crossbar running in x 
+    Length of beam:
+    0.537 - 2*0.042 = 0.453 m
+    -->
+    <visual>
+      <origin xyz="0 0.256 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.453 0.02 0.0265"/>
+      </geometry>
+      <material name="blue_for_z_gantry"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0.256 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.453 0.02 0.0265"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!--
+    Z-axis joint:
+    Range of motion:  0 to 0.345 meters
+    At z=0, the nozzle is at the top of the build plate.
+  -->
+  <joint name="base_to_z_gantry" type="prismatic">
+    <parent link="base_link"/>
+    <child link="z_gantry"/>
+    <origin xyz="0.175 0.175 0.04415" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="0" upper="0.345" effort="100" velocity="1"/>
+  </joint>
+
+  <!--
+    Y beam:
+    This is a beam that runs in the X-direction and moves in the Y-direction.
+
+    The Y beam link origin is at the center of the Y beam geometry.
+  -->
+  <link name="y_beam">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="2.0"/>
+      <inertia
+        ixx="0.03" ixy="0.0" ixz="0.0"
+        iyy="0.03" iyz="0.0"
+        izz="0.03"/>
+    </inertial>
+
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <!--
+          Beam length:
+          0.537 - 2*0.042 - 2*0.02 = 0.413
+        -->
+        <box size="0.413 0.028 0.02"/>
+      </geometry>
+      <material name="red">
+        <color rgba="0.9 0.2 0.2 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.413 0.028 0.02"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!--
+    Y-axis joint:
+    Range of motion:  0 to 0.35 meters
+    At y=0, the nozzle is at the front edge of the build volume.
+  -->
+  <joint name="z_gantry_to_y_beam" type="prismatic">
+    <parent link="z_gantry"/>
+    <child link="y_beam"/>
+    <origin xyz="0 -0.1281 0.00325" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="0" upper="0.35" effort="100" velocity="1"/>
+  </joint>
+
+  <!--
+    X carriage:
+    This is a block that moves in the X-direction along the Y beam.
+
+    The X carriage link origin is at the center of the X carriage geometry.
+
+    This link includes visual-only purple sphere to show the tip of the printer
+    nozzle (sphere centered on the tip).
+  -->
+  <link name="x_carriage">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.0"/>
+      <inertia
+        ixx="0.01" ixy="0.0" ixz="0.0"
+        iyy="0.01" iyz="0.0"
+        izz="0.01"/>
+    </inertial>
+
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.08 0.105 0.1005"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0.2 0.8 0.2 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.08 0.105 0.1005"/>
+      </geometry>
+    </collision>
+
+    <visual>
+      <origin xyz="0 -0.0084 -0.05305" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.005"/>
+      </geometry>
+      <material name="purple">
+        <color rgba="0.6 0.2 0.4 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <!--
+    X-axis joint:
+    Range of motion:  0 to 0.35 meters
+    At x=0, the nozzle is at the left edge of the build volume.
+  -->
+  <joint name="y_beam_to_x_carriage" type="prismatic">
+    <parent link="y_beam"/>
+    <child link="x_carriage"/>
+    <origin xyz="-0.175 -0.0385 0.00565" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="0" upper="0.35" effort="100" velocity="1"/>
+  </joint>
+
+  <!--
+    Add a collision group for collision geometries that are defined to penetrate
+    each other but should not register collisions.
+  -->
+  <drake:collision_filter_group name="printer_parts">
+    <drake:member link="z_gantry"/>
+    <drake:member link="y_beam"/>
+    <drake:member link="x_carriage"/>
+    <drake:ignored_collision_filter_group name="printer_parts"/>
+  </drake:collision_filter_group>
+  
+</robot>

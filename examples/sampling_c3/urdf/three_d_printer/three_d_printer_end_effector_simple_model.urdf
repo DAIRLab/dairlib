@@ -66,15 +66,10 @@
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
   
-     <transmission name="end_effector_simple_to_base_trans_z"
+  <transmission name="end_effector_simple_to_base_trans_z"
       type="SimpleTransmission">
     <actuator name="end_effector_simple_to_base_act_z"/>
     <joint name="end_effector_simple_to_base_z"/>
     <mechanicalReduction>1</mechanicalReduction>
   </transmission>
-  
-  <drake:collision_filter_group name="finger_0_group">
-  <drake:member link="end_effector_simple"/>
-  <drake:ignored_collision_filter_group name="finger_0_group"/>
-  </drake:collision_filter_group>
 </robot>

@@ -261,8 +261,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<systems::ThreeDPrinterKinematics>(
           plant_three_d_printer, three_d_printer_context.get(), plant_object,
           object_context.get(), k3dEndEffectorTipName,
-          controller_params.base_names,
-          controller_params.include_end_effector_orientation);
+          controller_params.base_names);
 
   std::unique_ptr<systems::SamplingC3GoalGenerator> target_generator =
       std::make_unique<systems::SamplingC3GoalGeneratorPlanar>(

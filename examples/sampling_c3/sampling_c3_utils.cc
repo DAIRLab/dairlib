@@ -252,7 +252,8 @@ ModelInstanceIndex Add3DPrinterToPlant(MultibodyPlant<double>* plant,
     ModelInstanceIndex ee_index = parser.AddModels(k3dEndEffectorModel)[0];
     RigidTransform<double> T_Printer_EE(k3dPrinterToolAttachmentFrame);
     plant->WeldFrames(plant->GetFrameByName("x_carriage"),
-                      plant->GetFrameByName("ee_link"), T_Printer_EE);
+                      plant->GetFrameByName("end_effector_flange"),
+                      T_Printer_EE);
 
     // Disable gravity for all end effector bodies.
     plant->set_gravity_enabled(ee_index, false);

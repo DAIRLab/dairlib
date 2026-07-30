@@ -19,28 +19,23 @@ ThreeDPrinterKinematics::ThreeDPrinterKinematics(
     const MultibodyPlant<double>& printer_plant,
     Context<double>* printer_context,
     const MultibodyPlant<double>& object_plant, Context<double>* object_context,
-    const std::string& end_effector_name, const std::string& object_name,
-    bool include_end_effector_orientation)
+    const std::string& end_effector_name, const std::string& object_name)
     : ThreeDPrinterKinematics(printer_plant, printer_context, object_plant,
                               object_context, end_effector_name,
-                              std::vector<std::string>{object_name},
-                              include_end_effector_orientation) {}
+                              std::vector<std::string>{object_name}) {}
 
 ThreeDPrinterKinematics::ThreeDPrinterKinematics(
     const MultibodyPlant<double>& printer_plant,
     Context<double>* printer_context,
     const MultibodyPlant<double>& object_plant, Context<double>* object_context,
-    const std::string& end_effector_name, std::vector<std::string> object_names,
-    bool include_end_effector_orientation)
+    const std::string& end_effector_name, std::vector<std::string> object_names)
     : printer_plant_(printer_plant),
       printer_context_(printer_context),
       object_plant_(object_plant),
       object_context_(object_context),
       end_effector_name_(end_effector_name),
-
-      include_end_effector_orientation_(include_end_effector_orientation),
-      object_names_(object_names) {
-  num_objects_ = object_names_.size();
+      object_names_(object_names),
+      num_objects_(object_names.size()) {
   this->set_name("three_d_printer_kinematics");
   printer_state_port_ =
       this->DeclareVectorInputPort(
@@ -56,14 +51,12 @@ ThreeDPrinterKinematics::ThreeDPrinterKinematics(
             .get_index());
   }
 
-  num_end_effector_positions_ = 3 + include_end_effector_orientation_ * 3;
   num_object_positions_ = object_plant.num_positions();
-  num_end_effector_velocities_ = 3 + include_end_effector_orientation_ * 3;
   num_object_velocities_ = object_plant.num_velocities();
   lcs_state_port_ =
       this->DeclareVectorOutputPort(
               "x_lcs",
-              FrankaKinematicsVector<double>(
+              FrankaKinematicsVector<double>(  // TODO(bibit):  don't use franka
                   num_end_effector_positions_, num_object_positions_,
                   num_end_effector_velocities_, num_object_velocities_),
               &ThreeDPrinterKinematics::ComputeLCSState)
@@ -82,6 +75,7 @@ void ThreeDPrinterKinematics::ComputeLCSState(
     object_outputs.push_back((StateVector<double>*)this->EvalVectorInput(
         context, object_state_ports_.at(i)));
   }
+
   VectorXd q_printer = printer_output->GetPositions();
   VectorXd v_printer = printer_output->GetVelocities();
 

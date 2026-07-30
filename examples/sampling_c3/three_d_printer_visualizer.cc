@@ -106,7 +106,7 @@ int do_main(int argc, char* argv[]) {
 
   // Build the visualizer plant.
   MultibodyPlant<double> plant(0.0);
-  ModelInstanceIndex franka_index = Add3DPrinterToPlant(
+  ModelInstanceIndex printer_index = Add3DPrinterToPlant(
       &plant, &scene_graph, true, true, sampling_c3_options.include_walls);
 
   // Getting vector of object indices for all objects
@@ -114,12 +114,11 @@ int do_main(int argc, char* argv[]) {
       AddObjectsToPlant(&plant, &scene_graph, vis_params.object_vis_models);
   plant.Finalize();
 
-  // Create a Franka-only plant.
-  MultibodyPlant<double> plant_franka(0.0);
-  ModelInstanceIndex franka_index0 =
-      Add3DPrinterToPlant(&plant_franka, nullptr, true, false);
-  plant_franka.Finalize();
-  auto franka_context = plant_franka.CreateDefaultContext();
+  // Create a printer-only plant.
+  MultibodyPlant<double> plant_printer(0.0);
+  Add3DPrinterToPlant(&plant_printer, nullptr, true, false);
+  plant_printer.Finalize();
+  auto printer_context = plant_printer.CreateDefaultContext();
 
   // Create an object-only plant.
   MultibodyPlant<double> plant_object(0.0);
@@ -130,7 +129,7 @@ int do_main(int argc, char* argv[]) {
 
   auto lcm = builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>();
   auto three_d_printer_state_receiver =
-      builder.AddSystem<RobotOutputReceiver>(plant, franka_index);
+      builder.AddSystem<RobotOutputReceiver>(plant, printer_index);
 
   // Duplicating object state reciever for each object
   std::vector<ObjectStateReceiver*> object_state_receivers;
@@ -141,11 +140,7 @@ int do_main(int argc, char* argv[]) {
 
   auto three_d_printer_passthrough = builder.AddSystem<SubvectorPassThrough>(
       three_d_printer_state_receiver->get_output_port(0).size(), 0,
-      plant.num_positions(franka_index));
-  //   auto ee_passthrough = builder.AddSystem<SubvectorPassThrough>(
-  //       three_d_printer_state_receiver->get_output_port(0).size(),
-  //       plant.num_positions(franka_index),
-  //       plant.num_positions(franka_index0));
+      plant.num_positions(printer_index));
   auto robot_time_passthrough = builder.AddSystem<SubvectorPassThrough>(
       three_d_printer_state_receiver->get_output_port(0).size(),
       three_d_printer_state_receiver->get_output_port(0).size() - 1, 1);
@@ -158,10 +153,7 @@ int do_main(int argc, char* argv[]) {
         plant.num_positions(object_indices_plant.at(i))));
   }
 
-  std::vector<int> input_sizes = {
-      plant.num_positions(franka_index)  //,
-                                         // plant.num_positions(franka_index0)
-  };
+  std::vector<int> input_sizes = {plant.num_positions(printer_index)};
   for (ModelInstanceIndex obj_index : object_indices_plant) {
     input_sizes.push_back(plant.num_positions(obj_index));
   }
@@ -170,9 +162,9 @@ int do_main(int argc, char* argv[]) {
       builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::ThreeDPrinterKinematics>(
-          plant_franka, franka_context.get(), plant_object,
-          object_context.get(), k3dEndEffectorName,
-          controller_params.base_names, false);
+          plant_printer, printer_context.get(), plant_object,
+          object_context.get(), k3dEndEffectorTipName,
+          controller_params.base_names);
 
   builder.Connect(three_d_printer_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_printer_state());

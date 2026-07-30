@@ -27,7 +27,7 @@ static constexpr const char* kPlatformModel =
 
 /// Constants for the 3D printer and end effector.
 static constexpr const char* k3DPrinterModel =
-    "examples/sampling_c3/urdf/three_d_printer/3_d_printer.urdf";
+    "examples/sampling_c3/urdf/three_d_printer/3d_printer.urdf";
 static constexpr const char* k3DPrinterRampModel =
     "examples/sampling_c3/urdf/three_d_printer/ramp/new_ramp.urdf";
 static constexpr const char* k3dEndEffectorModel =
@@ -35,7 +35,6 @@ static constexpr const char* k3dEndEffectorModel =
 static constexpr const char* k3dEndEffectorSimpleModel =
     "examples/sampling_c3/urdf/three_d_printer/"
     "three_d_printer_end_effector_simple_model.urdf";
-static constexpr const char* k3dEndEffectorName = "ee_link";
 static constexpr const char* k3dEndEffectorTipName = "end_effector_tip";
 static constexpr const char* kBaseModel =
     "examples/sampling_c3/urdf/three_d_printer/3_d_printer_bed.urdf";
@@ -59,14 +58,8 @@ static const Eigen::Vector3d kWorldToGroundOffset =
     kWorldToFrankaOffset + kFrankaToGroundOffset;
 
 /// 3D printer offsets and other constants.
-// TODO(bibit):  The z offset makes sense to have the stick start right at the
-// bottom of the x_carriage link (I believe the printer URDF "includes" the top
-// of the EE as part of the x_carriage link).  However I was expecting the x and
-// y offsets to be 0.  In CAD, there seems to be a slight offset of (-0.738mm,
-// -1.463mm) from nozzle to EE.  Perhaps the -0.0075 offset here is because the
-// nozzle isn't centered in Y on the x_carriage link?
-static const Eigen::Vector3d k3dPrinterToolAttachmentFrame = {0, -0.0075,
-                                                              -0.0546};
+static const Eigen::Vector3d k3dPrinterToolAttachmentFrame = {0.0, 0.0,
+                                                              -0.054582};
 static const Eigen::Vector3d k3dPrinterRampAttachmentFrame = {0.0, 0.1, 0.0};
 static const drake::math::RotationMatrix<double>
     k3dPrinterRampAttachmentRotationMatrix(

@@ -39,16 +39,14 @@ class ThreeDPrinterKinematics : public drake::systems::LeafSystem<double> {
                                    const MultibodyPlant<double>& object_plant,
                                    Context<double>* object_context,
                                    const std::string& end_effector_name,
-                                   const std::string& object_name,
-                                   bool include_end_effector_orientation);
+                                   const std::string& object_name);
 
   explicit ThreeDPrinterKinematics(const MultibodyPlant<double>& printer_plant,
                                    Context<double>* printer_context,
                                    const MultibodyPlant<double>& object_plant,
                                    Context<double>* object_context,
                                    const std::string& end_effector_name,
-                                   std::vector<std::string> object_names,
-                                   bool include_end_effector_orientation);
+                                   std::vector<std::string> object_names);
 
   std::vector<const drake::systems::InputPort<double>*>
   get_input_ports_object_state() const {
@@ -74,9 +72,9 @@ class ThreeDPrinterKinematics : public drake::systems::LeafSystem<double> {
   std::vector<InputPortIndex> object_state_ports_;
   OutputPortIndex lcs_state_port_;
 
-  int num_end_effector_positions_;
+  const int num_end_effector_positions_ = 3;
   int num_object_positions_;
-  int num_end_effector_velocities_;
+  const int num_end_effector_velocities_ = 3;
   int num_object_velocities_;
   std::vector<std::string> object_names_;
   int num_objects_;
@@ -86,8 +84,6 @@ class ThreeDPrinterKinematics : public drake::systems::LeafSystem<double> {
   const MultibodyPlant<double>& object_plant_;
   Context<double>* object_context_;
   std::string end_effector_name_;
-
-  const bool include_end_effector_orientation_;
 };
 
 }  // namespace systems

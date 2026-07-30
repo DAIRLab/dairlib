@@ -155,7 +155,7 @@ int DoMain(int argc, char* argv[]) {
           "end_effector_target", osc_params.K_p_end_effector,
           osc_params.K_d_end_effector, osc_params.W_end_effector, plant, plant);
 
-  end_effector_position_tracking_data->AddPointToTrack(k3dEndEffectorName);
+  end_effector_position_tracking_data->AddPointToTrack(k3dEndEffectorTipName);
 
   const VectorXd& end_effector_acceleration_limits =
       osc_params.end_effector_acceleration * Vector3d::Ones();

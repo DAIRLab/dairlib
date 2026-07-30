@@ -432,6 +432,7 @@ cc_binary(
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
+        "//systems:three_d_printer_kinematics",
         "//systems/controllers:gravity_compensator",
         "//systems/controllers/osc:operational_space_control",
         "//systems/framework:lcm_driven_loop",

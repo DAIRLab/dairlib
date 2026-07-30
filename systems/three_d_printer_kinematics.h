@@ -11,6 +11,7 @@
 #include "systems/framework/timestamped_vector.h"
 #include "systems/franka_kinematics_vector.h"
 
+#include "drake/common/trajectories/trajectory.h"
 #include "drake/systems/framework/leaf_system.h"
 
 using drake::multibody::ModelInstanceIndex;
@@ -84,6 +85,35 @@ class ThreeDPrinterKinematics : public drake::systems::LeafSystem<double> {
   const MultibodyPlant<double>& object_plant_;
   Context<double>* object_context_;
   std::string end_effector_name_;
+};
+
+/// Converts a desired end effector (tip) trajectory, expressed in world frame,
+/// into the corresponding printer joint (gantry carriage) position trajectory
+/// -- the inverse of what ThreeDPrinterKinematics computes.
+class ThreeDPrinterInverseKinematics
+    : public drake::systems::LeafSystem<double> {
+ public:
+  ThreeDPrinterInverseKinematics(const MultibodyPlant<double>& printer_plant,
+                                 Context<double>* printer_context,
+                                 const std::string& end_effector_name);
+
+  const InputPort<double>& get_input_port_trajectory() const {
+    return this->get_input_port(trajectory_port_);
+  }
+  const OutputPort<double>& get_output_port_trajectory() const {
+    return this->get_output_port(joint_trajectory_port_);
+  }
+
+ private:
+  void CalcJointTrajectory(const drake::systems::Context<double>& context,
+                           drake::trajectories::Trajectory<double>* traj) const;
+
+  InputPortIndex trajectory_port_;
+  OutputPortIndex joint_trajectory_port_;
+
+  // Position of the end effector tip when all printer joints are at 0 -- the
+  // fixed offset between joint (carriage) space and tip world position.
+  Eigen::Vector3d end_effector_offset_;
 };
 
 }  // namespace systems

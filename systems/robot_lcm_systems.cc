@@ -565,9 +565,11 @@ void RobotInputReceiver::CopyInputOut(const Context<double>& context,
 }
 
 ThreeDPrinterInputReceiver::ThreeDPrinterInputReceiver(
-    const drake::multibody::MultibodyPlant<double>& plant)
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const Eigen::VectorXd& q_init)
     : num_positions_(plant.num_positions()),
-      num_velocities_(plant.num_velocities()) {
+      num_velocities_(plant.num_velocities()),
+      q_init_(q_init) {
   this->DeclareAbstractInputPort("lcmt_robot_output",
                                  drake::Value<dairlib::lcmt_robot_output>{});
 
@@ -583,11 +585,15 @@ void ThreeDPrinterInputReceiver::CopyInputOut(
   const auto& msg = this->EvalAbstractInput(context, 0)
                         ->get_value<dairlib::lcmt_robot_output>();
 
+  // Before the first real command arrives, hold q_init_ instead of
+  // snapping the plant's internal PD controller toward zero.
   VectorXd x = VectorXd::Zero(6);
+  x.head(3) = q_init_;
+
+  // If the message is not empty, use those values instead.
   for (int i = 0; i < 3 && i < msg.num_positions; ++i) {
     x[i] = msg.position[i];
   }
-
   for (int i = 0; i < 3 && i < msg.num_velocities; ++i) {
     x[3 + i] = msg.velocity[i];
   }
@@ -636,9 +642,7 @@ void RobotCommandSender::OutputCommand(
 }
 
 ThreeDPrinterCommandSender::ThreeDPrinterCommandSender(
-    const drake::multibody::MultibodyPlant<double>& plant,
-    const Eigen::Vector3d& target_offset)
-    : target_offset_(target_offset) {
+    const drake::multibody::MultibodyPlant<double>& plant) {
   // Declare an abstract input port that matches the trajectory output type.
   PiecewisePolynomial<double> empty_pp(Eigen::VectorXd::Zero(3));
   Trajectory<double>& traj_inst = empty_pp;
@@ -661,19 +665,8 @@ void ThreeDPrinterCommandSender::OutputCommand(
 
   // Get current time from context
   double current_time = context.get_time();
-  VectorXd default_position_ = VectorXd::Zero(3);
-  default_position_ << 0.0, 0.0,
-      0.25;  // Default position if trajectory is empty
 
-  VectorXd desired_position;
-
-  if (trajectory.start_time() < 1e-3) {
-    desired_position = default_position_;
-  } else {
-    desired_position = trajectory.value(current_time);
-  }
-
-  desired_position += target_offset_;
+  VectorXd desired_position = trajectory.value(current_time);
 
   // Evaluate trajectory derivative at current time to get velocities
   VectorXd desired_velocity = trajectory.EvalDerivative(current_time, 1);
@@ -787,13 +780,14 @@ drake::systems::LeafSystem<double>* Add3dPrinterStateReceiverAndStateSenderLcm(
     std::string state_input_channel, std::string state_output_channel,
     double publish_rate,
     drake::multibody::ModelInstanceIndex model_instance_index,
-    bool publish_efforts) {
+    bool publish_efforts, const Eigen::VectorXd& q_init) {
   // Subscribe to the printer state.
   auto input_sub =
       builder->AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
           state_input_channel, lcm));
 
-  auto state_receiver = builder->AddSystem<ThreeDPrinterInputReceiver>(plant);
+  auto state_receiver =
+      builder->AddSystem<ThreeDPrinterInputReceiver>(plant, q_init);
 
   builder->Connect(*input_sub, *state_receiver);
 

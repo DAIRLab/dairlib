@@ -121,7 +121,8 @@ int DoMain(int argc, char* argv[]) {
   dairlib::systems::Add3dPrinterStateReceiverAndStateSenderLcm(
       &builder, plant, lcm, lcm_channel_params.robot_input_channel,
       lcm_channel_params.robot_state_channel,
-      sim_params.franka_publish_rate, franka_index, sim_params.publish_efforts);
+      sim_params.franka_publish_rate, franka_index, sim_params.publish_efforts,
+      sim_params.q_init_franka);
 
   // --------------------------------------------------------------------------
   // Object publishers

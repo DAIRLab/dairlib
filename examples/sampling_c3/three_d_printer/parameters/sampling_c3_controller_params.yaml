@@ -6,7 +6,7 @@ goal_params_file: examples/sampling_c3/three_d_printer/parameters/goal_params.ya
 
 sim_params_file: examples/sampling_c3/three_d_printer/parameters/sim_params.yaml
 vis_params_file: examples/sampling_c3/three_d_printer/parameters/vis_params.yaml
-osc_params_file: examples/sampling_c3/shared_parameters/osc_params.yaml
+osc_params_file: examples/sampling_c3/three_d_printer/parameters/osc_params.yaml
 osqp_settings_file: examples/sampling_c3/shared_parameters/sampling_c3_qp_settings.yaml
 osc_qp_settings_file: examples/sampling_c3/shared_parameters/osc_qp_settings.yaml
 franka_driver_channels_file: common/parameters/franka_drake_lcm_driver_channels.yaml

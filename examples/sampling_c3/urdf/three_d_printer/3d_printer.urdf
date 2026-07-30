@@ -478,9 +478,11 @@
         <box size="0.08 0.105 0.1005"/>
       </geometry>
     </collision>
+  </link>
 
+  <link name="nozzle_tip">
     <visual>
-      <origin xyz="0 -0.0084 -0.05305" rpy="0 0 0"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
         <sphere radius="0.005"/>
       </geometry>
@@ -489,6 +491,12 @@
       </material>
     </visual>
   </link>
+
+  <joint name="x_carriage_to_nozzle_tip" type="fixed">
+    <parent link="x_carriage"/>
+    <child link="nozzle_tip"/>
+    <origin xyz="0 -0.0084 -0.05305" rpy="0 0 0"/>
+  </joint>
 
   <!--
     X-axis joint:

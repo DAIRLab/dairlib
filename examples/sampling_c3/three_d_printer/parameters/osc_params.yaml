@@ -1,0 +1,77 @@
+### Parameters from OSCGains ###
+controller_frequency: 1000
+w_input: 0.00
+w_input_reg: 0.0
+w_accel: 0.00001
+w_soft_constraint: 0.0
+w_lambda: 0.0
+impact_threshold: 0.000
+impact_tau: 0.000
+mu: 0.4615
+
+W_accel: [ 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+W_input_reg: [ 1, 1, 1, 1, 1, 1, 10]
+W_lambda_c_reg: [ 0.001, 0.001, 0.01,
+                  0.001, 0.001, 0.01,
+                  0.001, 0.001, 0.01,
+                  0.001, 0.001, 0.01 ]
+W_lambda_h_reg: [ 0.001, 0.001, 0.001,
+                  0.001, 0.001, 0.001 ]
+
+
+### Additional parameters for SamplingC3OSCParams ###
+
+# Two teleoperation modes:  1) locked EE neutral position, where xbox controls
+# perturb the EE; and 2) xbox controls move the EE to a new neutral position.
+neutral_position: [0.1, 0.1, 0.1]
+teleop_neutral_position: true
+
+# If using teleop_neutral_position, it's beneficial for the x/y/z_scales to be
+# relatively small, i.e. 0.0002 works well (compared to 0.2 for the locked
+# neutral position scheme).
+x_scale: 0.0002
+y_scale: 0.0002
+z_scale: 0.0002
+
+end_effector_acceleration: 10
+track_end_effector_orientation: false
+cancel_gravity_compensation: false
+enforce_acceleration_constraints: false
+publish_debug_info: true
+
+w_elbow: 1
+elbow_kp: 200
+elbow_kd: 10
+
+# This is the weight matrix for the end effector position tracking.
+EndEffectorW:
+  [1, 0, 0,
+   0, 1, 0,
+   0, 0, 1]
+EndEffectorKp:
+  [ 200, 0, 0,
+    0, 200, 0,
+    0, 0, 200 ]
+EndEffectorKd:
+  [ 20, 0, 0,
+    0, 20, 0,
+    0, 0, 20 ]
+EndEffectorRotW:
+  [ 10, 0, 0,
+    0, 10, 0,
+    0, 0, 10 ]
+EndEffectorRotKp:
+  [ 800, 0, 0,
+    0, 800, 0,
+    0, 0,  800]
+EndEffectorRotKd:
+  [ 40, 0, 0,
+    0, 40, 0,
+    0, 0, 40]
+# This is the weight matrix for the end effector force tracking. 
+# The end effector forces in the OSC are called lambdas but are really tracking
+# the forces at the end effector or the u_sol we get in c3.
+LambdaEndEffectorW:
+  [ 1, 0, 0,
+    0, 1, 0,
+    0, 0, 1 ]

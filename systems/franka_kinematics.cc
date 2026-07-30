@@ -76,41 +76,15 @@ void FrankaKinematics::ComputeLCSState(
         context, object_state_ports_.at(i)));
   }
 
+  // First, evaluate the robot states.
   VectorXd q_franka = franka_output->GetPositions();
   VectorXd v_franka = franka_output->GetVelocities();
-
-  int nq = object_outputs[0]->GetPositions().size();
-  int nv = object_outputs[0]->GetVelocities().size();
-
-  // Preallocate total vectors
-  VectorXd q_objects(num_objects_ * nq);
-  VectorXd v_objects(num_objects_ * nv);
-
-  for (int i = 0; i < num_objects_; i++) {
-    q_objects.segment(i * nq, nq) = object_outputs.at(i)->GetPositions();
-    v_objects.segment(i * nv, nv) = object_outputs.at(i)->GetVelocities();
-  }
-
   multibody::SetPositionsIfNew<double>(franka_plant_, q_franka,
                                        franka_context_);
   multibody::SetVelocitiesIfNew<double>(franka_plant_, v_franka,
                                         franka_context_);
-
-  multibody::SetPositionsIfNew<double>(object_plant_, q_objects,
-                                       object_context_);
-  multibody::SetVelocitiesIfNew<double>(object_plant_, v_objects,
-                                        object_context_);
-
   auto end_effector_pose = franka_plant_.EvalBodyPoseInWorld(
       *franka_context_, franka_plant_.GetBodyByName(end_effector_name_));
-
-  const Eigen::VectorXd& q = object_plant_.GetPositions(*object_context_);
-
-  std::vector<drake::math::RigidTransform<double>> object_poses;
-  for (std::string name : object_names_) {
-    object_poses.push_back(object_plant_.EvalBodyPoseInWorld(
-        *object_context_, object_plant_.GetBodyByName(name)));
-  }
   auto end_effector_spatial_velocity =
       franka_plant_.EvalBodySpatialVelocityInWorld(
           *franka_context_, franka_plant_.GetBodyByName(end_effector_name_));
@@ -133,16 +107,19 @@ void FrankaKinematics::ComputeLCSState(
     end_effector_velocities << end_effector_spatial_velocity.translational();
   }
 
-  VectorXd object_positions(num_objects_ * 7);
-  for (int i = 0; i < object_poses.size(); i++) {
-    object_positions.segment(i * 7, 4) =
-        q_objects.segment(i * 7, 4);  // ith orientation
-    object_positions.segment(i * 7 + 4, 3) =
-        object_poses[i].translation();  // ith position
+  // Second, evaluate the object(s) states.
+  int nq = object_outputs[0]->GetPositions().size();
+  int nv = object_outputs[0]->GetVelocities().size();
+  VectorXd q_objects(num_objects_ * nq);
+  VectorXd v_objects(num_objects_ * nv);
+
+  for (int i = 0; i < num_objects_; i++) {
+    q_objects.segment(i * nq, nq) = object_outputs.at(i)->GetPositions();
+    v_objects.segment(i * nv, nv) = object_outputs.at(i)->GetVelocities();
   }
 
   lcs_state->SetEndEffectorPositions(end_effector_positions);
-  lcs_state->SetObjectPositions(object_positions);
+  lcs_state->SetObjectPositions(q_objects);
   lcs_state->SetEndEffectorVelocities(end_effector_velocities);
   lcs_state->SetObjectVelocities(v_objects);
   lcs_state->set_timestamp(franka_output->get_timestamp());

@@ -4,6 +4,7 @@
 
 #include "common/find_resource.h"
 
+#include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/math/rigid_transform.h"
 #include "drake/math/roll_pitch_yaw.h"
 #include "drake/math/rotation_matrix.h"
@@ -11,6 +12,8 @@
 using drake::math::RigidTransform;
 using drake::math::RollPitchYaw;
 using drake::math::RotationMatrix;
+using drake::trajectories::PiecewisePolynomial;
+using drake::trajectories::Trajectory;
 
 namespace dairlib {
 namespace systems {
@@ -144,6 +147,46 @@ void ThreeDPrinterKinematics::ComputeLCSState(
   lcs_state->SetEndEffectorVelocities(end_effector_velocities);
   lcs_state->SetObjectVelocities(v_objects);
   lcs_state->set_timestamp(printer_output->get_timestamp());
+}
+
+ThreeDPrinterInverseKinematics::ThreeDPrinterInverseKinematics(
+    const MultibodyPlant<double>& printer_plant,
+    Context<double>* printer_context, const std::string& end_effector_name) {
+  this->set_name("three_d_printer_inverse_kinematics");
+
+  multibody::SetPositionsIfNew<double>(
+      printer_plant, VectorXd::Zero(printer_plant.num_positions()),
+      printer_context);
+  end_effector_offset_ =
+      printer_plant
+          .EvalBodyPoseInWorld(*printer_context,
+                               printer_plant.GetBodyByName(end_effector_name))
+          .translation();
+
+  PiecewisePolynomial<double> pp = PiecewisePolynomial<double>();
+  trajectory_port_ =
+      this->DeclareAbstractInputPort("end_effector_trajectory",
+                                     drake::Value<Trajectory<double>>(pp))
+          .get_index();
+
+  Trajectory<double>& traj_inst = pp;
+  joint_trajectory_port_ =
+      this->DeclareAbstractOutputPort(
+              "printer_joint_trajectory", traj_inst,
+              &ThreeDPrinterInverseKinematics::CalcJointTrajectory)
+          .get_index();
+}
+
+void ThreeDPrinterInverseKinematics::CalcJointTrajectory(
+    const drake::systems::Context<double>& context,
+    drake::trajectories::Trajectory<double>* traj) const {
+  const auto& trajectory_input =
+      this->EvalAbstractInput(context, trajectory_port_)
+          ->get_value<Trajectory<double>>();
+  auto* casted_traj = dynamic_cast<PiecewisePolynomial<double>*>(traj);
+  *casted_traj =
+      *dynamic_cast<const PiecewisePolynomial<double>*>(&trajectory_input);
+  *casted_traj -= end_effector_offset_;
 }
 
 }  // namespace systems

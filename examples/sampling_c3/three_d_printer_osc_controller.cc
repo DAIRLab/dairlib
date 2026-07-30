@@ -25,6 +25,7 @@
 #include "systems/framework/lcm_driven_loop.h"
 #include "systems/robot_lcm_systems.h"
 #include "systems/system_utils.h"
+#include "systems/three_d_printer_kinematics.h"
 #include "systems/trajectory_optimization/lcm_trajectory_systems.h"
 
 #include "drake/common/find_resource.h"
@@ -63,12 +64,6 @@ DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
 DEFINE_string(demo_name, "three_d_printer",
               "Demo within sampling_c3; used to find controller params file");
-DEFINE_double(printer_target_offset_x, 0.0,
-              "Printer target offset along x, in meters");
-DEFINE_double(printer_target_offset_y, 0.0075,
-              "Printer target offset along y, in meters");
-DEFINE_double(printer_target_offset_z, 0.107,
-              "Printer target offset along z, in meters");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -78,26 +73,20 @@ int DoMain(int argc, char* argv[]) {
   // ------------------------------------------------------------------------
   // Load parameters
   // ------------------------------------------------------------------------
-
   std::string controller_params_path =
       "examples/sampling_c3/" + FLAGS_demo_name +
       "/parameters/sampling_c3_controller_params.yaml";
-
   SamplingC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
           controller_params_path);
-
   SamplingC3OSCParams osc_params =
       drake::yaml::LoadYamlFile<SamplingC3OSCParams>(
           controller_params.osc_params_file);
-
   std::string lcm_channels_file =
       FLAGS_is_simulation ? controller_params.lcm_channels_simulation_file
                           : controller_params.lcm_channels_hardware_file;
-
   SamplingC3LcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(lcm_channels_file);
-
   drake::solvers::SolverOptions solver_options =
       drake::yaml::LoadYamlFile<solvers::SolverOptionsFromYaml>(
           FindResourceOrThrow(controller_params.osc_qp_settings_file))
@@ -106,11 +95,8 @@ int DoMain(int argc, char* argv[]) {
   // ------------------------------------------------------------------------
   // Build plant
   // ------------------------------------------------------------------------
-
   drake::multibody::MultibodyPlant<double> plant(0.0);
-
   Add3DPrinterToPlant(&plant);
-
   plant.Finalize();
 
   auto plant_context = plant.CreateDefaultContext();
@@ -118,90 +104,78 @@ int DoMain(int argc, char* argv[]) {
   // ------------------------------------------------------------------------
   // Diagram
   // ------------------------------------------------------------------------
-
   DiagramBuilder<double> builder;
-
   auto state_receiver = builder.AddSystem<systems::RobotOutputReceiver>(plant);
-
   auto end_effector_trajectory_sub = builder.AddSystem(
       LcmSubscriberSystem::Make<dairlib::lcmt_timestamped_saved_traj>(
           lcm_channel_params.tracking_trajectory_actor_channel, &lcm));
-
   auto end_effector_position_receiver =
       builder.AddSystem<systems::LcmTrajectoryReceiver>(
           "end_effector_position_target");
-
   auto three_d_printer_command_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
           lcm_channel_params.robot_input_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
-
-  auto osc_command_pub =
-      builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          lcm_channel_params.osc_channel, &lcm,
-          TriggerTypeSet({TriggerType::kForced})));
-
   auto three_d_printer_command_sender =
-      builder.AddSystem<systems::ThreeDPrinterCommandSender>(
-          plant,
-          Vector3d(FLAGS_printer_target_offset_x, FLAGS_printer_target_offset_y,
-                   FLAGS_printer_target_offset_z));
-
-  auto osc_command_sender =
       builder.AddSystem<systems::ThreeDPrinterCommandSender>(plant);
-
   auto end_effector_position_tracking_data =
       std::make_unique<TransTaskSpaceTrackingData>(
           "end_effector_target", osc_params.K_p_end_effector,
           osc_params.K_d_end_effector, osc_params.W_end_effector, plant, plant);
-
   end_effector_position_tracking_data->AddPointToTrack(k3dEndEffectorTipName);
 
   const VectorXd& end_effector_acceleration_limits =
       osc_params.end_effector_acceleration * Vector3d::Ones();
-
   end_effector_position_tracking_data->SetCmdAccelerationBounds(
       -end_effector_acceleration_limits, end_effector_acceleration_limits);
+
+  auto radio_sub =
+      builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_radio_out>(
+          lcm_channel_params.radio_channel, &lcm));
+  auto end_effector_trajectory =
+      builder.AddSystem<EndEffectorPositionTrajectoryGenerator>(
+          plant, plant_context.get(), osc_params.neutral_position,
+          osc_params.teleop_neutral_position, k3dEndEffectorTipName);
+  end_effector_trajectory->SetRemoteControlParameters(
+      osc_params.neutral_position, osc_params.x_scale, osc_params.y_scale,
+      osc_params.z_scale);
+
+  auto printer_inverse_kinematics =
+      builder.AddSystem<systems::ThreeDPrinterInverseKinematics>(
+          plant, plant_context.get(), k3dEndEffectorTipName);
 
   // ------------------------------------------------------------------------
   // Connections
   // ------------------------------------------------------------------------
-
   builder.Connect(three_d_printer_command_sender->get_output_port(),
                   three_d_printer_command_pub->get_input_port());
-
-  builder.Connect(osc_command_sender->get_output_port(),
-                  osc_command_pub->get_input_port());
-
   builder.Connect(end_effector_trajectory_sub->get_output_port(),
                   end_effector_position_receiver->get_input_port_trajectory());
-
   builder.Connect(end_effector_position_receiver->get_output_port(0),
-                  osc_command_sender->get_input_port(0));
-
-  builder.Connect(end_effector_position_receiver->get_output_port(0),
+                  end_effector_trajectory->get_input_port_trajectory());
+  builder.Connect(state_receiver->get_output_port(0),
+                  end_effector_trajectory->get_input_port_state());
+  builder.Connect(radio_sub->get_output_port(0),
+                  end_effector_trajectory->get_input_port_radio());
+  builder.Connect(end_effector_trajectory->get_output_port(0),
+                  printer_inverse_kinematics->get_input_port_trajectory());
+  builder.Connect(printer_inverse_kinematics->get_output_port_trajectory(),
                   three_d_printer_command_sender->get_input_port(0));
 
   // ------------------------------------------------------------------------
   // Build
   // ------------------------------------------------------------------------
-
   auto owned_diagram = builder.Build();
-
   std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
-
   shared_diagram->set_name("sampling_c3_three_d_printer_osc_controller");
-
   DrawAndSaveDiagramGraph(*shared_diagram);
 
   // ------------------------------------------------------------------------
   // LCM Loop
   // ------------------------------------------------------------------------
-
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, shared_diagram, state_receiver,
       lcm_channel_params.robot_state_channel, true);
-
   loop.Simulate();
 
   return 0;

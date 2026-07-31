@@ -2,6 +2,7 @@
 
 #include <ctime>
 #include <iostream>
+#include <limits>
 #include <thread>
 #include <utility>
 
@@ -1105,7 +1106,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Review the cost results to determine the best sample.
   bool force_c3_mode = radio_out->channel[12];
-  double best_other_cost;
+  double best_other_cost = std::numeric_limits<double>::infinity();
   if (num_total_samples > 1) {
     vector<double> additional_sample_cost_vector =
         vector<double>(all_sample_costs_.begin() + 1, all_sample_costs_.end());
@@ -1135,7 +1136,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   mode_switch_reason_ = ModeSwitchReason::kNoSwitch;
   double curr_cost = all_sample_costs_[SampleIndex::kCurrentLocation];
   double repos_target_cost =
-      all_sample_costs_[SampleIndex::kCurrentReposTarget];
+      num_total_samples > SampleIndex::kCurrentReposTarget
+          ? all_sample_costs_[SampleIndex::kCurrentReposTarget]
+          : std::numeric_limits<double>::infinity();
   if (is_doing_c3_ == true) {  // Currently doing C3.
     pursued_target_source_ = PursuedTargetSource::kNoTarget;
 
@@ -1145,8 +1148,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     KeepTrackOfC3ModeProgress(x_lcs_curr, x_lcs_final_des, met_minimum_progress,
                               print_current_pos_and_rot_cost);
 
-    // Switch to repositioning if fixed goals have all been met.
-    if (achieved_fixed_goal_) {
+    // Switch to repositioning if fixed goals have all been met.  Only do so if
+    // there are repositioning samples to pursue; otherwise there's nowhere to
+    // reposition to, so stay in C3 mode.
+    if (achieved_fixed_goal_ &&
+        sampling_params_.num_additional_samples_repos > 0) {
       is_doing_c3_ = false;
       std::cout << "All objects on target, switching to repositioning mode"
                 << std::endl;
@@ -1953,25 +1959,28 @@ void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs) const {
   num_in_buffer_ = buffer_count;
 
   // Lastly, ensure the lowest cost sample is at the end of the buffer.  This
-  // cost factors in the travel cost.
-  VectorXd eligible_costs = sample_costs_buffer_.head(num_in_buffer_);
-  // Incorporate travel costs for each sample in the buffer.
-  MatrixXd xy_samples = sample_buffer_.block(0, 0, num_in_buffer_, 2);
-  Vector2d xy_ref = x_lcs.head(2);
-  VectorXd travel_costs =
-      progress_params_.travel_cost_per_meter *
-      (xy_samples.rowwise() - xy_ref.transpose()).rowwise().norm();
-  eligible_costs += travel_costs;
+  // cost factors in the travel cost.  Skip if the buffer is empty (e.g. no
+  // additional samples are ever generated to populate it).
+  if (num_in_buffer_ > 0) {
+    VectorXd eligible_costs = sample_costs_buffer_.head(num_in_buffer_);
+    // Incorporate travel costs for each sample in the buffer.
+    MatrixXd xy_samples = sample_buffer_.block(0, 0, num_in_buffer_, 2);
+    Vector2d xy_ref = x_lcs.head(2);
+    VectorXd travel_costs =
+        progress_params_.travel_cost_per_meter *
+        (xy_samples.rowwise() - xy_ref.transpose()).rowwise().norm();
+    eligible_costs += travel_costs;
 
-  int lowest_cost_index;
-  double lowest_buffer_cost = eligible_costs.minCoeff(&lowest_cost_index);
-  VectorXd lowest_cost_sample = sample_buffer_.row(lowest_cost_index);
-  sample_buffer_.row(lowest_cost_index) =
-      sample_buffer_.row(num_in_buffer_ - 1);
-  sample_costs_buffer_[lowest_cost_index] =
-      sample_costs_buffer_[num_in_buffer_ - 1];
-  sample_buffer_.row(num_in_buffer_ - 1) = lowest_cost_sample;
-  sample_costs_buffer_[num_in_buffer_ - 1] = lowest_buffer_cost;
+    int lowest_cost_index;
+    double lowest_buffer_cost = eligible_costs.minCoeff(&lowest_cost_index);
+    VectorXd lowest_cost_sample = sample_buffer_.row(lowest_cost_index);
+    sample_buffer_.row(lowest_cost_index) =
+        sample_buffer_.row(num_in_buffer_ - 1);
+    sample_costs_buffer_[lowest_cost_index] =
+        sample_costs_buffer_[num_in_buffer_ - 1];
+    sample_buffer_.row(num_in_buffer_ - 1) = lowest_cost_sample;
+    sample_costs_buffer_[num_in_buffer_ - 1] = lowest_buffer_cost;
+  }
 
   DRAKE_DEMAND(sample_buffer_.rows() == sampling_params_.N_sample_buffer);
   DRAKE_DEMAND(sample_buffer_.cols() == n_q_);
@@ -1985,7 +1994,8 @@ void SamplingC3Controller::AugmentSamplesWithBuffer(
   // Add the best from the buffer to the samples, but only if in C3 mode and
   // only if the best in the buffer is distinct from the current set of samples.
   if ((is_doing_c3_) &&
-      (sampling_params_.consider_best_buffer_sample_when_leaving_c3)) {
+      (sampling_params_.consider_best_buffer_sample_when_leaving_c3) &&
+      (num_in_buffer_ > 0)) {
     // Get the lowest cost sample from the buffer, and incorporate travel cost.
     double lowest_buffer_cost = sample_costs_buffer_[num_in_buffer_ - 1];
     Vector2d best_buffer_xy = sample_buffer_.row(num_in_buffer_ - 1).head(2);

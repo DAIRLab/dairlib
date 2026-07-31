@@ -238,13 +238,13 @@
         <pose> 0.0494 0 0 0 0 0</pose>
         <geometry>
           <sphere>
-            <radius>0.001</radius>
+            <radius>0.002</radius>
           </sphere>
         </geometry>
         <drake:proximity_properties xmlns:drake="uri:drake">
           <drake:compliant_hydroelastic/>
           <drake:hydroelastic_modulus>3.0e9</drake:hydroelastic_modulus>
-          <drake:mesh_resolution_hint>0.025</drake:mesh_resolution_hint>
+          <drake:mesh_resolution_hint>0.002</drake:mesh_resolution_hint>
           <drake:hunt_crossley_dissipation>10</drake:hunt_crossley_dissipation>
           <drake:mu_dynamic>0.3</drake:mu_dynamic>
           <drake:point_contact_stiffness>1e7</drake:point_contact_stiffness>

@@ -85,6 +85,10 @@ SamplingC3Controller::SamplingC3Controller(
       verbose_(verbose) {
   this->set_name("sampling_c3_controller");
 
+  c3::SolverOptionsFromYaml osqp_settings = controller_params_.osqp_settings;
+  solver_options_ =
+      osqp_settings.GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+
   // Build C3Options from SamplingC3Options.
   C3Options c3_options =
       sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_);

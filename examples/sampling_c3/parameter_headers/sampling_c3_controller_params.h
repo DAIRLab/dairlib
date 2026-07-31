@@ -2,6 +2,7 @@
 
 #include <drake/common/yaml/yaml_io.h>
 
+#include "c3/core/solver_options_io.h"
 #include "examples/sampling_c3/parameter_headers/goal_params.h"
 #include "examples/sampling_c3/parameter_headers/progress_params.h"
 #include "examples/sampling_c3/parameter_headers/reposition_params.h"
@@ -41,6 +42,7 @@ struct SamplingC3ControllerParams {
   SamplingC3ProgressParams progress_params;
   SamplingParams sampling_params;
   SamplingC3GoalParams goal_params;
+  c3::SolverOptionsFromYaml osqp_settings;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -74,6 +76,8 @@ struct SamplingC3ControllerParams {
         drake::yaml::LoadYamlFile<SamplingParams>(sampling_params_file);
     goal_params =
         drake::yaml::LoadYamlFile<SamplingC3GoalParams>(goal_params_file);
+    osqp_settings =
+        drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(osqp_settings_file);
 
     num_objects = base_names.size();
   }

@@ -403,10 +403,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   const SamplingC3RepositionParams reposition_params_;
   const SamplingC3ProgressParams progress_params_;
   const SamplingC3GoalParams goal_params_;
-  drake::solvers::SolverOptions solver_options_ =
-      drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(
-          "solvers/osqp_options_default.yaml")
-          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+  drake::solvers::SolverOptions solver_options_;
 
   const bool verbose_;
   int n_q_;

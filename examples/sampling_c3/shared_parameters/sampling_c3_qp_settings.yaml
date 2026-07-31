@@ -1,26 +1,28 @@
 print_to_console: 0
 log_file_name: ""
 int_options:
-  max_iter: 2000
+  max_iter: 200
   verbose: 0
   warm_starting: 1
-  scaling: 1
+  polishing: 1
+  scaled_termination: 1
+  check_termination: 25
+  polish_refine_iter: 3
+  scaling: 10
   adaptive_rho: 1
   adaptive_rho_interval: 0
-  polishing: 0
-  polish_refine_iter: 1
-  scaled_termination: 1
-  check_termination: 100
+
 double_options:
-  rho: 0.1
+  rho: 0.001
   sigma: 1e-5
-  eps_abs: 1e-5
-  eps_rel: 1e-5
-  eps_prim_inf: 1e-5
-  eps_dual_inf: 1e-5
+  eps_abs: 1e-4
+  eps_rel: 1e-4
+  eps_prim_inf: 1e-4
+  eps_dual_inf: 1e-4
   alpha: 1.6
   delta: 1e-6
   adaptive_rho_tolerance: 5
   adaptive_rho_fraction: 0.4
-  time_limit: 0
+  time_limit: 1.0
+
 string_options: {}

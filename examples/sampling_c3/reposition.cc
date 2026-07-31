@@ -160,8 +160,10 @@ void RepositionSpline(Eigen::MatrixXd& knots, const int& n_q, const int& N,
     next_lcs_state.head(3) = next_ee_loc;
     next_lcs_state.segment(n_q, 3) = Eigen::Vector3d::Zero();
     // If z is under the table, set it to a min height.
-    if (next_lcs_state[2] < sampling_c3_options.workspace_limits[2][3]) {
-      next_lcs_state[2] = sampling_c3_options.workspace_limits[2][3];
+    if (next_lcs_state[2] < sampling_c3_options.workspace_limits[2][3] +
+                                sampling_c3_options.workspace_margins) {
+      next_lcs_state[2] = sampling_c3_options.workspace_limits[2][3] +
+                          sampling_c3_options.workspace_margins;
     }
 
     knots.col(i) = next_lcs_state;
@@ -265,8 +267,10 @@ void RepositionSpherical(Eigen::MatrixXd& knots, const int& n_q, const int& N,
 
   // Enforce minimum z height for end effector.
   for (int j = 0; j < i; j++) {
-    if (knots(2, j) < sampling_c3_options.workspace_limits[2][3]) {
-      knots(2, j) = sampling_c3_options.workspace_limits[2][3];
+    if (knots(2, j) < sampling_c3_options.workspace_limits[2][3] +
+                          sampling_c3_options.workspace_margins) {
+      knots(2, j) = sampling_c3_options.workspace_limits[2][3] +
+                    sampling_c3_options.workspace_margins;
     }
   }
 

@@ -31,7 +31,7 @@ workspace_limits: [[1, 0, 0, 0, 0.35],
                    [0, 0, 1, 0.006, 0.248]]
 
 robot_radius_limits: [0.0, 10.0]  # printer has no radius limits, so set large
-workspace_margins: 0.005
+workspace_margins: 0.001
 u_horizontal_limits: [-10, 10]
 u_vertical_limits: [-3, 3]
 ee_velocity_limits: [-0.14, 0.14]

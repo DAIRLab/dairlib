@@ -4,7 +4,7 @@
    <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <sphere radius="0.01"/>
+        <sphere radius="0.011"/>
       </geometry>
       <material>
         <color rgba="1.0 1.0 1.0 1.0"/>

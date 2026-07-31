@@ -265,6 +265,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       LcmTrajectory* lcm_trajectory, const Eigen::Vector3d& ee_position,
       const Eigen::VectorXd& timestamps) const;
 
+  void ClampPlanToWorkspaceLimits(Eigen::MatrixXd* ee_position_traj) const;
+
   /// Output port functions
   void OutputC3SolutionCurrPlan(
       const drake::systems::Context<double>& context,

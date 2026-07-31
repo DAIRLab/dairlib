@@ -989,9 +989,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
             sampling_c3_options_.workspace_limits[i].segment(0, 3);
         test_c3_object->AddLinearConstraint(
             A,
-            sampling_c3_options_.workspace_limits[i][3] -
+            sampling_c3_options_.workspace_limits[i][3] +
                 sampling_c3_options_.workspace_margins,
-            sampling_c3_options_.workspace_limits[i][4] +
+            sampling_c3_options_.workspace_limits[i][4] -
                 sampling_c3_options_.workspace_margins,
             c3::ConstraintVariable::STATE);
       }
@@ -1003,9 +1003,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
               sampling_c3_options_.workspace_limits[i].segment(0, 3);
           test_c3_object->AddLinearConstraint(
               A,
-              sampling_c3_options_.workspace_limits[i][3] -
+              sampling_c3_options_.workspace_limits[i][3] +
                   sampling_c3_options_.workspace_margins,
-              sampling_c3_options_.workspace_limits[i][4] +
+              sampling_c3_options_.workspace_limits[i][4] -
                   sampling_c3_options_.workspace_margins,
               c3::ConstraintVariable::STATE);
         }
@@ -2236,6 +2236,21 @@ void SamplingC3Controller::IncludeEEOrientationTargetIfEnabled(
   }
 }
 
+// Clamp an end-effector position plan to stay within the workspace limits,
+// honoring workspace_margins.
+void SamplingC3Controller::ClampPlanToWorkspaceLimits(
+    Eigen::MatrixXd* ee_position_traj) const {
+  DRAKE_DEMAND(ee_position_traj->rows() == 3);
+  for (int i = 0; i < 3; ++i) {
+    double lower_bound = sampling_c3_options_.workspace_limits[i][3] +
+                         sampling_c3_options_.workspace_margins;
+    double upper_bound = sampling_c3_options_.workspace_limits[i][4] -
+                         sampling_c3_options_.workspace_margins;
+    ee_position_traj->row(i) =
+        ee_position_traj->row(i).cwiseMax(lower_bound).cwiseMin(upper_bound);
+  }
+}
+
 // Output port handlers for current location
 void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
     const drake::systems::Context<double>& context,
@@ -2614,6 +2629,7 @@ void SamplingC3Controller::OutputC3TrajExecuteActor(
   LcmTrajectory::Trajectory end_effector_traj =
       c3_execution_lcm_traj_.GetTrajectory("end_effector_position_target");
   DRAKE_DEMAND(end_effector_traj.datapoints.rows() == 3);
+  ClampPlanToWorkspaceLimits(&end_effector_traj.datapoints);
   LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},
                          "end_effector_position_target",
                          "end_effector_position_target", false);
@@ -2640,6 +2656,7 @@ void SamplingC3Controller::OutputReposTrajExecuteActor(
   LcmTrajectory::Trajectory end_effector_traj =
       repos_execution_lcm_traj_.GetTrajectory("end_effector_position_target");
   DRAKE_DEMAND(end_effector_traj.datapoints.rows() == 3);
+  ClampPlanToWorkspaceLimits(&end_effector_traj.datapoints);
   LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},
                          "end_effector_position_target",
                          "end_effector_position_target", false);
@@ -2669,6 +2686,7 @@ void SamplingC3Controller::OutputTrajExecuteActor(
   LcmTrajectory::Trajectory end_effector_traj =
       execution_lcm_traj.GetTrajectory("end_effector_position_target");
   DRAKE_DEMAND(end_effector_traj.datapoints.rows() == 3);
+  ClampPlanToWorkspaceLimits(&end_effector_traj.datapoints);
 
   LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},
                          "end_effector_position_target",

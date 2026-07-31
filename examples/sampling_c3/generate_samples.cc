@@ -433,7 +433,8 @@ Eigen::Vector3d ShellSampling(
       continue;
     }
     // Check the projection is above the minimum EE height; otherwise try again.
-    if (projected_state[2] < sampling_c3_options.workspace_limits[2][3]) {
+    if (projected_state[2] < sampling_c3_options.workspace_limits[2][3] +
+                                 sampling_c3_options.workspace_margins) {
       continue;
     }
 
@@ -737,7 +738,7 @@ Eigen::VectorXd MeshNormalSamplingMultiObject(
       }
     }
 
-    // Detect samples too close to object(s)
+    // Detect samples too close to ground or object(s)
     for (int i = 1; i < results.size() - offset; i++) {
       if (results[i].distance <= sampling_params.sample_projection_clearance) {
         in_collision = true;
@@ -787,9 +788,11 @@ bool IsSampleInWorkspace(const Eigen::VectorXd& candidate_state,
       candidate_state[1] > sampling_c3_options.workspace_limits[1][4] -
                                sampling_c3_options.workspace_margins  // y max
       ||
-      candidate_state[2] < sampling_c3_options.workspace_limits[2][3]  // z min
+      candidate_state[2] < sampling_c3_options.workspace_limits[2][3] +
+                               sampling_c3_options.workspace_margins  // z min
       ||
-      candidate_state[2] > sampling_c3_options.workspace_limits[2][4]  // z max
+      candidate_state[2] > sampling_c3_options.workspace_limits[2][4] -
+                               sampling_c3_options.workspace_margins  // z max
       || candidate_radius > sampling_c3_options.robot_radius_limits[1] -
                                 sampling_c3_options.workspace_margins  // r max
       || candidate_radius < sampling_c3_options.robot_radius_limits[0] +

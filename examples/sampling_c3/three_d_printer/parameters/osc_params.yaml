@@ -1,3 +1,6 @@
+# TODO(bibit):  most of these params aren't used for 3D printer example; label
+# them.
+
 ### Parameters from OSCGains ###
 controller_frequency: 1000
 w_input: 0.00
@@ -29,9 +32,9 @@ teleop_neutral_position: true
 # If using teleop_neutral_position, it's beneficial for the x/y/z_scales to be
 # relatively small, i.e. 0.0002 works well (compared to 0.2 for the locked
 # neutral position scheme).
-x_scale: 0.0002
-y_scale: 0.0002
-z_scale: 0.0002
+x_scale: 0.00005
+y_scale: 0.00005
+z_scale: 0.00005
 
 end_effector_acceleration: 10
 track_end_effector_orientation: false

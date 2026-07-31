@@ -59,11 +59,11 @@
   <link name="end_effector_tip">
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <mass value="0.1"/>
+      <mass value="0.05"/>
       <inertia
-        ixx="0.001" ixy="0.0" ixz="0.0"
-        iyy="0.001" iyz="0.0"
-        izz="0.001"/>
+        ixx="0.0005" ixy="0.0" ixz="0.0"
+        iyy="0.0005" iyz="0.0"
+        izz="0.0005"/>
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
@@ -77,6 +77,9 @@
       <geometry>
         <sphere radius="0.01"/>
       </geometry>
+      <drake:proximity_properties>
+        <drake:point_contact_stiffness value="1e7"/>
+      </drake:proximity_properties>
     </collision>
   </link>
 

@@ -33,6 +33,9 @@
       <geometry>
         <mesh filename="ramp1.obj" scale="0.001 0.001 0.001"/>
       </geometry>
+      <drake:proximity_properties>
+        <drake:point_contact_stiffness value="1e7"/>
+      </drake:proximity_properties>
     </collision>
 
     <visual name="ramp_part_2">
@@ -50,6 +53,9 @@
       <geometry>
         <mesh filename="ramp2.obj" scale="0.001 0.001 0.001"/>
       </geometry>
+      <drake:proximity_properties>
+        <drake:point_contact_stiffness value="1e7"/>
+      </drake:proximity_properties>
     </collision>
 
     <visual name="ramp_part_3">
@@ -67,6 +73,9 @@
       <geometry>
         <mesh filename="ramp3.obj" scale="0.001 0.001 0.001"/>
       </geometry>
+      <drake:proximity_properties>
+        <drake:point_contact_stiffness value="1e7"/>
+      </drake:proximity_properties>
     </collision>
 
     <visual name="ramp_part_4">
@@ -84,6 +93,9 @@
       <geometry>
         <mesh filename="ramp4.obj" scale="0.001 0.001 0.001"/>
       </geometry>
+      <drake:proximity_properties>
+        <drake:point_contact_stiffness value="1e7"/>
+      </drake:proximity_properties>
     </collision>
 
     <visual name="ramp_part_5">
@@ -101,6 +113,9 @@
       <geometry>
         <mesh filename="ramp5.obj" scale="0.001 0.001 0.001"/>
       </geometry>
+      <drake:proximity_properties>
+        <drake:point_contact_stiffness value="1e7"/>
+      </drake:proximity_properties>
     </collision>
 
     <visual name="ramp_part_6">
@@ -117,7 +132,10 @@
       <geometry>
         <mesh filename="ramp6.obj" scale="0.001 0.001 0.001"/>
       </geometry>
-    </collision>  
+      <drake:proximity_properties>
+        <drake:point_contact_stiffness value="1e7"/>
+      </drake:proximity_properties>
+    </collision>
 
     <visual name="ramp_part_7">
       <origin xyz="0 0 0" rpy="1.5708 0 0"/>
@@ -133,7 +151,10 @@
       <geometry>
         <mesh filename="ramp7.obj" scale="0.001 0.001 0.001"/>
       </geometry>
-    </collision>  
+      <drake:proximity_properties>
+        <drake:point_contact_stiffness value="1e7"/>
+      </drake:proximity_properties>
+    </collision>
 
 
     <visual name="ramp_part_8">
@@ -150,7 +171,10 @@
       <geometry>
         <mesh filename="ramp8.obj" scale="0.001 0.001 0.001"/>
       </geometry>
-    </collision>  
+      <drake:proximity_properties>
+        <drake:point_contact_stiffness value="1e7"/>
+      </drake:proximity_properties>
+    </collision>
 
     <visual name="ramp_part_9">
       <origin xyz="0 0 0" rpy="1.5708 0 0"/>
@@ -161,11 +185,14 @@
         <color rgba="0.7 0.7 0.7 1.0"/>
       </material>
     </visual>
-    <collision name="ramp_part_9">    
+    <collision name="ramp_part_9">
       <origin xyz="0 0 0" rpy="1.5708 0 0"/>
       <geometry>
         <mesh filename="ramp9.obj" scale="0.001 0.001 0.001"/>
       </geometry>
+      <drake:proximity_properties>
+        <drake:point_contact_stiffness value="1e7"/>
+      </drake:proximity_properties>
     </collision>
 
     <visual name="ramp_part_10">
@@ -182,6 +209,9 @@
       <geometry>
         <mesh filename="ramp10.obj" scale="0.001 0.001 0.001"/>
       </geometry>
+      <drake:proximity_properties>
+        <drake:point_contact_stiffness value="1e7"/>
+      </drake:proximity_properties>
     </collision>
 
     <visual name="ramp_part_11">
@@ -198,6 +228,9 @@
       <geometry>
         <mesh filename="ramp11.obj" scale="0.001 0.001 0.001"/>
       </geometry>
+      <drake:proximity_properties>
+        <drake:point_contact_stiffness value="1e7"/>
+      </drake:proximity_properties>
     </collision>
 
     <visual name="ramp_part_12">
@@ -214,7 +247,10 @@
       <geometry>
         <mesh filename="ramp12.obj" scale="0.001 0.001 0.001"/>
       </geometry>
-    </collision>  
+      <drake:proximity_properties>
+        <drake:point_contact_stiffness value="1e7"/>
+      </drake:proximity_properties>
+    </collision>
 
     <visual name="ramp_part_13">
       <origin xyz="0 0 0" rpy="1.5708 0 0"/>
@@ -230,6 +266,9 @@
       <geometry>
         <mesh filename="ramp13.obj" scale="0.001 0.001 0.001"/>
       </geometry>
+      <drake:proximity_properties>
+        <drake:point_contact_stiffness value="1e7"/>
+      </drake:proximity_properties>
     </collision>
 
     <visual name="ramp_part_14">
@@ -246,8 +285,11 @@
       <geometry>
         <mesh filename="ramp14.obj" scale="0.001 0.001 0.001"/>
       </geometry>
+      <drake:proximity_properties>
+        <drake:point_contact_stiffness value="1e7"/>
+      </drake:proximity_properties>
     </collision>
-    
+
 
   </link>
 

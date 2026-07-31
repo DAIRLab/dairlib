@@ -31,11 +31,11 @@
   <link name="base_link">
     <inertial>
       <origin xyz="0.175 0.2095 -0.05" rpy="0 0 0"/>
-      <mass value="15.0"/>
+      <mass value="1.0"/>
       <inertia
-        ixx="0.50" ixy="0.0" ixz="0.0"
-        iyy="0.50" iyz="0.0"
-        izz="0.50"/>
+        ixx="0.005" ixy="0.0" ixz="0.0"
+        iyy="0.005" iyz="0.0"
+        izz="0.005"/>
     </inertial>
 
     <visual>
@@ -321,11 +321,11 @@
   <link name="z_gantry">
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <mass value="3.0"/>
+      <mass value="1.0"/>
       <inertia
-        ixx="0.05" ixy="0.0" ixz="0.0"
-        iyy="0.05" iyz="0.0"
-        izz="0.05"/>
+        ixx="0.005" ixy="0.0" ixz="0.0"
+        iyy="0.005" iyz="0.0"
+        izz="0.005"/>
     </inertial>
 
     <!-- Left beam running in y 
@@ -403,11 +403,11 @@
   <link name="y_beam">
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <mass value="2.0"/>
+      <mass value="1.0"/>
       <inertia
-        ixx="0.03" ixy="0.0" ixz="0.0"
-        iyy="0.03" iyz="0.0"
-        izz="0.03"/>
+        ixx="0.003" ixy="0.0" ixz="0.0"
+        iyy="0.003" iyz="0.0"
+        izz="0.003"/>
     </inertial>
 
     <visual>
@@ -458,9 +458,9 @@
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <mass value="1.0"/>
       <inertia
-        ixx="0.01" ixy="0.0" ixz="0.0"
-        iyy="0.01" iyz="0.0"
-        izz="0.01"/>
+        ixx="0.001" ixy="0.0" ixz="0.0"
+        iyy="0.001" iyz="0.0"
+        izz="0.001"/>
     </inertial>
 
     <visual>

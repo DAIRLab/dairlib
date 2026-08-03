@@ -31,7 +31,7 @@ workspace_limits: [[1, 0, 0, 0, 0.35],
                    [0, 0, 1, 0.006, 0.248]]
 
 robot_radius_limits: [0.0, 10.0]  # printer has no radius limits, so set large
-workspace_margins: 0.001
+workspace_margins: 0.002
 u_horizontal_limits: [-10, 10]
 u_vertical_limits: [-3, 3]
 ee_velocity_limits: [-0.14, 0.14]
@@ -93,6 +93,10 @@ q_vector: [0.01, 0.01, 0.01,    # EE position
            0.05, 0.05, 0.05,    # object angular velocity
            0.05, 0.05, 0.05]    # object linear velocity
 r_vector: [0.01, 0.01, 0.01]
+
+final_augmented_cost_contact_scaling: 10
+final_augmented_cost_contact_indices: [0, 1, 2, 3]
+planar_demo: false
 
 # Penalty on matching projected variables
 g_x: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -186,7 +190,4 @@ u_eta_slack: []
 u_eta_n: []
 u_eta_t: []
 u_eta: []
-final_augmented_cost_contact_scaling: 1000
-final_augmented_cost_contact_indices: [0, 1, 2, 3]
-planar_demo: false
 

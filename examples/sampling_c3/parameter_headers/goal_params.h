@@ -4,6 +4,7 @@
 
 #include "common/file_utils.h"
 
+#include "drake/common/drake_assert.h"
 #include "drake/common/yaml/yaml_read_archive.h"
 
 /* Goal mode options:
@@ -25,8 +26,11 @@ struct SamplingC3GoalParams {
 
   std::vector<double> resting_object_heights;  // in world frame for each object
   double ee_target_z_offset_above_object;  // defines EE goal wrt object height
-  bool ignore_roll_when_tracking_orientation;  // ignore roll when computing
-                                               // orientation error
+
+  // Per-object body-frame axis to align with the target's world-frame body axis
+  // direction, tracking twist about that axis freely. A zero vector (the
+  // default) means "track full orientation" for that object.
+  std::vector<Eigen::Vector3d> tracked_orientation_axis;
 
   /// Lookahead parameters to define a sub-goal for C3.
   double lookahead_step_size;
@@ -65,7 +69,7 @@ struct SamplingC3GoalParams {
     a->Visit(DRAKE_NVP(orientation_success_threshold));
     a->Visit(DRAKE_NVP(resting_object_heights));
     a->Visit(DRAKE_NVP(ee_target_z_offset_above_object));
-    a->Visit(DRAKE_NVP(ignore_roll_when_tracking_orientation));
+    a->Visit(DRAKE_NVP(tracked_orientation_axis));
     a->Visit(DRAKE_NVP(lookahead_step_size));
     a->Visit(DRAKE_NVP(lookahead_angle));
     a->Visit(DRAKE_NVP(angle_hysteresis));
@@ -80,6 +84,11 @@ struct SamplingC3GoalParams {
     a->Visit(DRAKE_NVP(only_use_xy_position));
     ComputeSamplingAreaYLimits();
     SetDefaultObjectIndexToSamplingAreaIndexMap();
+    NormalizeAndValidateTrackedAxes();
+  }
+
+  bool HasTrackedAxis(int index) const {
+    return tracked_orientation_axis.at(index).squaredNorm() > 1e-12;
   }
 
  private:
@@ -102,5 +111,15 @@ struct SamplingC3GoalParams {
     default_object_index_to_sampling_area_index_map.resize(num_objects);
     std::iota(default_object_index_to_sampling_area_index_map.begin(),
               default_object_index_to_sampling_area_index_map.end(), 0);
+  }
+
+  void NormalizeAndValidateTrackedAxes() {
+    DRAKE_DEMAND(tracked_orientation_axis.size() ==
+                 fixed_target_positions.size());
+    for (auto& axis : tracked_orientation_axis) {
+      if (axis.squaredNorm() > 1e-12) {
+        axis.normalize();
+      }
+    }
   }
 };

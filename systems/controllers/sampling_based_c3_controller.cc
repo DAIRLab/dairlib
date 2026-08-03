@@ -15,6 +15,7 @@
 #include "c3/core/lcs.h"
 #include "c3/core/traj_eval.h"
 #include "c3/multibody/lcs_factory.h"
+#include "common/quaternion_axis_alignment.h"
 #include "common/quaternion_error_hessian.h"
 #include "dairlib/lcmt_radio_out.hpp"
 #include "examples/sampling_c3/generate_samples.h"
@@ -780,19 +781,53 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                          x_lcs_final_des.get_value()[4 + 7 * i],
                          x_lcs_final_des.get_value()[5 + 7 * i],
                          x_lcs_final_des.get_value()[6 + 7 * i]);
-    AngleAxisd angle_axis_diff(des_quat * curr_quat.inverse());
-    if (goal_params_.ignore_roll_when_tracking_orientation) {
-      angle_axis_diff.axis() = Vector3d(0, 0, 1);
-    }
-    current_orientation_error_ += angle_axis_diff.angle();
+    current_orientation_error_ +=
+        goal_params_.HasTrackedAxis(i)
+            ? ComputeAxisMisalignmentAngle(
+                  curr_quat, des_quat,
+                  goal_params_.tracked_orientation_axis.at(i))
+            : AngleAxisd(des_quat * curr_quat.inverse()).angle();
   }
 
   // Detect if the final target has changed, in which case return to caring only
   // about position until the switching threshold has been crossed again.
   // Exclude the EE goal from the comparison, since that always changes to be
-  // above the current object location.
-  if (!x_final_target_.segment(3, n_x_ - 3)
-           .isApprox(x_lcs_final_des.value().segment(3, n_x_ - 3), 1e-5)) {
+  // above the current object location. For tracked-axis objects, compare
+  // orientations via the tracked axis's misalignment angle rather than raw
+  // quaternion coefficients:  the published final target's orientation is
+  // continuously re-twisted to align the tracked axis with the object's
+  // current state, so its coefficients change often even when the underlying
+  // goal hasn't -- only a change in the tracked axis's target direction
+  // indicates a genuine new goal.
+  constexpr double kTrackedAxisChangeThreshold = 1e-5;
+  bool final_target_changed = false;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    Eigen::Vector3d old_pos = x_final_target_.segment(7 + 7 * i, 3);
+    Eigen::Vector3d new_pos = x_lcs_final_des.get_value().segment(7 + 7 * i, 3);
+    if (!old_pos.isApprox(new_pos, 1e-5)) {
+      final_target_changed = true;
+    }
+
+    Quaterniond old_final_quat(
+        x_final_target_[3 + 7 * i], x_final_target_[4 + 7 * i],
+        x_final_target_[5 + 7 * i], x_final_target_[6 + 7 * i]);
+    Quaterniond new_final_quat(x_lcs_final_des.get_value()[3 + 7 * i],
+                               x_lcs_final_des.get_value()[4 + 7 * i],
+                               x_lcs_final_des.get_value()[5 + 7 * i],
+                               x_lcs_final_des.get_value()[6 + 7 * i]);
+    if (goal_params_.HasTrackedAxis(i)) {
+      if (ComputeAxisMisalignmentAngle(old_final_quat, new_final_quat,
+                                       goal_params_.tracked_orientation_axis.at(
+                                           i)) > kTrackedAxisChangeThreshold) {
+        final_target_changed = true;
+      }
+    } else if (!old_final_quat.coeffs().isApprox(new_final_quat.coeffs(),
+                                                 kTrackedAxisChangeThreshold)) {
+      final_target_changed = true;
+    }
+  }
+
+  if (final_target_changed) {
     std::cout << "Detected goal change!" << std::endl;
     if (verbose_) {
       std::cout << "  Last goal: " << x_final_target_.transpose() << std::endl;
@@ -860,11 +895,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     Quaterniond q_des(x_lcs_des.get_value().segment<4>(3 + 7 * i));
     Quaterniond q_curr(x_lcs_curr.segment<4>(3 + 7 * i));
 
-    AngleAxisd angle_axis_diff(q_des * q_curr.inverse());
-    if (goal_params_.ignore_roll_when_tracking_orientation) {
-      angle_axis_diff.axis() = Vector3d(0, 0, 1);
-    }
-    double object_angular_error = angle_axis_diff.angle();
+    double object_angular_error = AngleAxisd(q_des * q_curr.inverse()).angle();
 
     object_on_target.push_back(
         ((crossed_cost_switching_threshold_) &&

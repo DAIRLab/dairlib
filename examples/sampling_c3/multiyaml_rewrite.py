@@ -452,6 +452,7 @@ def set_goal_poses(goal_yaml: dict, z_height: list, base_names: list):
 
     goal_yaml["fixed_target_positions"] = positions
     goal_yaml["fixed_target_orientations"] = quaternions
+    goal_yaml["tracked_orientation_axis"] = [[0, 0, 0] for _ in range(num_objects)]
 
 
 def update_sampling_params(sampling_yaml: dict):

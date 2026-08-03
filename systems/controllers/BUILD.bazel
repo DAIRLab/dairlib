@@ -64,6 +64,7 @@ cc_library(
         "//systems/framework:vector",
         "//examples/sampling_c3:generate_samples",
         "//examples/sampling_c3:reposition",
+        "//common:quaternion_axis_alignment",
         "//common:quaternion_error_hessian",
         "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
         "//examples/sampling_c3/parameter_headers:sampling_c3_options",

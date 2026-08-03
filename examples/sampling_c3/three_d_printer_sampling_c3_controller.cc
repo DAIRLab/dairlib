@@ -263,9 +263,21 @@ int DoMain(int argc, char* argv[]) {
           object_context.get(), k3dEndEffectorTipName,
           controller_params.base_names);
 
+  // There are no randomized new goals to be generated for 3D printer demos.
+  // Set the goal generator's nominal_orientations to be the fixed target
+  // orientation(s).
+  DRAKE_ASSERT(controller_params.goal_params.goal_mode == GoalMode::kFixedGoal);
+  std::vector<std::vector<Eigen::Quaterniond>> nominal_orientations;
+  for (int i = 0; i < object_indices.size(); ++i) {
+    const Eigen::Vector4d& quat_vec =
+        controller_params.goal_params.fixed_target_orientations.at(i);
+    nominal_orientations.push_back({Eigen::Quaterniond(
+        quat_vec[0], quat_vec[1], quat_vec[2], quat_vec[3])});
+  }
   std::unique_ptr<systems::SamplingC3GoalGenerator> target_generator =
-      std::make_unique<systems::SamplingC3GoalGeneratorPlanar>(
-          plant_object, controller_params.goal_params, object_indices);
+      std::make_unique<systems::SamplingC3GoalGenerator>(
+          plant_object, controller_params.goal_params, nominal_orientations,
+          object_indices);
   auto* control_target = builder.AddSystem(std::move(target_generator));
 
   // Input sizes are EE position (3), object pose (7), EE velocity (3), object

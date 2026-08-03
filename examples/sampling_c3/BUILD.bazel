@@ -252,6 +252,7 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//lcm:lcm_trajectory_saver",
         "//common:math_utils",
+        "//common:quaternion_axis_alignment",
         "@drake//:drake_shared_library",
         "@lcm//lcm:lcm-shared",
     ],

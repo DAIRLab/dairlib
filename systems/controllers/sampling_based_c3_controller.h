@@ -345,11 +345,16 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       Eigen::VectorXd* unsuccessful_sample_buffer_costs) const;
 
+  // Quantities computed once in the constructor for certain sampling
+  // strategies.
   std::vector<double> face_bins_;
   std::vector<Face> faces_;
   std::vector<std::vector<Face>> faces_per_object_;
   std::vector<std::vector<double>> face_bins_per_object_;
   std::vector<double> total_area_per_object_;
+  std::vector<drake::geometry::GeometryId> object_geometry_ids_;
+  std::vector<double> object_enclosing_radius_;
+  double ee_radius_ = 0.0;
 
   drake::systems::InputPortIndex radio_port_;
   drake::systems::InputPortIndex final_target_input_port_;

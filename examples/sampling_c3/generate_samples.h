@@ -39,7 +39,10 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
     std::vector<std::vector<double>> face_bins_per_object,
     std::vector<double> total_area_per_object,
     std::vector<bool> object_on_target,
-    const MatrixXd& unsuccessful_sample_buffer);
+    const MatrixXd& unsuccessful_sample_buffer,
+    const std::vector<drake::geometry::GeometryId>& object_geometry_ids,
+    const std::vector<double>& object_enclosing_radius,
+    const double& ee_radius);
 
 bool SampleIsAcceptable(const Eigen::VectorXd& candidate_state,
                         const SamplingParams& sampling_params,
@@ -83,18 +86,13 @@ Eigen::Vector3d PerimeterSampling(
     const SamplingParams& sampling_params,
     const SamplingC3Options sampling_c3_options);
 
+/// kRandomOnShell:  Multi-object-compatible.
 Eigen::Vector3d ShellSampling(
-    const int& n_q, const int& n_v, const int& n_u,
-    const Eigen::VectorXd& x_lcs,
-    drake::multibody::MultibodyPlant<double>& plant,
-    drake::systems::Context<double>* context,
-    drake::multibody::MultibodyPlant<drake::AutoDiffXd>& plant_ad,
-    drake::systems::Context<drake::AutoDiffXd>* context_ad,
-    const std::vector<
-        std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
-        contact_geoms,
-    const SamplingParams& sampling_params,
-    const SamplingC3Options sampling_c3_options);
+    const Eigen::VectorXd& x_lcs, const SamplingParams& sampling_params,
+    const drake::geometry::QueryObject<double>& query_object,
+    const std::vector<drake::geometry::GeometryId>& object_geometry_ids,
+    const std::vector<double>& object_enclosing_radius,
+    const std::vector<bool>& object_on_target, const double& ee_radius);
 
 Eigen::VectorXd MeshNormalSampling(
     const int& n_q, const int& n_v, const int& n_u,
@@ -107,6 +105,7 @@ Eigen::VectorXd MeshNormalSampling(
     const drake::geometry::QueryObject<double>& query_object,
     std::vector<Face> faces, std::vector<double> face_bins);
 
+// kMeshNormalSamplingMultiObject:  Multi-object-compatible.
 Eigen::VectorXd MeshNormalSamplingMultiObject(
     const int& n_q, const int& n_v, const int& n_u,
     const Eigen::VectorXd& x_lcs,

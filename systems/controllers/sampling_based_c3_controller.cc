@@ -432,7 +432,10 @@ SamplingC3Controller::SamplingC3Controller(
   // Below code loads in the mesh and enumerates triangular faces.
   if (sampling_params_.sampling_strategy == SamplingStrategy::kMeshNormal ||
       sampling_params_.sampling_strategy ==
-          SamplingStrategy::kMeshNormalMultiObject) {
+          SamplingStrategy::kMeshNormalMultiObject ||
+      sampling_params_.sampling_strategy == SamplingStrategy::kRandomOnShell) {
+    ee_radius_ = GetEERadiusFromPlant(plant_, *context_, contact_pairs_);
+
     vector<std::string> mesh_paths;
     for (std::string base_name : controller_params_.base_names) {
       std::string path =
@@ -447,7 +450,8 @@ SamplingC3Controller::SamplingC3Controller(
     // N OBJECTS
     // Store faces and bins for each object
 
-    for (const std::string& mesh_path : mesh_paths) {
+    for (int obj_idx = 0; obj_idx < mesh_paths.size(); ++obj_idx) {
+      const std::string& mesh_path = mesh_paths.at(obj_idx);
       drake::geometry::TriangleSurfaceMesh<double>* mesh =
           new drake::geometry::TriangleSurfaceMesh<double>(
               drake::geometry::ReadObjToTriangleSurfaceMesh(mesh_path, 1.0));
@@ -460,6 +464,11 @@ SamplingC3Controller::SamplingC3Controller(
       object_bins.push_back(0.0);
 
       double cumulative_area = 0.0;
+      double max_radius_from_origin = 0.0;
+
+      for (const Vector3d& v : vertices) {
+        max_radius_from_origin = std::max(max_radius_from_origin, v.norm());
+      }
 
       for (int i = 0; i < num_tri; ++i) {
         auto tri = mesh->triangles()[i];
@@ -489,6 +498,13 @@ SamplingC3Controller::SamplingC3Controller(
       faces_per_object_.push_back(std::move(object_faces));
       face_bins_per_object_.push_back(std::move(object_bins));
       total_area_per_object_.push_back(cumulative_area);
+
+      const std::string& base_name = controller_params_.base_names.at(obj_idx);
+      drake::geometry::GeometryId object_geometry_id =
+          plant_.GetCollisionGeometriesForBody(
+              plant_.GetBodyByName(base_name))[0];
+      object_geometry_ids_.push_back(object_geometry_id);
+      object_enclosing_radius_.push_back(max_radius_from_origin);
     }
   }
 }
@@ -928,7 +944,12 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         sampling_c3_options_, plant_, context_, plant_ad_, context_ad_,
         contact_pairs_, faces_, face_bins_, faces_per_object_,
         face_bins_per_object_, total_area_per_object_, object_on_target,
-        unsuccessful_sample_buffer_);
+        unsuccessful_sample_buffer_, object_geometry_ids_,
+        object_enclosing_radius_, ee_radius_);
+    if (verbose_) {
+      std::cout << "Generated " << candidate_states.size()
+                << " candidate sample states." << std::endl;
+    }
   }
 
   // Ensure prev_repositing_target_ is not inside the object

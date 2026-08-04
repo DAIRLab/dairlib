@@ -475,6 +475,21 @@ int do_main(int argc, char* argv[]) {
                         ->get_input_port_new_sample_costs());
   }
 
+  if (vis_params.visualize_unsuccessful_sample_buffer) {
+    auto unsuccessful_sample_buffer_sub = builder.AddSystem(
+        LcmSubscriberSystem::Make<dairlib::lcmt_sample_buffer>(
+            lcm_channel_params.unsuccessful_sample_buffer_channel, lcm));
+    auto unsuccessful_sample_buffer_drawer =
+        builder.AddSystem<systems::LcmSampleBufferSphereDrawer>(
+            meshcat, "unsuccessful_sample_buffer",
+            sampling_params.N_unsuccessful_sample_buffer,
+            sampling_params.unsuccessful_radius,
+            vis_params.unsuccessful_sample_buffer_color);
+    builder.Connect(unsuccessful_sample_buffer_sub->get_output_port(),
+                    unsuccessful_sample_buffer_drawer
+                        ->get_input_port_lcmt_sample_buffer());
+  }
+
   if (vis_params.visualize_c3_state) {
     if (vis_params.object_vis_models.size() == 1) {
       auto c3_target_drawer =

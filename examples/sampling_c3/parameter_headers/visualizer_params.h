@@ -24,9 +24,11 @@ struct SamplingC3VisualizerParams {
   bool visualize_sample_locations;
   bool visualize_sample_buffer;
   double sample_buffer_point_size;
+  bool visualize_unsuccessful_sample_buffer;
 
   Eigen::VectorXd is_c3_mode_color;
   Eigen::VectorXd sample_color;
+  Eigen::VectorXd unsuccessful_sample_buffer_color;
 
   bool visualize_execution_plan;
 
@@ -59,8 +61,10 @@ struct SamplingC3VisualizerParams {
     a->Visit(DRAKE_NVP(visualize_sample_locations));
     a->Visit(DRAKE_NVP(visualize_sample_buffer));
     a->Visit(DRAKE_NVP(sample_buffer_point_size));
+    a->Visit(DRAKE_NVP(visualize_unsuccessful_sample_buffer));
     a->Visit(DRAKE_NVP(is_c3_mode_color));
     a->Visit(DRAKE_NVP(sample_color));
+    a->Visit(DRAKE_NVP(unsuccessful_sample_buffer_color));
     a->Visit(DRAKE_NVP(visualize_execution_plan));
     a->Visit(DRAKE_NVP(visualize_c3_plan_curr));
     a->Visit(DRAKE_NVP(c3_curr_object_color));

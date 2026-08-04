@@ -17,11 +17,13 @@ visualize_is_c3_mode: true
 visualize_sample_locations: true
 visualize_sample_buffer: true
 sample_buffer_point_size: 0.005
+visualize_unsuccessful_sample_buffer: true
 
 # Note:  Colors can either be empty ([]) or RGB values between 0 and 1.  If left
 # empty, the colors defined in the URDF/SDF files will be used.
 is_c3_mode_color: [1.0, 0.43, 1.0]
 sample_color: [1.0, 1.0, 0.0]
+unsuccessful_sample_buffer_color: [0.4, 0.4, 0.4]
 
 visualize_execution_plan: false
 

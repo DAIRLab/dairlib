@@ -8,6 +8,13 @@ using Eigen::VectorXd;
 namespace dairlib {
 namespace systems {
 
+namespace {
+// Floor for the (exp_2 + exp_3) term below, which drives a 0/0 division as
+// quat and quat_desired approach the same rotation.  Small enough to only
+// affect the genuinely-singular regime (orientations essentially identical).
+constexpr double kMinSinSquaredForQuaternionHessian = 1e-12;
+}  // namespace
+
 Eigen::MatrixXd hessian_of_squared_quaternion_angle_difference(
     const Eigen::VectorXd& quat, const Eigen::VectorXd& quat_desired) {
   // Check the inputs are of expected shape.
@@ -48,8 +55,14 @@ Eigen::MatrixXd hessian_of_squared_quaternion_angle_difference(
       std::pow(q_z, 2) * std::pow(r_x, 2) + std::pow(q_z, 2) * std::pow(r_y, 2);
   double exp_4 =
       std::pow(q_w, 2) + std::pow(q_x, 2) + std::pow(q_y, 2) + std::pow(q_z, 2);
-  double exp_5 = std::pow(exp_4, 2) * std::pow(exp_2 + exp_3, 2.5);
-  double exp_6 = std::pow(exp_2 + exp_3, 1.5);
+  // Regularize away from the 0/0 singularity that occurs when quat and
+  // quat_desired represent the same rotation (exp_2 + exp_3, the squared
+  // vector-part magnitude of their relative rotation, goes to zero) -- exp_5
+  // and exp_6 below are the only places this drives a division blow-up.
+  double exp_2_plus_3_regularized =
+      std::max(exp_2 + exp_3, kMinSinSquaredForQuaternionHessian);
+  double exp_5 = std::pow(exp_4, 2) * std::pow(exp_2_plus_3_regularized, 2.5);
+  double exp_6 = std::pow(exp_2_plus_3_regularized, 1.5);
   double exp_7 = q_w * q_x * r_x + q_w * q_y * r_y + q_w * q_z * r_z -
                  std::pow(q_x, 2) * r_w - std::pow(q_y, 2) * r_w -
                  std::pow(q_z, 2) * r_w;

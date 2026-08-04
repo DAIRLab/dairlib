@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include <iostream>
+#include <limits>
 
 #include "multibody/geom_geom_collider.h"
 
@@ -42,7 +43,8 @@ vector<VectorXd> GenerateSampleStates(
     vector<double> total_area_per_object, vector<bool> object_on_target,
     const MatrixXd& unsuccessful_sample_buffer,
     const vector<GeometryId>& object_geometry_ids,
-    const vector<double>& object_enclosing_radius, const double& ee_radius) {
+    const vector<double>& object_enclosing_radius, const double& ee_radius,
+    const drake::geometry::GeometrySet& fixed_obstacle_geometries) {
   // Determine number of samples based on mode.
   int num_samples;
   if (is_doing_c3) {
@@ -75,8 +77,9 @@ vector<VectorXd> GenerateSampleStates(
           n_q, n_v, x_lcs, num_samples, i, sampling_params.sampling_radius,
           sampling_params.sampling_height);
       if (!SampleIsAcceptable(candidate_states[i], sampling_params,
-                              sampling_c3_options,
-                              unsuccessful_sample_buffer)) {
+                              sampling_c3_options, unsuccessful_sample_buffer,
+                              query_object, fixed_obstacle_geometries,
+                              ee_radius)) {
         throw std::runtime_error(
             "Error:  Radially symmetric sample location is outside workspace.");
       }
@@ -89,7 +92,8 @@ vector<VectorXd> GenerateSampleStates(
             sampling_params.sampling_height);
       } while (!SampleIsAcceptable(candidate_states[i], sampling_params,
                                    sampling_c3_options,
-                                   unsuccessful_sample_buffer));
+                                   unsuccessful_sample_buffer, query_object,
+                                   fixed_obstacle_geometries, ee_radius));
     }
   } else if (strategy == SamplingStrategy::kRandomOnSphere) {
     for (int i = 0; i < num_samples; i++) {
@@ -100,7 +104,8 @@ vector<VectorXd> GenerateSampleStates(
             sampling_params.max_angle_from_vertical);
       } while (!SampleIsAcceptable(candidate_states[i], sampling_params,
                                    sampling_c3_options,
-                                   unsuccessful_sample_buffer));
+                                   unsuccessful_sample_buffer, query_object,
+                                   fixed_obstacle_geometries, ee_radius));
     }
   } else if (strategy == SamplingStrategy::kFixed) {
     if (num_samples > sampling_params.fixed_sample_locations.size()) {
@@ -114,8 +119,9 @@ vector<VectorXd> GenerateSampleStates(
       candidate_states[i].head(3) =
           FixedSample(sampling_params.fixed_sample_locations.row(i));
       if (!SampleIsAcceptable(candidate_states[i], sampling_params,
-                              sampling_c3_options,
-                              unsuccessful_sample_buffer)) {
+                              sampling_c3_options, unsuccessful_sample_buffer,
+                              query_object, fixed_obstacle_geometries,
+                              ee_radius)) {
         throw std::runtime_error(
             "Error:  Fixed sample location is outside workspace.");
       }
@@ -128,7 +134,8 @@ vector<VectorXd> GenerateSampleStates(
             contact_geoms, sampling_params, sampling_c3_options);
       } while (!SampleIsAcceptable(candidate_states[i], sampling_params,
                                    sampling_c3_options,
-                                   unsuccessful_sample_buffer));
+                                   unsuccessful_sample_buffer, query_object,
+                                   fixed_obstacle_geometries, ee_radius));
     }
   } else if (strategy == SamplingStrategy::kRandomOnShell) {
     for (int i = 0; i < num_samples; i++) {
@@ -146,7 +153,8 @@ vector<VectorXd> GenerateSampleStates(
         }
       } while (!SampleIsAcceptable(candidate_states[i], sampling_params,
                                    sampling_c3_options,
-                                   unsuccessful_sample_buffer));
+                                   unsuccessful_sample_buffer, query_object,
+                                   fixed_obstacle_geometries, ee_radius));
     }
   } else if (strategy == SamplingStrategy::kMeshNormal) {
     for (int i = 0; i < num_samples; i++) {
@@ -156,7 +164,8 @@ vector<VectorXd> GenerateSampleStates(
             sampling_params, query_object, faces, face_bins);
       } while (!SampleIsAcceptable(candidate_states[i], sampling_params,
                                    sampling_c3_options,
-                                   unsuccessful_sample_buffer));
+                                   unsuccessful_sample_buffer, query_object,
+                                   fixed_obstacle_geometries, ee_radius));
     }
   } else if (strategy == SamplingStrategy::kMeshNormalMultiObject) {
     for (int i = 0; i < num_samples; i++) {
@@ -168,7 +177,8 @@ vector<VectorXd> GenerateSampleStates(
             object_on_target);
       } while (!SampleIsAcceptable(candidate_states[i], sampling_params,
                                    sampling_c3_options,
-                                   unsuccessful_sample_buffer));
+                                   unsuccessful_sample_buffer, query_object,
+                                   fixed_obstacle_geometries, ee_radius));
     }
   }
 
@@ -178,10 +188,13 @@ vector<VectorXd> GenerateSampleStates(
   return candidate_states;
 }
 
-bool SampleIsAcceptable(const VectorXd& candidate_state,
-                        const SamplingParams& sampling_params,
-                        const SamplingC3Options& sampling_c3_options,
-                        const MatrixXd& unsuccessful_samples) {
+bool SampleIsAcceptable(
+    const VectorXd& candidate_state, const SamplingParams& sampling_params,
+    const SamplingC3Options& sampling_c3_options,
+    const MatrixXd& unsuccessful_samples,
+    const QueryObject<double>& query_object,
+    const drake::geometry::GeometrySet& fixed_obstacle_geometries,
+    const double& ee_radius) {
   // Condition 1:  Sample is within the workspace.
   bool is_in_workspace =
       IsSampleInWorkspace(candidate_state, sampling_c3_options);
@@ -195,7 +208,17 @@ bool SampleIsAcceptable(const VectorXd& candidate_state,
                          ? avoids_bad_spots
                          : true;
 
-  return condition_1 && condition_2;
+  // Condition 3:  Sample avoids fixed (non-EE, non-object) environment
+  // geometries.
+  bool avoids_fixed_geometries = SampleAvoidsFixedGeometries(
+      candidate_state, sampling_c3_options, query_object,
+      fixed_obstacle_geometries, ee_radius);
+  bool condition_3 =
+      sampling_params.avoid_sampling_within_fixed_environment_geometries
+          ? avoids_fixed_geometries
+          : true;
+
+  return condition_1 && condition_2 && condition_3;
 }
 
 bool SampleAvoidsBadSpots(const VectorXd& candidate_state,
@@ -216,6 +239,23 @@ bool SampleAvoidsBadSpots(const VectorXd& candidate_state,
     }
   }
   return true;
+}
+
+bool SampleAvoidsFixedGeometries(
+    const VectorXd& candidate_state,
+    const SamplingC3Options& sampling_c3_options,
+    const QueryObject<double>& query_object,
+    const drake::geometry::GeometrySet& fixed_obstacle_geometries,
+    const double& ee_radius) {
+  const auto& results = query_object.ComputeSignedDistanceGeometryToPoint(
+      candidate_state.head(3), fixed_obstacle_geometries);
+  double min_distance = std::numeric_limits<double>::infinity();
+  for (const auto& result : results) {
+    min_distance = std::min(min_distance, result.distance);
+  }
+  const double target_clearance =
+      sampling_c3_options.workspace_margins + ee_radius;
+  return !std::isfinite(min_distance) || min_distance >= target_clearance;
 }
 
 // kRadiallySymmetric:  Equally spaced on perimeter of circle of fixed radius

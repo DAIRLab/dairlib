@@ -4,6 +4,7 @@
 #include <iostream>
 #include <limits>
 #include <thread>
+#include <unordered_set>
 #include <utility>
 
 #include <Eigen/Dense>
@@ -429,13 +430,38 @@ SamplingC3Controller::SamplingC3Controller(
               << std::endl;
   }
 
+  ee_radius_ = GetEERadiusFromPlant(plant_, *context_, contact_pairs_);
+
+  // Determine the set of fixed (non-EE, non-manipulated-object) collision
+  // geometries in the scene -- e.g. the ramp, ground, and walls -- that
+  // exported EE plans must be projected away from by workspace_margins (plus
+  // the EE's own radius).
+  GeometryId ee_geometry_id = contact_pairs_.at(0).at(0).first();
+  std::unordered_set<GeometryId> excluded_geometry_ids{ee_geometry_id};
+  for (const std::string& base_name : controller_params_.base_names) {
+    for (const GeometryId& id : plant_.GetCollisionGeometriesForBody(
+             plant_.GetBodyByName(base_name))) {
+      excluded_geometry_ids.insert(id);
+    }
+  }
+  const auto& query_object =
+      plant_.get_geometry_query_input_port()
+          .template Eval<drake::geometry::QueryObject<double>>(*context_);
+  const auto& inspector = query_object.inspector();
+  std::vector<GeometryId> fixed_geometry_ids;
+  for (const GeometryId& id :
+       inspector.GetAllGeometryIds(drake::geometry::Role::kProximity)) {
+    if (!excluded_geometry_ids.count(id)) {
+      fixed_geometry_ids.push_back(id);
+    }
+  }
+  fixed_obstacle_geometries_ = drake::geometry::GeometrySet(fixed_geometry_ids);
+
   // Below code loads in the mesh and enumerates triangular faces.
   if (sampling_params_.sampling_strategy == SamplingStrategy::kMeshNormal ||
       sampling_params_.sampling_strategy ==
           SamplingStrategy::kMeshNormalMultiObject ||
       sampling_params_.sampling_strategy == SamplingStrategy::kRandomOnShell) {
-    ee_radius_ = GetEERadiusFromPlant(plant_, *context_, contact_pairs_);
-
     vector<std::string> mesh_paths;
     for (std::string base_name : controller_params_.base_names) {
       std::string path =
@@ -945,7 +971,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         contact_pairs_, faces_, face_bins_, faces_per_object_,
         face_bins_per_object_, total_area_per_object_, object_on_target,
         unsuccessful_sample_buffer_, object_geometry_ids_,
-        object_enclosing_radius_, ee_radius_);
+        object_enclosing_radius_, ee_radius_, fixed_obstacle_geometries_);
     if (verbose_) {
       std::cout << "Generated " << candidate_states.size()
                 << " candidate sample states." << std::endl;
@@ -2317,6 +2343,41 @@ void SamplingC3Controller::ClampPlanToWorkspaceLimits(
   }
 }
 
+// Project each knot of an end-effector position plan away from all fixed scene
+// geometries (e.g. the ramp, ground, and walls) so the EE's surface stays at
+// least workspace_margins clear of them.
+void SamplingC3Controller::ProjectPlanAwayFromFixedGeometries(
+    Eigen::MatrixXd* ee_position_traj) const {
+  DRAKE_DEMAND(ee_position_traj->rows() == 3);
+  const auto& query_object =
+      plant_.get_geometry_query_input_port()
+          .template Eval<drake::geometry::QueryObject<double>>(*context_);
+  const double target_clearance =
+      sampling_c3_options_.workspace_margins + ee_radius_;
+  constexpr int kMaxProjectionIterations = 3;
+  for (int col = 0; col < ee_position_traj->cols(); ++col) {
+    Vector3d p = ee_position_traj->col(col);
+    for (int iter = 0; iter < kMaxProjectionIterations; ++iter) {
+      const auto& results = query_object.ComputeSignedDistanceGeometryToPoint(
+          p, fixed_obstacle_geometries_);
+      double min_distance = std::numeric_limits<double>::infinity();
+      Vector3d push_direction = Vector3d::Zero();
+      for (const auto& result : results) {
+        if (result.distance < min_distance) {
+          min_distance = result.distance;
+          push_direction = result.grad_W;
+        }
+      }
+      if (!std::isfinite(min_distance) || min_distance >= target_clearance ||
+          push_direction.norm() < 1e-9) {
+        break;
+      }
+      p += (target_clearance - min_distance) * push_direction;
+    }
+    ee_position_traj->col(col) = p;
+  }
+}
+
 // Output port handlers for current location
 void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
     const drake::systems::Context<double>& context,
@@ -2695,6 +2756,7 @@ void SamplingC3Controller::OutputC3TrajExecuteActor(
   LcmTrajectory::Trajectory end_effector_traj =
       c3_execution_lcm_traj_.GetTrajectory("end_effector_position_target");
   DRAKE_DEMAND(end_effector_traj.datapoints.rows() == 3);
+  ProjectPlanAwayFromFixedGeometries(&end_effector_traj.datapoints);
   ClampPlanToWorkspaceLimits(&end_effector_traj.datapoints);
   LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},
                          "end_effector_position_target",
@@ -2722,6 +2784,7 @@ void SamplingC3Controller::OutputReposTrajExecuteActor(
   LcmTrajectory::Trajectory end_effector_traj =
       repos_execution_lcm_traj_.GetTrajectory("end_effector_position_target");
   DRAKE_DEMAND(end_effector_traj.datapoints.rows() == 3);
+  ProjectPlanAwayFromFixedGeometries(&end_effector_traj.datapoints);
   ClampPlanToWorkspaceLimits(&end_effector_traj.datapoints);
   LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},
                          "end_effector_position_target",
@@ -2752,6 +2815,7 @@ void SamplingC3Controller::OutputTrajExecuteActor(
   LcmTrajectory::Trajectory end_effector_traj =
       execution_lcm_traj.GetTrajectory("end_effector_position_target");
   DRAKE_DEMAND(end_effector_traj.datapoints.rows() == 3);
+  ProjectPlanAwayFromFixedGeometries(&end_effector_traj.datapoints);
   ClampPlanToWorkspaceLimits(&end_effector_traj.datapoints);
 
   LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},

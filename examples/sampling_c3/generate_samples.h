@@ -2,6 +2,7 @@
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
+#include <drake/geometry/geometry_set.h>
 #include <drake/geometry/query_object.h>
 #include <numbers>
 
@@ -41,17 +42,28 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
     std::vector<bool> object_on_target,
     const MatrixXd& unsuccessful_sample_buffer,
     const std::vector<drake::geometry::GeometryId>& object_geometry_ids,
-    const std::vector<double>& object_enclosing_radius,
-    const double& ee_radius);
+    const std::vector<double>& object_enclosing_radius, const double& ee_radius,
+    const drake::geometry::GeometrySet& fixed_obstacle_geometries);
 
-bool SampleIsAcceptable(const Eigen::VectorXd& candidate_state,
-                        const SamplingParams& sampling_params,
-                        const SamplingC3Options& sampling_c3_options,
-                        const MatrixXd& unsuccessful_samples);
+bool SampleIsAcceptable(
+    const Eigen::VectorXd& candidate_state,
+    const SamplingParams& sampling_params,
+    const SamplingC3Options& sampling_c3_options,
+    const MatrixXd& unsuccessful_samples,
+    const drake::geometry::QueryObject<double>& query_object,
+    const drake::geometry::GeometrySet& fixed_obstacle_geometries,
+    const double& ee_radius);
 
 bool SampleAvoidsBadSpots(const Eigen::VectorXd& candidate_state,
                           const SamplingParams& sampling_params,
                           const MatrixXd& unsuccessful_samples);
+
+bool SampleAvoidsFixedGeometries(
+    const Eigen::VectorXd& candidate_state,
+    const SamplingC3Options& sampling_c3_options,
+    const drake::geometry::QueryObject<double>& query_object,
+    const drake::geometry::GeometrySet& fixed_obstacle_geometries,
+    const double& ee_radius);
 
 /// Individual sampling strategies returning 3D EE position
 Eigen::Vector3d RadiallySymmetricSampling(const int& n_q, const int& n_v,

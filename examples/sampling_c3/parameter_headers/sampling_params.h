@@ -82,6 +82,12 @@ struct SamplingParams {
   double c3_min_clearance;
   bool sample_on_wall;
 
+  /// If true, reject any candidate sample whose EE position comes within
+  /// workspace_margins (of SamplingC3Options) plus the EE radius of any
+  /// fixed (non-EE, non-manipulated-object) scene geometry, regardless of
+  /// sampling strategy.
+  bool avoid_sampling_within_fixed_environment_geometries;
+
   template <typename Archive>
   void Serialize(Archive* a) {
     ENUM_DESERIALIZE(a, sampling_strategy);
@@ -114,5 +120,6 @@ struct SamplingParams {
     a->Visit(DRAKE_NVP(ee_z_close));
     a->Visit(DRAKE_NVP(gen_planar_samples));
     a->Visit(DRAKE_NVP(sample_on_wall));
+    a->Visit(DRAKE_NVP(avoid_sampling_within_fixed_environment_geometries));
   }
 };

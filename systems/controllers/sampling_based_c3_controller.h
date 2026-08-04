@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <drake/common/yaml/yaml_io.h>
+#include <drake/geometry/geometry_set.h>
 #include <drake/geometry/proximity/obj_to_surface_mesh.h>
 #include <drake/geometry/proximity/triangle_surface_mesh.h>
 
@@ -267,6 +268,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   void ClampPlanToWorkspaceLimits(Eigen::MatrixXd* ee_position_traj) const;
 
+  void ProjectPlanAwayFromFixedGeometries(
+      Eigen::MatrixXd* ee_position_traj) const;
+
   /// Output port functions
   void OutputC3SolutionCurrPlan(
       const drake::systems::Context<double>& context,
@@ -355,6 +359,11 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   std::vector<drake::geometry::GeometryId> object_geometry_ids_;
   std::vector<double> object_enclosing_radius_;
   double ee_radius_ = 0.0;
+
+  // Fixed (non-EE, non-manipulated-object) collision geometries in the
+  // scene that exported EE plans must stay workspace_margins (plus ee_radius_)
+  // away from.
+  drake::geometry::GeometrySet fixed_obstacle_geometries_;
 
   drake::systems::InputPortIndex radio_port_;
   drake::systems::InputPortIndex final_target_input_port_;

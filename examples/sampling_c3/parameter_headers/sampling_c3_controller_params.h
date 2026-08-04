@@ -30,7 +30,6 @@ struct SamplingC3ControllerParams {
   std::vector<std::string> object_models;
   std::vector<std::string> base_names;
 
-  double workspace_margin;
   bool include_end_effector_orientation;
   int control_loop_delay_ms;
 

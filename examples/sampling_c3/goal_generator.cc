@@ -91,9 +91,17 @@ SamplingC3GoalGenerator::SamplingC3GoalGenerator(
               &SamplingC3GoalGenerator::OutputGoalGeneratorInfo)
           .get_index();
 
-  // Start with the fixed goal from the goal params.
-  target_final_object_positions_ = goal_params_.fixed_target_positions;
-  target_final_object_orientations_ = goal_params_.fixed_target_orientations;
+  // Start with the fixed goal from the goal params, or step 0 of the fixed
+  // goal sequence for kFixedGoalSequence.
+  if (goal_params_.goal_mode == GoalMode::kFixedGoalSequence) {
+    target_final_object_positions_ =
+        goal_params_.fixed_target_position_sequence.at(0);
+    target_final_object_orientations_ =
+        goal_params_.fixed_target_orientation_sequence.at(0);
+  } else {
+    target_final_object_positions_ = goal_params_.fixed_target_positions;
+    target_final_object_orientations_ = goal_params_.fixed_target_orientations;
+  }
 
   // Initialize the object index to sampling area index map
   object_index_to_sampling_area_index_map_ =
@@ -418,6 +426,17 @@ void SamplingC3GoalGenerator::CycleThroughOrientationSequence(int index) const {
   orientation_index_ = goal_counter_ % num_nominal_orientations;
 }
 
+// Advances to the next (position, orientation) goal in the fixed goal
+// sequence, clamping at the last step once reached (no wrap-around).
+void SamplingC3GoalGenerator::CycleThroughFixedGoalSequence(int index) const {
+  int num_steps = goal_params_.fixed_target_position_sequence.size();
+  int step = std::min(goal_counter_, num_steps - 1);
+  target_final_object_positions_.at(index) =
+      goal_params_.fixed_target_position_sequence.at(step).at(index);
+  target_final_object_orientations_.at(index) =
+      goal_params_.fixed_target_orientation_sequence.at(step).at(index);
+}
+
 // Outputs the orientation index for debugging.
 void SamplingC3GoalGenerator::OutputGoalGeneratorInfo(
     const drake::systems::Context<double>& context,
@@ -447,6 +466,8 @@ void SamplingC3GoalGenerator::OnGoalReached(int index) const {
   } else if (goal_params_.goal_mode == GoalMode::kOrientationSequence) {
     // Set the next orientation in the sequence.
     CycleThroughOrientationSequence(index);
+  } else if (goal_params_.goal_mode == GoalMode::kFixedGoalSequence) {
+    CycleThroughFixedGoalSequence(index);
   }
   // Otherwise kFixedGoal, nothing to update.
   goal_counter_++;

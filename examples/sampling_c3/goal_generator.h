@@ -141,6 +141,7 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
   void SetRandomizedTargetFinalObjectOrientation(int index) const;
   void AssignObjectIndexToGoalSamplingArea() const;
   void CycleThroughOrientationSequence(int index) const;
+  void CycleThroughFixedGoalSequence(int index) const;
   void OnGoalReached(int index) const;
   std::pair<Eigen::Quaterniond, Eigen::Vector3d>
   GenerateLineTrajectoryWithLookahead(

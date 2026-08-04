@@ -12,8 +12,12 @@
   1. kOrientationSequence:  keep position goal the same, and cycle through a
                             sequence of orientations.
   2. kFixedGoal:            keep the same goal.
+  3. kFixedGoalSequence:    step through a sequence of fixed (position,
+                            orientation) goals, advancing to the next goal
+                            once the current one is reached, and holding at
+                            the last goal once reached.
 */
-enum GoalMode { kRandom, kOrientationSequence, kFixedGoal };
+enum GoalMode { kRandom, kOrientationSequence, kFixedGoal, kFixedGoalSequence };
 
 struct SamplingC3GoalParams {
   GoalMode goal_mode;
@@ -51,6 +55,13 @@ struct SamplingC3GoalParams {
   std::vector<Eigen::Vector3d> fixed_target_positions;
   std::vector<Eigen::Vector4d> fixed_target_orientations;
 
+  /// Sequence of (position, orientation) goals, used only when goal_mode ==
+  /// kFixedGoalSequence. Outer index = step in the sequence; inner index =
+  /// object.  Once the last step is reached, the goal holds there (no wrap-
+  /// around).
+  std::vector<std::vector<Eigen::Vector3d>> fixed_target_position_sequence;
+  std::vector<std::vector<Eigen::Vector4d>> fixed_target_orientation_sequence;
+
   std::vector<std::pair<double, double>> sampling_area_y_limits;
   std::vector<int> default_object_index_to_sampling_area_index_map;
 
@@ -76,6 +87,8 @@ struct SamplingC3GoalParams {
     a->Visit(DRAKE_NVP(angle_err_to_vel_factor));
     a->Visit(DRAKE_NVP(fixed_target_positions));
     a->Visit(DRAKE_NVP(fixed_target_orientations));
+    a->Visit(DRAKE_NVP(fixed_target_position_sequence));
+    a->Visit(DRAKE_NVP(fixed_target_orientation_sequence));
     a->Visit(DRAKE_NVP(random_goal_x_limits));
     a->Visit(DRAKE_NVP(random_goal_y_limits));
     a->Visit(DRAKE_NVP(random_goal_radius_limits));
@@ -85,6 +98,7 @@ struct SamplingC3GoalParams {
     ComputeSamplingAreaYLimits();
     SetDefaultObjectIndexToSamplingAreaIndexMap();
     NormalizeAndValidateTrackedAxes();
+    ValidateFixedGoalSequence();
   }
 
   bool HasTrackedAxis(int index) const {
@@ -120,6 +134,22 @@ struct SamplingC3GoalParams {
       if (axis.squaredNorm() > 1e-12) {
         axis.normalize();
       }
+    }
+  }
+
+  void ValidateFixedGoalSequence() const {
+    if (goal_mode != GoalMode::kFixedGoalSequence) {
+      return;
+    }
+    DRAKE_DEMAND(!fixed_target_position_sequence.empty());
+    DRAKE_DEMAND(fixed_target_position_sequence.size() ==
+                 fixed_target_orientation_sequence.size());
+    int num_objects = fixed_target_positions.size();
+    for (const auto& step_positions : fixed_target_position_sequence) {
+      DRAKE_DEMAND(step_positions.size() == num_objects);
+    }
+    for (const auto& step_orientations : fixed_target_orientation_sequence) {
+      DRAKE_DEMAND(step_orientations.size() == num_objects);
     }
   }
 };

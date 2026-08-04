@@ -266,7 +266,9 @@ int DoMain(int argc, char* argv[]) {
   // There are no randomized new goals to be generated for 3D printer demos.
   // Set the goal generator's nominal_orientations to be the fixed target
   // orientation(s).
-  DRAKE_ASSERT(controller_params.goal_params.goal_mode == GoalMode::kFixedGoal);
+  DRAKE_ASSERT(controller_params.goal_params.goal_mode == GoalMode::kFixedGoal ||
+               controller_params.goal_params.goal_mode ==
+                   GoalMode::kFixedGoalSequence);
   std::vector<std::vector<Eigen::Quaterniond>> nominal_orientations;
   for (int i = 0; i < object_indices.size(); ++i) {
     const Eigen::Vector4d& quat_vec =

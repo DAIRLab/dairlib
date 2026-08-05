@@ -1,11 +1,6 @@
 #include "reposition.h"
 
-#include "drake/common/trajectories/piecewise_polynomial.h"
-
 namespace dairlib {
-
-using drake::trajectories::PiecewisePolynomial;
-
 namespace systems {
 
 // TODO @bibit further cleanup could require +/- z workspace limits instead of
@@ -87,23 +82,25 @@ void RepositionStraightLine(
   Eigen::Vector3d curr_to_goal_vec = repos_target - current_ee_location;
   double travel_distance = curr_to_goal_vec.norm();
 
-  Eigen::VectorXd times = Eigen::VectorXd::Zero(2);
-  times[0] = 0;
-  // Ensure the times used to define PiecewisePolynomial are increasing.
+  // Ensure the denominator used for interpolation fractions is nonzero.
   double total_travel_time = travel_distance / reposition_params.speed;
-  times[1] = std::max(total_travel_time, 0.0001);
+  double denom = std::max(total_travel_time, 0.0001);
 
-  Eigen::MatrixXd points = Eigen::MatrixXd::Zero(n_x, 2);
-  points.col(0) = x_lcs;
   Eigen::VectorXd next_lcs_state = x_lcs;
   next_lcs_state.head(3) = repos_target;
   next_lcs_state.segment(n_q, 3) = Eigen::Vector3d::Zero();
-  points.col(1) = next_lcs_state;
-  auto trajectory = PiecewisePolynomial<double>::FirstOrderHold(times, points);
 
+  // Linearly interpolate from x_lcs to next_lcs_state directly, rather than
+  // going through PiecewisePolynomial::FirstOrderHold(...).value(...) for what
+  // is just a 2-point linear interpolation -- that path was found (via
+  // AddressSanitizer) to read one byte past the end of a heap-allocated buffer
+  // inside Drake's PiecewisePolynomial::do_value(), which could occasionally
+  // pull in unrelated heap garbage and produce a knot far from the intended
+  // straight-line path.
   for (int i = 0; i < N; i++) {
     double t_line = std::min((i)*dt, total_travel_time);
-    knots.col(i) = trajectory.value(t_line);
+    double frac = t_line / denom;
+    knots.col(i) = (1.0 - frac) * x_lcs + frac * next_lcs_state;
 
     // If one step gets to the goal, set finished_reposition_flag.
     if (i == 1 && t_line >= total_travel_time && !is_doing_c3) {

@@ -19,7 +19,7 @@ group "operator" {
         host = "localhost";
     }
     cmd "start_logging" {
-        exec = "python3 examples/sampling_c3/start_logging.py sim three_d_printer /mnt/data0/three_d_printer/logs";
+        exec = "python3 examples/sampling_c3/start_logging.py sim three_d_printer /home/bibit/3d_printer/logs";
         host = "localhost";
     }
 }

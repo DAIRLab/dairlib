@@ -498,6 +498,11 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable Eigen::Vector3d prev_repositioning_target_ = Eigen::Vector3d::Zero();
   mutable std::vector<double> all_sample_costs_;
 
+  // For the published-trajectory sanity check in OutputTrajExecuteActor; see
+  // the investigation notes in the repo history / plan doc for 2026-08-05.
+  mutable Eigen::Vector3d last_published_ee_knot0_ = Eigen::Vector3d::Zero();
+  mutable bool has_last_published_ee_knot0_ = false;
+
   // To detect if the final goal has been updated.
   mutable Eigen::VectorXd x_final_target_;
   mutable int detected_goal_changes_ = -1;

@@ -1028,6 +1028,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Prepare variables that will get used or filled in by parallelization.
   all_sample_costs_ = vector<double>(num_total_samples, -1);
+  // Raw (un-penalized) cost of the current repositioning target, tracked
+  // separately from all_sample_costs_ so the repos-to-repos hysteresis check
+  // below can judge it on its own merits rather than the finished_reposition
+  // bonus applied further down (see SampleIndex::kCurrentReposTarget below).
+  double repos_target_raw_cost = std::numeric_limits<double>::infinity();
   all_sample_dynamically_feasible_plans_ = vector<vector<VectorXd>>(
       num_total_samples, vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_)));
   vector<std::shared_ptr<C3>> c3_objects(num_total_samples, nullptr);
@@ -1145,10 +1150,16 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     all_sample_costs_[i] =
         c3_cost + progress_params_.travel_cost_per_meter * xy_travel_distance;
 
-    // Add additional costs based on repositioning progress.
-    if ((i == SampleIndex::kCurrentReposTarget) && finished_reposition_flag_) {
-      all_sample_costs_[i] += progress_params_.finished_reposition_cost;
-      finished_reposition_flag_ = false;
+    // Add additional costs based on repositioning progress.  Record the
+    // un-penalized cost separately so the repos-to-repos hysteresis check
+    // below judges this sample on its own merits; the penalized cost still
+    // flows into the repos-to-C3 decision and log message, unchanged.
+    if (i == SampleIndex::kCurrentReposTarget) {
+      repos_target_raw_cost = all_sample_costs_[i];
+      if (finished_reposition_flag_) {
+        all_sample_costs_[i] += progress_params_.finished_reposition_cost;
+        finished_reposition_flag_ = false;
+      }
     }
   }
   auto c3_end = std::chrono::high_resolution_clock::now();
@@ -1289,11 +1300,15 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // This means there is a lower cost sample other than the current
       // repositioning target. If the lowest cost sample is not at least the
       // hysteresis amount better than the current repositioning target, then
-      // continue pursuing the previous repositioning target.
-      if ((repos_target_cost < best_other_cost + hyst_repos_to_repos &&
+      // continue pursuing the previous repositioning target.  Judge this on
+      // the raw (un-penalized) cost so a just-reached target (which gets a
+      // large finished_reposition_cost bonus, see above) isn't forced to lose
+      // this comparison regardless of how good its real cost is.
+      if ((repos_target_raw_cost < best_other_cost + hyst_repos_to_repos &&
            !progress_params_.use_relative_hysteresis) ||
-          (repos_target_cost <
-               best_other_cost + hyst_repos_to_repos_frac * repos_target_cost &&
+          (repos_target_raw_cost <
+               best_other_cost +
+                   hyst_repos_to_repos_frac * repos_target_raw_cost &&
            progress_params_.use_relative_hysteresis)) {
         best_sample_index_ = SampleIndex::kCurrentReposTarget;
         best_other_cost = repos_target_cost;
@@ -1861,6 +1876,15 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
                               is_doing_c3_, finished_reposition_flag_,
                               reposition_params_, sampling_c3_options_);
 
+  // A freshly (this-loop) chosen target may already be within one step's
+  // distance of the current EE position purely by chance, which would make
+  // Reposition() report it as immediately "finished" despite never having
+  // actually been traveled to.  Only trust "finished" once we've been
+  // pursuing the same target since at least the previous loop.
+  if (pursued_target_source_ != PursuedTargetSource::kPrevious) {
+    finished_reposition_flag_ = false;
+  }
+
   // Update predicted next state if in this mode.
   if (!is_doing_c3_) {
     if (filtered_solve_time_ < (N_ - 1) * dt_) {
@@ -2359,6 +2383,16 @@ void SamplingC3Controller::ProjectPlanAwayFromFixedGeometries(
           .template Eval<drake::geometry::QueryObject<double>>(*context_);
   const double target_clearance =
       sampling_c3_options_.workspace_margins + ee_radius_;
+  // Sanity bound a maximum negative signed distance that is physically
+  // plausible in this scene. A query result more negative than this indicates
+  // the signed-distance query itself is unreliable (e.g. a
+  // non-watertight/non-manifold collision mesh -- see the ramp collision
+  // geometry fix in
+  // examples/sampling_c3/urdf/three_d_printer/ramp/new_ramp.urdf, which
+  // added drake:declare_convex to address exactly this), not a real
+  // penetration to correct for. Fail loudly rather than silently applying a
+  // bogus correction.
+  constexpr double kMaxPlausiblePenetration = 0.05;  // meters
   constexpr int kMaxProjectionIterations = 3;
   for (int col = 0; col < ee_position_traj->cols(); ++col) {
     Vector3d p = ee_position_traj->col(col);
@@ -2367,15 +2401,30 @@ void SamplingC3Controller::ProjectPlanAwayFromFixedGeometries(
           p, fixed_obstacle_geometries_);
       double min_distance = std::numeric_limits<double>::infinity();
       Vector3d push_direction = Vector3d::Zero();
+      GeometryId closest_id;
       for (const auto& result : results) {
         if (result.distance < min_distance) {
           min_distance = result.distance;
           push_direction = result.grad_W;
+          closest_id = result.id_G;
         }
       }
       if (!std::isfinite(min_distance) || min_distance >= target_clearance ||
           push_direction.norm() < 1e-9) {
         break;
+      }
+      if (min_distance < -kMaxPlausiblePenetration) {
+        const auto& inspector = query_object.inspector();
+        throw std::runtime_error(
+            "ProjectPlanAwayFromFixedGeometries: implausible signed "
+            "distance " +
+            std::to_string(min_distance) + "m reported at p=[" +
+            std::to_string(p(0)) + ", " + std::to_string(p(1)) + ", " +
+            std::to_string(p(2)) + "] against geometry '" +
+            inspector.GetName(closest_id) +
+            "' -- this indicates an unreliable signed-distance query (e.g. "
+            "a non-watertight/non-manifold collision mesh) rather than a "
+            "real penetration; refusing to apply a corrupted correction.");
       }
       p += (target_clearance - min_distance) * push_direction;
     }
@@ -2820,8 +2869,76 @@ void SamplingC3Controller::OutputTrajExecuteActor(
   LcmTrajectory::Trajectory end_effector_traj =
       execution_lcm_traj.GetTrajectory("end_effector_position_target");
   DRAKE_DEMAND(end_effector_traj.datapoints.rows() == 3);
+  MatrixXd pre_projection_datapoints = end_effector_traj.datapoints;
   ProjectPlanAwayFromFixedGeometries(&end_effector_traj.datapoints);
   ClampPlanToWorkspaceLimits(&end_effector_traj.datapoints);
+
+  // Sanity-check the trajectory actually being published (this is what
+  // TRACKING_TRAJECTORY_ACTOR carries, downstream of the check in
+  // UpdateRepositioningExecutionTrajectory/UpdateC3ExecutionTrajectory --
+  // ProjectPlanAwayFromFixedGeometries/ClampPlanToWorkspaceLimits run again,
+  // right above, immediately before publish, so this is the only place
+  // guaranteed to see whatever the real bug is).  Checks both within-call
+  // knot-to-knot smoothness and continuity against the previous loop's
+  // published first knot, since a corrupted call can be internally smooth
+  // while still being discontinuous from what was published last loop.  See
+  // the investigation notes in the repo history / plan doc for 2026-08-05.
+  /* {
+    constexpr double kMaxKnotJumpMargin = 0.02;  // meters
+    double max_expected_step =
+        reposition_params_.speed * dt_ + kMaxKnotJumpMargin;
+    bool flagged = false;
+    for (int i = 1; i < end_effector_traj.datapoints.cols() && !flagged; i++) {
+      double step = (end_effector_traj.datapoints.col(i) -
+                     end_effector_traj.datapoints.col(i - 1))
+                        .norm();
+      if (step > max_expected_step) {
+        std::cout << "!!! WARNING !!! Published trajectory has an "
+                     "implausible within-call knot-to-knot jump of "
+                  << step << "m (knot " << (i - 1) << " -> " << i
+                  << ", max expected " << max_expected_step << "m)"
+                  << std::endl;
+        flagged = true;
+      }
+    }
+    if (has_last_published_ee_knot0_) {
+      double cross_loop_step =
+          (end_effector_traj.datapoints.col(0) - last_published_ee_knot0_)
+              .norm();
+      if (cross_loop_step > max_expected_step) {
+        std::cout << "!!! WARNING !!! Published trajectory's first knot "
+                     "jumped "
+                  << cross_loop_step
+                  << "m from the previous loop's published first knot "
+                     "(max expected "
+                  << max_expected_step << "m)" << std::endl;
+        flagged = true;
+      }
+    }
+    if (flagged) {
+      std::cout << "    t_context=" << context.get_time()
+                << "  is_doing_c3_=" << is_doing_c3_
+                << "  pursued_target_source_=" << pursued_target_source_
+                << std::endl;
+      std::cout << "    previous loop's published knot 0: "
+                << last_published_ee_knot0_.transpose() << std::endl;
+      std::cout << "    pre-projection knots (before ProjectPlanAway"
+                   "FromFixedGeometries/ClampPlanToWorkspaceLimits):"
+                << std::endl;
+      for (int j = 0; j < pre_projection_datapoints.cols(); j++) {
+        std::cout << "      knot " << j << ": "
+                  << pre_projection_datapoints.col(j).transpose() << std::endl;
+      }
+      std::cout << "    published (post-projection) knots:" << std::endl;
+      for (int j = 0; j < end_effector_traj.datapoints.cols(); j++) {
+        std::cout << "      knot " << j << ": "
+                  << end_effector_traj.datapoints.col(j).transpose()
+                  << std::endl;
+      }
+    }
+    last_published_ee_knot0_ = end_effector_traj.datapoints.col(0);
+    has_last_published_ee_knot0_ = true;
+  } */
 
   LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},
                          "end_effector_position_target",

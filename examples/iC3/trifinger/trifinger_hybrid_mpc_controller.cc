@@ -18,6 +18,7 @@
 #include "systems/controllers/c3/ic3_hybrid_mpc_tracking_controller.h"
 #include "examples/iC3/systems/timed_gate.h"
 #include "examples/iC3/systems/iC3_timing_system.h"
+#include "examples/iC3/systems/perception_noise_filter.h"
 
 #include "multibody/multibody_utils.h"
 #include "c3/multibody/lcs_factory.h"
@@ -336,6 +337,9 @@ int DoMain(int argc, char* argv[]) {
   auto object_state_receiver =
       builder.AddSystem<systems::ObjectStateReceiver>(plant_object);
 
+  auto perception_noise_filter = 
+      builder.AddSystem<PerceptionNoiseFilter>(controller_params.add_noise);
+
   auto reduced_order_model_receiver =
     builder.AddSystem<TrifingerKinematics>(
         plant_trifinger, trifinger_context.get(), plant_object, object_context.get(),
@@ -372,8 +376,9 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(trifinger_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_trifinger_state());  
   builder.Connect(object_state_receiver->get_output_port(),
-                  reduced_order_model_receiver->get_input_port_object_state());
-                    
+                  perception_noise_filter->get_input_port_object_state());
+  builder.Connect(perception_noise_filter->get_output_port_object_state(),
+                  reduced_order_model_receiver->get_input_port_object_state());                    
                   
   builder.Connect(radio_sub->get_output_port(),
                   ic3_timing_system->get_input_port_radio());  

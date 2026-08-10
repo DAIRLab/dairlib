@@ -144,3 +144,19 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+
+cc_library(
+    name = "perception_noise_filter",
+    srcs = [
+        "perception_noise_filter.cc",
+    ],
+    hdrs = [
+        "perception_noise_filter.h",
+    ],
+    deps = [
+        "//common:find_resource",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)

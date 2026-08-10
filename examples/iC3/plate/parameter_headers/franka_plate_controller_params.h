@@ -18,6 +18,7 @@ struct FrankaPlateControllerParams {
   bool run_open_loop;
   bool track_dynamically_feasible;
 
+  bool add_noise;
   double time_to_wait;
 
   Eigen::Vector3d tool_attachment_frame;
@@ -36,6 +37,8 @@ struct FrankaPlateControllerParams {
     a->Visit(DRAKE_NVP(ic3_options_file));
     a->Visit(DRAKE_NVP(c3_controller_options_file));
     a->Visit(DRAKE_NVP(time_to_wait));
+
+    a->Visit(DRAKE_NVP(add_noise));
 
     a->Visit(DRAKE_NVP(include_end_effector_orientation));
     a->Visit(DRAKE_NVP(run_open_loop));

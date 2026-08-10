@@ -122,6 +122,7 @@ cc_binary(
         "//examples/iC3/systems:mpc_trajectory_generator",
         "//examples/iC3/systems:timed_gate",
         "//examples/iC3/systems:ic3_timing_system",
+        "//examples/iC3/systems:perception_noise_filter",
         "//systems/controllers:ic3_hybrid_mpc_tracking_controller",
         "@gflags",
     ],

@@ -16,7 +16,7 @@ struct TrifingerControllerParams {
   std::string ic3_options_file;
   std::string c3_controller_options_file;
 
-
+  bool add_noise;
   bool track_dynamically_feasible;
 
   double time_to_wait;
@@ -40,6 +40,7 @@ struct TrifingerControllerParams {
     a->Visit(DRAKE_NVP(c3_controller_options_file));
     a->Visit(DRAKE_NVP(time_to_wait));
 
+    a->Visit(DRAKE_NVP(add_noise));
     a->Visit(DRAKE_NVP(track_dynamically_feasible));
     a->Visit(DRAKE_NVP(nominal_position));
 

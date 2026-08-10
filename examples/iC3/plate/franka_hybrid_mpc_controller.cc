@@ -13,7 +13,7 @@
 #include "examples/iC3/plate/parameter_headers/franka_plate_lcm_channels.h"
 #include "examples/iC3/iC3_options.h"
 #include "examples/iC3/hybrid_mpc_options.h"
-#include "examples/iC3/systems/lqr_trajectory_generator.h"
+#include "examples/iC3/systems/mpc_trajectory_generator.h"
 #include "systems/franka_kinematics.h"
 #include "systems/controllers/c3/ic3_hybrid_mpc_tracking_controller.h"
 #include "examples/iC3/systems/timed_gate.h"
@@ -275,11 +275,12 @@ int DoMain(int argc, char* argv[]) {
           (plant_for_lcs, lcs_factory, hybrid_mpc_options, solver_options, ic3_options, 0,
             A_x_mpc, lb_x_mpc, ub_x_mpc, A_u, lb_u, ub_u);
 
-  auto lqr_trajectory_generator =
-      builder.AddSystem<LqrTrajectoryGenerator>(plant_for_lcs, lcs_factory, ic3_options, 0,
+  auto mpc_trajectory_generator =
+      builder.AddSystem<MPCTrajectoryGenerator>(plant_for_lcs, &plant_lcs_context, lcs_factory, ic3_options, 
+        hybrid_mpc_options.lcs_factory_options, controller_params.track_dynamically_feasible, 0,
         A_x, lb_x, ub_x, A_u, lb_u, ub_u); 
 
-  lqr_trajectory_generator->SetPublishEndEffectorOrientation(true);
+  mpc_trajectory_generator->SetPublishEndEffectorOrientation(true);
   
   auto timed_gate =
       builder.AddSystem<TimedGate>(ic3_options, 0);    
@@ -309,14 +310,14 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(ic3_lambda_trajectory_sub->get_output_port(),
                   controller->get_input_port_ic3_lambda());
 
-  builder.Connect(controller->get_output_port_actor_input(),
-                  lqr_trajectory_generator->get_input_port_actor_input());
-  builder.Connect(controller->get_output_port_tracking_target(),
-                  lqr_trajectory_generator->get_input_port_tracking_target());
+  builder.Connect(controller->get_output_port_solution(),
+                  mpc_trajectory_generator->get_input_port_solution());
   builder.Connect(reduced_order_model_receiver->get_output_port(),
-                  lqr_trajectory_generator->get_input_port_x_curr());   
+                  mpc_trajectory_generator->get_input_port_x_lcs());   
+  builder.Connect(nominal_position->get_output_port(),
+                  mpc_trajectory_generator->get_input_port_nominal_position());
 
-  builder.Connect(lqr_trajectory_generator->get_output_port_actor_trajectory(),
+  builder.Connect(mpc_trajectory_generator->get_output_port_actor_trajectory(),
                   timed_gate->get_input_port_c3_actor());
   builder.Connect(nominal_position->get_output_port(),
                   timed_gate->get_input_port_nominal_position());

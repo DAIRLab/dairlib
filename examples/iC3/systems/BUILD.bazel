@@ -102,6 +102,29 @@ cc_library(
 )
 
 
+
+cc_library(
+    name = "mpc_trajectory_generator",
+    srcs = [
+        "mpc_trajectory_generator.cc",
+    ],
+    hdrs = [
+        "mpc_trajectory_generator.h",
+    ],
+    deps = [
+        "//systems:franka_kinematics",
+        "//common:find_resource",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//multibody:utils",
+        "@c3//:libc3",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+        "//examples/iC3:iC3_options",
+    ],
+)
+
+
 cc_library(
     name = "ic3_timing_system",
     srcs = [

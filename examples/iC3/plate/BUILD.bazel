@@ -119,7 +119,7 @@ cc_binary(
         "//examples/iC3/plate/parameter_headers:franka_plate_lcm_channels",
         "//examples/iC3:iC3_options",
         "//examples/iC3:hybrid_mpc_options",
-        "//examples/iC3/systems:lqr_trajectory_generator",
+        "//examples/iC3/systems:mpc_trajectory_generator",
         "//examples/iC3/systems:timed_gate",
         "//examples/iC3/systems:ic3_timing_system",
         "//systems/controllers:ic3_hybrid_mpc_tracking_controller",

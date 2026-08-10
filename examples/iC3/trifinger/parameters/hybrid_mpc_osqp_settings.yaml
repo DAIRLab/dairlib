@@ -1,7 +1,7 @@
 print_to_console: 0
 log_file_name: ""
 int_options:
-  max_iter: 1000
+  max_iter: 5000
   verbose: 0
   warm_start: 1
   polish: 1
@@ -13,7 +13,7 @@ int_options:
   adaptive_rho_interval: 0
 
 double_options:
-  rho: 0.03
+  rho: 0.05
   sigma: 1e-6
   eps_abs: 5e-5
   eps_rel: 5e-5

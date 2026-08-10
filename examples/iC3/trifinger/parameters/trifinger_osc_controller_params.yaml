@@ -5,31 +5,31 @@ end_effector_model: examples/iC3/urdf/fingertips.sdf
 end_effector_names: ["fingertip_1", "fingertip_2", "fingertip_3"]
 
 neutral_position: [[0, 0.07, 0.05],  # finger 0
-                   [ 0.07, -0.055, 0.05],  # finger 120
-                   [-0.07, -0.055, 0.05]]  # finger 240
+                   [ 0.07, -0.045, 0.05],  # finger 120
+                   [-0.07, -0.045, 0.05]]  # finger 240
 
 # neutral_position: [[0, 0.07, 0.05],  # finger 0
 #                    [ 0.05, -0.07, 0.05],  # finger 120
 #                    [-0.05, -0.07, 0.05]]  # finger 240
 
 # task space velocity constraints
-velocity_lower_bound: [[-0.08, -0.08, -0.05],  # finger 0
-                       [-0.08, -0.08, -0.05],  # finger 120
-                       [-0.08, -0.08, -0.05]]  # finger 240
-velocity_upper_bound: [[0.08, 0.08, 0.05],  # finger 0
-                       [0.08, 0.08, 0.05],  # finger 120
-                       [0.08, 0.08, 0.05]]  # finger 240
+# velocity_lower_bound: [[-0.12, -0.12, -0.1],  # finger 0
+#                        [-0.12, -0.12, -0.1],  # finger 120
+#                        [-0.12, -0.12, -0.1]]  # finger 240
+# velocity_upper_bound: [[0.12, 0.12, 0.1],  # finger 0
+#                        [0.12, 0.12, 0.1],  # finger 120
+#                        [0.12, 0.12, 0.1]]  # finger 240
 
-# velocity_lower_bound: [[-0.15, -0.15, -0.05],  # finger 0
-#                        [-0.15, -0.15, -0.05],  # finger 120
-#                        [-0.15, -0.15, -0.05]]  # finger 240
-# velocity_upper_bound: [[0.15, 0.15, 0.05],  # finger 0
-#                        [0.15, 0.15, 0.05],  # finger 120
-#                        [0.15, 0.15, 0.05]]  # finger 240
+velocity_lower_bound: [[-100, -100, -100],  # finger 0
+                       [-100, -100, -100],  # finger 120
+                       [-100, -100, -100]]  # finger 240
+velocity_upper_bound: [[100, 100, 100],  # finger 0
+                       [100, 100, 100],  # finger 120
+                       [100, 100, 100]]  # finger 240
                       
-velocity_damping: 10.0  
+velocity_damping: 100.0  
 
-ddq_limit: [80, 80, 80, 80, 80, 80, 80, 80, 80]                
+ddq_limit: [100, 100, 100, 100, 100, 100, 100, 100, 100]                
 
 x_scale: 0.1
 y_scale: 0.1
@@ -62,13 +62,13 @@ W_lambda_h_reg: [ 0.0001, 0.0001, 0.0001,
                   0.0001, 0.0001, 0.0001 ]
 
 EndEffectorW:
-  [500, 0, 0,
-   0, 500, 0,
-   0, 0, 500]
+  [300, 0, 0,
+   0, 300, 0,
+   0, 0, 300]
 EndEffectorKp:
-  [ 150, 0, 0,
-    0, 150, 0,  
-    0, 0, 150 ]
+  [ 300, 0, 0,
+    0, 300, 0,  
+    0, 0, 300 ]
 EndEffectorKd:
   [ 20, 0, 0,
     0, 20, 0,

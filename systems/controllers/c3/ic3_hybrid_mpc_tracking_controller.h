@@ -64,14 +64,11 @@ class iC3HybridMpcTrackingController : public drake::systems::LeafSystem<double>
     return this->get_input_port(nominal_position_port_);
   }
 
-  const drake::systems::OutputPort<double>& get_output_port_actor_input() const {
-    return this->get_output_port(actor_port_);
+  const drake::systems::OutputPort<double>& get_output_port_solution() const {
+    return this->get_output_port(solution_port_);
   }
 
-  const drake::systems::OutputPort<double>& get_output_port_tracking_target()
-      const {
-    return this->get_output_port(tracking_target_port_);
-  }
+
 
  private:
   c3::LCS CreatePlaceholderLCS() const;
@@ -80,11 +77,8 @@ class iC3HybridMpcTrackingController : public drake::systems::LeafSystem<double>
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
 
-  void OutputActorInput(const drake::systems::Context<double>& context,
-                        drake::systems::BasicVector<double>* actor_input) const;
-
-  void OutputTrackingTarget(const drake::systems::Context<double>& context,
-                        drake::systems::BasicVector<double>* tracking_target) const;
+  void OutputSolution(const drake::systems::Context<double>& context,
+                        c3::systems::C3Output::C3Solution* c3_solution) const;
 
   void UpdateQuaternionCosts(
       const VectorXd& x_curr, const Eigen::VectorXd& x_des) const;
@@ -93,6 +87,9 @@ class iC3HybridMpcTrackingController : public drake::systems::LeafSystem<double>
 
   c3::LCS GetLCSSegment(int start_idx, int size) const;
 
+  drake::systems::DiscreteStateIndex plan_start_time_index_;
+  drake::systems::DiscreteStateIndex filtered_solve_time_index_;
+
   drake::systems::InputPortIndex lcs_state_input_port_;
   drake::systems::InputPortIndex ic3_x_port_;
   drake::systems::InputPortIndex ic3_u_port_;
@@ -100,8 +97,7 @@ class iC3HybridMpcTrackingController : public drake::systems::LeafSystem<double>
   drake::systems::InputPortIndex timestep_port_;
   drake::systems::InputPortIndex nominal_position_port_;
 
-  drake::systems::OutputPortIndex actor_port_;
-  drake::systems::OutputPortIndex tracking_target_port_;
+  drake::systems::OutputPortIndex solution_port_;
 
   drake::solvers::MathematicalProgram prog_;
   drake::solvers::OsqpSolver osqp_;
@@ -159,8 +155,10 @@ class iC3HybridMpcTrackingController : public drake::systems::LeafSystem<double>
 
   mutable drake::math::RigidTransform<double> X_delta_;
 
-  mutable VectorXd tracking_target_;
-  mutable VectorXd u_out_;
+  mutable vector<VectorXd> x_sol_;
+  mutable vector<VectorXd> u_sol_;
+  mutable vector<VectorXd> lambda_sol_;
+  mutable double solve_time_;
 
   int N_; // N for mpc (NOT the same as iC3 horizon)
   double dt_;

@@ -179,14 +179,12 @@ iC3HybridMpcTrackingController::iC3HybridMpcTrackingController(
   }
 
   X_delta_ = drake::math::RigidTransform<double>::Identity();
+  solve_time_ = 0;
 
   auto lcs_placeholder = CreatePlaceholderLCS();
 
   auto x_desired_placeholder =
       std::vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_));
-
-  tracking_target_ = VectorXd::Zero(n_u_);
-  u_out_ = VectorXd::Zero(n_u_);
 
   lcs_state_input_port_ =
       this->DeclareVectorInputPort("x_lcs", TimestampedVector<double>(n_x_))
@@ -207,16 +205,18 @@ iC3HybridMpcTrackingController::iC3HybridMpcTrackingController(
   timestep_port_ =  
       this->DeclareVectorInputPort("timestep_port", 1).get_index();
       
+  auto solution = c3::systems::C3Output::C3Solution();
+  solution.x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
+  solution.lambda_sol_ = MatrixXf::Zero(n_lambda_, N_);
+  solution.u_sol_ = MatrixXf::Zero(n_u_, N_);
+  solution.time_vector_ = VectorXf::Zero(N_);
 
-  actor_port_ =
-      this->DeclareVectorOutputPort("actor_input", BasicVector<double>(n_u_),
-                                      &iC3HybridMpcTrackingController::OutputActorInput)
-          .get_index();
+  solution_port_ =
+    this->DeclareAbstractOutputPort("solution_port", solution,
+                                          &iC3HybridMpcTrackingController::OutputSolution)
+              .get_index();
 
-  tracking_target_port_ =
-      this->DeclareVectorOutputPort("tracking_target_port", BasicVector<double>(n_u_),
-                                  &iC3HybridMpcTrackingController::OutputTrackingTarget)
-          .get_index();
+
 
   int nominal_position_size;
   if (example_idx_ == 0) {
@@ -228,6 +228,9 @@ iC3HybridMpcTrackingController::iC3HybridMpcTrackingController(
       this->DeclareVectorInputPort(
               "nominal_position", BasicVector<double>(nominal_position_size))
           .get_index();
+
+  plan_start_time_index_ = DeclareDiscreteState(1);
+  filtered_solve_time_index_ = DeclareDiscreteState(1);
 
   DeclareForcedDiscreteUpdateEvent(&iC3HybridMpcTrackingController::ComputePlan);
 
@@ -280,12 +283,15 @@ drake::systems::EventStatus iC3HybridMpcTrackingController::ComputePlan(
   // If in teleop or waiting, don't solve
   if (ic3_timestep < 0 || ic3_timestep >= ic3_options_.N) return drake::systems::EventStatus::Succeeded();
 
+  
   auto start = std::chrono::high_resolution_clock::now();
 
   const TimestampedVector<double>* lcs_x =
       (TimestampedVector<double>*)this->EvalVectorInput(context,
                                                         lcs_state_input_port_);
   drake::VectorX<double> x_lcs = lcs_x->get_data();  
+  discrete_state->get_mutable_value(plan_start_time_index_)[0] =
+      lcs_x->get_timestamp();
 
   if (example_idx_ == 0) {
     const BasicVector<double>* nominal_position =
@@ -530,7 +536,15 @@ drake::systems::EventStatus iC3HybridMpcTrackingController::ComputePlan(
     while (true) {}
   }
 
-  u_out_ = result.GetSolution(u_[0]);
+  solve_time_ = solve_time_qp_solve;
+  x_sol_.clear();
+  u_sol_.clear();
+  lambda_sol_.clear();
+  for (int i = 0; i < N_; i++) {
+    x_sol_.push_back(result.GetSolution(x_[i]));
+    u_sol_.push_back(result.GetSolution(u_[i]));
+    lambda_sol_.push_back(result.GetSolution(lambda_[i]));
+  }
 
   if (example_idx_ == 0) {
     for (int i = 0; i < N_; i++) {
@@ -577,18 +591,23 @@ drake::systems::EventStatus iC3HybridMpcTrackingController::ComputePlan(
 }
 
 
-void iC3HybridMpcTrackingController::OutputActorInput(
+void iC3HybridMpcTrackingController::OutputSolution(
     const drake::systems::Context<double>& context,
-    drake::systems::BasicVector<double>* actor_input) const {
-  std::cout << "u_out output port " << u_out_.transpose() << std::endl;
-	actor_input->get_mutable_value() = u_out_;
-}
+    c3::systems::C3Output::C3Solution* solution) const {
 
+  if (x_sol_.size() == 0) return;
 
-void iC3HybridMpcTrackingController::OutputTrackingTarget(
-    const drake::systems::Context<double>& context,
-    drake::systems::BasicVector<double>* tracking_target) const {
-	tracking_target->get_mutable_value() = tracking_target_;
+  double t = context.get_discrete_state(plan_start_time_index_)[0];
+  std::cout << "output solution t " << t << std::endl;
+
+  for (int i = 0; i < N_; i++) {
+    solution->time_vector_(i) = solve_time_ + t + i * dt_;
+    solution->x_sol_.col(i) = x_sol_[i].cast<float>();
+    solution->lambda_sol_.col(i) =
+        lambda_sol_[i].cast<float>();
+    solution->u_sol_.col(i) =
+        u_sol_[i].cast<float>();
+  } 
 }
 
 

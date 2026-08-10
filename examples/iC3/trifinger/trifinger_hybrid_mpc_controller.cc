@@ -13,7 +13,7 @@
 #include "examples/iC3/trifinger/parameter_headers/trifinger_lcm_channels.h"
 #include "examples/iC3/iC3_options.h"
 #include "examples/iC3/hybrid_mpc_options.h"
-#include "examples/iC3/systems/lqr_trajectory_generator.h"
+#include "examples/iC3/systems/mpc_trajectory_generator.h"
 #include "examples/iC3/trifinger/systems/trifinger_kinematics.h"
 #include "systems/controllers/c3/ic3_hybrid_mpc_tracking_controller.h"
 #include "examples/iC3/systems/timed_gate.h"
@@ -87,7 +87,7 @@ int DoMain(int argc, char* argv[]) {
   if (FLAGS_example_idx == 1) {
     hybrid_mpc_options_file = "examples/iC3/trifinger/parameters/trifinger_hybrid_mpc_options_180.yaml";
   } else if (FLAGS_example_idx == 2) {
-    hybrid_mpc_options_file = "examples/iC3/trifinger/parameters/trifinger_pivot_hybrid_mpc_options_pivot.yaml";
+    hybrid_mpc_options_file = "examples/iC3/trifinger/parameters/trifinger_hybrid_mpc_options_pivot.yaml";
   }
 
   HybridMpcOptions hybrid_mpc_options =
@@ -251,34 +251,36 @@ int DoMain(int argc, char* argv[]) {
       A_x(16 + 3*i + 1, 16 + 3*i+1) = 1;
       A_x(16 + 3*i + 2, 16 + 3*i+2) = 1;
 
-      lb_x(3*i) = xd(3*i) - 0.07;
-      lb_x(3*i+1) = xd(3*i+1) - 0.07;
+      double xy_bound = (i == 0) ? 0.07 : 0.05;
+
+      lb_x(3*i) = xd(3*i) - xy_bound;
+      lb_x(3*i+1) = xd(3*i+1) - xy_bound;
       lb_x(3*i+2) = xd(3*i+2) - 0.01;
 
-      lb_x(16 + 3*i) = -0.08;
-      lb_x(16 + 3*i+1) = -0.08;
-      lb_x(16 + 3*i+2) = -0.05;
+      lb_x(16 + 3*i) = -0.1;
+      lb_x(16 + 3*i+1) = -0.1;
+      lb_x(16 + 3*i+2) = -0.1;
 
-      ub_x(3*i) = xd(3*i) + 0.07;
-      ub_x(3*i+1) = xd(3*i+1) + 0.07;
-      ub_x(3*i+2) = xd(3*i+2) + 0.07;
+      ub_x(3*i) = xd(3*i) + xy_bound;
+      ub_x(3*i+1) = xd(3*i+1) + xy_bound;
+      ub_x(3*i+2) = xd(3*i+2) + 0.05;
 
-      ub_x(16 + 3*i) = 0.08;
-      ub_x(16 + 3*i+1) = 0.08;
-      ub_x(16 + 3*i+2) = 0.05;
+      ub_x(16 + 3*i) = 0.1;
+      ub_x(16 + 3*i+1) = 0.1;
+      ub_x(16 + 3*i+2) = 0.1;
 
 
       A_x_mpc(16 + 3*i, 16 + 3*i) = 1;
       A_x_mpc(16 + 3*i + 1, 16 + 3*i+1) = 1;
       A_x_mpc(16 + 3*i + 2, 16 + 3*i+2) = 1;
 
-      lb_x_mpc(16 + 3*i) = -0.08;
-      lb_x_mpc(16 + 3*i+1) = -0.08;
-      lb_x_mpc(16 + 3*i+2) = -0.05;
+      lb_x_mpc(16 + 3*i) = -0.1;
+      lb_x_mpc(16 + 3*i+1) = -0.1;
+      lb_x_mpc(16 + 3*i+2) = -0.1;
 
-      ub_x_mpc(16 + 3*i) = 0.08;
-      ub_x_mpc(16 + 3*i+1) = 0.08;
-      ub_x_mpc(16 + 3*i+2) = 0.05;
+      ub_x_mpc(16 + 3*i) = 0.1;
+      ub_x_mpc(16 + 3*i+1) = 0.1;
+      ub_x_mpc(16 + 3*i+2) = 0.1;
     }
 
     for (int i = 0; i < 3; i++) {
@@ -286,13 +288,13 @@ int DoMain(int argc, char* argv[]) {
       A_u(3*i+1, 3*i+1) = 1;
       A_u(3*i+2, 3*i+2) = 1;
       
-      lb_u(3*i) = -0.8;
-      lb_u(3*i+1) = -0.8;
-      lb_u(3*i+2) = 0.15;
+      lb_u(3*i) = -1.6;
+      lb_u(3*i+1) = -1.6;
+      lb_u(3*i+2) = -1;
 
-      ub_u(3*i) = 0.8;
-      ub_u(3*i+1) = 0.8;
-      ub_u(3*i+2) = 0.25;
+      ub_u(3*i) = 1.6;
+      ub_u(3*i+1) = 1.6;
+      ub_u(3*i+2) = 1;
     }
   }
 
@@ -351,14 +353,15 @@ int DoMain(int argc, char* argv[]) {
 
   auto controller =
       builder.AddSystem<systems::iC3HybridMpcTrackingController>
-          (plant_for_lcs, lcs_factory, hybrid_mpc_options, solver_options, ic3_options, 1,
+          (plant_for_lcs, lcs_factory, hybrid_mpc_options, solver_options, ic3_options, FLAGS_example_idx,
             A_x_mpc, lb_x_mpc, ub_x_mpc, A_u, lb_u, ub_u);
 
-  auto lqr_trajectory_generator =
-      builder.AddSystem<LqrTrajectoryGenerator>(plant_for_lcs, lcs_factory, ic3_options, 1,
+  auto mpc_trajectory_generator =
+      builder.AddSystem<MPCTrajectoryGenerator>(plant_for_lcs, &plant_lcs_context, lcs_factory, 
+        ic3_options, hybrid_mpc_options.lcs_factory_options, controller_params.track_dynamically_feasible, FLAGS_example_idx,
         A_x, lb_x, ub_x, A_u, lb_u, ub_u); 
 
-  lqr_trajectory_generator->SetPublishEndEffectorOrientation(false);
+  mpc_trajectory_generator->SetPublishEndEffectorOrientation(false);
   
   auto timed_gate =
       builder.AddSystem<TimedGate>(ic3_options, 1);    
@@ -388,14 +391,14 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(ic3_lambda_trajectory_sub->get_output_port(),
                   controller->get_input_port_ic3_lambda());
 
-  builder.Connect(controller->get_output_port_actor_input(),
-                  lqr_trajectory_generator->get_input_port_actor_input());
-  builder.Connect(controller->get_output_port_tracking_target(),
-                  lqr_trajectory_generator->get_input_port_tracking_target());
+  builder.Connect(controller->get_output_port_solution(),
+                  mpc_trajectory_generator->get_input_port_solution());
   builder.Connect(reduced_order_model_receiver->get_output_port(),
-                  lqr_trajectory_generator->get_input_port_x_curr());   
+                  mpc_trajectory_generator->get_input_port_x_lcs());   
+  builder.Connect(nominal_position->get_output_port(),
+                  mpc_trajectory_generator->get_input_port_nominal_position());
 
-  builder.Connect(lqr_trajectory_generator->get_output_port_actor_trajectory(),
+  builder.Connect(mpc_trajectory_generator->get_output_port_actor_trajectory(),
                   timed_gate->get_input_port_c3_actor());
   builder.Connect(nominal_position->get_output_port(),
                   timed_gate->get_input_port_nominal_position());

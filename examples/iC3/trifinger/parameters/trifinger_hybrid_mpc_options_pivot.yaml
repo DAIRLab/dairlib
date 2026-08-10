@@ -1,24 +1,24 @@
 osqp_settings: examples/iC3/trifinger/parameters/hybrid_mpc_osqp_settings.yaml
-object_model: examples/iC3/trifinger/urdf/cube_for_lcs.sdf
+object_model: examples/iC3/urdf/cube_for_lcs_heavy.sdf
 
 use_nominal_lcs: false
-transform_update_frequency: 5
+transform_update_frequency: 6
 
 quaternion_indices: [9]
-quaternion_weight: 100
+quaternion_weight: 1000
 
 w_Q: 10
 w_R: 500
 w_S: 100
-w_G: 10000
+w_G: 5000
 
-accel_cost: 5
+accel_cost: 10
 
-q_vector: [10000, 10000, 10000,
-           10000, 10000, 10000,
-           10000, 10000, 10000,
+q_vector: [5000, 5000, 5000,
+           5000, 5000, 5000,
+           5000, 5000, 5000,
            1, 1, 1, 1, 
-           500, 500, 500,
+           10000, 10000, 5000,
            1, 1, 1, 
            1, 1, 1, 
            1, 1, 1, 
@@ -28,49 +28,57 @@ q_vector: [10000, 10000, 10000,
 r_vector: [1, 1, 1, 
            1, 1, 1, 
            1, 1, 1]
-s_vector: [1, 1, 1, 1, 
-           1, 1, 1, 1, 
-           1, 1, 1, 1, 
+s_vector: [10, 10, 10, 10, 
            10, 10, 10, 10, 
            10, 10, 10, 10, 
-           10, 10, 10, 10,
-           10, 10, 10, 10]
+           5, 5, 5, 5, 
+           5, 5, 5, 5, 
+           5, 5, 5, 5,
+           5, 5, 5, 5,
+           5, 5, 5, 5, 
+           5, 5, 5, 5, 
+           5, 5, 5, 5,
+           5, 5, 5, 5]
 
-g_vector: [100, 100, 100, 100, 
-            100, 100, 100, 100, 
-            100, 100, 100, 100, 
+g_vector: [5, 5, 5, 5, 
+            5, 5, 5, 5, 
+            5, 5, 5, 5, 
+            1, 1, 1, 1, 
+            1, 1, 1, 1, 
+            1, 1, 1, 1,
+            1, 1, 1, 1,
             1, 1, 1, 1, 
             1, 1, 1, 1, 
             1, 1, 1, 1,
             1, 1, 1, 1]
 
-lambda_threshold: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-eta_threshold: [1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6, 1.6]
+lambda_threshold: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+eta_threshold: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   
 lcs_factory_options:
   contact_model: "anitescu"
   num_contacts: 11
   spring_stiffness: 0
-  N: 4
+  N: 3
   dt: 0.02
   contact_pair_configs:
     - body_A: "fingertip_1"
       body_A_collision_geom_indices: [0]
       body_B: "cube"
       body_B_collision_geom_indices: [0]
-      mu: 0.33
+      mu: 0.73
       num_friction_directions: 2
     - body_A: "fingertip_2"
       body_A_collision_geom_indices: [0]
       body_B: "cube"
       body_B_collision_geom_indices: [0]
-      mu: 0.33
+      mu: 0.73
       num_friction_directions: 2
     - body_A: "fingertip_3"
       body_A_collision_geom_indices: [0]
       body_B: "cube"
       body_B_collision_geom_indices: [0]
-      mu: 0.33
+      mu: 0.73
       num_friction_directions: 2
     - body_A: "cube"
       body_A_collision_geom_indices: [1, 2, 3, 4, 5, 6, 7, 8]

@@ -202,10 +202,23 @@ std::tuple<MatrixXd, MatrixXd> LqrTrajectoryGenerator::SimulateLCS(VectorXd x0, 
 
   x_hat.col(0) = x0;
 
+  // std::cout << "A_x " << A_x_.diagonal().transpose() << std::endl;
+  // std::cout << "lb_x " << lb_x_.transpose() << std::endl;
+  // std::cout << "ub_x " << ub_x_.transpose() << std::endl;
+  // std::cout << "A_u " << A_u_.diagonal().transpose() << std::endl;
+  // std::cout << "lb_u " << lb_u_.transpose() << std::endl;
+  // std::cout << "ub_u " << ub_u_.transpose() << std::endl;
+
   VectorXd x_curr = x0;
   for (int i = 0; i < ic3_options_.rollout_dt_scaling * N; i++) {
     
     VectorXd u = u_hat.col(i / ic3_options_.rollout_dt_scaling);
+
+    for (int j = 0; j < A_u_.rows(); j++) {
+      if (A_u_(j, j) == 1) {
+        u(j) = std::min(std::max(u(j), lb_u_(j)), ub_u_(j));
+      }
+    }
 
     if (!x_curr.allFinite()) {
       std::cout << "lqr traj gen x_curr not all finite " << x_curr.transpose() << std::endl;
@@ -240,17 +253,10 @@ std::tuple<MatrixXd, MatrixXd> LqrTrajectoryGenerator::SimulateLCS(VectorXd x0, 
     config.max_exp = -6;
     VectorXd x_next = lcs.Simulate(x_curr, u, config);
 
-
-
     // Threshold positions and inputs, assume A_x, A_u are diagonal 0/1 matrices
     for (int j = 0; j < A_x_.rows(); j++) {
       if (A_x_(j, j) == 1) {
-          x_curr(j) = std::min(std::max(x_curr(j), lb_x_(j)), ub_x_(j));
-      }
-    }
-    for (int j = 0; j < A_u_.rows(); j++) {
-      if (A_u_(j, j) == 1) {
-          u(j) = std::min(std::max(u(j), lb_u_(j)), ub_u_(j));
+        x_next(j) = std::min(std::max(x_next(j), lb_x_(j)), ub_x_(j));
       }
     }
 

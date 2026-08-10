@@ -4,8 +4,8 @@ cube_file: "examples/iC3/urdf/cube.sdf"
 visualizer_publish_rate: 30
 
 # match with iC3 params
-ic3_iter: 6
-trajectory_length: 50
+ic3_iter: 2
+trajectory_length: 200
 
 visualize_c3_traj: true
 

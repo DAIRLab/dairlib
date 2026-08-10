@@ -5,11 +5,11 @@
       <link name="cube">
         <pose>0 0 0 0 0 0</pose> 
         <inertial>
-          <mass>0.2</mass>
+          <mass>0.3</mass>
           <inertia>
-            <ixx>0.0004</ixx>
-            <iyy>0.0004</iyy>
-            <izz>0.0004</izz>
+            <ixx>0.0006</ixx>
+            <iyy>0.0006</iyy>
+            <izz>0.0006</izz>
             <ixy>0.0</ixy>
             <ixz>0.0</ixz>
             <iyz>0.0</iyz>
@@ -100,7 +100,7 @@
           <pose>0.05 0.05 -0.05 0 0 0</pose>
           <geometry>
             <sphere>
-              <radius>0.001 0.001 0.001</radius>
+              <radius>0.002</radius>
             </sphere>
           </geometry>
           <drake:proximity_properties>
@@ -112,7 +112,7 @@
           <pose>-0.05 0.05 -0.05 0 0 0</pose>
           <geometry>
             <sphere>
-              <radius>0.001 0.001 0.001</radius>
+              <radius>0.002</radius>
             </sphere>
           </geometry>
           <drake:proximity_properties>
@@ -124,7 +124,7 @@
           <pose>0.05 -0.05 -0.05 0 0 0</pose>
           <geometry>
             <sphere>
-              <radius>0.001 0.001 0.001</radius>
+              <radius>0.002</radius>
             </sphere>
           </geometry>
           <drake:proximity_properties>
@@ -136,7 +136,7 @@
           <pose>-0.05 -0.05 -0.05 0 0 0</pose>
           <geometry>
             <sphere>
-              <radius>0.001 0.001 0.001</radius>
+              <radius>0.002</radius>
             </sphere>
           </geometry>
           <drake:proximity_properties>
@@ -148,7 +148,7 @@
           <pose>0.05 0.05 0.05 0 0 0</pose>
           <geometry>
             <sphere>
-              <radius>0.001 0.001 0.001</radius>
+              <radius>0.002</radius>
             </sphere>
           </geometry>
           <drake:proximity_properties>
@@ -160,7 +160,7 @@
           <pose>-0.05 0.05 0.05 0 0 0</pose>
           <geometry>
             <sphere>
-              <radius>0.001 0.001 0.001</radius>
+              <radius>0.002</radius>
             </sphere>
           </geometry>
           <drake:proximity_properties>
@@ -172,7 +172,7 @@
           <pose>0.05 -0.05 0.05 0 0 0</pose>
           <geometry>
             <sphere>
-              <radius>0.001 0.001 0.001</radius>
+              <radius>0.002</radius>
             </sphere>
           </geometry>
           <drake:proximity_properties>
@@ -184,7 +184,7 @@
           <pose>-0.05 -0.05 0.05 0 0 0</pose>
           <geometry>
             <sphere>
-              <radius>0.001 0.001 0.001</radius>
+              <radius>0.002</radius>
             </sphere>
           </geometry>
           <drake:proximity_properties>

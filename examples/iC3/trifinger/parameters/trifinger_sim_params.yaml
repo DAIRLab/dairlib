@@ -4,7 +4,7 @@ object_model: examples/iC3/urdf/actual_cube.sdf
 ground_model: examples/iC3/urdf/ground.urdf
 
 trifinger_publish_rate: 1000
-object_publish_rate: 1000
+object_publish_rate: 30
 visualizer_publish_rate: 32
 actuator_delay: 0.000
 

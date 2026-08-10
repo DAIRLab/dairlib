@@ -10,7 +10,7 @@ osqp_settings_file: examples/iC3/trifinger/parameters/trifinger_osqp_settings.ya
 ic3_options_file: examples/iC3/trifinger/parameters/trifinger_iC3_options.yaml
 c3_controller_options_file: examples/iC3/trifinger/parameters/trifinger_c3_options.yaml
 
-track_dynamically_feasible: false
+track_dynamically_feasible: false # does nothing for mpc tracking
 
 time_to_wait: 1.0
 

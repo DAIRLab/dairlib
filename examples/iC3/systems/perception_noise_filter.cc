@@ -49,8 +49,8 @@ void PerceptionNoiseFilter::OutputNoisyObjectState(
   }
 
   double xy_std = 0.003;
-  double z_std = 0.001;
-  double angular_std = 0.5;
+  double z_std = 0.002;
+  double angular_std = 2;
   double angular_std_rad = angular_std * (M_PI / 180.0);
 
   std::random_device rd;
@@ -77,6 +77,8 @@ void PerceptionNoiseFilter::OutputNoisyObjectState(
 
   Quaterniond q_noisy = q_noise * q_curr;
 
+  std::cout << "q object raw " << q_object.transpose() << std::endl;
+
   q_object(0) = q_noisy.w();
   q_object(1) = q_noisy.x();
   q_object(2) = q_noisy.y();
@@ -84,6 +86,9 @@ void PerceptionNoiseFilter::OutputNoisyObjectState(
   q_object(4) += x_noise;
   q_object(5) += y_noise;
   q_object(6) += z_noise;
+
+  std::cout << "q object noisy " << q_object.transpose() << std::endl;
+
 
   output_state->SetPositions(q_object);
   output_state->SetVelocities(v_object);

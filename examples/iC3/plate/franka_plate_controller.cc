@@ -169,7 +169,7 @@ int DoMain(int argc, char* argv[]) {
   
   std::vector<drake::geometry::GeometryId> cube_geoms_full =
       plant_for_lcs.GetCollisionGeometriesForBody(
-          plant_for_lcs.GetBodyByName("cube"));
+          plant_for_lcs.GetBodyByName("pancake"));
 
   std::vector<drake::geometry::GeometryId> cube_geoms(cube_geoms_full.begin()+1, cube_geoms_full.end());
 

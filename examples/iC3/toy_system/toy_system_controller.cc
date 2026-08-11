@@ -92,7 +92,7 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
   Parser parser_for_lcs(&plant_for_lcs, &scene_graph_for_lcs);
 
   const std::string plate_file_lcs = "examples/iC3/urdf/plate.sdf";
-	const std::string cube_file_lcs = "examples/iC3/urdf/cube.sdf";
+	const std::string cube_file_lcs = "examples/iC3/urdf/pancake.sdf";
 
   parser_for_lcs.AddModels(plate_file_lcs);
   parser_for_lcs.AddModels(cube_file_lcs);
@@ -142,7 +142,7 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, 0.0001);
   Parser parser(&plant, &scene_graph);
   const std::string plate_file = "examples/iC3/urdf/plate.sdf";
-	const std::string cube_file = "examples/iC3/urdf/cube.sdf";
+	const std::string cube_file = "examples/iC3/urdf/pancake.sdf";
 
   ModelInstanceIndex plate_index = parser.AddModels(plate_file)[0];
   ModelInstanceIndex cube_index = parser.AddModels(cube_file)[0];

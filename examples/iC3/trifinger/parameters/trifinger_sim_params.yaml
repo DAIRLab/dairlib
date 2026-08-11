@@ -1,6 +1,6 @@
 trifinger_model: examples/iC3/trifinger/robot_properties_fingers/urdf/trifinger.urdf
 end_effector_model: examples/iC3/urdf/fingertips.sdf
-object_model: examples/iC3/urdf/actual_cube.sdf
+object_model: examples/iC3/urdf/cube.sdf
 ground_model: examples/iC3/urdf/ground.urdf
 
 trifinger_publish_rate: 1000

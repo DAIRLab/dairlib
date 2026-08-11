@@ -1,5 +1,5 @@
 ee_file: "examples/iC3/urdf/fingertips_lcs.sdf" 
-cube_file: "examples/iC3/urdf/actual_cube.sdf" 
+cube_file: "examples/iC3/urdf/cube.sdf" 
 
 visualizer_publish_rate: 30
 

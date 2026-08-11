@@ -2,7 +2,7 @@ franka_model: package://drake_models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/iC3/urdf/plate_end_effector.sdf
 end_effector_name: plate
 end_effector_lcs_model: examples/iC3/urdf/plate.sdf
-object_model: examples/iC3/urdf/cube_8_contacts.sdf
+object_model: examples/iC3/urdf/pancake_8_contacts.sdf
 
 osqp_settings_file: examples/iC3/plate/parameters/franka_plate_osqp_settings.yaml
 ic3_options_file: examples/iC3/plate/parameters/plate_iC3_options.yaml

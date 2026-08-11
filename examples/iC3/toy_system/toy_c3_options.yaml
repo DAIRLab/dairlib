@@ -14,7 +14,7 @@ lcs_factory_options:
   N: 1
   dt: 0.04
   contact_pair_configs:
-    - body_A: "cube" # TODO: CHANGE LCS MODEL, THIS IS NOT A CUBE LOL
+    - body_A: "pancake" # TODO: CHANGE LCS MODEL, THIS IS NOT A CUBE LOL
       body_A_collision_geom_indices: [1, 2, 3, 4]
       body_B: "plate"
       body_B_collision_geom_indices: [0]

@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <sdf version='1.7'>
-  <model name="cube">
-      <!-- Cube -->
-      <link name="cube">
+  <model name="pancake">
+      <!-- pancake -->
+      <link name="pancake">
         <pose>0 0 0 0 0 0</pose> 
         <inertial>
           <mass>0.05</mass>
@@ -16,7 +16,7 @@
           </inertia>
         </inertial>
         
-        <visual name="cube_visual">
+        <visual name="pancake_visual">
           <geometry>
             <cylinder>
               <radius>0.05</radius>
@@ -26,7 +26,7 @@
           <material><diffuse>0.8 0.4 0.0 1</diffuse></material>
         </visual>
          <visual name="z_axis">
-          <pose>0 0 0.1 0 0 0</pose> <!-- relative to cube frame -->
+          <pose>0 0 0.1 0 0 0</pose> <!-- relative to pancake frame -->
           <geometry>
             <cylinder>
               <radius>0.01</radius>
@@ -69,7 +69,7 @@
           </material>
         </visual>
 
-         <collision name="cube">
+         <collision name="pancake">
           <pose>0 0 0 0 0 0</pose>
           <geometry>
             <cylinder>

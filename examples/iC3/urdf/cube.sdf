@@ -7,22 +7,17 @@
         <inertial>
           <mass>0.05</mass>
           <inertia>
-            <ixx>0.000033</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>0.000033</iyy>
-            <iyz>0</iyz>
-            <izz>0.0000625</izz>
+            <ixx>0.000083</ixx>
+            <iyy>0.000083</iyy>
+            <izz>0.000083</izz>
+            <ixy>0.0</ixy>
+            <ixz>0.0</ixz>
+            <iyz>0.0</iyz>
           </inertia>
         </inertial>
         
         <visual name="cube_visual">
-          <geometry>
-            <cylinder>
-              <radius>0.05</radius>
-              <length> 0.02 </length>
-            </cylinder>
-          </geometry>
+          <geometry><box><size>0.1 0.1 0.1</size></box></geometry>
           <material><diffuse>0.8 0.4 0.0 1</diffuse></material>
         </visual>
          <visual name="z_axis">
@@ -34,8 +29,8 @@
             </cylinder>
           </geometry>
           <material>
-            <ambient>0 0 1 1</ambient>
-            <diffuse>0 0 1 1</diffuse>
+            <ambient>0 0 1 0.3</ambient>
+            <diffuse>0 0 1 0.3</diffuse>
           </material>
         </visual>
 
@@ -49,8 +44,8 @@
             </cylinder>
           </geometry>
           <material>
-            <ambient>1 0 0 1</ambient>
-            <diffuse>1 0 0 1</diffuse>
+            <ambient>1 0 0 0.3</ambient>
+            <diffuse>1 0 0 0.3</diffuse>
           </material>
         </visual>
 
@@ -64,130 +59,147 @@
             </cylinder>
           </geometry>
           <material>
-            <ambient>0 1 0 1</ambient>
-            <diffuse>0 1 0 1</diffuse>
+            <ambient>0 1 0 0.3</ambient>
+            <diffuse>0 1 0 0.3</diffuse>
           </material>
         </visual>
 
          <collision name="cube">
           <pose>0 0 0 0 0 0</pose>
           <geometry>
-            <cylinder>
-              <radius>0.05</radius>
-              <length> 0.02 </length>
-            </cylinder>
+            <box><size>0.1 0.1 0.1</size></box>
           </geometry>
         <drake:proximity_properties>
-          <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>      
+        
+            <drake:point_contact_stiffness>50000.0</drake:point_contact_stiffness>
+            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>      
           <drake:mu_static>0.25</drake:mu_static>
           <drake:mu_dynamic>0.25</drake:mu_dynamic>
         </drake:proximity_properties>
 
         </collision>
         <collision name="corner_1">
-          <pose>0.05 0 -0.01 0 0 0</pose>
+          <pose>0.05 0.05 -0.05 0 0 0</pose>
           <geometry>
             <sphere>
               <radius>0.002</radius>
             </sphere>
           </geometry>
-          <drake:proximity_properties>
-            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>
+          <drake:proximity_properties>  
+
+            <drake:point_contact_stiffness>50000.0</drake:point_contact_stiffness>
+            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>       
             <drake:mu_static>0.25</drake:mu_static>
-            <drake:mu_dynamic>0.25</drake:mu_dynamic>
+          <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
+
         </collision>
         <collision name="corner_2">
-          <pose>-0.05 0 -0.01 0 0 0</pose>
+          <pose>-0.05 0.05 -0.05 0 0 0</pose>
           <geometry>
             <sphere>
               <radius>0.002</radius>
             </sphere>
           </geometry>
-          <drake:proximity_properties>
-            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>      
+          <drake:proximity_properties>  
+
+            <drake:point_contact_stiffness>50000.0</drake:point_contact_stiffness>
+            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>             
             <drake:mu_static>0.25</drake:mu_static>
             <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
         <collision name="corner_3">
-          <pose>0 0.05 -0.01 0 0 0</pose>
+          <pose>0.05 -0.05 -0.05 0 0 0</pose>
           <geometry>
             <sphere>
               <radius>0.002</radius>
             </sphere>
           </geometry>
           <drake:proximity_properties>
-            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>      
+            
+            <drake:point_contact_stiffness>50000.0</drake:point_contact_stiffness>
+            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>   
             <drake:mu_static>0.25</drake:mu_static>
             <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
         <collision name="corner_4">
-          <pose>0 -0.05 -0.01 0 0 0</pose>
+          <pose>-0.05 -0.05 -0.05 0 0 0</pose>
           <geometry>
             <sphere>
               <radius>0.002</radius>
             </sphere>
           </geometry>
           <drake:proximity_properties>
-            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>
+            
+            <drake:point_contact_stiffness>50000.0</drake:point_contact_stiffness>
+            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>   
             <drake:mu_static>0.25</drake:mu_static>
             <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
         <collision name="corner_5">
-          <pose>0.05 0 0.01 0 0 0</pose>
+          <pose>0.05 0.05 0.05 0 0 0</pose>
           <geometry>
             <sphere>
               <radius>0.002</radius>
             </sphere>
           </geometry>
           <drake:proximity_properties>
-            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>
+            
+            <drake:point_contact_stiffness>50000.0</drake:point_contact_stiffness>
+            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>   
             <drake:mu_static>0.25</drake:mu_static>
             <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
         <collision name="corner_6">
-          <pose>-0.05 0 0.01 0 0 0</pose>
+          <pose>-0.05 0.05 0.05 0 0 0</pose>
           <geometry>
             <sphere>
               <radius>0.002</radius>
             </sphere>
           </geometry>
           <drake:proximity_properties>
-            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>
+            
+            <drake:point_contact_stiffness>50000.0</drake:point_contact_stiffness>
+            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>   
             <drake:mu_static>0.25</drake:mu_static>
             <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
         <collision name="corner_7">
-          <pose>0 0.05 0.01 0 0 0</pose>
+          <pose>0.05 -0.05 0.05 0 0 0</pose>
           <geometry>
             <sphere>
               <radius>0.002</radius>
             </sphere>
           </geometry>
           <drake:proximity_properties>
-            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>
+            
+            <drake:point_contact_stiffness>50000.0</drake:point_contact_stiffness>
+            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>   
             <drake:mu_static>0.25</drake:mu_static>
             <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
         <collision name="corner_8">
-          <pose>0 -0.05 0.01 0 0 0</pose>
+          <pose>-0.05 -0.05 0.05 0 0 0</pose>
           <geometry>
             <sphere>
               <radius>0.002</radius>
             </sphere>
           </geometry>
           <drake:proximity_properties>
-            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>
+            
+            <drake:point_contact_stiffness>50000.0</drake:point_contact_stiffness>
+            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>   
             <drake:mu_static>0.25</drake:mu_static>
             <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
+
 
       </link>
     </model>

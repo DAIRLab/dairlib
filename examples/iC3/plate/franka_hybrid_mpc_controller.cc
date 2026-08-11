@@ -260,7 +260,7 @@ int DoMain(int argc, char* argv[]) {
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_object, object_context.get(),
-          controller_params.end_effector_name, "cube",
+          controller_params.end_effector_name, "pancake",
           controller_params.include_end_effector_orientation);
 
   auto radio_sub =

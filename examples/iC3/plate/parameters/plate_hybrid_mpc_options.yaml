@@ -1,5 +1,5 @@
 osqp_settings: examples/iC3/plate/parameters/hybrid_mpc_osqp_settings.yaml
-object_model: examples/iC3/urdf/cube.sdf
+object_model: examples/iC3/urdf/pancake.sdf
 
 use_nominal_lcs: false
 transform_update_frequency: -1
@@ -54,7 +54,7 @@ lcs_factory_options:
   N: 3
   dt: 0.01
   contact_pair_configs:
-    - body_A: "cube" # TODO: CHANGE LCS MODEL, THIS IS NOT A CUBE LOL
+    - body_A: "pancake" # TODO: CHANGE LCS MODEL, THIS IS NOT A CUBE LOL
       body_A_collision_geom_indices: [1, 2, 3, 4, 5, 6, 7, 8]
       body_B: "plate"
       body_B_collision_geom_indices: [0]

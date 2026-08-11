@@ -1,5 +1,5 @@
 ee_file: "examples/iC3/urdf/plate.sdf" 
-cube_file: "examples/iC3/urdf/cube.sdf" 
+cube_file: "examples/iC3/urdf/pancake.sdf" 
 
 visualizer_publish_rate: 30
 

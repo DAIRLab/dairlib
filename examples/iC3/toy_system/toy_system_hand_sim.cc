@@ -70,7 +70,7 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
   Parser parser(&plant, &scene_graph);
 
   const std::string hand_file = "examples/iC3/urdf/fingertips_lcs.sdf";
-	const std::string cube_file = "examples/iC3/urdf/actual_cube.sdf";
+	const std::string cube_file = "examples/iC3/urdf/cube.sdf";
 	const std::string ground_file = "examples/iC3/urdf/ground.urdf";
 
   ModelInstanceIndex ee_idx = parser.AddModels(hand_file)[0];

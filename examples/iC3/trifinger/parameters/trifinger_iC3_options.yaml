@@ -1,4 +1,4 @@
-num_iters: 3
+num_iters: 5
 add_position_constraints: false
 add_input_constraints: false
 
@@ -6,10 +6,10 @@ num_segments: 8
 
 print_costs: true
 
-N: 360 # REMOVE after importing all options from c3 repo
-dt: 0.02 # REMOVE after importing all options from c3 repo
+N: 240 # REMOVE after importing all options from c3 repo
+dt: 0.03 # REMOVE after importing all options from c3 repo
 
-iter_to_use: 3
+iter_to_use: 5
 num_timesteps_to_use: 360
 
 hold_last_timestep_position: true

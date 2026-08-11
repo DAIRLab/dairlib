@@ -551,39 +551,39 @@ drake::systems::EventStatus iC3HybridMpcTrackingController::ComputePlan(
       std::cout << "epsilon " << result.GetSolution(epsilon_[i]).transpose() << std::endl;
     }
   } else if (example_idx_ == 1 || example_idx_ == 2) {
-    for (int i = 0; i < N_; i++) {
-      VectorXd x_pred = result.GetSolution(x_[i]);
-      VectorXd u_pred = result.GetSolution(u_[i]);
-      VectorXd lambda_pred = result.GetSolution(lambda_[i]);
-      VectorXd epsilon_pred = result.GetSolution(epsilon_[i]);
-      VectorXd eta_pred = lcs.E()[i] * x_pred + lcs.F()[i] * lambda_pred + lcs.H()[i] * u_pred + lcs.c()[i];
+    // for (int i = 0; i < N_; i++) {
+    //   VectorXd x_pred = result.GetSolution(x_[i]);
+    //   VectorXd u_pred = result.GetSolution(u_[i]);
+    //   VectorXd lambda_pred = result.GetSolution(lambda_[i]);
+    //   VectorXd epsilon_pred = result.GetSolution(epsilon_[i]);
+    //   VectorXd eta_pred = lcs.E()[i] * x_pred + lcs.F()[i] * lambda_pred + lcs.H()[i] * u_pred + lcs.c()[i];
 
-      std::cout << "x " << i << ": " << x_pred.segment(0, 16).transpose() << std::endl;
-      std::cout << "u " << i << ": " << u_pred.transpose() << std::endl;
-      std::cout << "lambda " << i << ": " << lambda_pred.segment(0, 12).transpose() << std::endl;
-      std::cout << "eta " << i << ": " << eta_pred.segment(0, 12).transpose() << std::endl;
-      std::cout << "epsilon " << i << ": " << epsilon_pred.transpose() << std::endl;
+    //   std::cout << "x " << i << ": " << x_pred.segment(0, 16).transpose() << std::endl;
+    //   std::cout << "u " << i << ": " << u_pred.transpose() << std::endl;
+    //   std::cout << "lambda " << i << ": " << lambda_pred.segment(0, 12).transpose() << std::endl;
+    //   std::cout << "eta " << i << ": " << eta_pred.segment(0, 12).transpose() << std::endl;
+    //   std::cout << "epsilon " << i << ": " << epsilon_pred.transpose() << std::endl;
 
-      double quat_cost = x_pred.segment(9, 4).transpose() * Q_.block(9, 9, 4, 4) * x_pred.segment(9, 4);
-      std::cout << "quat cost " << quat_cost << std::endl;
+    //   double quat_cost = x_pred.segment(9, 4).transpose() * Q_.block(9, 9, 4, 4) * x_pred.segment(9, 4);
+    //   std::cout << "quat cost " << quat_cost << std::endl;
 
-      double finger_cost = x_pred.segment(0, 9).transpose() * Q_.block(0, 0, 9, 9) * x_pred.segment(0, 9);
-      std::cout << "finger cost " << finger_cost << std::endl;
+    //   double finger_cost = x_pred.segment(0, 9).transpose() * Q_.block(0, 0, 9, 9) * x_pred.segment(0, 9);
+    //   std::cout << "finger cost " << finger_cost << std::endl;
 
-      double cube_pos = x_pred.segment(13, 3).transpose() * Q_.block(13, 13, 3, 3) * x_pred.segment(13, 3);
-      std::cout << "cube pos cost " << cube_pos << std::endl;
+    //   double cube_pos = x_pred.segment(13, 3).transpose() * Q_.block(13, 13, 3, 3) * x_pred.segment(13, 3);
+    //   std::cout << "cube pos cost " << cube_pos << std::endl;
 
-      double u_cost = u_pred.transpose() * R_ * u_pred;
-      std::cout << "u cost " << u_cost << std::endl;
+    //   double u_cost = u_pred.transpose() * R_ * u_pred;
+    //   std::cout << "u cost " << u_cost << std::endl;
 
-      double lambda_cost = lambda_pred.transpose() * S_ * lambda_pred;
-      std::cout << "lambda cost " << lambda_cost << std::endl;
+    //   double lambda_cost = lambda_pred.transpose() * S_ * lambda_pred;
+    //   std::cout << "lambda cost " << lambda_cost << std::endl;
 
-      double epsilon_cost = epsilon_pred.transpose() * G_ * epsilon_pred;
-      std::cout << "epsilon cost " << epsilon_cost << std::endl;
+    //   double epsilon_cost = epsilon_pred.transpose() * G_ * epsilon_pred;
+    //   std::cout << "epsilon cost " << epsilon_cost << std::endl;
 
-      std::cout << std::endl;
-    }
+    //   std::cout << std::endl;
+    // }
   }
 
 

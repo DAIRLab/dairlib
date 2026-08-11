@@ -79,6 +79,12 @@ void PerceptionNoiseFilter::OutputNoisyObjectState(
 
   std::cout << "q object raw " << q_object.transpose() << std::endl;
 
+  Eigen::Vector3d rpy = q_curr.matrix().eulerAngles(0, 1, 2);
+  Eigen::Vector3d rpy_deg = rpy * (180.0 / M_PI);
+
+  std::cout << "(Degrees) Roll: " << rpy_deg[0] << " Pitch: " << rpy_deg[1] << " Yaw: " << rpy_deg[2] << std::endl;
+  std::cout << "(Radians) Roll: " << rpy[0] << " Pitch: " << rpy[1] << " Yaw: " << rpy[2] << std::endl;
+
   q_object(0) = q_noisy.w();
   q_object(1) = q_noisy.x();
   q_object(2) = q_noisy.y();

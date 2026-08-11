@@ -12,7 +12,7 @@ c3_controller_options_file: examples/iC3/trifinger/parameters/trifinger_c3_optio
 
 track_dynamically_feasible: false 
 
-add_noise: false
+add_noise: true
 
 time_to_wait: 1.0
 

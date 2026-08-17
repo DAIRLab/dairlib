@@ -9,6 +9,7 @@ osc_debug_channel: OSC_DEBUG_FRANKA
 
 c3_actor_channel: C3_TRAJECTORY_ACTOR # lcmt_timestamped_saved_traj
 c3_object_channel: C3_TRAJECTORY_OBJECT # lcmt_timestamped_saved_traj
+noisy_object_state_channel: NOISY_C3_TRAJECTORY_OBJECT # lcmt_timestamped_saved_traj
 c3_force_channel: C3_FORCES
 c3_debug_output_channel: C3_DEBUG
 c3_target_state_channel: C3_TARGET # lcmt_c3_state

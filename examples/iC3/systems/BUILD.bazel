@@ -160,3 +160,17 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "state_vector_to_basic_vector",
+    srcs = [
+        "state_vector_to_basic_vector.cc",
+    ],
+    hdrs = [
+        "state_vector_to_basic_vector.h",
+    ],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)

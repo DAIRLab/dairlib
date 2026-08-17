@@ -2,7 +2,7 @@ franka_model: package://drake_models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/iC3/urdf/plate_end_effector.sdf
 object_model: examples/iC3/urdf/pancake_sim.sdf
 franka_publish_rate: 1000
-object_publish_rate: 10
+object_publish_rate: 30
 visualizer_publish_rate: 32
 actuator_delay: 0.000
 
@@ -10,8 +10,8 @@ visualize_drake_sim: false
 publish_efforts: true
 publish_object_velocities: true
 
+# tool_attachment_frame: [0, 0, 0]
 tool_attachment_frame: [0, 0, 0.107]
-#tool_attachment_frame: [0, 0, 0.307]
 
 # Workspace Limits
 world_x_limits: [0.4, 0.6]
@@ -20,7 +20,7 @@ world_z_limits: [0.35, 0.7]
 
 external_force_scaling: [10.0, 10.0, 10.0]
 
-dt: 0.0005
+dt: 0.0003
 realtime_rate: 1.0
 
 # will's q init
@@ -28,9 +28,9 @@ realtime_rate: 1.0
 #q_init_franka: [-1.6, 1, 1.46, -1.64, 2.13, 1.45, 0.02]
 
 # with centered plate
-q_init_franka: [-2.03, 1.75, 1.67, -2.05, 1.45, 1.74, 0]
+q_init_franka: [-1.9, 1.75, 1.68, -2.03, 1.46, 1.75, -0.11]
 
-q_init_object: [1, 0, 0, 0, 0.53, -0.4, 0.5]
+q_init_object: [1, 0, 0, 0, 0.58, -0.35, 0.5]
 
 visualize_workspace: false
 visualize_pose_trace: false # BROKEN

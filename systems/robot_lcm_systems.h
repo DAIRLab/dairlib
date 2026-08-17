@@ -144,13 +144,12 @@ class ObjectStateReceiver : public drake::systems::LeafSystem<double> {
 /// Converts a StateVector object to LCM type lcmt_robot_output
 class ObjectStateSender : public drake::systems::LeafSystem<double> {
  public:
-  explicit ObjectStateSender(
-      const drake::multibody::MultibodyPlant<double>& plant, bool publish_velocities = true,
-      drake::multibody::ModelInstanceIndex model_instance_index =
-      drake::multibody::default_model_instance());
+    explicit ObjectStateSender(
+    const drake::multibody::MultibodyPlant<double>& plant, bool publish_velocities,
+    drake::multibody::ModelInstanceIndex model_instance_index);
 
-  explicit ObjectStateSender(
-      const drake::multibody::MultibodyPlant<double>& plant);
+    explicit ObjectStateSender(
+    const drake::multibody::MultibodyPlant<double>& plant);
 
   const drake::systems::InputPort<double>& get_input_port_state() const {
     return this->get_input_port(state_input_port_);

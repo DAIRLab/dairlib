@@ -154,7 +154,7 @@ int DoMain(int argc, char* argv[]) {
       osc_controller->get_output_port_robot_input().size(), 0,
       plant.get_actuation_input_port().size());
   auto tray_state_sender =
-      builder.AddSystem<systems::ObjectStateSender>(plant, tray_index);
+      builder.AddSystem<systems::ObjectStateSender>(plant, true, tray_index);
   auto franka_state_sender =
       builder.AddSystem<RobotOutputSender>(plant, franka_index, false);
   auto state_pub =

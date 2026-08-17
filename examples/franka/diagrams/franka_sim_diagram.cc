@@ -103,7 +103,7 @@ FrankaSimDiagram::FrankaSimDiagram(std::unique_ptr<drake::multibody::MultibodyPl
 
   plant_->Finalize();
   auto tray_state_sender =
-      builder.AddSystem<systems::ObjectStateSender>(*plant_, tray_index);
+      builder.AddSystem<systems::ObjectStateSender>(*plant_, true, tray_index);
   auto franka_state_sender =
       builder.AddSystem<systems::RobotOutputSender>(*plant_, franka_index, false);
 

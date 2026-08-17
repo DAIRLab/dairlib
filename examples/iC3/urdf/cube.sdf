@@ -73,8 +73,8 @@
         
             <drake:point_contact_stiffness>50000.0</drake:point_contact_stiffness>
             <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>      
-          <drake:mu_static>0.40</drake:mu_static>
-          <drake:mu_dynamic>0.40</drake:mu_dynamic>
+          <drake:mu_static>0.25</drake:mu_static>
+          <drake:mu_dynamic>0.25</drake:mu_dynamic>
         </drake:proximity_properties>
 
         </collision>
@@ -89,8 +89,8 @@
 
             <drake:point_contact_stiffness>50000.0</drake:point_contact_stiffness>
             <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>       
-            <drake:mu_static>0.40</drake:mu_static>
-          <drake:mu_dynamic>0.40</drake:mu_dynamic>
+            <drake:mu_static>0.25</drake:mu_static>
+          <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
 
         </collision>
@@ -105,8 +105,8 @@
 
             <drake:point_contact_stiffness>50000.0</drake:point_contact_stiffness>
             <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>             
-            <drake:mu_static>0.40</drake:mu_static>
-            <drake:mu_dynamic>0.40</drake:mu_dynamic>
+            <drake:mu_static>0.25</drake:mu_static>
+            <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
         <collision name="corner_3">
@@ -120,8 +120,8 @@
             
             <drake:point_contact_stiffness>50000.0</drake:point_contact_stiffness>
             <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>   
-            <drake:mu_static>0.40</drake:mu_static>
-            <drake:mu_dynamic>0.40</drake:mu_dynamic>
+            <drake:mu_static>0.25</drake:mu_static>
+            <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
         <collision name="corner_4">
@@ -135,8 +135,8 @@
             
             <drake:point_contact_stiffness>50000.0</drake:point_contact_stiffness>
             <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>   
-            <drake:mu_static>0.40</drake:mu_static>
-            <drake:mu_dynamic>0.40</drake:mu_dynamic>
+            <drake:mu_static>0.25</drake:mu_static>
+            <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
         <collision name="corner_5">
@@ -150,8 +150,8 @@
             
             <drake:point_contact_stiffness>50000.0</drake:point_contact_stiffness>
             <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>   
-            <drake:mu_static>0.40</drake:mu_static>
-            <drake:mu_dynamic>0.40</drake:mu_dynamic>
+            <drake:mu_static>0.25</drake:mu_static>
+            <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
         <collision name="corner_6">
@@ -165,8 +165,8 @@
             
             <drake:point_contact_stiffness>50000.0</drake:point_contact_stiffness>
             <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>   
-            <drake:mu_static>0.40</drake:mu_static>
-            <drake:mu_dynamic>0.40</drake:mu_dynamic>
+            <drake:mu_static>0.25</drake:mu_static>
+            <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
         <collision name="corner_7">
@@ -180,8 +180,8 @@
             
             <drake:point_contact_stiffness>50000.0</drake:point_contact_stiffness>
             <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>   
-            <drake:mu_static>0.40</drake:mu_static>
-            <drake:mu_dynamic>0.40</drake:mu_dynamic>
+            <drake:mu_static>0.25</drake:mu_static>
+            <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
         <collision name="corner_8">
@@ -195,8 +195,8 @@
             
             <drake:point_contact_stiffness>50000.0</drake:point_contact_stiffness>
             <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>   
-            <drake:mu_static>0.40</drake:mu_static>
-            <drake:mu_dynamic>0.40</drake:mu_dynamic>
+            <drake:mu_static>0.25</drake:mu_static>
+            <drake:mu_dynamic>0.25</drake:mu_dynamic>
           </drake:proximity_properties>
         </collision>
 

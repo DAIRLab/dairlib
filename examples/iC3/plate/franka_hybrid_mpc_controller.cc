@@ -19,6 +19,7 @@
 #include "examples/iC3/systems/timed_gate.h"
 #include "examples/iC3/systems/iC3_timing_system.h"
 #include "examples/iC3/systems/perception_noise_filter.h"
+#include "examples/iC3/systems/state_vector_to_basic_vector.h"
 
 #include "multibody/multibody_utils.h"
 #include "c3/multibody/lcs_factory.h"
@@ -169,8 +170,8 @@ int DoMain(int argc, char* argv[]) {
   VectorXd ub_u(VectorXd::Zero(n_u));
 
   // A_x_mpc(2, 2) = 1;
-//   A_x_mpc(3, 3) = 1;
-//   A_x_mpc(4, 4) = 1;
+  A_x_mpc(3, 3) = 1;
+  A_x_mpc(4, 4) = 1;
 
   A_x(0, 0) = 1;
   A_x(1, 1) = 1;
@@ -178,25 +179,29 @@ int DoMain(int argc, char* argv[]) {
   A_x(3, 3) = 1;
   A_x(4, 4) = 1;
 
-  // lb_x_mpc(2) = -0.1; 
+//   lb_x_mpc(2) = -0.1; 
 //   lb_x_mpc(3) = -0.5;
 //   lb_x_mpc(4) = -0.5;
 
-  // ub_x_mpc(2) = 0.1;
+//   ub_x_mpc(2) = 0.1;
 //   ub_x_mpc(3) = 0.5;
 //   ub_x_mpc(4) = 0.5;
 
-  lb_x(0) = -0.05;
-  lb_x(1) = -0.05;
-  lb_x(2) = -0.1; 
-  lb_x(3) = -0.05;
-  lb_x(4) = -0.6;
+  size_t pos = controller_params.end_effector_model.find("offset");
+  std::cout << "OFFSET POS " << pos << std::endl;
+  double z_offset = (pos == std::string::npos) ? 0 : -0.107;
 
-  ub_x(0) = 0.05;
-  ub_x(1) = 0.05;
-  ub_x(2) = 0.1;
-  ub_x(3) = 0.05;
-  ub_x(4) = 0.6;
+  lb_x(0) = -0.08;
+  lb_x(1) = -0.08;
+  lb_x(2) = z_offset - 0.1; 
+  lb_x(3) = -0.5;
+  lb_x(4) = -0.5;
+
+  ub_x(0) = 0.08;
+  ub_x(1) = 0.08;
+  ub_x(2) = z_offset + 0.1;
+  ub_x(3) = 0.5;
+  ub_x(4) = 0.5;
 
   A_u(0, 0) = 1;
   A_u(1, 1) = 1;
@@ -206,15 +211,15 @@ int DoMain(int argc, char* argv[]) {
 
   lb_u(0) = -1;
   lb_u(1) = -1;
-  lb_u(2) = 0;
-  lb_u(3) = -0.2;
-  lb_u(4) = -1.8;
+  lb_u(2) = 6;
+  lb_u(3) = -2;
+  lb_u(4) = -2;
 
   ub_u(0) = 1;
   ub_u(1) = 1;
-  ub_u(2) = 15;
-  ub_u(3) = 0.2;
-  ub_u(4) = 1.8;
+  ub_u(2) = 11;
+  ub_u(3) = 2;
+  ub_u(4) = 2;
 
 
   std::cout << "Before builder " << std::endl;
@@ -257,6 +262,17 @@ int DoMain(int argc, char* argv[]) {
   auto perception_noise_filter = 
       builder.AddSystem<PerceptionNoiseFilter>(controller_params.add_noise);
 
+  auto noisy_object_state_sender =
+      builder.AddSystem<systems::ObjectStateSender>(plant_object);
+
+  auto noisy_object_state_vector =
+      builder.AddSystem<StateVectorToBasicVector>(plant_object);
+
+  auto noisy_object_state_publisher = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
+          lcm_channel_params.noisy_object_state_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));  
+
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::FrankaKinematics>(
           plant_franka, franka_context.get(), plant_object, object_context.get(),
@@ -297,8 +313,13 @@ int DoMain(int argc, char* argv[]) {
                   perception_noise_filter->get_input_port_object_state());
   builder.Connect(perception_noise_filter->get_output_port_object_state(),
                   reduced_order_model_receiver->get_input_port_object_state());   
-                    
-                  
+  builder.Connect(perception_noise_filter->get_output_port_object_state(),
+                  noisy_object_state_vector->get_input_port_state());
+  builder.Connect(noisy_object_state_vector->get_output_port_state(),
+                  noisy_object_state_sender->get_input_port());                     
+  builder.Connect(noisy_object_state_sender->get_output_port(),
+                  noisy_object_state_publisher->get_input_port());         
+
   builder.Connect(radio_sub->get_output_port(),
                   ic3_timing_system->get_input_port_radio());  
 

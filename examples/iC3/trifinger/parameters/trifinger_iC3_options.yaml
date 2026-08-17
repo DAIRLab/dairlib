@@ -6,11 +6,11 @@ num_segments: 8
 
 print_costs: true
 
-N: 240 # REMOVE after importing all options from c3 repo
-dt: 0.03 # REMOVE after importing all options from c3 repo
+N: 300 # REMOVE after importing all options from c3 repo
+dt: 0.04 # REMOVE after importing all options from c3 repo
 
-iter_to_use: 5
-num_timesteps_to_use: 360
+iter_to_use: 6
+num_timesteps_to_use: 300
 
 hold_last_timestep_position: true
 vertical_offset: -0.0

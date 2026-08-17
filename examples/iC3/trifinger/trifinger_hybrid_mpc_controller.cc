@@ -19,6 +19,7 @@
 #include "examples/iC3/systems/timed_gate.h"
 #include "examples/iC3/systems/iC3_timing_system.h"
 #include "examples/iC3/systems/perception_noise_filter.h"
+#include "examples/iC3/systems/state_vector_to_basic_vector.h"
 
 #include "multibody/multibody_utils.h"
 #include "c3/multibody/lcs_factory.h"
@@ -252,36 +253,36 @@ int DoMain(int argc, char* argv[]) {
       A_x(16 + 3*i + 1, 16 + 3*i+1) = 1;
       A_x(16 + 3*i + 2, 16 + 3*i+2) = 1;
 
-      double xy_bound = (i == 0) ? 0.07 : 0.05;
+      double xy_bound = (i == 0) ? 0.08 : 0.06;
 
       lb_x(3*i) = xd(3*i) - xy_bound;
       lb_x(3*i+1) = xd(3*i+1) - xy_bound;
       lb_x(3*i+2) = xd(3*i+2) - 0.01;
 
-      lb_x(16 + 3*i) = -0.1;
-      lb_x(16 + 3*i+1) = -0.1;
-      lb_x(16 + 3*i+2) = -0.1;
+      lb_x(16 + 3*i) = -0.12;
+      lb_x(16 + 3*i+1) = -0.12;
+      lb_x(16 + 3*i+2) = -0.12;
 
       ub_x(3*i) = xd(3*i) + xy_bound;
       ub_x(3*i+1) = xd(3*i+1) + xy_bound;
       ub_x(3*i+2) = xd(3*i+2) + 0.05;
 
-      ub_x(16 + 3*i) = 0.1;
-      ub_x(16 + 3*i+1) = 0.1;
-      ub_x(16 + 3*i+2) = 0.1;
+      ub_x(16 + 3*i) = 0.12;
+      ub_x(16 + 3*i+1) = 0.12;
+      ub_x(16 + 3*i+2) = 0.12;
 
 
       A_x_mpc(16 + 3*i, 16 + 3*i) = 1;
       A_x_mpc(16 + 3*i + 1, 16 + 3*i+1) = 1;
       A_x_mpc(16 + 3*i + 2, 16 + 3*i+2) = 1;
 
-      lb_x_mpc(16 + 3*i) = -0.1;
-      lb_x_mpc(16 + 3*i+1) = -0.1;
-      lb_x_mpc(16 + 3*i+2) = -0.1;
+      lb_x_mpc(16 + 3*i) = -0.12;
+      lb_x_mpc(16 + 3*i+1) = -0.12;
+      lb_x_mpc(16 + 3*i+2) = -0.12;
 
-      ub_x_mpc(16 + 3*i) = 0.1;
-      ub_x_mpc(16 + 3*i+1) = 0.1;
-      ub_x_mpc(16 + 3*i+2) = 0.1;
+      ub_x_mpc(16 + 3*i) = 0.12;
+      ub_x_mpc(16 + 3*i+1) = 0.12;
+      ub_x_mpc(16 + 3*i+2) = 0.12;
     }
 
     for (int i = 0; i < 3; i++) {
@@ -289,13 +290,13 @@ int DoMain(int argc, char* argv[]) {
       A_u(3*i+1, 3*i+1) = 1;
       A_u(3*i+2, 3*i+2) = 1;
       
-      lb_u(3*i) = -2;
-      lb_u(3*i+1) = -2;
-      lb_u(3*i+2) = -1;
+      lb_u(3*i) = -3;
+      lb_u(3*i+1) = -3;
+      lb_u(3*i+2) = -2;
 
-      ub_u(3*i) = 2;
-      ub_u(3*i+1) = 2;
-      ub_u(3*i+2) = 1;
+      ub_u(3*i) = 3;
+      ub_u(3*i+1) = 3;
+      ub_u(3*i+2) = 2;
     }
   }
 
@@ -340,6 +341,17 @@ int DoMain(int argc, char* argv[]) {
   auto perception_noise_filter = 
       builder.AddSystem<PerceptionNoiseFilter>(controller_params.add_noise);
 
+  auto noisy_object_state_sender =
+      builder.AddSystem<systems::ObjectStateSender>(plant_object);
+
+  auto noisy_object_state_vector =
+      builder.AddSystem<StateVectorToBasicVector>(plant_object);
+
+  auto noisy_object_state_publisher = builder.AddSystem(
+      LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
+          lcm_channel_params.noisy_object_state_channel, &lcm,
+          TriggerTypeSet({TriggerType::kForced})));  
+
   auto reduced_order_model_receiver =
     builder.AddSystem<TrifingerKinematics>(
         plant_trifinger, trifinger_context.get(), plant_object, object_context.get(),
@@ -379,10 +391,15 @@ int DoMain(int argc, char* argv[]) {
                   perception_noise_filter->get_input_port_object_state());
   builder.Connect(perception_noise_filter->get_output_port_object_state(),
                   reduced_order_model_receiver->get_input_port_object_state());                    
-                  
+  builder.Connect(perception_noise_filter->get_output_port_object_state(),
+                  noisy_object_state_vector->get_input_port_state());
+  builder.Connect(noisy_object_state_vector->get_output_port_state(),
+                  noisy_object_state_sender->get_input_port());    
+  builder.Connect(noisy_object_state_sender->get_output_port(),
+                  noisy_object_state_publisher->get_input_port());  
+
   builder.Connect(radio_sub->get_output_port(),
                   ic3_timing_system->get_input_port_radio());  
-
   builder.Connect(nominal_position->get_output_port(),
                   controller->get_input_port_nominal_position());
   builder.Connect(ic3_timing_system->get_output_port_timestep(),

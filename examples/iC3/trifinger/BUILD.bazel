@@ -252,6 +252,7 @@ cc_binary(
         "//examples/iC3/systems:timed_gate",
         "//examples/iC3/systems:ic3_timing_system",
         "//examples/iC3/systems:perception_noise_filter",
+        "//examples/iC3/systems:state_vector_to_basic_vector",
         "//systems/controllers:ic3_hybrid_mpc_tracking_controller",
         "//examples/iC3/trifinger/systems:trifinger_systems",
         "@gflags",

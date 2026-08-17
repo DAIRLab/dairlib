@@ -11,20 +11,21 @@ c3_controller_options_file: examples/iC3/plate/parameters/plate_c3_options.yaml
 include_end_effector_orientation: true
 
 run_open_loop: false
-track_dynamically_feasible: true # false is currently broken for c3 tracking
+track_dynamically_feasible: false # false is currently broken for c3 tracking
 
 tool_attachment_frame: [0, 0, 0.107]
-#tool_attachment_frame: [0, 0, 0.307]
+# tool_attachment_frame: [0, 0, 0]
 
 add_noise: false
 
 time_to_wait: 1.0
-ee_init_position: [0.4, -0.35, 0.45]
+# ee_init_position: [0.45, -0.35, 0.343]
+ee_init_position: [0.45, -0.35, 0.45]
 
-x_target: [0, 0, 0,
+x_target: [0, 0, -0.0,
             0, 0,
             0, 0, -1, 0,
-            0, 0, 0,
+            0, 0, 0.022,
             0, 0, 0, 
             0, 0,
             0, 0, 0, 

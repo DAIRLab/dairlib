@@ -39,17 +39,20 @@ PYBIND11_MODULE(robot_lcm_systems, m) {
            py_rvp::reference_internal)
       .def("get_input_port_imu", &RobotOutputSender::get_input_port_imu,
            py_rvp::reference_internal);
-  py::class_<systems::ObjectStateSender, drake::systems::LeafSystem<double>>(
+    py::class_<systems::ObjectStateSender, drake::systems::LeafSystem<double>>(
       m, "ObjectStateSender")
-      .def(py::init<const MultibodyPlant<double>&,
-                    drake::multibody::ModelInstanceIndex>())
+      // Bind 1: Matches ObjectStateSender(const MultibodyPlant<double>&)
+      .def(py::init<const MultibodyPlant<double>&>(),
+           py::arg("plant"))
+      
+      // Bind 2: Matches ObjectStateSender(const MultibodyPlant<double>&, bool, ModelInstanceIndex)
+      .def(py::init<const MultibodyPlant<double>&, bool, drake::multibody::ModelInstanceIndex>(),
+           py::arg("plant"),
+           py::arg("publish_velocities"),
+           py::arg("model_instance_index"))
+      
       .def("get_input_port_state", &systems::ObjectStateSender::get_input_port_state,
            py_rvp::reference_internal);
-  py::class_<systems::ObjectStateReceiver, drake::systems::LeafSystem<double>>(
-      m, "ObjectStateReceiver")
-      .def(py::init<const MultibodyPlant<double>&>())
-      .def(py::init<const MultibodyPlant<double>&,
-                    drake::multibody::ModelInstanceIndex>());
 
   py::class_<systems::RobotCommandSender, drake::systems::LeafSystem<double>>(
       m, "RobotCommandSender")

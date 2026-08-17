@@ -1,5 +1,6 @@
 trifinger_state_channel: TRIFINGER_STATE_SIMULATION # lcmt_robot_output
 object_state_channel: OBJECT_STATE_SIMULATION # lcmt_object_state
+noisy_object_state_channel: NOISY_OBJECT_STATE_SIMULATION # lcmt_object_state
 
 trifinger_input_channel: TRIFINGER_INPUT # lcmt_robot_input
 

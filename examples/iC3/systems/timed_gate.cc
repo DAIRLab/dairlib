@@ -31,7 +31,7 @@ TimedGate::TimedGate(iC3Options ic3_options, int example_idx) :
   } else if (example_idx_ == 1 || example_idx_ == 2) {
     nominal_position_size = 9;
   }          
-  
+  // NOTE: only used for final timestep holding, actual offset gets added in trajectory generator
   nominal_position_port_ =
       this->DeclareVectorInputPort(
               "nominal_position", BasicVector<double>(nominal_position_size))
@@ -192,42 +192,43 @@ void TimedGate::OutputActorTrajectory(
       output_traj->utime = context.get_time() * 1e6;
 
     } else if (example_idx_ == 1 || example_idx_ == 2) {
-      VectorXd nominal_position_offset = nominal_position->get_value();
+      return;
+      // VectorXd nominal_position_offset = nominal_position->get_value();
 
-      if (timestep > N_) {
-        if (hold_final_position_) {
-          LcmTrajectory::Trajectory trajectory = x_trajectory.GetTrajectory(final_trajectory_name);
-          VectorXd last_x = trajectory.datapoints.col(trajectory.datapoints.cols() - 1);
-          nominal_position_offset = last_x.segment(0, 9);
-        } 
-      }
+      // if (timestep > N_) {
+      //   if (hold_final_position_) {
+      //     LcmTrajectory::Trajectory trajectory = x_trajectory.GetTrajectory(final_trajectory_name);
+      //     VectorXd last_x = trajectory.datapoints.col(trajectory.datapoints.cols() - 1);
+      //     nominal_position_offset = last_x.segment(0, 9);
+      //   } 
+      // }
 
-      MatrixXd positions = nominal_position_offset.replicate(1, 2);
-      MatrixXd forces = MatrixXd::Zero(9, 2);
+      // MatrixXd positions = nominal_position_offset.replicate(1, 2);
+      // MatrixXd forces = MatrixXd::Zero(9, 2);
 
-      VectorXd timestamps(2);
-      for (int t = 0; t < 2; t++) {
-        timestamps(t) = t * 1.0;
-      }
+      // VectorXd timestamps(2);
+      // for (int t = 0; t < 2; t++) {
+      //   timestamps(t) = t * 1.0;
+      // }
       
-      LcmTrajectory::Trajectory position_traj;
-      position_traj.traj_name = position_trajectory_name;
-      position_traj.datatypes = std::vector<std::string>(positions.rows(), "double"); 
-      position_traj.datapoints = positions;
-      position_traj.time_vector = timestamps;
+      // LcmTrajectory::Trajectory position_traj;
+      // position_traj.traj_name = position_trajectory_name;
+      // position_traj.datatypes = std::vector<std::string>(positions.rows(), "double"); 
+      // position_traj.datapoints = positions;
+      // position_traj.time_vector = timestamps;
 
-      LcmTrajectory::Trajectory force_traj;
-      force_traj.traj_name = force_trajectory_name;
-      force_traj.datatypes = std::vector<std::string>(forces.rows(), "double"); 
-      force_traj.datapoints = forces;
-      force_traj.time_vector = timestamps;
+      // LcmTrajectory::Trajectory force_traj;
+      // force_traj.traj_name = force_trajectory_name;
+      // force_traj.datatypes = std::vector<std::string>(forces.rows(), "double"); 
+      // force_traj.datapoints = forces;
+      // force_traj.time_vector = timestamps;
 
-      LcmTrajectory lcm_trajectory({position_traj}, {position_trajectory_name},
-                                  position_trajectory_name, position_trajectory_name, false);
-      lcm_trajectory.AddTrajectory(force_trajectory_name, force_traj);   
+      // LcmTrajectory lcm_trajectory({position_traj}, {position_trajectory_name},
+      //                             position_trajectory_name, position_trajectory_name, false);
+      // lcm_trajectory.AddTrajectory(force_trajectory_name, force_traj);   
 
-      output_traj->saved_traj = lcm_trajectory.GenerateLcmObject();
-      output_traj->utime = context.get_time() * 1e6;
+      // output_traj->saved_traj = lcm_trajectory.GenerateLcmObject();
+      // output_traj->utime = context.get_time() * 1e6;
     }
     
   } 

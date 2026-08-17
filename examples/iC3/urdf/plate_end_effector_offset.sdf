@@ -4,10 +4,13 @@
 
     <model name="plate_model">
 
-      <!-- Plate -->
+       <!-- Plate -->
       <link name="plate">
         <pose>0 0 0 0 0 0</pose>
+
         <inertial>
+          <!-- CoM of the disk is 0.107 above the pivot/joint origin -->
+          <pose>0 0 0.107 0 0 0</pose>
           <mass>0.85</mass>
           <inertia>
             <ixx>0.01029</ixx>
@@ -18,26 +21,42 @@
             <izz>0.02057</izz>
           </inertia>
         </inertial>
+
         <visual name="plate_visual">
+          <pose>0 0 0.107 0 0 0</pose>
           <geometry>
             <cylinder>
               <radius>0.2</radius>
-              <length> 0.02 </length>
+              <length>0.02</length>
             </cylinder>
           </geometry>
           <material><diffuse>0.1 0.1 0.1 1</diffuse></material>
         </visual>
+
+        <!-- Optional: visualize the rod so you can see the geometry -->
+        <visual name="rod_visual">
+          <pose>0 0 0.0535 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.01</radius>
+              <length>0.107</length>
+            </cylinder>
+          </geometry>
+          <material><diffuse>0.6 0.6 0.6 1</diffuse></material>
+        </visual>
+
         <collision name="plate_collision">
+          <pose>0 0 0.107 0 0 0</pose>
           <geometry>
             <cylinder>
               <radius>0.2</radius>
-              <length> 0.02 </length>
+              <length>0.02</length>
             </cylinder>
           </geometry>
           <drake:proximity_properties>
             <drake:mu_static>0.5</drake:mu_static>
             <drake:mu_dynamic>0.5</drake:mu_dynamic>
-            <drake:hunt_crossley_dissipation>1.0</drake:hunt_crossley_dissipation>
+            <drake:hunt_crossley_dissipation>10.0</drake:hunt_crossley_dissipation>
           </drake:proximity_properties>
         </collision>
       </link>

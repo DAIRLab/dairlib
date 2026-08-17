@@ -41,8 +41,10 @@ void PerceptionNoiseFilter::OutputNoisyObjectState(
   VectorXd q_object = object_state->GetPositions();
   VectorXd v_object = object_state->GetVelocities();
   DRAKE_DEMAND(q_object.size() == 7);
+  DRAKE_DEMAND(v_object.size() == 6);
 
   if (!add_noise_) {
+
     output_state->SetPositions(q_object);
     output_state->SetVelocities(v_object);
     return;
@@ -94,7 +96,6 @@ void PerceptionNoiseFilter::OutputNoisyObjectState(
   q_object(6) += z_noise;
 
   std::cout << "q object noisy " << q_object.transpose() << std::endl;
-
 
   output_state->SetPositions(q_object);
   output_state->SetVelocities(v_object);

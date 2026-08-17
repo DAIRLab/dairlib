@@ -4,10 +4,11 @@ franka_model: package://drake_models/franka_description/urdf/panda_arm.urdf
 end_effector_model: examples/iC3/urdf/plate_end_effector.sdf
 end_effector_name: plate
 
+# tool_attachment_frame: [0, 0, 0]
 tool_attachment_frame: [0, 0, 0.107]
-#tool_attachment_frame: [0, 0, 0.307]
 
-neutral_position: [0.4, -0.4, 0.45]
+# neutral_position: [0.45, -0.35, 0.343]
+neutral_position: [0.4, -0.35, 0.45]
 
 x_scale: 0.1
 y_scale: 0.1
@@ -37,25 +38,25 @@ W_lambda_h_reg: [ 0.0001, 0.0001, 0.0001,
                   0.0001, 0.0001, 0.0001 ]
 
 w_elbow: 10
-elbow_kp: 100
-elbow_kd: 20
+elbow_kp: 50
+elbow_kd: 10
 mid_link_target: 1.75
 
-w_joint_limit: 1000000.0
+w_joint_limit: 10000.0
 joint_limit_buffer: 0.2
 
 EndEffectorW:
-  [100, 0, 0,
-   0, 100, 0,
-   0, 0, 300]
+  [600, 0, 0,
+   0, 600, 0,
+   0, 0, 600]
 EndEffectorKp:
-  [ 200, 0, 0,
-    0, 200, 0,
+  [ 300, 0, 0,
+    0, 300, 0,
     0, 0, 600 ]
 EndEffectorKd:
-  [ 60, 0, 0,
-    0, 60, 0,
-    0, 0, 60 ]
+  [ 80, 0, 0,
+    0, 80, 0,
+    0, 0, 80 ]
 EndEffectorRotW:
   [ 400, 0, 0,
     0, 400, 0,
@@ -65,14 +66,14 @@ EndEffectorRotKp:
     0, 300, 0,
     0, 0, 300 ]
 EndEffectorRotKd:
-  [ 50, 0, 0,
-    0, 50, 0,
-    0, 0, 50 ]
+  [ 20, 0, 0,
+    0, 20, 0,
+    0, 0, 20 ]
 LambdaEndEffectorW:
-  [ 600, 0, 0,
-    0, 600, 0,
-    0, 0, 600 ]
+  [ 5, 0, 0,
+    0, 5, 0,
+    0, 0, 5 ]
 LambdaEndEffectorTauW:
-  [ 2000, 0, 0,
-    0, 2000, 0,
-    0, 0, 2000 ]
+  [ 500, 0, 0,
+    0, 500, 0,
+    0, 0, 500 ]

@@ -255,7 +255,7 @@ int DoMain(int argc, char* argv[]) {
   osc->AddTrackingData(std::move(ee_position_tracking_data_0));
   osc->AddTrackingData(std::move(ee_position_tracking_data_120));
   osc->AddTrackingData(std::move(ee_position_tracking_data_240));
-  osc->AddForceTrackingData(std::move(end_effector_force_tracking_data));
+  osc->AddForceTrackingData(std::move(end_effector_force_tracking_data)); 
   osc->SetAccelerationCostWeights(gains.W_acceleration);
   osc->SetInputCostWeights(gains.W_input_regularization);
   osc->SetInputSmoothingCostWeights(gains.W_input_smoothing_regularization);

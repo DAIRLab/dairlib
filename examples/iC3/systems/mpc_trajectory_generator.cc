@@ -86,7 +86,6 @@ MPCTrajectoryGenerator::MPCTrajectoryGenerator(
                                      drake::Value<C3Output::C3Solution>())
           .get_index();
 
-  // HARDCODED
   int nominal_position_size;
   if (example_idx_ == 0) {
     nominal_position_size = 3;
@@ -122,8 +121,6 @@ void MPCTrajectoryGenerator::OutputActorTrajectory(
       this->EvalInputValue<C3Output::C3Solution>(context, solution_port_);
 
   DRAKE_DEMAND(c3_solution->x_sol_.rows() == n_q_ + n_v_);
-  const BasicVector<double>* nominal_position =
-    (BasicVector<double>*)this->EvalVectorInput(context, nominal_position_port_);
 
   const TimestampedVector<double>* x_lcs_vector =
     (TimestampedVector<double>*)this->EvalVectorInput(context, x_lcs_port_);
@@ -139,9 +136,20 @@ void MPCTrajectoryGenerator::OutputActorTrajectory(
   }
 
   for (int i = 0; i < x_hat.cols(); i++) {
-    std::cout << "mpc x sol " << i << " " << x_hat.col(i).segment(9, 7).transpose() << std::endl;
+    if (example_idx_ == 0) {
+      std::cout << "mpc x sol plate, cube " << i << " " << x_hat.col(i).segment(0, 12).transpose() << std::endl;
+    } else if (example_idx_ == 1 || example_idx_ == 2) {
+      std::cout << "mpc x sol cube " << i << " " << x_hat.col(i).segment(9, 7).transpose() << std::endl;
+    }
   }
 
+  for (int i = 0; i < u_hat.cols(); i++) {
+    if (example_idx_ == 0) {
+      std::cout << "mpc u sol " << i << " " << u_hat.col(i).transpose() << std::endl;
+    } else if (example_idx_ == 1 || example_idx_ == 2) {
+      std::cout << "mpc u sol " << i << " " << u_hat.col(i).transpose() << std::endl;
+    }
+  }
 
   if (track_dynamically_feasible_) {
     auto simulate_start = std::chrono::high_resolution_clock::now();
@@ -170,25 +178,18 @@ void MPCTrajectoryGenerator::OutputActorTrajectory(
       }
     }
   }
-  std::cout << "Before calc gravity " << std::endl;
 
-  VectorXd tau_g = plant_.CalcGravityGeneralizedForces(*plant_context_);
+  // Stop double counting gravity
   if (example_idx_ == 0) {
-    double gravity = tau_g(2); 
-
-    // Gravity not accounted for in external force
     for (int i = 0; i < u_hat.cols(); i++) {
-      u_hat.col(i)(2) += gravity;
+      u_hat.col(i)(2) -= (9.81 * 0.85);
     }
-
   } else if (example_idx_ == 1 || example_idx_ == 2) {
-
     for (int i = 0; i < u_hat.cols(); i++) {
-      u_hat.col(i)(2) += (tau_g(2));
-      u_hat.col(i)(5) += (tau_g(5));
-      u_hat.col(i)(8) += (tau_g(8));
+      u_hat.col(i)(2) -= (9.81 * 0.02);
+      u_hat.col(i)(5) -= (9.81 * 0.02);
+      u_hat.col(i)(8) -= (9.81 * 0.02);
     }
-
   }
 
 	// Make non-degenerate trajectory for N = 1
@@ -199,8 +200,6 @@ void MPCTrajectoryGenerator::OutputActorTrajectory(
 
   VectorXd time_vector;
 
-  VectorXd nom_pos = nominal_position->get_value();
-
   // HARDCODED
   if (example_idx_ == 0) {
     int ee_pos_idx = 0;
@@ -208,10 +207,17 @@ void MPCTrajectoryGenerator::OutputActorTrajectory(
     int force_idx = 0;
     int torque_idx = 3;
 
+    const BasicVector<double>* nominal_position =
+      (BasicVector<double>*)this->EvalVectorInput(context, nominal_position_port_);
+
+    for (int i = 0; i < x_hat.cols(); i++) {
+      x_hat.col(i).segment(0, 3) += nominal_position->get_value();
+    }
+
     if (N_ == 1) {
       positions = MatrixXd::Zero(3, 2);
-      positions.col(0) = x_hat.middleRows(ee_pos_idx, 3).col(0) + nom_pos;
-      positions.col(1) = x_hat.middleRows(ee_pos_idx, 3).col(1) + nom_pos;
+      positions.col(0) = x_hat.middleRows(ee_pos_idx, 3).col(0);
+      positions.col(1) = x_hat.middleRows(ee_pos_idx, 3).col(1);
 
       raw_orientations = MatrixXd::Zero(2, 2);
       raw_orientations.col(0) = x_hat.middleRows(ee_rot_idx, 2).col(0);
@@ -235,7 +241,7 @@ void MPCTrajectoryGenerator::OutputActorTrajectory(
       // Reapply offset
       positions = x_hat.middleRows(ee_pos_idx, 3);
       for (int i = 0; i < positions.cols(); i++) {
-        positions.col(i) = positions.col(i) + nom_pos;
+        positions.col(i) = positions.col(i);
       }
       raw_orientations = x_hat.middleRows(ee_rot_idx, 2);
 
@@ -282,7 +288,6 @@ void MPCTrajectoryGenerator::OutputActorTrajectory(
 
   }
 	
-  std::cout << "Before make trajs " << std::endl;
 
   LcmTrajectory::Trajectory end_effector_traj;
   end_effector_traj.traj_name = "end_effector_position_target";

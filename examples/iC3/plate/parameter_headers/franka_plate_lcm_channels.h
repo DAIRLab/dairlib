@@ -12,6 +12,7 @@ struct FrankaPlateLcmChannels {
   std::string osc_debug_channel;
   std::string c3_actor_channel;
   std::string c3_object_channel;
+  std::string noisy_object_state_channel;
   std::string c3_force_channel;
   std::string c3_debug_output_channel;
   std::string c3_target_state_channel;
@@ -32,6 +33,7 @@ struct FrankaPlateLcmChannels {
     a->Visit(DRAKE_NVP(osc_debug_channel));
     a->Visit(DRAKE_NVP(c3_actor_channel));
     a->Visit(DRAKE_NVP(c3_object_channel));
+    a->Visit(DRAKE_NVP(noisy_object_state_channel));
     a->Visit(DRAKE_NVP(c3_force_channel));
     a->Visit(DRAKE_NVP(c3_debug_output_channel));
     a->Visit(DRAKE_NVP(c3_target_state_channel));

@@ -1,6 +1,7 @@
 
 package(default_visibility = ["//visibility:public"])
-
+load("@rules_python//python:defs.bzl", "py_binary")
+load("@drake//tools/install:install.bzl", "install")
 
 cc_library(
     name = "plate_parameters",
@@ -123,6 +124,7 @@ cc_binary(
         "//examples/iC3/systems:timed_gate",
         "//examples/iC3/systems:ic3_timing_system",
         "//examples/iC3/systems:perception_noise_filter",
+        "//examples/iC3/systems:state_vector_to_basic_vector",
         "//systems/controllers:ic3_hybrid_mpc_tracking_controller",
         "@gflags",
     ],
@@ -153,5 +155,17 @@ cc_binary(
         "//systems/visualization:lcm_visualization_systems",
         "@drake//:drake_shared_library",
         "@gflags",
+    ],
+)
+
+
+
+py_binary(
+    name = "optuna_franka_plate",
+    srcs = ["optuna_franka_plate.py"],
+    main = "optuna_franka_plate.py",
+    deps = [
+        "//lcmtypes:lcmtypes_robot_py",
+        "@lcm//:lcm-python",
     ],
 )

@@ -20,12 +20,12 @@ add_noise: false
 
 time_to_wait: 1.0
 # ee_init_position: [0.45, -0.35, 0.343]
-ee_init_position: [0.45, -0.35, 0.45]
+ee_init_position: [0.4, -0.35, 0.45]
 
 x_target: [0, 0, -0.0,
             0, 0,
             0, 0, -1, 0,
-            0, 0, 0.022,
+            0.13, 0, 0.022,
             0, 0, 0, 
             0, 0,
             0, 0, 0, 

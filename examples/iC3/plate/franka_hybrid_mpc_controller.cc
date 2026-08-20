@@ -194,14 +194,14 @@ int DoMain(int argc, char* argv[]) {
   lb_x(0) = -0.08;
   lb_x(1) = -0.08;
   lb_x(2) = z_offset - 0.1; 
-  lb_x(3) = -0.5;
-  lb_x(4) = -0.5;
+  lb_x(3) = -0.75;
+  lb_x(4) = -0.75;
 
   ub_x(0) = 0.08;
   ub_x(1) = 0.08;
   ub_x(2) = z_offset + 0.1;
-  ub_x(3) = 0.5;
-  ub_x(4) = 0.5;
+  ub_x(3) = 0.75;
+  ub_x(4) = 0.75;
 
   A_u(0, 0) = 1;
   A_u(1, 1) = 1;
@@ -211,15 +211,15 @@ int DoMain(int argc, char* argv[]) {
 
   lb_u(0) = -1;
   lb_u(1) = -1;
-  lb_u(2) = 6;
-  lb_u(3) = -2;
-  lb_u(4) = -2;
+  lb_u(2) = 9.81 * 0.85 - 3.5;
+  lb_u(3) = -2.4;
+  lb_u(4) = -2.4;
 
   ub_u(0) = 1;
   ub_u(1) = 1;
-  ub_u(2) = 11;
-  ub_u(3) = 2;
-  ub_u(4) = 2;
+  ub_u(2) = 9.81 * 0.85 + 3.5;
+  ub_u(3) = 2.4;
+  ub_u(4) = 2.4;
 
 
   std::cout << "Before builder " << std::endl;

@@ -1,4 +1,4 @@
-ee_file: "examples/iC3/urdf/plate.sdf" 
+bazel-bin/examples/iC3/visualization/trajectory_video_plateee_file: "examples/iC3/urdf/plate.sdf" 
 cube_file: "examples/iC3/urdf/pancake.sdf" 
 
 visualizer_publish_rate: 30

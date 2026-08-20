@@ -4,13 +4,13 @@ cube_file: "examples/iC3/urdf/pancake.sdf"
 visualizer_publish_rate: 30
 
 # match with iC3 params
-ic3_iter: 0
-trajectory_length: 60
+ic3_iter: 5
+trajectory_length: 80
 
-visualize_c3_traj: true
+visualize_c3_traj: false
 
 playback_speed: 0.5
-dt: 0.04
+dt: 0.02
 
 trajectory_lcm_channel_x: "iC3_TRAJECTORY_X"
 

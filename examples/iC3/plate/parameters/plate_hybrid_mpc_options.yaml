@@ -9,11 +9,11 @@ quaternion_weight: 500
 
 w_Q: 10
 w_R: 100
-w_S: 500
+w_S: 100
 w_G: 5000
 
 accel_cost: 0
-q_vector: [5000, 5000, 20000,
+q_vector: [5000, 5000, 2000000,
            8000, 8000, 
            1, 1, 1, 1, 
            1000, 1000, 1000, 
@@ -22,7 +22,7 @@ q_vector: [5000, 5000, 20000,
            1, 1, 1, 
            1, 1, 1]
 
-r_vector: [1, 1, 1, 1, 1]
+r_vector: [1, 1, 10, 1, 1]
 
 s_vector: [1, 1, 1, 1,
            1, 1, 1, 1, 
@@ -51,8 +51,8 @@ lcs_factory_options:
   contact_model: "anitescu"
   num_contacts: 8
   spring_stiffness: 0
-  N: 4
-  dt: 0.01
+  N: 3
+  dt: 0.02
   contact_pair_configs:
     - body_A: "pancake" # TODO: CHANGE LCS MODEL, THIS IS NOT A CUBE LOL
       body_A_collision_geom_indices: [1, 2, 3, 4, 5, 6, 7, 8]

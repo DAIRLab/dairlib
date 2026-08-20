@@ -4,13 +4,13 @@ cube_file: "examples/iC3/urdf/cube.sdf"
 visualizer_publish_rate: 30
 
 # match with iC3 params
-ic3_iter: 6
-trajectory_length: 120
+ic3_iter: 3
+trajectory_length: 480
 
 visualize_c3_traj: true
 
 playback_speed: 1.0
-dt: 0.04
+dt: 0.025
 
 trajectory_lcm_channel_x: "iC3_TRAJECTORY_X"
 

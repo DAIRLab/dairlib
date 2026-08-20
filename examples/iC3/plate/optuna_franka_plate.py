@@ -52,20 +52,20 @@ LCM_URL = "udpm://239.255.76.67:7667?ttl=0"
 # workflow timing
 SETTLE_TIMEOUT = 0.5      # s to wait for the robot to settle after setup
 SETTLE_ATTEMPTS = 5       # how many times to retry "setup"
-RUN_TIME = 3.0          # s to run the hybrid mpc controller per trial
+RUN_TIME = 4.0          # s to run the hybrid mpc controller per trial
 
-SETTLE_TARGET = np.array([0.58, -0.35, 0.47])   # object xyz to settle at
+SETTLE_TARGET = np.array([0.53, -0.35, 0.47])   # object xyz to settle at
 SETTLE_POS_TOL = 0.01                           # 1 cm
-SETTLE_HOLD = 0.15                               # seconds it must stay within tol
+SETTLE_HOLD = 0.25                               # seconds it must stay within tol
 HYBRID_STARTUP_DELAY = 0.25                       # let setup fully stabilize
 EPISODE_RETRY_DELAY = 0.25                        # pause before retrying a dead episode
 MAX_EPISODE_RETRIES = 5
 
 # objective target (the pose you want the object to end at)
-TARGET_XYZ = np.array([0.45, -0.35, 0.47])
+TARGET_XYZ = np.array([0.53, -0.35, 0.47])
 TARGET_QUAT = np.array([0.0, 0.0, -1.0, 0.0])   # set to None to ignore orientation
-OBJ_POS_W = 6
-Y_POS_MULTIPLIER = 3
+OBJ_POS_W = 8
+Y_POS_MULTIPLIER = 2
 
 FAILED_SETTLE_PENALTY = 1e4
 CRASH_PENALTY = 1e4
@@ -156,12 +156,10 @@ class Monitor:
                 recent = [(t, v) for (t, v) in self.obj_buf
                           if now - t <= SETTLE_HOLD]
 
-            if len(recent) < 5:
-                return False
-
             # every sample in the window must be within tolerance
             for (_, pos) in recent:
                 xyz = pos[4:7]                       # [qw,qx,qy,qz, x,y,z] -> xyz
+                print(xyz)
                 if np.linalg.norm(xyz - SETTLE_TARGET) > SETTLE_POS_TOL:
                     return False
             return True
@@ -229,6 +227,25 @@ class Proc:
 # ======================================================================
 # Objective computation
 # ======================================================================
+def body_z_axis(quat):
+    """World-frame direction of the body z-axis, given quat = [w, x, y, z]."""
+    w, x, y, z = quat
+    return np.array([
+        2.0 * (x * z + w * y),
+        2.0 * (y * z - w * x),
+        1.0 - 2.0 * (x * x + y * y),
+    ])
+
+def z_axis_error(quat, target_quat):
+    """Angle (radians) between current and target body z-axes.
+    0 = aligned, pi = fully flipped. Ignores spin about z."""
+    z_cur = body_z_axis(quat)
+    z_tgt = body_z_axis(target_quat)
+    z_cur /= np.linalg.norm(z_cur)
+    z_tgt /= np.linalg.norm(z_tgt)
+    d = np.clip(np.dot(z_cur, z_tgt), -1.0, 1.0)
+    return np.arccos(d)   # 0 .. pi
+
 def compute_objective(monitor):
     result = monitor.object_final_state()
     if result is None:
@@ -241,15 +258,17 @@ def compute_objective(monitor):
 
     ori_weight = 0
     pos_weight = 1
-    if (d[0]**2 + d[1]**2 < 0.06 and xyz[2] > 0.45):
+    if (d[0]**2 + d[1]**2 < 0.06 and xyz[2] > 0.42):
         print("ON PLATE")
         ori_weight = 3
         pos_weight = 0
 
     if TARGET_QUAT is not None:
         dq = min(1.0, abs(float(np.dot(quat, TARGET_QUAT))))
+        ori_err_z = z_axis_error(quat, TARGET_QUAT)   # radians, 0..pi
         ori_err = 2.0 * np.arccos(dq)   # radians
-        return pos_weight * pos_cost + ori_weight * ori_err
+        return pos_weight * pos_cost + ori_weight * (0.25 * ori_err + 0.75 * ori_err_z)
+        
     return pos_cost
 
 
@@ -367,6 +386,7 @@ def run_trial(params, trial_number, trial):
     mpc_params["w_R"] = params["w_R"]
     mpc_params["q_vector"][0] = params["xy_cost"]
     mpc_params["q_vector"][1] = params["xy_cost"]
+    mpc_params["q_vector"][2] = params["z_cost"]
     mpc_params["q_vector"][3] = params["rot_cost"]
     mpc_params["q_vector"][4] = params["rot_cost"]
     mpc_params["quaternion_weight"] = params["quat_weight"]
@@ -407,6 +427,7 @@ def objective(trial):
     params = {
         "w_R": trial.suggest_int("w_R", 10, 1000, step=10),
         "xy_cost": trial.suggest_int("xy_cost", 500, 50000, step=500),
+        "z_cost": trial.suggest_int("z_cost", 500, 100000, step=500),
         "rot_cost": trial.suggest_int("rot_cost", 500, 25000, step=500),
         "quat_weight": trial.suggest_int("quat_weight", 50, 1000, step=50),
         "Kp_xy": trial.suggest_int("Kp_xy", 20, 500, step=20),

@@ -1,4 +1,4 @@
-num_iters: 3
+num_iters: 5
 add_position_constraints: false
 add_input_constraints: true
 
@@ -6,11 +6,11 @@ num_segments: 3
 
 print_costs: true
 
-N: 160 # REMOVE after importing all options from c3 repo
-dt: 0.01 # REMOVE after importing all options from c3 repo
+N: 80 # REMOVE after importing all options from c3 repo
+dt: 0.02 # REMOVE after importing all options from c3 repo
 
-iter_to_use: 3
-num_timesteps_to_use: 160
+iter_to_use: 5
+num_timesteps_to_use: 80
 
 rollout_dt_scaling: 2
 

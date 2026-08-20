@@ -69,15 +69,7 @@ iC3HybridMpcTrackingController::iC3HybridMpcTrackingController(
 
   lcs_factory_.SetNewDt(dt_);
 
-  // TODO: make this not bad
-  if (example_idx_ == 0) {
-    n_lambda_ = 8 * 4;
-  } else if (example_idx_ == 1) {
-    n_lambda_ = 7 * 4;
-  } else if (example_idx_ == 2) {
-    n_lambda_ = 11 * 4;
-  }
-
+  n_lambda_ = c3::multibody::LCSFactory::GetNumContactVariables(mpc_options.lcs_factory_options);
   std::cout << "n lambda " << n_lambda_ << std::endl;
 
   // Add decision variables
@@ -292,6 +284,10 @@ drake::systems::EventStatus iC3HybridMpcTrackingController::ComputePlan(
   drake::VectorX<double> x_lcs = lcs_x->get_data();  
   discrete_state->get_mutable_value(plan_start_time_index_)[0] =
       lcs_x->get_timestamp();
+
+  for (int quat_idx : mpc_options_.quaternion_indices) {
+    x_lcs.segment(quat_idx, 4) = x_lcs.segment(quat_idx, 4).normalized();
+  }
 
   if (example_idx_ == 0) {
     const BasicVector<double>* nominal_position =

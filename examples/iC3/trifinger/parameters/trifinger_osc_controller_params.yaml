@@ -4,17 +4,17 @@ trifinger_model: examples/iC3/trifinger/robot_properties_fingers/urdf/trifinger.
 end_effector_model: examples/iC3/urdf/fingertips.sdf
 end_effector_names: ["fingertip_1", "fingertip_2", "fingertip_3"]
 
-# neutral_position: [[0, 0.07, 0.05],  # finger 0
-#                    [ 0.07, -0.055, 0.05],  # finger 120
-#                    [-0.07, -0.055, 0.05]]  # finger 240
+neutral_position: [[0, 0.07, 0.05],  # finger 0
+                   [ 0.07, -0.055, 0.05],  # finger 120
+                   [-0.07, -0.055, 0.05]]  # finger 240
 
 # neutral_position: [[0, 0.07, 0.05],  # finger 0
 #                    [ 0.07, -0.045, 0.05],  # finger 120
 #                    [-0.07, -0.045, 0.05]]  # finger 240
 
-neutral_position: [[0, 0.07, 0.05],  # finger 0
-                   [ 0.07, -0.03, 0.05],  # finger 120
-                   [-0.07, -0.03, 0.05]]  # finger 240
+# neutral_position: [[0, 0.07, 0.05],  # finger 0
+#                    [ 0.07, -0.03, 0.05],  # finger 120
+#                    [-0.07, -0.03, 0.05]]  # finger 240
 
 # task space velocity constraints
 # velocity_lower_bound: [[-0.12, -0.12, -0.1],  # finger 0

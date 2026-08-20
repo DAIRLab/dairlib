@@ -28,9 +28,11 @@ realtime_rate: 1.0
 #q_init_franka: [-1.6, 1, 1.46, -1.64, 2.13, 1.45, 0.02]
 
 # with centered plate
-q_init_franka: [-1.9, 1.75, 1.68, -2.03, 1.46, 1.75, -0.11]
+q_init_franka: [-2.05, 1.75, 1.66, -2.17, 1.47, 1.75, -0.09] # ee at [0.4, -0.35, 0.45]
+# q_init_franka: [-1.9, 1.75, 1.68, -2.03, 1.46, 1.75, -0.11] # ee at [0.45, -0.35, 0.45]
+# q_init_franka: [-2.025, 1.750, 1.778, -2.156, 1.533, 1.841, -0.108] # ee at [0.4, -0.35, 0.5]
 
-q_init_object: [1, 0, 0, 0, 0.58, -0.35, 0.5]
+q_init_object: [1, 0, 0, 0, 0.53, -0.35, 0.48]
 
 visualize_workspace: false
 visualize_pose_trace: false # BROKEN

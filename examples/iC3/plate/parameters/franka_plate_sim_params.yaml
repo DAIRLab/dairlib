@@ -20,7 +20,7 @@ world_z_limits: [0.35, 0.7]
 
 external_force_scaling: [10.0, 10.0, 10.0]
 
-dt: 0.0003
+dt: 0.0005
 realtime_rate: 1.0
 
 # will's q init

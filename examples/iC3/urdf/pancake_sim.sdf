@@ -78,7 +78,7 @@
             </cylinder>
           </geometry>
         <drake:proximity_properties>
-          <drake:hunt_crossley_dissipation>1.0</drake:hunt_crossley_dissipation>      
+          <drake:hunt_crossley_dissipation>2.0</drake:hunt_crossley_dissipation>      
           <drake:mu_static>0.25</drake:mu_static>
           <drake:mu_dynamic>0.25</drake:mu_dynamic>
         </drake:proximity_properties>

@@ -1,4 +1,4 @@
-<?xml version="1.0"?>
+<?xml version="2"?>
 <sdf version="1.7">
   <world name="plate_world">
 
@@ -37,7 +37,7 @@
           <drake:proximity_properties>
             <drake:mu_static>0.5</drake:mu_static>
             <drake:mu_dynamic>0.5</drake:mu_dynamic>
-            <drake:hunt_crossley_dissipation>1.0</drake:hunt_crossley_dissipation>
+            <drake:hunt_crossley_dissipation>2.0</drake:hunt_crossley_dissipation>
           </drake:proximity_properties>
         </collision>
       </link>

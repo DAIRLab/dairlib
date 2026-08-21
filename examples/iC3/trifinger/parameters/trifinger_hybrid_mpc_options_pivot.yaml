@@ -66,19 +66,19 @@ lcs_factory_options:
       body_A_collision_geom_indices: [0]
       body_B: "cube"
       body_B_collision_geom_indices: [0]
-      mu: 0.50
+      mu: 0.4
       num_friction_directions: 2
     - body_A: "fingertip_2"
       body_A_collision_geom_indices: [0]
       body_B: "cube"
       body_B_collision_geom_indices: [0]
-      mu: 0.50
+      mu: 0.4
       num_friction_directions: 2
     - body_A: "fingertip_3"
       body_A_collision_geom_indices: [0]
       body_B: "cube"
       body_B_collision_geom_indices: [0]
-      mu: 0.50
+      mu: 0.4
       num_friction_directions: 2
     - body_A: "cube"
       body_A_collision_geom_indices: [1, 2, 3, 4, 5, 6, 7, 8]

@@ -14,6 +14,7 @@
 #include <c3/core/lcs.h>
 #include <c3/systems/framework/c3_output.h>
 #include <c3/systems/c3_controller_options.h>
+#include <c3/multibody/lcs_factory.h>
 #include <drake/common/find_resource.h>
 
 #include "examples/iC3/iC3_options.h"

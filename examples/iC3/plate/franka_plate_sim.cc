@@ -1,6 +1,7 @@
 #include <math.h>
 
 #include <vector>
+#include <iostream>
 
 #include <dairlib/lcmt_radio_out.hpp>
 #include <drake/common/find_resource.h>
@@ -131,6 +132,41 @@ int DoMain(int argc, char* argv[]) {
 
   plant.Finalize();
   /* -------------------------------------------------------------------------------------------*/
+// Print contact solver and model
+  std::cout << "=== Drake Contact Configuration ===" << std::endl;
+  std::cout << "Time step (dt): " << plant.time_step() << " s" << std::endl;
+
+  // 1. Check Discrete Contact Solver (SAP, TAMSI, etc.)
+  drake::multibody::DiscreteContactSolver solver = plant.get_discrete_contact_solver();
+  switch (solver) {
+    case drake::multibody::DiscreteContactSolver::kSap:
+      std::cout << "Discrete Contact Solver: SAP" << std::endl;
+      break;
+    case drake::multibody::DiscreteContactSolver::kTamsi:
+      std::cout << "Discrete Contact Solver: TAMSI" << std::endl;
+      break;
+    default:
+      std::cout << "Discrete Contact Solver: Unknown / Default" << std::endl;
+      break;
+  }
+
+  // 2. Check Contact Model (Point, Hydroelastic, etc.)
+  drake::multibody::ContactModel model = plant.get_contact_model();
+  switch (model) {
+    case drake::multibody::ContactModel::kPoint:
+      std::cout << "Contact Model: Point Contact" << std::endl;
+      break;
+    case drake::multibody::ContactModel::kHydroelastic:
+      std::cout << "Contact Model: Hydroelastic" << std::endl;
+      break;
+    case drake::multibody::ContactModel::kHydroelasticWithFallback:
+      std::cout << "Contact Model: Hydroelastic with Fallback to Point" << std::endl;
+      break;
+    default:
+      std::cout << "Contact Model: Unknown" << std::endl;
+      break;
+  }
+  std::cout << "===================================" << std::endl;
 
   drake::lcm::DrakeLcm drake_lcm;
   auto lcm =

@@ -37,40 +37,37 @@ using systems::TimestampedVector;
 namespace systems {
 
 iC3TrackingController::iC3TrackingController(
-    const drake::multibody::MultibodyPlant<double>& plant, C3ControllerOptions controller_options, 
-      iC3Options ic3_options, int example_idx, 
-      MatrixXd A_x, VectorXd lb_x, VectorXd ub_x, MatrixXd A_u, VectorXd lb_u, VectorXd ub_u, 
-      drake::systems::Context<double>& plant_context, vector<SortedPair<GeometryId>> contact_geoms)
+    const drake::multibody::MultibodyPlant<double>& plant, const LCSFactory lcs_factory,
+      C3ControllerOptions controller_options, iC3Options ic3_options, VectorXd x_des, int example_idx, 
+      MatrixXd A_x, VectorXd lb_x, VectorXd ub_x, MatrixXd A_u, VectorXd lb_u, VectorXd ub_u)
     : plant_(plant),
+      lcs_factory_(lcs_factory),
       controller_options_(controller_options),
       c3_options_(controller_options.c3_options),
       lcs_factory_options_(controller_options.lcs_factory_options),
       ic3_options_(ic3_options),
+      x_des_(x_des),
       N_(lcs_factory_options_.N), 
       dt_(lcs_factory_options_.dt),
-      dt_scaling_(lcs_factory_options_.dt / ic3_options_.dt),
       example_idx_(example_idx),
       A_x_(A_x),
       lb_x_(lb_x),
       ub_x_(ub_x), 
       A_u_(A_u),
       lb_u_(lb_u),
-      ub_u_(ub_u),
-      contact_geoms_(contact_geoms),
-      plant_context_(plant_context) { // Only used for debugging
+      ub_u_(ub_u) { 
   this->set_name("ic3_tracking_controller");
-
 
   double discount_factor = 1;
   for (int i = 0; i < N_; ++i) {
-    Q_.push_back(discount_factor * c3_options_.Q * dt_scaling_);
-    R_.push_back(discount_factor * c3_options_.R * dt_scaling_);
-    G_.push_back(discount_factor * c3_options_.G * dt_scaling_);
-    U_.push_back(discount_factor * c3_options_.U * dt_scaling_);
+    Q_.push_back(discount_factor * c3_options_.Q);
+    R_.push_back(discount_factor * c3_options_.R);
+    G_.push_back(discount_factor * c3_options_.G);
+    U_.push_back(discount_factor * c3_options_.U);
 
     discount_factor *= c3_options_.gamma;
   }
-  Q_.push_back(discount_factor * c3_options_.Q * dt_scaling_);
+  Q_.push_back(discount_factor * c3_options_.Q);
   DRAKE_DEMAND(Q_.size() == N_ + 1);
   DRAKE_DEMAND(R_.size() == N_);
   DRAKE_DEMAND(G_.size() == N_);
@@ -88,24 +85,9 @@ iC3TrackingController::iC3TrackingController(
 
 
   solve_time_filter_constant_ = controller_options_.solve_time_filter_alpha;
-  
-  int n_lambda_with_tangential = 0;
-  int num_contacts = lcs_factory_options_.num_contacts;
-  for (ContactPairConfig pair : lcs_factory_options_.contact_pair_configs.value()) {
-    int num_pairs = pair.body_A_collision_geom_indices.size() * pair.body_B_collision_geom_indices.size();
-    n_lambda_with_tangential += 2 * num_pairs * pair.num_friction_directions;
-  }
 
-  if (lcs_factory_options_.contact_model == "stewart_and_trinkle") {
-    n_lambda_ =
-        2 * num_contacts + n_lambda_with_tangential;
-  } else if (lcs_factory_options_.contact_model == "anitescu") {
-    n_lambda_ = n_lambda_with_tangential;
-  } else {
-    std::cerr << ("Unknown or unsupported contact model: " +
-      lcs_factory_options_.contact_model) << std::endl;
-    DRAKE_THROW_UNLESS(false);
-  }
+  lcs_factory_.SetNewDt(dt_);
+  n_lambda_ = c3::multibody::LCSFactory::GetNumContactVariables(lcs_factory_options_);
   VectorXd zeros = VectorXd::Zero(n_x_ + n_lambda_ + n_u_);
   n_u_ = plant_.num_actuators();
 
@@ -142,30 +124,21 @@ iC3TrackingController::iC3TrackingController(
     DRAKE_THROW_UNLESS(false);
   }
 
-  // c3_->SetOsqpSolverOptions(solver_options_);
-  tracking_target_ = VectorXd::Zero(n_u_);
-
-  // HARDCODED
-  int ee_start_idx;
-  int ee_size = ic3_options_.ee_tracking_vector.size();
-  if (example_idx_ == 0) {
-    ee_start_idx = 0;
-  } else if (example_idx_ == 1 || example_idx_ == 2) {
-    ee_start_idx = 0;
+  if (ic3_options_.add_acceleration_cost) {
+    c3_->AddAccelerationCost(n_q_, n_v_, ic3_options_.acceleration_cost_weight);
   }
-  c3_->AddEETrackingCost(ee_start_idx, ee_size);
+  if (ic3_options_.add_position_constraints) {  
+    c3_->AddLinearConstraint(A_x_, lb_x_, ub_x_, c3::ConstraintVariable::STATE);
+  }
+  
+  if (ic3_options_.add_input_constraints) {
+    c3_->AddLinearConstraint(A_u_, lb_u_, ub_u_, c3::ConstraintVariable::INPUT);  
+  }
 
   lcs_state_input_port_ =
       this->DeclareVectorInputPort("x_lcs", TimestampedVector<double>(n_x_))
           .get_index();
-  lcs_input_port_ =
-      this->DeclareAbstractInputPort("lcs", drake::Value<LCS>(lcs_placeholder))
-          .get_index();
 
-  target_input_port_ =
-      this->DeclareVectorInputPort("x_lcs_des", n_x_).get_index();
-
-  // Stuff specific to tracking ic3
   lqr_input_port_ =
       this->DeclareAbstractInputPort("lqr_input", drake::Value<lcmt_lqr_output>())
           .get_index();
@@ -184,7 +157,18 @@ iC3TrackingController::iC3TrackingController(
 
   timestep_port_ =  
       this->DeclareVectorInputPort("timestep_port", 1).get_index();
-          
+
+  int nominal_position_size;
+  if (example_idx_ == 0) {
+    nominal_position_size = 3;
+  } else if (example_idx_ == 1 || example_idx_ == 2) {
+    nominal_position_size = 9;
+  }
+  nominal_position_port_ =
+      this->DeclareVectorInputPort(
+              "nominal_position", BasicVector<double>(nominal_position_size))
+          .get_index();
+     
   auto c3_solution = c3::systems::C3Output::C3Solution();
   c3_solution.x_sol_ = MatrixXf::Zero(n_q_ + n_v_, N_);
   c3_solution.lambda_sol_ = MatrixXf::Zero(n_lambda_, N_);
@@ -193,13 +177,6 @@ iC3TrackingController::iC3TrackingController(
   c3_solution_port_ =
       this->DeclareAbstractOutputPort("c3_solution", c3_solution,
                                       &iC3TrackingController::OutputC3Solution)
-          .get_index();
-
-  tracking_target_port_ =
-      this->DeclareVectorOutputPort(
-              "tracking_target_port",
-							BasicVector<double>(n_u_),
-              &iC3TrackingController::OutputTrackingTarget)
           .get_index();
 
   plan_start_time_index_ = DeclareDiscreteState(1);
@@ -244,26 +221,10 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
 
   std::cout << "ic3 timestep " << ic3_timestep << std::endl;
 
-  const BasicVector<double>& x_des =
-      *this->template EvalVectorInput<BasicVector>(context, target_input_port_);
-  const TimestampedVector<double>* lcs_x =
-      (TimestampedVector<double>*)this->EvalVectorInput(context,
-                                                        lcs_state_input_port_);
-  auto& lcs =
-      this->EvalAbstractInput(context, lcs_input_port_)->get_value<LCS>();
-  drake::VectorX<double> x_lcs = lcs_x->get_data();
-
-  auto& x_pred = context.get_discrete_state(x_pred_index_).value();
-  auto mutable_x_pred = discrete_state->get_mutable_value(x_pred_index_);
-  auto mutable_solve_time =
-      discrete_state->get_mutable_value(filtered_solve_time_index_);
-
-  const auto* lcm_all_x_trajectories = this->EvalAbstractInput(context, ic3_x_port_);
-  const auto* lcm_all_u_trajectories = this->EvalAbstractInput(context, ic3_u_port_);
-  const auto* lcm_all_lambda_trajectories = this->EvalAbstractInput(context, ic3_lambda_port_);
-
-  if (lcm_all_x_trajectories != nullptr && lcm_all_u_trajectories != nullptr && 
-      lcm_all_lambda_trajectories != nullptr && state_data_.cols() == 0) {
+  if (state_data_.cols() == 0 && input_data_.cols() == 0 && force_data_.cols() == 0) {
+    const auto* lcm_all_x_trajectories = this->EvalAbstractInput(context, ic3_x_port_);
+    const auto* lcm_all_u_trajectories = this->EvalAbstractInput(context, ic3_u_port_);
+    const auto* lcm_all_lambda_trajectories = this->EvalAbstractInput(context, ic3_lambda_port_);
 
     const std::string trajectory_name = "iteration_" + std::to_string(ic3_options_.iter_to_use);
 
@@ -283,72 +244,9 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
     std::cout << "got trajectories " << std::endl;
   }
 
-  std::cout << state_data_.cols() << std::endl;
-
-  // Don't run C3 if can't get plan
-  if (state_data_.cols() == 0) return drake::systems::EventStatus::Succeeded();
-
-
-
-  discrete_state->get_mutable_value(plan_start_time_index_)[0] =
-      lcs_x->get_timestamp();
-
-  // Assumes 1 quaternion body
-  vector<VectorXd> x_desired;
-  x_desired.push_back(x_des.value());
-  VectorXd x_curr = x_lcs;
-  for (int i = 1; i < N_+1; i++) {
-    int idx = std::min(ic3_options_.N-1, ic3_timestep+i);
-    VectorXd u_nominal = input_data_.col(idx);
-    x_curr = lcs.Simulate(x_curr, u_nominal);
-    // std::cout << "x curr " << x_curr.segment(9, 4).transpose() << std::endl;
-    double norm = x_curr.segment(quaternion_indices_[0], 4).norm(); 
-    std::cout << "norm " << i << " " << norm << std::endl;
-
-    VectorXd x_des_copy = x_des.value();
-    x_des_copy.segment(quaternion_indices_[0], 4) = 
-        x_des_copy.segment(quaternion_indices_[0], 4) * norm;
-    x_desired.push_back(x_des_copy);
-  }
-
-
-  // Penetration testing code
-  // if (n_u_ == 9) {
-  //   VectorXd x_plan = state_data.col(ic3_timestep);
-  //   c3::LCSSimulateConfig config; 
-  //   config.regularized = true;
-  //   config.max_exp = -6;
-    
-  //   VectorXd u_test(VectorXd::Zero(n_u_));
-  //   u_test(2) = 0.196;
-  //   u_test(5) = 0.196;
-  //   u_test(8) = 0.196;
-  //   auto [x_out, force] = lcs.SimulateAndReturnForce(x_plan, u_test, config);
-
-  //   for (int f = 0; f < 3; f++) {
-  //     plant_.SetPositionsAndVelocities(&plant_context_, x_plan);
-  //     c3::multibody::GeomGeomCollider collider(plant_, contact_geoms_[f]);
-  //     auto [phi, J] = collider.EvalPolytope(plant_context_, 2);
-  //     std::cout << "phi " << f << " " << phi << std::endl;
-  //     std::cout << "simulated lambda " << force.segment(4*f, 4).transpose() << std::endl << std::endl;
-  //   }
-  // }
-
-
-  UpdateQuaternionCosts(x_lcs, x_des.value());
-  C3::CostMatrices new_costs(Q_, R_, G_, U_);
-
-  c3_->UpdateCostMatrices(new_costs);
-  c3_->UpdateTarget(x_desired);
-
-  int value_function_idx;
-
   // Get value function from lcm
-  const auto* lqr_input = this->EvalAbstractInput(context, lqr_input_port_);
-  if (lqr_input != nullptr && H_.size() == 0) {
-    H_.clear();
-    g_.clear(); 
-
+  if (H_.size() == 0 && g_.size() == 0) {
+    const auto* lqr_input = this->EvalAbstractInput(context, lqr_input_port_);
     const auto& lqr_all_inputs = lqr_input->get_value<lcmt_lqr_output>();
 
     const std::vector<std::vector<std::vector<double>>>& source_H = lqr_all_inputs.H[ic3_options_.iter_to_use];
@@ -363,140 +261,86 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
       H_.push_back(std::move(mat));
       g_.push_back(Eigen::VectorXd::Map(source_g[i].data(), source_g[i].size()));
     }
+    std::cout << "got value function " << std::endl;
   }
 
-  // Don't run C3 if can't get value function
-  if (H_.size() == 0) return drake::systems::EventStatus::Succeeded();
+  // Don't run C3 if can't get trajectory or value function
+  if (state_data_.cols() == 0 || H_.size() == 0) return drake::systems::EventStatus::Succeeded();
 
-  int lower_idx = std::max(0, ic3_timestep - ic3_options_.value_function_search_size);
-  int upper_idx = std::min(ic3_options_.N, ic3_timestep + ic3_options_.value_function_search_size);
+  const TimestampedVector<double>* lcs_x =
+      (TimestampedVector<double>*)this->EvalVectorInput(context,
+                                                        lcs_state_input_port_);
+  drake::VectorX<double> x_lcs = lcs_x->get_data();
 
-  // std::cout << "l idx " << lower_idx << " u idx " << upper_idx << std::endl;
-
-  int best_idx = GetNearestXForValueFunction(x_lcs, state_data_.middleCols(lower_idx, upper_idx-lower_idx+1)) + lower_idx;
-  value_function_idx = std::min(ic3_options_.N, best_idx + static_cast<int>(N_ * dt_scaling_)); // Want H[k + N]
-
-  int data_idx = std::min(ic3_options_.N-1, value_function_idx); // State data doesn't include final ic3 state
-  VectorXd bias = g_[value_function_idx] - H_[value_function_idx] * state_data_.col(data_idx);
-  c3_->UpdateFinalCost(H_[value_function_idx], bias);
-
-
-  if (ic3_options_.add_acceleration_cost) {
-    c3_->AddAccelerationCost(n_q_, n_v_, ic3_options_.acceleration_cost_weight);
-  }
-
-  c3_->UpdateLambdaMatchingCost(ic3_options_.lambda_tracking_weight * MatrixXd::Identity(n_lambda_, n_lambda_));
-  c3_->UpdateLambdaMatchingTarget(force_data_.col(value_function_idx));
-
-  // Set x_des of ee to match ic3 plan
-  int ee_start_idx;
-  int ee_size;
-
-  // HARDCODED
   if (example_idx_ == 0) {
-    ee_start_idx = 0;
-    ee_size = 5;
-  } else if (example_idx_ == 1 || example_idx_ == 2) {
-    ee_start_idx = 0;
-    ee_size = 9;
+    const BasicVector<double>* nominal_position =
+      (BasicVector<double>*)this->EvalVectorInput(context, nominal_position_port_);
+    x_lcs.segment(0, 3) -= nominal_position->get_value();
+  }
+  std::cout << "x lcs " << x_lcs.transpose() << std::endl;
+
+  auto& x_pred = context.get_discrete_state(x_pred_index_).value();
+  auto mutable_x_pred = discrete_state->get_mutable_value(x_pred_index_);
+  auto mutable_solve_time =
+      discrete_state->get_mutable_value(filtered_solve_time_index_);
+
+  discrete_state->get_mutable_value(plan_start_time_index_)[0] =
+      lcs_x->get_timestamp();
+
+  lcs_factory_.UpdateStateAndInput(x_lcs, input_data_.col(std::min(ic3_options_.N-1, ic3_timestep)));
+  LCS lcs = lcs_factory_.GenerateLCS();  
+
+  // Assumes 1 quaternion body
+  vector<VectorXd> x_desired;
+  x_desired.push_back(x_des_);
+  VectorXd x_curr = x_lcs;
+  for (int i = 1; i < N_+1; i++) {
+    int idx = std::min(ic3_options_.N-1, ic3_timestep+i);
+    VectorXd u_nominal = input_data_.col(idx);
+    x_curr = lcs.Simulate(x_curr, u_nominal);
+    // std::cout << "x curr " << x_curr.segment(9, 4).transpose() << std::endl;
+    double norm = x_curr.segment(quaternion_indices_[0], 4).norm(); 
+    std::cout << "norm " << i << " " << norm << std::endl;
+
+    VectorXd x_des_copy = x_des_;
+    x_des_copy.segment(quaternion_indices_[0], 4) = 
+        x_des_copy.segment(quaternion_indices_[0], 4) * norm;
+    x_desired.push_back(x_des_copy);
   }
 
-  vector<VectorXd> ee_x_des;
-  for (int i = 0; i < N_+1; i++) {
-    int idx = std::min(static_cast<int>(best_idx + i * dt_scaling_), ic3_options_.N); 
+  UpdateQuaternionCosts(x_lcs, x_des_);
+  C3::CostMatrices new_costs(Q_, R_, G_, U_);
 
-    if (n_x_ == 23) {
-      ee_x_des.push_back(state_data_.col(idx).segment(ee_start_idx, ee_size));
-    } else if (n_x_ == 31) {
-      // HARDCODED indices, compute rigid body transform between cube and ee in plan
-      VectorXd x_plan = state_data_.col(idx);
-      VectorXd ee_x_des_curr(ee_size);
-        
-      Eigen::Quaterniond q_world_body(x_plan(9), x_plan(10), x_plan(11), x_plan(12)); 
-      Eigen::Vector3d p_world_body(x_plan(13), x_plan(14), x_plan(15));    
+  c3_->UpdateCostMatrices(new_costs);
+  c3_->UpdateTarget(x_desired);
+  c3_->UpdateLCS(lcs);
 
-      for (int f = 0; f < 3; f++) {
-        Eigen::Vector3d p_world_point(x_plan(3*f), x_plan(3*f+1), x_plan(3*f+2));   
+  int value_function_idx = std::min(ic3_options_.N-1, ic3_timestep);
+  double trust_weight = ic3_options_.vf_trust_region_weight;
+  MatrixXd Q_trust = UpdateQuaternionCosts(x_curr, {x_des_}, {Q_[value_function_idx]})[0];
+  Q_trust *= trust_weight;
 
-        // Get relative transform of finger in cube frame
-        drake::math::RigidTransform<double> X_WB(drake::math::RotationMatrix<double>(q_world_body), p_world_body);
-        drake::math::RigidTransform<double> X_BW = X_WB.inverse();
-        Eigen::Vector3d p_body_point = X_BW * p_world_point;
-              
-        // Get corresponding point in world for current cube pose
-        Eigen::Quaterniond q_world_body_curr(x_lcs(9), x_lcs(10), x_lcs(11), x_lcs(12));
-        Eigen::Vector3d p_world_body_curr(x_lcs(13), x_lcs(14), x_lcs(15));
-        drake::math::RigidTransform<double> X_WB_curr(
-            drake::math::RotationMatrix<double>(q_world_body_curr), 
-            p_world_body_curr
-        );
-        ee_x_des_curr.segment(3*f, 3) = X_WB_curr * p_body_point;
-
-        // HARDCODED OFFSET 
-        if (example_idx_ == 1){
-          ee_x_des_curr(3*f+2) = 0.07;
-        }
-      }
-      ee_x_des.push_back(ee_x_des_curr);
-    }
-  }
-
-  MatrixXd Q_ee = ic3_options_.ee_tracking_weight * ic3_options_.ee_tracking_vector.asDiagonal();
-  c3_->UpdateEETrackingTargetAndCost(ee_x_des, Q_ee);
-
-  // Add constraint to stay near ee of plan
-  if (example_idx_ == 1 && ic3_options_.add_constraints_follow_plan) {
-    for (int f = 0; f < 3; f++) {
-      // A_x_(3*f, 3*f) = 1;
-      // A_x_(3*f+1, 3*f+1) = 1;
-
-      // lb_x_(3*f) = ee_x_des.at(0)(3*f) - 0.03;
-      // lb_x_(3*f+1) = ee_x_des.at(0)(3*f+1) - 0.03;
-      // ub_x_(3*f) = ee_x_des.at(0)(3*f) + 0.03;
-      // ub_x_(3*f+1) = ee_x_des.at(0)(3*f+1) + 0.03;
-    }
-  }
-  tracking_target_ = ee_x_des.at(0);
-
-  
+  VectorXd bias = g_[value_function_idx] - (H_[value_function_idx] + Q_trust) * state_data_.col(value_function_idx);
+  c3_->UpdateFinalCost(H_[value_function_idx] + Q_trust, bias);
 
   vector<VectorXd> u_target;
   for (int i = 0; i < N_; i++) {
-    if (ic3_options_.track_ic3_inputs) {
-      int idx = std::min(i + best_idx, ic3_options_.N-1);
-      u_target.push_back(input_data_.col(idx)); 
-    } else {
-      VectorXd gravity(VectorXd::Zero(n_u_));
-      // HARDCODED
-      if (example_idx_ == 0) {
-        gravity[2] = 8.33;
-      } else if (example_idx_ == 1 || example_idx_ == 2) {
-        gravity[2] = 0.196;
-        gravity[5] = 0.196;
-        gravity[8] = 0.196;
-      }
-      u_target.push_back(gravity);
+    VectorXd gravity(VectorXd::Zero(n_u_));
+    // HARDCODED
+    if (example_idx_ == 0) {
+      gravity[2] = 8.5 * 9.81;
+    } else if (example_idx_ == 1 || example_idx_ == 2) {
+      gravity[2] = 0.02 * 9.81;
+      gravity[5] = 0.196;
+      gravity[8] = 0.196;
     }
+    u_target.push_back(gravity);
   }
-
   c3_->UpdateInputTarget(u_target);
   
 
-
-  if (ic3_options_.add_position_constraints) {  
-    c3_->AddLinearConstraint(A_x_, lb_x_, ub_x_, c3::ConstraintVariable::STATE);
-  }
-  
-  if (ic3_options_.add_input_constraints) {
-    c3_->AddLinearConstraint(A_u_, lb_u_, ub_u_, c3::ConstraintVariable::INPUT);  
-  }
-  c3_->UpdateLCS(lcs);
-
   auto c3_start = std::chrono::high_resolution_clock::now();
-  c3_->Solve(x_lcs);
-
-  c3_->RemoveConstraints();
-  
+  c3_->Solve(x_lcs);  
   auto finish = std::chrono::high_resolution_clock::now();
   auto elapsed = finish - start;
   double solve_time =
@@ -517,7 +361,7 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
 
   // Print costs
   if (n_u_ == 9 && ic3_options_.print_costs) {
-    VectorXd x_d = x_des.value();
+    VectorXd x_d = x_des_;
     for (int i = 0; i < z_sol.size(); i++) {
       double finger_pos_cost = (z_sol[i].segment(0, 9) - x_d.segment(0, 9)).transpose() * 
                                 Q_[i].block(0, 0, 9, 9) * (z_sol[i].segment(0, 9) - x_d.segment(0, 9));
@@ -525,10 +369,7 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
                                 Q_[i].block(9, 9, 4, 4) * (z_sol[i].segment(9, 4) - x_d.segment(9, 4));
       double cube_pos_cost = (z_sol[i].segment(13, 3) - x_d.segment(13, 3)).transpose() *
                                 Q_[i].block(13, 13, 3, 3) * (z_sol[i].segment(13, 3) - x_d.segment(13, 3));
-      double finger_tracking_cost = (z_sol[i].segment(0, 9) - ee_x_des[i]).transpose() * 
-                                Q_ee * (z_sol[i].segment(0, 9) - ee_x_des[i]);
-      std::cout << "c3 cost " << i << " finger cost " << finger_pos_cost << " finger tracking " 
-          << finger_tracking_cost << ", cube rot " << cube_rot_cost << ", cube pos " << cube_pos_cost << std::endl;
+      std::cout << "c3 cost " << i << " finger cost " << finger_pos_cost << ", cube rot " << cube_rot_cost << ", cube pos " << cube_pos_cost << std::endl;
     }
     VectorXd x_final = c3_->GetFinalStateSolution();
     double final_finger_pos_cost = (x_final.segment(0, 9) - x_d.segment(0, 9)).transpose() * 
@@ -548,8 +389,6 @@ drake::systems::EventStatus iC3TrackingController::ComputePlan(
     std::cout << "c3 cost final with affine "<< " finger cost " << final_finger_pos_cost << ", cube rot " 
             << final_cube_rot_cost << ", cube pos " << final_cube_pos_cost << std::endl;
   }
-
-
 
   if (mutable_solve_time[0] < (N_ - 1) * dt_) {
     int index = mutable_solve_time[0] / dt_;
@@ -604,7 +443,7 @@ void iC3TrackingController::UpdateQuaternionCosts(
     double discount_factor = 1;
     for (int i = 0; i < N_ + 1; i++) {
       Q_[i].block(index, index, 4, 4) =
-          discount_factor * dt_scaling_ * c3_options_.w_Q * quaternion_weight *
+          discount_factor * c3_options_.w_Q * quaternion_weight *
           (quat_hessian_i + quat_regularizer_1 +
            quaternion_regularizer_fraction * quat_regularizer_2 +
            quat_regularizer_3);
@@ -613,55 +452,57 @@ void iC3TrackingController::UpdateQuaternionCosts(
   }
 }
 
-int iC3TrackingController::GetNearestXForValueFunction(
-    VectorXd x_curr, MatrixXd x_hat_slice) const {
-  DRAKE_DEMAND(x_hat_slice.cols() > 0);
 
-  int best_idx = 0;
-  double best_cost = std::numeric_limits<double>::infinity();
+vector<MatrixXd> iC3TrackingController::UpdateQuaternionCosts(
+    VectorXd x_curr, vector<VectorXd> x_des, vector<MatrixXd> Q_in) const {
+  
+  // std::cout << x_hat.rows() << ", " << x_hat.cols() << std::endl;
+  // std::cout << "xd: " << x_des.transpose() << std::endl;
+  // std::cout << c3_quat_norms.size() << std::endl;
 
-  // HARDCODED INDICES
-  int ee_idx;
-  int ee_size;
-  int object_idx;
-  int object_size = 7;
+  DRAKE_DEMAND(x_des.size() == Q_in.size());
 
-  if (example_idx_ == 0) {
-    ee_idx = 0;
-    ee_size = 5;
-    object_idx = 5;
-  } else if (example_idx_ == 1 || example_idx_ == 2) {
-    ee_idx = 0;
-    ee_size = 9;
-    object_idx = 9;
-  }
+  vector<MatrixXd> Q = Q_in;
 
-  for (int i = 0; i < x_hat_slice.cols(); i++) {
-    VectorXd x_diff = x_curr - x_hat_slice.col(i);
-    double ee_cost = x_diff.segment(ee_idx, ee_size).transpose() * 
-                        ic3_options_.value_function_ee_cost.asDiagonal() * x_diff.segment(ee_idx, ee_size);
-                        
-    double obj_pos_cost = x_diff.segment(object_idx + 4, 3).transpose() * 
-                        ic3_options_.value_function_object_position_cost.asDiagonal() * x_diff.segment(object_idx + 4, 3);
-                        
-    double velo_cost = x_diff.segment(n_q_, n_v_).transpose() * 
-                        ic3_options_.value_function_velocity_cost.asDiagonal() * x_diff.segment(n_q_, n_v_);
+  double discount_factor = 1;
+  for (int i = 0; i < Q.size(); i++) {
+    int j = 0;
+    for (int index : quaternion_indices_) {
 
-    Eigen::Quaterniond q_x_hat(x_hat_slice.col(i)(object_idx), x_hat_slice.col(i)(object_idx+1),
-                              x_hat_slice.col(i)(object_idx+2),x_hat_slice.col(i)(object_idx+3));
-    Eigen::Quaterniond q_curr(x_curr(object_idx), x_curr(object_idx+1), x_curr(object_idx+2), x_curr(object_idx+3));                     
+      // make quaternion costs time-varying based on x_hat
+      Eigen::VectorXd quat_curr_i = x_curr.segment(index, 4).normalized();
+      Eigen::VectorXd quat_des_i = x_des[i].segment(index, 4).normalized();
 
-    double obj_rot_cost = ic3_options_.value_function_object_orientation_cost * q_x_hat.angularDistance(q_curr);
+      //std::cout << "xhat q: " << quat_curr_i.transpose() << std::endl;
 
+      Eigen::MatrixXd quat_hessian_i = c3::systems::common::hessian_of_squared_quaternion_angle_difference(quat_curr_i, quat_des_i);
 
-    if (ee_cost + obj_pos_cost + velo_cost + obj_rot_cost < best_cost) {
-      best_idx = i;
-      best_cost = ee_cost + obj_pos_cost + velo_cost + obj_rot_cost;
+      // Regularize hessian so Q is always PSD
+      double min_eigenval = quat_hessian_i.eigenvalues().real().minCoeff();
+      //std::cout << min_eigenval << std::endl;
+
+      Eigen::MatrixXd Q_quat_regularizer_1 = std::max(0.0, -min_eigenval) * Eigen::MatrixXd::Identity(4, 4);
+      Eigen::MatrixXd Q_quat_regularizer_2 = quat_des_i * quat_des_i.transpose();
+      Eigen::MatrixXd Q_quat_regularizer_3 = 1e-4 * Eigen::MatrixXd::Identity(4, 4);
+
+      double quaternion_regularizer_fraction =
+          controller_options_.quaternion_regularizer_fraction.value();
+
+      Q[i].block(index, index, 4, 4) = 
+        discount_factor * 
+        controller_options_.c3_options.w_Q * 
+        controller_options_.quaternion_weight.value() * (quat_hessian_i + Q_quat_regularizer_1 + 
+        quaternion_regularizer_fraction * Q_quat_regularizer_2 + Q_quat_regularizer_3);
+
+      // double q_min_eigenval = Q_[i].eigenvalues().real().minCoeff();
+      // std::cout << "Q_" << i << " min eigenvalue " <<  q_min_eigenval << std::endl;
+      j++;
     }
+    discount_factor *= controller_options_.c3_options.gamma;
   }
-  return best_idx;
-
+  return Q;
 }
+
 
 void iC3TrackingController::OutputC3Solution(
     const drake::systems::Context<double>& context,
@@ -683,13 +524,6 @@ void iC3TrackingController::OutputC3Solution(
 
   } 
 }
-
-
-void iC3TrackingController::OutputTrackingTarget(const drake::systems::Context<double>& context,
-                        drake::systems::BasicVector<double>* tracking_target) const {
-	tracking_target->get_mutable_value() = tracking_target_;
-}
-
 
 }  // namespace systems
 }  // namespace dairlib

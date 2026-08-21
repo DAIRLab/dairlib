@@ -39,6 +39,18 @@ group "simulations" {
     }
 }
 
+group "logging" {
+	cmd "start_logging" {
+			exec = "python3 examples/iC3/start_logging.py sim /mnt/iC3_logs/sim_data/plate/";
+			host = "localhost";
+	}
+
+
+	cmd "view_logs" {
+			exec = "/opt/lcm/1.4.0/bin/lcm-logplayer-gui -f PMD.*";
+			host = "localhost";
+	}
+}
 
 script "setup"{
     restart cmd "franka_sim";

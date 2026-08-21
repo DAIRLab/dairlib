@@ -1,7 +1,7 @@
 import optuna
 
-STORAGE_PATH = "sqlite:///examples/iC3/plate/optuna/optuna_plate.db"
-STUDY_NAME = "optuna_plate"
+STORAGE_PATH = "sqlite:///examples/iC3/plate/optuna/optuna_plate_hydroelastic.db"
+STUDY_NAME = "optuna_plate_hydroelastic"
 
 
 TOP_N = 5  # Change this to however many you want

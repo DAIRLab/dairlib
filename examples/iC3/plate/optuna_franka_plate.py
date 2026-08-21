@@ -66,6 +66,7 @@ TARGET_XYZ = np.array([0.53, -0.35, 0.47])
 TARGET_QUAT = np.array([0.0, 0.0, -1.0, 0.0])   # set to None to ignore orientation
 OBJ_POS_W = 8
 Y_POS_MULTIPLIER = 2
+ON_PLATE_CENTER_W = 5
 
 FAILED_SETTLE_PENALTY = 1e4
 CRASH_PENALTY = 1e4
@@ -143,6 +144,12 @@ class Monitor:
             return
         if not msg.tracking_data:
             return
+        for td in msg.tracking_data:
+            if td.name == "end_effector_target":
+                y = np.array(td.y[:3])
+                with self.lock:
+                    self.ee_buf.append((time.time(), y))
+                return
         y = np.array(msg.tracking_data[0].y[:3])
         with self.lock:
             self.ee_buf.append((time.time(), y))
@@ -177,6 +184,16 @@ class Monitor:
         quat = quat / n if n > 0 else quat
         xyz = poses[:, 4:7].mean(0)
         return quat, xyz
+
+    def ee_final_state(self, tail=20):
+        """Average the last `tail` end effector poses for a stable final estimate."""
+        with self.lock:
+            if len(self.ee_buf) < tail:
+                if not self.ee_buf:
+                    return None
+                tail = len(self.ee_buf)
+            poses = np.array([v for (_, v) in list(self.ee_buf)[-tail:]])
+        return poses.mean(0)
 
     def clear(self):
         with self.lock:
@@ -252,23 +269,32 @@ def compute_objective(monitor):
         return FAILED_SETTLE_PENALTY
     quat, xyz = result
 
+    # End-effector (plate) position from OSC tracking data
+    ee_xyz = monitor.ee_final_state()
+    plate_xyz = ee_xyz if ee_xyz is not None else TARGET_XYZ
+
     d = xyz - TARGET_XYZ
     d_weighted = np.array([d[0], Y_POS_MULTIPLIER * d[1]])
-    pos_cost = 6 + OBJ_POS_W * np.linalg.norm(d_weighted)
+    
+    # Distance from object to actual center of the plate
+    dist_to_plate_center = np.linalg.norm(xyz[:2] - plate_xyz[:2])
 
-    ori_weight = 0
-    pos_weight = 1
-    if (d[0]**2 + d[1]**2 < 0.06 and xyz[2] > 0.42):
+    on_plate = (d[0]**2 + d[1]**2 < 0.06 and xyz[2] > 0.42)
+
+    if on_plate:
         print("ON PLATE")
+        print(f"dist to center {dist_to_plate_center}")
         ori_weight = 3
-        pos_weight = 0
+        center_cost = ON_PLATE_CENTER_W * dist_to_plate_center
 
-    if TARGET_QUAT is not None:
-        dq = min(1.0, abs(float(np.dot(quat, TARGET_QUAT))))
-        ori_err_z = z_axis_error(quat, TARGET_QUAT)   # radians, 0..pi
-        ori_err = 2.0 * np.arccos(dq)   # radians
-        return pos_weight * pos_cost + ori_weight * (0.25 * ori_err + 0.75 * ori_err_z)
-        
+        if TARGET_QUAT is not None:
+            dq = min(1.0, abs(float(np.dot(quat, TARGET_QUAT))))
+            ori_err_z = z_axis_error(quat, TARGET_QUAT)   # radians, 0..pi
+            ori_err = 2.0 * np.arccos(dq)                # radians
+            return ori_weight * (0.25 * ori_err + 0.75 * ori_err_z) + center_cost
+        return center_cost
+
+    pos_cost = 6 + OBJ_POS_W * np.linalg.norm(d_weighted)
     return pos_cost
 
 
@@ -469,7 +495,7 @@ def log_best_callback(study, trial):
 def main():
     optuna.logging.set_verbosity(optuna.logging.DEBUG)
 
-    STORAGE_URL = "sqlite:///examples/iC3/plate/optuna/optuna_plate.db"
+    STORAGE_URL = "sqlite:///examples/iC3/plate/optuna/optuna_plate_hydroelastic.db"
     sampler = optuna.samplers.TPESampler(multivariate=True)
 
     pruner = optuna.pruners.MedianPruner(
@@ -479,7 +505,7 @@ def main():
 
     study = optuna.create_study(
         direction="minimize",
-        study_name="optuna_plate",
+        study_name="optuna_plate_hydroelastic",
         storage=STORAGE_URL,   
         load_if_exists=True,
         sampler=sampler,

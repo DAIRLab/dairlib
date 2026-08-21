@@ -7,22 +7,29 @@ group "controllers" {
         exec = "bazel-bin/examples/iC3/trifinger/trifinger_hybrid_mpc_controller --example_idx=2";
         host = "localhost";
     }
-    cmd "trifinger_open_loop_controller" {
-        exec = "bazel-bin/examples/iC3/trifinger/trifinger_open_loop_controller";
-        host = "localhost";
-    }
+
     cmd "trifinger_osc" {
         exec = "bazel-bin/examples/iC3/trifinger/trifinger_osc_controller";
         host = "localhost";
     }
     cmd "trifinger_180_controller" {
-        exec = "bazel-bin/examples/iC3/trifinger/trifinger_controller --example=180";
+        exec = "bazel-bin/examples/iC3/trifinger/trifinger_controller --example_idx=1";
         host = "localhost";
     }
     cmd "trifinger_pivot_controller" {
-        exec = "bazel-bin/examples/iC3/trifinger/trifinger_controller --example=pivot";
+        exec = "bazel-bin/examples/iC3/trifinger/trifinger_controller --example_idx=2";
         host = "localhost";
     }
+
+    cmd "trifinger_180_traj_controller" {
+        exec = "bazel-bin/examples/iC3/trifinger/trifinger_traj_controller --example_idx=1";
+        host = "localhost";
+    }
+    cmd "trifinger_pivot_traj_controller" {
+        exec = "bazel-bin/examples/iC3/trifinger/trifinger_traj_controller --example_idx=2";
+        host = "localhost";
+    }
+
 }
 
 group "debug" {
@@ -50,6 +57,18 @@ group "simulations" {
     }
 }
 
+group "logging" {
+	cmd "start_logging" {
+			exec = "python3 examples/iC3/start_logging.py sim /home/ericcui/logs";
+			host = "localhost";
+	}
+
+
+	cmd "view_logs" {
+			exec = "/opt/lcm/1.4.0/bin/lcm-logplayer-gui -f PMD.*";
+			host = "localhost";
+	}
+}
 
 script "setup"{
     restart cmd "trifinger_sim";

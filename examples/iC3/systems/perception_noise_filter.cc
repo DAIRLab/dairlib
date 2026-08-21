@@ -50,7 +50,7 @@ void PerceptionNoiseFilter::OutputNoisyObjectState(
     return;
   }
 
-  double xy_std = 0.003;
+  double xy_std = 0.004;
   double z_std = 0.002;
   double angular_std = 2;
   double angular_std_rad = angular_std * (M_PI / 180.0);

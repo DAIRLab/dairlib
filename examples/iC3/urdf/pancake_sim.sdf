@@ -69,19 +69,23 @@
           </material>
         </visual>
 
-         <collision name="pancake">
+        <collision name="pancake">
           <pose>0 0 0 0 0 0</pose>
           <geometry>
             <cylinder>
               <radius>0.05</radius>
-              <length> 0.02 </length>
+              <length>0.02</length>
             </cylinder>
           </geometry>
-        <drake:proximity_properties>
-          <drake:hunt_crossley_dissipation>2.0</drake:hunt_crossley_dissipation>      
-          <drake:mu_static>0.25</drake:mu_static>
-          <drake:mu_dynamic>0.25</drake:mu_dynamic>
-        </drake:proximity_properties>
+          <drake:proximity_properties>
+            <!-- Enables rigid hydroelastic contact -->
+            <drake:rigid_hydroelastic/>
+            <!-- Tessellation resolution for the rigid surface mesh (in meters) -->
+            <drake:mesh_resolution_hint>0.02</drake:mesh_resolution_hint>
+            <drake:hunt_crossley_dissipation>1.0</drake:hunt_crossley_dissipation>      
+            <drake:mu_static>0.25</drake:mu_static>
+            <drake:mu_dynamic>0.25</drake:mu_dynamic>
+          </drake:proximity_properties>
         </collision>
         
 

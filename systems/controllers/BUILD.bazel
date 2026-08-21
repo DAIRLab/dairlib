@@ -126,24 +126,6 @@ cc_library(
 )
 
 cc_library(
-    name = "ic3_lqr_tracking_controller",
-    srcs = ["c3/ic3_lqr_tracking_controller.cc"],
-    hdrs = ["c3/ic3_lqr_tracking_controller.h"],
-    alwayslink = 1,
-    deps = [
-        "//lcm:lcm_trajectory_saver",
-        "//lcmtypes:lcmt_robot",
-        "//multibody:utils",
-        "@c3//:libc3",
-        "//solvers:parameters",
-        "//systems/framework:vector",
-        "//common:quaternion_error_hessian",
-        "//examples/iC3:iC3_options",
-        "@drake//:drake_shared_library",
-    ],
-)
-
-cc_library(
     name = "ic3_hybrid_mpc_tracking_controller",
     srcs = ["c3/ic3_hybrid_mpc_tracking_controller.cc"],
     hdrs = ["c3/ic3_hybrid_mpc_tracking_controller.h"],

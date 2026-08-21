@@ -1,6 +1,6 @@
-{EndEffectorKd: [80, 0, 0, 0, 80, 0, 0, 0, 60], EndEffectorKp: [80, 0, 0, 0, 80, 0,
-    0, 0, 560], EndEffectorRotKd: [70, 0, 0, 0, 70, 0, 0, 0, 70], EndEffectorRotKp: [
-    360, 0, 0, 0, 360, 0, 0, 0, 360], EndEffectorRotW: [400, 0, 0, 0, 400, 0, 0, 0,
+{EndEffectorKd: [75, 0, 0, 0, 75, 0, 0, 0, 120], EndEffectorKp: [180, 0, 0, 0, 180,
+    0, 0, 0, 640], EndEffectorRotKd: [44, 0, 0, 0, 44, 0, 0, 0, 44], EndEffectorRotKp: [
+    380, 0, 0, 0, 380, 0, 0, 0, 380], EndEffectorRotW: [400, 0, 0, 0, 400, 0, 0, 0,
     400], EndEffectorW: [600, 0, 0, 0, 600, 0, 0, 0, 600], LambdaEndEffectorTauW: [
     500, 0, 0, 0, 500, 0, 0, 0, 500], LambdaEndEffectorW: [5, 0, 0, 0, 5, 0, 0, 0,
     5], W_accel: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01], W_input_reg: [1, 1, 1,

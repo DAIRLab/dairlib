@@ -17,6 +17,7 @@
 #include <c3/core/solver_options_io.h>
 #include <c3/systems/framework/c3_output.h>
 #include <c3/systems/c3_controller_options.h>
+#include <c3/multibody/lcs_factory.h>
 
 #include "examples/iC3/iC3_options.h"
 
@@ -36,21 +37,13 @@ namespace systems {
 
 class iC3TrajTrackingController : public drake::systems::LeafSystem<double> {
  public:
-  explicit iC3TrajTrackingController(const drake::multibody::MultibodyPlant<double>& plant,
-                        c3::systems::C3ControllerOptions controller_options, iC3Options ic3_options,
-                        int example_idx, MatrixXd A_x, VectorXd lb_x, VectorXd ub_x, MatrixXd A_u, VectorXd lb_u, VectorXd ub_u, 
-                        drake::systems::Context<double>& plant_context, vector<SortedPair<GeometryId>> contact_geoms); // TODO: these two only used for debugging
-
-  const drake::systems::InputPort<double>& get_input_port_target() const {
-    return this->get_input_port(target_input_port_);
-  }
+  explicit iC3TrajTrackingController(
+    const drake::multibody::MultibodyPlant<double>& plant, const c3::multibody::LCSFactory lcs_factory,
+      c3::systems::C3ControllerOptions controller_options, iC3Options ic3_options, 
+      int example_idx, MatrixXd A_x, VectorXd lb_x, VectorXd ub_x, MatrixXd A_u, VectorXd lb_u, VectorXd ub_u); // TODO: these two only used for debugging
 
   const drake::systems::InputPort<double>& get_input_port_lcs_state() const {
     return this->get_input_port(lcs_state_input_port_);
-  }
-
-  const drake::systems::InputPort<double>& get_input_port_lqr() const {
-    return this->get_input_port(lqr_input_port_);
   }
 
   const drake::systems::InputPort<double>& get_input_port_ic3_x() const {
@@ -65,23 +58,19 @@ class iC3TrajTrackingController : public drake::systems::LeafSystem<double> {
     return this->get_input_port(ic3_lambda_port_);
   }
 
-  const drake::systems::InputPort<double>& get_input_port_lcs() const {
-    return this->get_input_port(lcs_input_port_);
-  }
-
   const drake::systems::InputPort<double>& get_input_port_timestep() const {
     return this->get_input_port(timestep_port_);
   }
 
+  const drake::systems::InputPort<double>& get_input_port_nominal_position() const {
+    return this->get_input_port(nominal_position_port_);
+  }
+  
   const drake::systems::OutputPort<double>& get_output_port_c3_solution()
       const {
     return this->get_output_port(c3_solution_port_);
   }
 
-  const drake::systems::OutputPort<double>& get_output_port_tracking_target()
-      const {
-    return this->get_output_port(tracking_target_port_);
-  }
 
   // void SetOsqpSolverOptions(const drake::solvers::SolverOptions& options) {
   //   solver_options_ = options;
@@ -98,29 +87,20 @@ class iC3TrajTrackingController : public drake::systems::LeafSystem<double> {
   void OutputC3Solution(const drake::systems::Context<double>& context,
                         c3::systems::C3Output::C3Solution* c3_solution) const;
 
-  void OutputTrackingTarget(const drake::systems::Context<double>& context,
-                        drake::systems::BasicVector<double>* tracking_target) const;
+  void UpdateQuaternionCosts(
+      const VectorXd& x_curr, const Eigen::VectorXd& x_des) const;
 
-  void UpdateQuaternionCosts(const Eigen::VectorXd& x_curr, const vector<Eigen::VectorXd> x_des) const;
-      
-  int GetNearestXForValueFunction(
-      Eigen::VectorXd x_curr, Eigen::MatrixXd x_hat_slice) const;
-
-  drake::systems::InputPortIndex target_input_port_;
   drake::systems::InputPortIndex lcs_state_input_port_;
-  drake::systems::InputPortIndex lcs_input_port_;
   drake::systems::InputPortIndex lqr_input_port_;
   drake::systems::InputPortIndex ic3_x_port_;
   drake::systems::InputPortIndex ic3_u_port_;
   drake::systems::InputPortIndex ic3_lambda_port_;
   drake::systems::InputPortIndex timestep_port_;
+  drake::systems::InputPortIndex nominal_position_port_;
   drake::systems::OutputPortIndex c3_solution_port_;
-  drake::systems::OutputPortIndex tracking_target_port_;
 
   const drake::multibody::MultibodyPlant<double>& plant_;
-
-  std::vector<SortedPair<GeometryId>> contact_geoms_; // TODO: only used for debugging
-  drake::systems::Context<double>& plant_context_;
+  mutable c3::multibody::LCSFactory lcs_factory_;
 
   c3::systems::C3ControllerOptions controller_options_;
   c3::C3Options c3_options_;
@@ -149,7 +129,6 @@ class iC3TrajTrackingController : public drake::systems::LeafSystem<double> {
   mutable VectorXd ub_u_;
 
   mutable std::unique_ptr<c3::C3> c3_;
-  mutable VectorXd tracking_target_;
   
   std::vector<int> quaternion_indices_;  // indices for quaternion-valued joints
 
@@ -162,10 +141,14 @@ class iC3TrajTrackingController : public drake::systems::LeafSystem<double> {
   mutable std::vector<Eigen::MatrixXd> G_;
   mutable std::vector<Eigen::MatrixXd> U_;
 
+  mutable Eigen::MatrixXd state_data_;
+  mutable Eigen::MatrixXd input_data_;
+  mutable Eigen::MatrixXd force_data_;
+
+  mutable drake::math::RigidTransform<double> X_delta_;
+
   int N_; // N for c3 (NOT the same as iC3 horizon)
   double dt_; // dt for c3 (NOT the same as iC3 dt)
-
-  double dt_scaling_; // c3 tracking dt / ic3 dt
 
 };
 

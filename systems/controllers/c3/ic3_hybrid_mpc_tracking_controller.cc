@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include <c3/core/lcs.h>
-#include <c3/multibody/lcs_factory.h>
 #include "c3/systems/common/quaternion_error_hessian.h"
 #include "drake/common/text_logging.h"
 
@@ -300,7 +299,8 @@ drake::systems::EventStatus iC3HybridMpcTrackingController::ComputePlan(
   vector<VectorXd> x_des;
   vector<VectorXd> u_des;
   if (example_idx_ == 1 || example_idx_ == 2) {
-    if (ic3_timestep % mpc_options_.transform_update_frequency == 0) {
+    if (mpc_options_.transform_update_frequency > 0 && 
+        ic3_timestep % mpc_options_.transform_update_frequency == 0) {
       VectorXd x_plan = state_data_.col(ic3_timestep);
       Eigen::Quaterniond cube_rot_plan(x_plan(9), x_plan(10), x_plan(11), x_plan(12));
       Eigen::Vector3d cube_pos_plan(x_plan.segment(13, 3));

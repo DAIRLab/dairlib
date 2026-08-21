@@ -32,6 +32,7 @@
 #include "examples/iC3/iC3_options.h"
 #include "c3/systems/c3_controller_options.h"
 #include "c3/systems/lcs_factory_system.h"
+#include "c3/multibody/lcs_factory.h"
 #include "c3/core/solver_options_io.h"
 #include "examples/iC3/toy_system/toy_system_params.h"
 #include "examples/iC3/toy_system/toy_utils.h"
@@ -64,6 +65,7 @@ using drake::math::RigidTransform;
 using drake::math::RotationMatrix;
 
 using c3::systems::C3ControllerOptions;
+
 
 namespace dairlib {
 
@@ -322,9 +324,6 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
     auto lqr_sub =
           builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_lqr_output>(
               "iC3_LQR", &lcm));
-    auto controller =
-        builder.AddSystem<systems::iC3TrackingController>(plant_for_lcs, c3_controller_options, ic3_options, 
-          1, A_x, lb_x, ub_x, A_u, lb_u, ub_u, plant_for_lcs_context, contact_pairs);
     // controller->SetOsqpSolverOptions(solver_options);
     
     auto vector_to_timestamped_vector =
@@ -337,14 +336,18 @@ int RunToySystem(drake::lcm::DrakeLcm& lcm) {
     auto c3_input = builder.AddSystem<C3Solution2InputHand>(plant);
 
 
+    c3::multibody::LCSFactory lcs_factory = c3::multibody::LCSFactory(
+        plant_for_lcs, plant_for_lcs_context, *plant_autodiff,
+        *plant_context_autodiff, c3_controller_options.lcs_factory_options);
+    auto controller =
+        builder.AddSystem<systems::iC3TrackingController>(
+          plant_for_lcs, lcs_factory, c3_controller_options, ic3_options, xd, 
+          1, A_x, lb_x, ub_x, A_u, lb_u, ub_u);
+
     builder.Connect(hand_kinematics->get_output_port_state(),
                     vector_to_timestamped_vector->get_input_port_state());
     builder.Connect(vector_to_timestamped_vector->get_output_port_timestamped_state(),
                     controller->get_input_port_lcs_state());
-    builder.Connect(lcs_factory_system->get_output_port_lcs(),
-                    controller->get_input_port_lcs());
-    builder.Connect(xdes->get_output_port(),
-                    controller->get_input_port_target());
     builder.Connect(ic3_x_sub->get_output_port(),
                     controller->get_input_port_ic3_x());
     builder.Connect(ic3_u_sub->get_output_port(),

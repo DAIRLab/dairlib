@@ -1,19 +1,19 @@
 =========================================
        BEST HYPERPARAMETERS SO FAR       
 =========================================
-Best Trial Number: 838
-Best Metric Value: 13.787941708632042
+Best Trial Number: 67
+Best Metric Value: 11.913887334200158
 
 Parameters:
-  w_R: 70
-  xy_cost: 17500
-  z_cost: 99500
-  rot_cost: 3000
-  quat_weight: 800
-  Kp_xy: 480
-  Kd_xy: 95
-  Kp_z: 660
-  Kd_z: 120
-  Kp_rot: 340
-  Kd_rot: 2
+  w_R: 830
+  xy_cost: 39000
+  z_cost: 59500
+  rot_cost: 11500
+  quat_weight: 900
+  Kp_xy: 340
+  Kd_xy: 80
+  Kp_z: 620
+  Kd_z: 195
+  Kp_rot: 20
+  Kd_rot: 100
 =========================================

@@ -5,7 +5,6 @@ object_state_channels: [OBJECT_STATE_SIMULATION] # lcmt_object_state
 robot_input_channel: FRANKA_INPUT               # lcmt_robot_input
 
 osc_channel: OSC_FRANKA
-three_d_printer_osc_channel: OSC_PRINTER                           # lcmt_robot_input
 osc_debug_channel: OSC_DEBUG_FRANKA             # lcmt_osc_output
 
 c3_actor_curr_plan_channel: C3_TRAJECTORY_ACTOR_CURR_PLAN

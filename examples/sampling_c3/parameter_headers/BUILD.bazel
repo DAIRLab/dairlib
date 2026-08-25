@@ -7,8 +7,8 @@ cc_library(
 )
 
 cc_library(
-    name = "franka_sim_params",
-    hdrs = ["franka_sim_params.h"],
+    name = "robot_sim_params",
+    hdrs = ["robot_sim_params.h"],
     visibility = ["//visibility:public"],
 )
 

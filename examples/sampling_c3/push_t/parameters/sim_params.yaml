@@ -1,6 +1,6 @@
 object_models: [examples/sampling_c3/urdf/push_t.sdf]
 
-franka_publish_rate: 1000
+robot_publish_rate: 1000
 object_publish_rate: 10
 actuator_delay: 0.000
 
@@ -10,5 +10,5 @@ publish_efforts: true
 dt: 0.0001
 realtime_rate: 1
 
-q_init_franka: [2.191, 1.1, -1.33, -2.22, 1.30, 2.02, 0.08]
+q_init_robot: [2.191, 1.1, -1.33, -2.22, 1.30, 2.02, 0.08]
 q_init_objects: [[1.0, 0, 0, 0, 0.5, 0, -0.009]]

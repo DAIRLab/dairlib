@@ -20,7 +20,7 @@
 #include "dairlib/lcmt_radio_out.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
-#include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
+#include "examples/sampling_c3/parameter_headers/robot_sim_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "examples/sampling_c3/sampling_c3_utils.h"
@@ -177,8 +177,8 @@ int DoMain(int argc, char* argv[]) {
   std::string sim_params_path_replacement = "sim_params_";
   sim_params_path.replace(sim_params_path.find(to_replace), to_replace.length(),
                           sim_params_path_replacement);
-  FrankaSimParams sim_params =
-      drake::yaml::LoadYamlFile<FrankaSimParams>(sim_params_path + ".yaml");
+  RobotSimParams sim_params =
+      drake::yaml::LoadYamlFile<RobotSimParams>(sim_params_path + ".yaml");
 
   // (4/6) Sampling parameters.
   std::string sampling_params_path = log_filepath;

@@ -71,15 +71,20 @@ using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
 
 DEFINE_bool(is_simulation, true, "True for simulation, false for hardware");
-DEFINE_string(demo_name, "three_d_printer",
-              "Name for the demo, used when building filepaths for output.");
+DEFINE_string(demo_name, "cone",
+              "Name for the sampling_c3/three_d_printer demo, used when "
+              "building filepaths for output.");
 
 int do_main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+  if (FLAGS_demo_name != "cone") {
+    throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
+  }
+
   // Controller params (root config).
   std::string controller_params_path =
-      "examples/sampling_c3/" + FLAGS_demo_name +
+      "examples/sampling_c3/three_d_printer/" + FLAGS_demo_name +
       "/parameters/sampling_c3_controller_params.yaml";
   auto controller_params =
       drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
@@ -476,9 +481,9 @@ int do_main(int argc, char* argv[]) {
             sampling_params.N_unsuccessful_sample_buffer,
             sampling_params.unsuccessful_radius,
             vis_params.unsuccessful_sample_buffer_color);
-    builder.Connect(unsuccessful_sample_buffer_sub->get_output_port(),
-                    unsuccessful_sample_buffer_drawer
-                        ->get_input_port_lcmt_sample_buffer());
+    builder.Connect(
+        unsuccessful_sample_buffer_sub->get_output_port(),
+        unsuccessful_sample_buffer_drawer->get_input_port_lcmt_sample_buffer());
   }
 
   if (vis_params.visualize_c3_state) {

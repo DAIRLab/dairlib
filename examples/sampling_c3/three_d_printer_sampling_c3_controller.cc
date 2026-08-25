@@ -60,16 +60,22 @@ using std::vector;
 DEFINE_bool(is_simulation, true, "True for simulation, false for hardware");
 DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
-DEFINE_string(demo_name, "three_d_printer",
-              "Demo within sampling_c3; used to find controller params file");
+DEFINE_string(demo_name, "cone",
+              "Demo within sampling_c3/three_d_printer/; used to find "
+              "controller params file");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  if (FLAGS_demo_name != "cone") {
+    throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
+  }
+
   drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
 
   // Load parameters.
   std::string controller_params_path =
-      "examples/sampling_c3/" + FLAGS_demo_name +
+      "examples/sampling_c3/three_d_printer/" + FLAGS_demo_name +
       "/parameters/sampling_c3_controller_params.yaml";
   SamplingC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
@@ -144,65 +150,70 @@ int DoMain(int argc, char* argv[]) {
   std::vector<std::vector<SortedPair<GeometryId>>> object_object_contact_pairs;
   std::vector<std::vector<SortedPair<GeometryId>>> wall_object_contact_pairs;
 
-  // Build the 3D-printer-specific contact pairs: EE-object, object-ground,
+  // Build the demo-specific contact pairs: EE-object, object-ground,
   // ramp-object, EE-ramp, and object-object.
   std::vector<std::vector<GeometryId>> all_object_geoms;
-  for (int i = 0; i < controller_params.base_names.size(); i++) {
-    std::string body_name = controller_params.base_names.at(i);
-    const std::vector<drake::geometry::GeometryId>& object_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName(body_name));
-    const std::vector<drake::geometry::GeometryId>& ramp_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("ramp_link"));
+  if (FLAGS_demo_name == "cone") {
+    for (int i = 0; i < controller_params.base_names.size(); i++) {
+      std::string body_name = controller_params.base_names.at(i);
+      const std::vector<drake::geometry::GeometryId>& object_geoms =
+          plant_lcs.GetCollisionGeometriesForBody(
+              plant_lcs.GetBodyByName(body_name));
+      const std::vector<drake::geometry::GeometryId>& ramp_geoms =
+          plant_lcs.GetCollisionGeometriesForBody(
+              plant_lcs.GetBodyByName("ramp_link"));
 
-    drake::geometry::GeometryId corner_1_sphere_geoms = object_geoms[1];
-    drake::geometry::GeometryId corner_2_sphere_geoms = object_geoms[2];
-    drake::geometry::GeometryId corner_3_sphere_geoms = object_geoms[3];
-    drake::geometry::GeometryId corner_4_sphere_geoms = object_geoms[4];
-    drake::geometry::GeometryId corner_5_sphere_geoms = object_geoms[5];
-    drake::geometry::GeometryId corner_6_sphere_geoms = object_geoms[6];
-    drake::geometry::GeometryId corner_7_sphere_geoms = object_geoms[7];
+      drake::geometry::GeometryId corner_1_sphere_geoms = object_geoms[1];
+      drake::geometry::GeometryId corner_2_sphere_geoms = object_geoms[2];
+      drake::geometry::GeometryId corner_3_sphere_geoms = object_geoms[3];
+      drake::geometry::GeometryId corner_4_sphere_geoms = object_geoms[4];
+      drake::geometry::GeometryId corner_5_sphere_geoms = object_geoms[5];
+      drake::geometry::GeometryId corner_6_sphere_geoms = object_geoms[6];
+      drake::geometry::GeometryId corner_7_sphere_geoms = object_geoms[7];
 
-    contact_geoms["CORNER_1_SPHERE"] = corner_1_sphere_geoms;
-    contact_geoms["CORNER_2_SPHERE"] = corner_2_sphere_geoms;
-    contact_geoms["CORNER_3_SPHERE"] = corner_3_sphere_geoms;
-    contact_geoms["CORNER_4_SPHERE"] = corner_4_sphere_geoms;
-    contact_geoms["CORNER_5_SPHERE"] = corner_5_sphere_geoms;
-    contact_geoms["CORNER_6_SPHERE"] = corner_6_sphere_geoms;
-    contact_geoms["CORNER_7_SPHERE"] = corner_7_sphere_geoms;
+      contact_geoms["CORNER_1_SPHERE"] = corner_1_sphere_geoms;
+      contact_geoms["CORNER_2_SPHERE"] = corner_2_sphere_geoms;
+      contact_geoms["CORNER_3_SPHERE"] = corner_3_sphere_geoms;
+      contact_geoms["CORNER_4_SPHERE"] = corner_4_sphere_geoms;
+      contact_geoms["CORNER_5_SPHERE"] = corner_5_sphere_geoms;
+      contact_geoms["CORNER_6_SPHERE"] = corner_6_sphere_geoms;
+      contact_geoms["CORNER_7_SPHERE"] = corner_7_sphere_geoms;
 
-    ground_object_contact_pairs.push_back(
-        SortedPair(contact_geoms["CORNER_1_SPHERE"], contact_geoms["GROUND"]));
-    ground_object_contact_pairs.push_back(
-        SortedPair(contact_geoms["CORNER_2_SPHERE"], contact_geoms["GROUND"]));
-    ground_object_contact_pairs.push_back(
-        SortedPair(contact_geoms["CORNER_3_SPHERE"], contact_geoms["GROUND"]));
-    ground_object_contact_pairs.push_back(
-        SortedPair(contact_geoms["CORNER_4_SPHERE"], contact_geoms["GROUND"]));
-    ground_object_contact_pairs.push_back(
-        SortedPair(contact_geoms["CORNER_5_SPHERE"], contact_geoms["GROUND"]));
-    ground_object_contact_pairs.push_back(
-        SortedPair(contact_geoms["CORNER_6_SPHERE"], contact_geoms["GROUND"]));
-    ground_object_contact_pairs.push_back(
-        SortedPair(contact_geoms["CORNER_7_SPHERE"], contact_geoms["GROUND"]));
+      ground_object_contact_pairs.push_back(SortedPair(
+          contact_geoms["CORNER_1_SPHERE"], contact_geoms["GROUND"]));
+      ground_object_contact_pairs.push_back(SortedPair(
+          contact_geoms["CORNER_2_SPHERE"], contact_geoms["GROUND"]));
+      ground_object_contact_pairs.push_back(SortedPair(
+          contact_geoms["CORNER_3_SPHERE"], contact_geoms["GROUND"]));
+      ground_object_contact_pairs.push_back(SortedPair(
+          contact_geoms["CORNER_4_SPHERE"], contact_geoms["GROUND"]));
+      ground_object_contact_pairs.push_back(SortedPair(
+          contact_geoms["CORNER_5_SPHERE"], contact_geoms["GROUND"]));
+      ground_object_contact_pairs.push_back(SortedPair(
+          contact_geoms["CORNER_6_SPHERE"], contact_geoms["GROUND"]));
+      ground_object_contact_pairs.push_back(SortedPair(
+          contact_geoms["CORNER_7_SPHERE"], contact_geoms["GROUND"]));
 
-    for (int j = 0; j < ramp_geoms.size(); j++) {
-      for (int k = 1; k < object_geoms.size(); k++) {
-        ground_object_contact_pairs.push_back(
-            SortedPair(ramp_geoms[j], object_geoms[k]));
+      for (int j = 0; j < ramp_geoms.size(); j++) {
+        for (int k = 1; k < object_geoms.size(); k++) {
+          ground_object_contact_pairs.push_back(
+              SortedPair(ramp_geoms[j], object_geoms[k]));
+        }
+        ee_contact_pairs.push_back(
+            SortedPair(contact_geoms["EE"], ramp_geoms[j]));
       }
+
+      const std::vector<drake::geometry::GeometryId>
+          object_geoms_without_spheres =
+              std::vector<drake::geometry::GeometryId>(
+                  object_geoms.begin(), object_geoms.end() - 7);
+
       ee_contact_pairs.push_back(
-          SortedPair(contact_geoms["EE"], ramp_geoms[j]));
+          SortedPair(contact_geoms["EE"], object_geoms[0]));
+      all_object_geoms.push_back(object_geoms_without_spheres);
     }
-
-    const std::vector<drake::geometry::GeometryId>
-        object_geoms_without_spheres = std::vector<drake::geometry::GeometryId>(
-            object_geoms.begin(), object_geoms.end() - 7);
-
-    ee_contact_pairs.push_back(
-        SortedPair(contact_geoms["EE"], object_geoms[0]));
-    all_object_geoms.push_back(object_geoms_without_spheres);
+  } else {
+    throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
   }
 
   // Object-object contact pairs (excluding end effector), each pair of
@@ -243,7 +254,7 @@ int DoMain(int argc, char* argv[]) {
         builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
             lcm_channel_params.object_state_channels.at(i), &lcm)));
   }
-  auto franka_state_receiver =
+  auto robot_state_receiver =
       builder.AddSystem<systems::RobotOutputReceiver>(plant_three_d_printer);
 
   std::vector<systems::ObjectStateReceiver*> object_state_receivers;
@@ -266,9 +277,9 @@ int DoMain(int argc, char* argv[]) {
   // There are no randomized new goals to be generated for 3D printer demos.
   // Set the goal generator's nominal_orientations to be the fixed target
   // orientation(s).
-  DRAKE_ASSERT(controller_params.goal_params.goal_mode == GoalMode::kFixedGoal ||
-               controller_params.goal_params.goal_mode ==
-                   GoalMode::kFixedGoalSequence);
+  DRAKE_ASSERT(
+      controller_params.goal_params.goal_mode == GoalMode::kFixedGoal ||
+      controller_params.goal_params.goal_mode == GoalMode::kFixedGoalSequence);
   std::vector<std::vector<Eigen::Quaterniond>> nominal_orientations;
   for (int i = 0; i < object_indices.size(); ++i) {
     const Eigen::Vector4d& quat_vec =
@@ -493,7 +504,7 @@ int DoMain(int argc, char* argv[]) {
           lcm_channel_params.c3_final_target_state_channel, &lcm,
           TriggerTypeSet({TriggerType::kForced})));
 
-  builder.Connect(franka_state_receiver->get_output_port(),
+  builder.Connect(robot_state_receiver->get_output_port(),
                   reduced_order_model_receiver->get_input_port_printer_state());
   for (int i = 0; i < controller_params.num_objects; i++) {
     builder.Connect(object_state_subs.at(i)->get_output_port(),
@@ -622,7 +633,7 @@ int DoMain(int argc, char* argv[]) {
   int lcm_buffer_size = 200;
   std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
-      &lcm, shared_diagram, franka_state_receiver,
+      &lcm, shared_diagram, robot_state_receiver,
       lcm_channel_params.robot_state_channel, true, lcm_buffer_size);
 
   LcmHandleSubscriptionsUntil(&lcm, [&]() {

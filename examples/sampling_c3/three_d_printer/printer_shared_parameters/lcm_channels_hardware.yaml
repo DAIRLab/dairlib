@@ -1,8 +1,8 @@
 # All messages are of type lcmt_timestamped_saved_traj unless otherwise noted.
 
-robot_state_channel: PRINTER_STATE_SIMULATION   # lcmt_robot_output
+robot_state_channel: PRINTER_STATE              # lcmt_robot_output
 object_state_channels: [OBJECT_STATE_SIMULATION] # lcmt_object_state
-robot_input_channel: PRINTER_INPUT_SIMULATION   # lcmt_robot_output
+robot_input_channel: PRINTER_INPUT              # lcmt_robot_output
 
 osc_channel: OSC_PRINTER                        # lcmt_robot_output
 osc_debug_channel: OSC_DEBUG_PRINTER             # lcmt_osc_output
@@ -43,4 +43,4 @@ target_generator_info_channel: TARGET_GEN_INFO
 sampling_c3_debug_channel: SAMPLING_C3_DEBUG    # lcmt_sampling_c3_debug
 
 radio_channel: SAMPLING_C3_RADIO                # lcmt_radio_out
-franka_target_joint_position_channel: FRANKA_TARGET_JOINT_POSITION  # lcmt_franka_target_joint_position
+franka_target_joint_position_channel: UNUSED    # lcmt_franka_target_joint_position

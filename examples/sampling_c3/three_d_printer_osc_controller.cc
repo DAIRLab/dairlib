@@ -62,11 +62,16 @@ using systems::controllers::TransTaskSpaceTrackingData;
 DEFINE_bool(is_simulation, true, "True for simulation, false for hardware");
 DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
-DEFINE_string(demo_name, "three_d_printer",
-              "Demo within sampling_c3; used to find controller params file");
+DEFINE_string(demo_name, "cone",
+              "Demo within sampling_c3/three_d_printer/; used to find "
+              "controller params file");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  if (FLAGS_demo_name != "cone") {
+    throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
+  }
 
   drake::lcm::DrakeLcm lcm(FLAGS_lcm_url);
 
@@ -74,7 +79,7 @@ int DoMain(int argc, char* argv[]) {
   // Load parameters
   // ------------------------------------------------------------------------
   std::string controller_params_path =
-      "examples/sampling_c3/" + FLAGS_demo_name +
+      "examples/sampling_c3/three_d_printer/" + FLAGS_demo_name +
       "/parameters/sampling_c3_controller_params.yaml";
   SamplingC3ControllerParams controller_params =
       drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(

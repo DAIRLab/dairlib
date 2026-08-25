@@ -20,7 +20,7 @@
 
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
-#include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
+#include "examples/sampling_c3/parameter_headers/robot_sim_params.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
@@ -71,7 +71,7 @@ int DoMain(int argc, char* argv[]) {
       controller_params.lcm_channels_simulation_file;
   SamplingC3LcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(lcm_channels_file);
-  FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
+  RobotSimParams sim_params = drake::yaml::LoadYamlFile<RobotSimParams>(
       controller_params.sim_params_file);
   SamplingC3Options sampling_c3_options =
       drake::yaml::LoadYamlFile<SamplingC3Options>(
@@ -107,7 +107,7 @@ int DoMain(int argc, char* argv[]) {
       builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(&drake_lcm);
   AddActuationRecieverAndStateSenderLcm(
       &builder, plant, lcm, lcm_channel_params.robot_input_channel,
-      lcm_channel_params.robot_state_channel, sim_params.franka_publish_rate,
+      lcm_channel_params.robot_state_channel, sim_params.robot_publish_rate,
       franka_index, sim_params.publish_efforts, sim_params.actuator_delay);
 
   std::vector<systems::ObjectStateSender*> object_state_senders;
@@ -152,7 +152,7 @@ int DoMain(int argc, char* argv[]) {
 
   VectorXd q = VectorXd::Zero(nq);
 
-  q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
+  q.head(plant.num_positions(franka_index)) = sim_params.q_init_robot;
   for (int i = 0; i < num_objects; i++) {
     q.segment(7 * (i + 1), 7) = sim_params.q_init_objects.at(i);
   }

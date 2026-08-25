@@ -1353,6 +1353,13 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       }
     }
 
+    // Detect if the current location is within the unsuccessful buffer; if so,
+    // prevent entering C3 mode.
+    bool curr_location_avoids_unsuccessful_buffer =
+        !sampling_params_.avoid_choosing_unsuccessful_samples ||
+        SampleAvoidsBadSpots(candidate_states[SampleIndex::kCurrentLocation],
+                             sampling_params_, unsuccessful_sample_buffer_);
+
     // Switch to C3 if forced by xbox controller.
     if (force_c3_mode) {
       std::cout << "Forcing into C3 mode" << std::endl;
@@ -1379,7 +1386,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
              (x_lcs_curr[2] < sampling_params_.z_height +
                                   sampling_params_.c3_min_clearance +
                                   wall_offset ||
-              !sampling_params_.ee_z_close)) {
+              !sampling_params_.ee_z_close) &&
+             curr_location_avoids_unsuccessful_buffer) {
       is_doing_c3_ = true;
       finished_reposition_flag_ = false;
       if (repos_target_cost > progress_params_.finished_reposition_cost) {

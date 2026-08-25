@@ -88,6 +88,30 @@ cc_library(
 )
 
 cc_library(
+    name = "quaternion_axis_alignment",
+    srcs = [
+        "quaternion_axis_alignment.cc"
+    ],
+    hdrs = [
+        "quaternion_axis_alignment.h"
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_test(
+    name = "quaternion_axis_alignment_test",
+    size = "small",
+    srcs = ["test/quaternion_axis_alignment_test.cc"],
+    deps = [
+        ":quaternion_axis_alignment",
+        "@drake//:drake_shared_library",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "update_context",
     srcs = [
         "update_context.cc"

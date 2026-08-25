@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 
-#include <dairlib/lcmt_object_state.hpp>
 #include <Eigen/Core>
+#include <dairlib/lcmt_object_state.hpp>
 
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
@@ -15,8 +15,8 @@
 #include "systems/primitives/subvector_pass_through.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
-#include "drake/systems/framework/leaf_system.h"
 #include "drake/systems/framework/basic_vector.h"
+#include "drake/systems/framework/leaf_system.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
 
 namespace dairlib {
@@ -196,8 +196,9 @@ class RobotInputReceiver : public drake::systems::LeafSystem<double> {
 
 class ThreeDPrinterInputReceiver : public drake::systems::LeafSystem<double> {
  public:
-  explicit ThreeDPrinterInputReceiver(
-      const drake::multibody::MultibodyPlant<double>& plant);
+  ThreeDPrinterInputReceiver(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const Eigen::VectorXd& q_init);
 
  private:
   void CopyInputOut(const drake::systems::Context<double>& context,
@@ -208,6 +209,11 @@ class ThreeDPrinterInputReceiver : public drake::systems::LeafSystem<double> {
 
   std::unordered_map<std::string, int> position_index_map_;
   std::unordered_map<std::string, int> velocity_index_map_;
+
+  // Desired position to hold, used as the output until the first real comand
+  // message arrives (a default-constructed message reports num_positions == 0,
+  // which previously fell back to zero).
+  Eigen::VectorXd q_init_;
 };
 
 /// Receives the output of a controller, and outputs it as an LCM
@@ -230,15 +236,11 @@ class RobotCommandSender : public drake::systems::LeafSystem<double> {
 class ThreeDPrinterCommandSender : public drake::systems::LeafSystem<double> {
  public:
   explicit ThreeDPrinterCommandSender(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      const Eigen::Vector3d& target_offset = Eigen::Vector3d::Zero());
+      const drake::multibody::MultibodyPlant<double>& plant);
 
  private:
   void OutputCommand(const drake::systems::Context<double>& context,
                      dairlib::lcmt_robot_output* output) const;
-
-  Eigen::Vector3d target_offset_;
-  Eigen::VectorXd default_position_;
 };
 
 ///
@@ -271,17 +273,14 @@ SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
     drake::multibody::ModelInstanceIndex model_instance_index,
     bool publish_efforts = true, double actuator_delay = 0);
 
-
 drake::systems::LeafSystem<double>* Add3dPrinterStateReceiverAndStateSenderLcm(
     drake::systems::DiagramBuilder<double>* builder,
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::lcm::LcmInterfaceSystem* lcm,
-    std::string state_input_channel,
-    std::string state_output_channel,
+    std::string state_input_channel, std::string state_output_channel,
     double publish_rate,
     drake::multibody::ModelInstanceIndex model_instance_index,
-    bool publish_efforts);
-    
+    bool publish_efforts, const Eigen::VectorXd& q_init);
 
 }  // namespace systems
 }  // namespace dairlib

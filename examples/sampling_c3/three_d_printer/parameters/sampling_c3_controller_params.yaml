@@ -6,38 +6,17 @@ goal_params_file: examples/sampling_c3/three_d_printer/parameters/goal_params.ya
 
 sim_params_file: examples/sampling_c3/three_d_printer/parameters/sim_params.yaml
 vis_params_file: examples/sampling_c3/three_d_printer/parameters/vis_params.yaml
-osc_params_file: examples/sampling_c3/shared_parameters/osc_params.yaml
+osc_params_file: examples/sampling_c3/three_d_printer/parameters/osc_params.yaml
 osqp_settings_file: examples/sampling_c3/shared_parameters/sampling_c3_qp_settings.yaml
 osc_qp_settings_file: examples/sampling_c3/shared_parameters/osc_qp_settings.yaml
 franka_driver_channels_file: common/parameters/franka_drake_lcm_driver_channels.yaml
-lcm_channels_hardware_file: examples/sampling_c3/shared_parameters/lcm_channels_hardware.yaml
-lcm_channels_simulation_file: examples/sampling_c3/shared_parameters/lcm_channels_simulation.yaml
-lcm_channels_visualize_file: examples/sampling_c3/shared_parameters/lcm_channels_visualize.yaml
+lcm_channels_hardware_file: examples/sampling_c3/three_d_printer/parameters/lcm_channels_hardware.yaml
+lcm_channels_simulation_file: examples/sampling_c3/three_d_printer/parameters/lcm_channels_simulation.yaml
 
-object_model: examples/sampling_c3/urdf/nut/nut_controller.sdf
 object_models: [examples/sampling_c3/urdf/cone/cone_controller.sdf]
-object_body_name: body
-base_name: [A_shape_video]
-# base_names: [P_shape_texture, U_shape_texture, S_shape_texture, H_shape_texture]
-# base_names: [I_shape_texture, C_shape_texture, R_shape_texture, A_shape_video]
-# base_names: [U_shape_texture, R_shape_texture, D_shape_texture, F_shape_texture]
-# base_names: [C_shape_texture, 3_shape_video, P_shape_texture, O_shape_texture]
-# base_names: [D_shape_texture, A_shape_video, Y_shape_video, plus_video]
-# base_names: [H_shape_texture, I_shape_texture, E_shape_video, N_shape_video]
-# base_names: [Y_shape_video, U_shape_texture, F_shape_texture, E_shape_video, I_shape_texture]
-# base_names: [Y_shape_video, A_shape_video, N_shape_video, G_shape_video]
-# base_names: [H_shape_texture, A_shape_video, O_shape_texture, R_shape_texture, A_shape_video, N_shape_video]
-# base_names: [S_shape_texture, I_shape_texture, D_shape_texture]
-# base_names: [E_shape_video, R_shape_texture, I_shape_texture, C_shape_texture]
-# base_names: [B_shape_video, R_shape_texture, I_shape_texture, A_shape_video, N_shape_video]
-# base_names: [S_shape_texture, T_small_video, E_shape_video, P_shape_texture]
-# base_names: [H_shape_texture, E_shape_video, N_shape_video]
-# base_names: [B_shape_video, I_shape_texture, B_shape_video, I_shape_texture, T_small_video]
-# base_names: [T_small_video, H_shape_texture, I_shape_texture, N_shape_video, G_shape_video]
-# base_names: [D_shape_texture, A_shape_video, I_shape_texture, R_shape_texture]
-# base_names: [G_shape_video, R_shape_texture, A_shape_video, S_shape_texture]
 base_names: [cone]
 
-include_end_effector_orientation: false
+include_end_effector_orientation: false  # Unused for 3D printer
+                                         # (orientation never included).
 
 control_loop_delay_ms: 0

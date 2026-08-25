@@ -5,8 +5,10 @@
 #   3. kFixed:              fixed set of samples.
 #   4. kRandomOnPerimeter:  random samples on a perimeter offset past the object
 #                           surface (roughly planar).
-#   5. kRandomOnShell:      random samples on a shell offset past the object
-#                           surface.
+#   5. kRandomOnShell:      random samples on a shell enclosing the object,
+#                           projected to a fixed clearance off the object's
+#                           true nearest surface point (including edges and
+#                           vertices).  Multi-object compatible.
 #   6. kMeshNormal:         randomly projects normal vectors off of mesh faces
 #                           and keeps samples far enough from object
 #   7. kMeshNormaMultiObject
@@ -19,8 +21,8 @@ filter_samples_for_safety: true
 # Number of samples.  Add 2 for repositioning (current location, previous
 # repositioning target) and 1 for C3 (current location) to get total sample
 # number solved in parallel for each control loop.
-num_additional_samples_repos: 4
-num_additional_samples_c3: 5
+num_additional_samples_repos: 3
+num_additional_samples_c3: 4
 
 # Sample buffer parameters.
 consider_best_buffer_sample_when_leaving_c3: true
@@ -39,8 +41,8 @@ unsuccessful_radius: 0.01
 sampling_radius: 0.16  # kRadiallySymmetric, kRandomOnCircle, kRandomOnSphere
 sampling_height: 0.005 # kRadiallySymmetric, kRandomOnCircle, kRandomOnPerimeter
 sample_projection_clearance: 0.027   # kRandomOnPerimeter, kRandomOnShell, kMeshNormal
-min_angle_from_vertical: 1.49       # kRandomOnSphere, kRandomOnShell
-max_angle_from_vertical: 1.5        # kRandomOnSphere, kRandomOnShell
+min_angle_from_vertical: 1.49       # kRandomOnSphere
+max_angle_from_vertical: 1.5        # kRandomOnSphere
 
 # kFixed parameters.
 fixed_sample_locations: [[0.45, 0.270, 0.270],
@@ -50,10 +52,6 @@ fixed_sample_locations: [[0.45, 0.270, 0.270],
 # kRandomOnPerimeter parameters.
 grid_x_limits: [-0.11, 0.11]
 grid_y_limits: [-0.11, 0.11]
-
-# kRandomOnShell parameters.
-min_sampling_radius: 0.07
-max_sampling_radius: 0.10
 
 # kMeshNormal parameters
 buffer_distance: 0.035
@@ -68,3 +66,8 @@ gen_planar_samples: true # true = projects all samples to z_height
 ee_z_close: true # true = require ee to be close to sampling z-height before entering c3
 sample_on_wall: true
 c3_min_clearance: 0.01
+
+# If true, reject any candidate sample whose EE position comes within
+# workspace_margins + ee_radius of any fixed (non-EE, non-object) scene
+# geometry, regardless of sampling strategy.
+avoid_sampling_within_fixed_environment_geometries: false

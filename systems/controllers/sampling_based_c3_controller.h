@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <drake/common/yaml/yaml_io.h>
+#include <drake/geometry/geometry_set.h>
 #include <drake/geometry/proximity/obj_to_surface_mesh.h>
 #include <drake/geometry/proximity/triangle_surface_mesh.h>
 
@@ -214,10 +215,6 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   void CheckForWorkspaceLimitViolations(
       const TimestampedVector<double>* lcs_x_curr) const;
-    
-  
-  void Check3dPrinterForWorkspaceLimitViolations(
-      const TimestampedVector<double>* lcs_x_curr) const;
 
   void UpdateCostMatrices(const drake::VectorX<double>& x_lcs_curr,
                           const BasicVector<double>& x_lcs_des,
@@ -268,6 +265,11 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void IncludeEEOrientationTargetIfEnabled(
       LcmTrajectory* lcm_trajectory, const Eigen::Vector3d& ee_position,
       const Eigen::VectorXd& timestamps) const;
+
+  void ClampPlanToWorkspaceLimits(Eigen::MatrixXd* ee_position_traj) const;
+
+  void ProjectPlanAwayFromFixedGeometries(
+      Eigen::MatrixXd* ee_position_traj) const;
 
   /// Output port functions
   void OutputC3SolutionCurrPlan(
@@ -347,11 +349,21 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const drake::systems::Context<double>& context,
       Eigen::VectorXd* unsuccessful_sample_buffer_costs) const;
 
+  // Quantities computed once in the constructor for certain sampling
+  // strategies.
   std::vector<double> face_bins_;
   std::vector<Face> faces_;
   std::vector<std::vector<Face>> faces_per_object_;
   std::vector<std::vector<double>> face_bins_per_object_;
   std::vector<double> total_area_per_object_;
+  std::vector<drake::geometry::GeometryId> object_geometry_ids_;
+  std::vector<double> object_enclosing_radius_;
+  double ee_radius_ = 0.0;
+
+  // Fixed (non-EE, non-manipulated-object) collision geometries in the
+  // scene that exported EE plans must stay workspace_margins (plus ee_radius_)
+  // away from.
+  drake::geometry::GeometrySet fixed_obstacle_geometries_;
 
   drake::systems::InputPortIndex radio_port_;
   drake::systems::InputPortIndex final_target_input_port_;
@@ -405,10 +417,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   const SamplingC3RepositionParams reposition_params_;
   const SamplingC3ProgressParams progress_params_;
   const SamplingC3GoalParams goal_params_;
-  drake::solvers::SolverOptions solver_options_ =
-      drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(
-          "solvers/osqp_options_default.yaml")
-          .GetAsSolverOptions(drake::solvers::OsqpSolver::id());
+  drake::solvers::SolverOptions solver_options_;
 
   const bool verbose_;
   int n_q_;
@@ -488,6 +497,11 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       all_sample_dynamically_feasible_plans_;
   mutable Eigen::Vector3d prev_repositioning_target_ = Eigen::Vector3d::Zero();
   mutable std::vector<double> all_sample_costs_;
+
+  // For the published-trajectory sanity check in OutputTrajExecuteActor; see
+  // the investigation notes in the repo history / plan doc for 2026-08-05.
+  mutable Eigen::Vector3d last_published_ee_knot0_ = Eigen::Vector3d::Zero();
+  mutable bool has_last_published_ee_knot0_ = false;
 
   // To detect if the final goal has been updated.
   mutable Eigen::VectorXd x_final_target_;

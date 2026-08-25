@@ -2,6 +2,7 @@
 
 #include <drake/common/yaml/yaml_io.h>
 
+#include "c3/core/solver_options_io.h"
 #include "examples/sampling_c3/parameter_headers/goal_params.h"
 #include "examples/sampling_c3/parameter_headers/progress_params.h"
 #include "examples/sampling_c3/parameter_headers/reposition_params.h"
@@ -25,15 +26,10 @@ struct SamplingC3ControllerParams {
   std::string franka_driver_channels_file;
   std::string lcm_channels_hardware_file;
   std::string lcm_channels_simulation_file;
-  std::string lcm_channels_visualize_file;
-  std::string object_model;
-  std::string object_body_name;
 
-  std::vector<std::string> base_name;
   std::vector<std::string> object_models;
   std::vector<std::string> base_names;
 
-  double workspace_margin;
   bool include_end_effector_orientation;
   int control_loop_delay_ms;
 
@@ -45,6 +41,7 @@ struct SamplingC3ControllerParams {
   SamplingC3ProgressParams progress_params;
   SamplingParams sampling_params;
   SamplingC3GoalParams goal_params;
+  c3::SolverOptionsFromYaml osqp_settings;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -61,10 +58,6 @@ struct SamplingC3ControllerParams {
     a->Visit(DRAKE_NVP(franka_driver_channels_file));
     a->Visit(DRAKE_NVP(lcm_channels_hardware_file));
     a->Visit(DRAKE_NVP(lcm_channels_simulation_file));
-    a->Visit(DRAKE_NVP(lcm_channels_visualize_file));
-    a->Visit(DRAKE_NVP(object_model));
-    a->Visit(DRAKE_NVP(object_body_name));
-    a->Visit(DRAKE_NVP(base_name));
     a->Visit(DRAKE_NVP(include_end_effector_orientation));
     a->Visit(DRAKE_NVP(control_loop_delay_ms));
 
@@ -82,6 +75,8 @@ struct SamplingC3ControllerParams {
         drake::yaml::LoadYamlFile<SamplingParams>(sampling_params_file);
     goal_params =
         drake::yaml::LoadYamlFile<SamplingC3GoalParams>(goal_params_file);
+    osqp_settings =
+        drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(osqp_settings_file);
 
     num_objects = base_names.size();
   }

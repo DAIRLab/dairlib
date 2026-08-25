@@ -85,7 +85,7 @@ int DoMain(int argc, char* argv[]) {
 
   auto franka_state_pub =
       builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-          lcm_channel_params.franka_state_channel, &lcm, 1.0 / 1000.0));
+          lcm_channel_params.robot_state_channel, &lcm, 1.0 / 1000.0));
   auto franka_state_translator =
       builder.AddSystem<systems::FrankaStateOutTranslator>(pos_names, vel_names,
                                                            act_names);

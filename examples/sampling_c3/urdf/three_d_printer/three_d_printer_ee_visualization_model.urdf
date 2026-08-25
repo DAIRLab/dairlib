@@ -1,0 +1,14 @@
+<?xml version="1.0" ?>
+<robot name="end_effector_simple">
+  <link name="end_effector_simple">
+   <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <sphere radius="0.011"/>
+      </geometry>
+      <material>
+        <color rgba="1.0 1.0 1.0 1.0"/>
+      </material>
+    </visual>
+  </link>
+</robot>

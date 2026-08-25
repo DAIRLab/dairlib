@@ -4,6 +4,7 @@
 
 #include "common/file_utils.h"
 
+#include "drake/common/drake_assert.h"
 #include "drake/common/yaml/yaml_read_archive.h"
 
 /* Goal mode options:
@@ -11,8 +12,12 @@
   1. kOrientationSequence:  keep position goal the same, and cycle through a
                             sequence of orientations.
   2. kFixedGoal:            keep the same goal.
+  3. kFixedGoalSequence:    step through a sequence of fixed (position,
+                            orientation) goals, advancing to the next goal
+                            once the current one is reached, and holding at
+                            the last goal once reached.
 */
-enum GoalMode { kRandom, kOrientationSequence, kFixedGoal };
+enum GoalMode { kRandom, kOrientationSequence, kFixedGoal, kFixedGoalSequence };
 
 struct SamplingC3GoalParams {
   GoalMode goal_mode;
@@ -25,7 +30,11 @@ struct SamplingC3GoalParams {
 
   std::vector<double> resting_object_heights;  // in world frame for each object
   double ee_target_z_offset_above_object;  // defines EE goal wrt object height
-  bool ignore_roll_when_tracking_orientation;  // ignore roll when computing orientation error
+
+  // Per-object body-frame axis to align with the target's world-frame body axis
+  // direction, tracking twist about that axis freely. A zero vector (the
+  // default) means "track full orientation" for that object.
+  std::vector<Eigen::Vector3d> tracked_orientation_axis;
 
   /// Lookahead parameters to define a sub-goal for C3.
   double lookahead_step_size;
@@ -46,6 +55,13 @@ struct SamplingC3GoalParams {
   std::vector<Eigen::Vector3d> fixed_target_positions;
   std::vector<Eigen::Vector4d> fixed_target_orientations;
 
+  /// Sequence of (position, orientation) goals, used only when goal_mode ==
+  /// kFixedGoalSequence. Outer index = step in the sequence; inner index =
+  /// object.  Once the last step is reached, the goal holds there (no wrap-
+  /// around).
+  std::vector<std::vector<Eigen::Vector3d>> fixed_target_position_sequence;
+  std::vector<std::vector<Eigen::Vector4d>> fixed_target_orientation_sequence;
+
   std::vector<std::pair<double, double>> sampling_area_y_limits;
   std::vector<int> default_object_index_to_sampling_area_index_map;
 
@@ -64,13 +80,15 @@ struct SamplingC3GoalParams {
     a->Visit(DRAKE_NVP(orientation_success_threshold));
     a->Visit(DRAKE_NVP(resting_object_heights));
     a->Visit(DRAKE_NVP(ee_target_z_offset_above_object));
-    a->Visit(DRAKE_NVP(ignore_roll_when_tracking_orientation));
+    a->Visit(DRAKE_NVP(tracked_orientation_axis));
     a->Visit(DRAKE_NVP(lookahead_step_size));
     a->Visit(DRAKE_NVP(lookahead_angle));
     a->Visit(DRAKE_NVP(angle_hysteresis));
     a->Visit(DRAKE_NVP(angle_err_to_vel_factor));
     a->Visit(DRAKE_NVP(fixed_target_positions));
     a->Visit(DRAKE_NVP(fixed_target_orientations));
+    a->Visit(DRAKE_NVP(fixed_target_position_sequence));
+    a->Visit(DRAKE_NVP(fixed_target_orientation_sequence));
     a->Visit(DRAKE_NVP(random_goal_x_limits));
     a->Visit(DRAKE_NVP(random_goal_y_limits));
     a->Visit(DRAKE_NVP(random_goal_radius_limits));
@@ -79,6 +97,12 @@ struct SamplingC3GoalParams {
     a->Visit(DRAKE_NVP(only_use_xy_position));
     ComputeSamplingAreaYLimits();
     SetDefaultObjectIndexToSamplingAreaIndexMap();
+    NormalizeAndValidateTrackedAxes();
+    ValidateFixedGoalSequence();
+  }
+
+  bool HasTrackedAxis(int index) const {
+    return tracked_orientation_axis.at(index).squaredNorm() > 1e-12;
   }
 
  private:
@@ -101,5 +125,31 @@ struct SamplingC3GoalParams {
     default_object_index_to_sampling_area_index_map.resize(num_objects);
     std::iota(default_object_index_to_sampling_area_index_map.begin(),
               default_object_index_to_sampling_area_index_map.end(), 0);
+  }
+
+  void NormalizeAndValidateTrackedAxes() {
+    DRAKE_DEMAND(tracked_orientation_axis.size() ==
+                 fixed_target_positions.size());
+    for (auto& axis : tracked_orientation_axis) {
+      if (axis.squaredNorm() > 1e-12) {
+        axis.normalize();
+      }
+    }
+  }
+
+  void ValidateFixedGoalSequence() const {
+    if (goal_mode != GoalMode::kFixedGoalSequence) {
+      return;
+    }
+    DRAKE_DEMAND(!fixed_target_position_sequence.empty());
+    DRAKE_DEMAND(fixed_target_position_sequence.size() ==
+                 fixed_target_orientation_sequence.size());
+    int num_objects = fixed_target_positions.size();
+    for (const auto& step_positions : fixed_target_position_sequence) {
+      DRAKE_DEMAND(step_positions.size() == num_objects);
+    }
+    for (const auto& step_orientations : fixed_target_orientation_sequence) {
+      DRAKE_DEMAND(step_orientations.size() == num_objects);
+    }
   }
 };

@@ -1,0 +1,37 @@
+cc_binary(
+    name = "diagnose_projection",
+    srcs = [
+        "diagnose_projection.cc",
+    ],
+    deps = [
+        "//common:find_resource",
+        "//examples/sampling_c3:sampling_c3_utils",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "diagnose_reposition_repro",
+    srcs = [
+        "diagnose_reposition_repro.cc",
+    ],
+    deps = [
+        "//examples/sampling_c3:reposition",
+        "//examples/sampling_c3/parameter_headers:reposition_params",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "diagnose_reposition_repro_pwl",
+    srcs = [
+        "diagnose_reposition_repro_pwl.cc",
+    ],
+    deps = [
+        "//examples/sampling_c3:reposition",
+        "//examples/sampling_c3/parameter_headers:reposition_params",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
+        "@drake//:drake_shared_library",
+    ],
+)

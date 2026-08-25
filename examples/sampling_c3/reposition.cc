@@ -1,11 +1,6 @@
 #include "reposition.h"
 
-#include "drake/common/trajectories/piecewise_polynomial.h"
-
 namespace dairlib {
-
-using drake::trajectories::PiecewisePolynomial;
-
 namespace systems {
 
 // TODO @bibit further cleanup could require +/- z workspace limits instead of
@@ -34,14 +29,6 @@ Eigen::MatrixXd Reposition(const int& n_q, const int& n_x, const int& N,
   // Compute EE position errors to repositioning target.
   double travel_distance = curr_to_goal_vec.norm();
   double xy_travel_distance = curr_to_goal_vec.head(2).norm();
-  //std::cout << "Repositioning to " << repos_target.transpose()
-  //          << " from current ee location "
-  //          << current_ee_location.transpose() << std::endl;
-  //std::cout << "Travel distance: " << travel_distance
-  //          << ", xy_travel_distance: " << xy_travel_distance
-  //          << ", travel_angle: " << travel_angle << std::endl;
-  //std::cout << "piecewise linear comparison: " << reposition_params.use_straight_line_traj_under_piecewise_linear
-  //          << std::endl;
   // Use a straight line trajectory if close to the target.
   RepositioningTrajectoryType traj_type = reposition_params.traj_type;
   bool allow_ground_penetration = false;
@@ -53,10 +40,11 @@ Eigen::MatrixXd Reposition(const int& n_q, const int& n_x, const int& N,
        travel_angle < reposition_params.use_straight_line_traj_within_angle) ||
       (traj_type == RepositioningTrajectoryType::kPiecewiseLinear &&
        ((xy_travel_distance <
-           reposition_params.use_straight_line_traj_under_piecewise_linear) || 
-           ((xy_travel_distance < reposition_params.use_straight_line_traj_under_piecewise_linear + 0.01) &&
-            (current_ee_location[2] < reposition_params.pwl_waypoint_height))))) {
-    //std::cout << "Using straight line trajectory for repositioning." << std::endl;
+         reposition_params.use_straight_line_traj_under_piecewise_linear) ||
+        ((xy_travel_distance <
+          reposition_params.use_straight_line_traj_under_piecewise_linear +
+              0.01) &&
+         (current_ee_location[2] < reposition_params.pwl_waypoint_height))))) {
     RepositionStraightLine(knots, n_q, n_x, N, x_lcs, repos_target, dt,
                            is_doing_c3, finished_reposition_flag,
                            reposition_params);
@@ -90,34 +78,32 @@ void RepositionStraightLine(
     const Eigen::VectorXd& x_lcs, const Eigen::Vector3d& repos_target,
     const double& dt, const bool& is_doing_c3, bool& finished_reposition_flag,
     const SamplingC3RepositionParams& reposition_params) {
-
-  //std::cout << "Repositioning using straight line trajectory to "
-  //          << repos_target.transpose() << std::endl;
   Eigen::Vector3d current_ee_location = x_lcs.head(3);
   Eigen::Vector3d curr_to_goal_vec = repos_target - current_ee_location;
   double travel_distance = curr_to_goal_vec.norm();
 
-  Eigen::VectorXd times = Eigen::VectorXd::Zero(2);
-  times[0] = 0;
-  // Ensure the times used to define PiecewisePolynomial are increasing.
+  // Ensure the denominator used for interpolation fractions is nonzero.
   double total_travel_time = travel_distance / reposition_params.speed;
-  times[1] = std::max(total_travel_time, 0.0001);
+  double denom = std::max(total_travel_time, 0.0001);
 
-  Eigen::MatrixXd points = Eigen::MatrixXd::Zero(n_x, 2);
-  points.col(0) = x_lcs;
   Eigen::VectorXd next_lcs_state = x_lcs;
   next_lcs_state.head(3) = repos_target;
   next_lcs_state.segment(n_q, 3) = Eigen::Vector3d::Zero();
-  points.col(1) = next_lcs_state;
-  auto trajectory = PiecewisePolynomial<double>::FirstOrderHold(times, points);
 
+  // Linearly interpolate from x_lcs to next_lcs_state directly, rather than
+  // going through PiecewisePolynomial::FirstOrderHold(...).value(...) for what
+  // is just a 2-point linear interpolation -- that path was found (via
+  // AddressSanitizer) to read one byte past the end of a heap-allocated buffer
+  // inside Drake's PiecewisePolynomial::do_value(), which could occasionally
+  // pull in unrelated heap garbage and produce a knot far from the intended
+  // straight-line path.
   for (int i = 0; i < N; i++) {
     double t_line = std::min((i)*dt, total_travel_time);
-    knots.col(i) = trajectory.value(t_line);
+    double frac = t_line / denom;
+    knots.col(i) = (1.0 - frac) * x_lcs + frac * next_lcs_state;
 
     // If one step gets to the goal, set finished_reposition_flag.
     if (i == 1 && t_line >= total_travel_time && !is_doing_c3) {
-      
       finished_reposition_flag = true;
     }
   }
@@ -154,8 +140,8 @@ void RepositionSpline(Eigen::MatrixXd& knots, const int& n_q, const int& N,
     // Set finished_reposition_flag if only one step is required.
     if (i == 1 && t_spline == 1 && !is_doing_c3) {
       finished_reposition_flag = true;
-      //std::cout << "WARNING! Spline finished repositioning in 1 step."
-      //          << std::endl;
+      std::cout << "WARNING! Spline finished repositioning in 1 step."
+                << std::endl;
     }
 
     Eigen::Vector3d next_ee_loc =
@@ -171,8 +157,10 @@ void RepositionSpline(Eigen::MatrixXd& knots, const int& n_q, const int& N,
     next_lcs_state.head(3) = next_ee_loc;
     next_lcs_state.segment(n_q, 3) = Eigen::Vector3d::Zero();
     // If z is under the table, set it to a min height.
-    if (next_lcs_state[2] < sampling_c3_options.workspace_limits[2][3]) {
-      next_lcs_state[2] = sampling_c3_options.workspace_limits[2][3];
+    if (next_lcs_state[2] < sampling_c3_options.workspace_limits[2][3] +
+                                sampling_c3_options.workspace_margins) {
+      next_lcs_state[2] = sampling_c3_options.workspace_limits[2][3] +
+                          sampling_c3_options.workspace_margins;
     }
 
     knots.col(i) = next_lcs_state;
@@ -276,8 +264,10 @@ void RepositionSpherical(Eigen::MatrixXd& knots, const int& n_q, const int& N,
 
   // Enforce minimum z height for end effector.
   for (int j = 0; j < i; j++) {
-    if (knots(2, j) < sampling_c3_options.workspace_limits[2][3]) {
-      knots(2, j) = sampling_c3_options.workspace_limits[2][3];
+    if (knots(2, j) < sampling_c3_options.workspace_limits[2][3] +
+                          sampling_c3_options.workspace_margins) {
+      knots(2, j) = sampling_c3_options.workspace_limits[2][3] +
+                    sampling_c3_options.workspace_margins;
     }
   }
 
@@ -412,7 +402,6 @@ void RepositionPiecewiseLinear(
   Eigen::Vector3d current_ee_location = x_lcs.head(3);
 
   // Define the waypoints for the three-leg repositioning.
-  //std::cout << "Repositioning using piecewise linear trajectory to " << repos_target.transpose() << std::endl;
   Eigen::Vector3d waypoint_above_ee = current_ee_location;
   waypoint_above_ee(2) = reposition_params.pwl_waypoint_height;
   Eigen::Vector3d waypoint_above_sample = repos_target;
@@ -475,7 +464,6 @@ void RepositionPiecewiseLinear(
     x_lcs_goal.head(3) = repos_target;
     knots.col(j) = x_lcs_goal;
     if (j == 1 && !is_doing_c3) {
-      
       finished_reposition_flag = true;
     }
   }

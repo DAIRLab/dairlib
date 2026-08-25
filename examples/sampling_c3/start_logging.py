@@ -8,6 +8,11 @@ import sys
 import yaml
 
 
+UBUNTU_22_LCM_COMMAND = '/opt/lcm/1.4.0/bin/lcm-logger'
+UBUNTU_24_LCM_COMMAND = 'lcm-logger'
+LCM_COMMAND = UBUNTU_24_LCM_COMMAND  # Change this if using Ubuntu 22.
+
+
 def main(log_type, demo_name, folder_path):
     curr_date = date.today().strftime("%m_%d_%y")
     year = date.today().strftime("%Y")
@@ -92,7 +97,7 @@ def main(log_type, demo_name, folder_path):
     subprocess.run(['cp', object_sim_urdf, f'object_sim_urdf_{log_num}{object_sim_ext}'])
 
     # Begin logging.
-    subprocess.run(['/opt/lcm/1.4.0/bin/lcm-logger', '-f', logname])
+    subprocess.run([LCM_COMMAND, '-f', logname])
 
 
 if __name__ == '__main__':

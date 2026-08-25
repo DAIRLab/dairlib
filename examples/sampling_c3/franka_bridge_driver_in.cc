@@ -94,7 +94,7 @@ int DoMain(int argc, char* argv[]) {
   std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
   systems::LcmDrivenLoop<dairlib::lcmt_robot_input> loop(
       &lcm, shared_diagram, franka_command_translator,
-      lcm_channel_params.franka_input_channel, true);
+      lcm_channel_params.robot_input_channel, true);
   loop.Simulate();
 
   return 0;

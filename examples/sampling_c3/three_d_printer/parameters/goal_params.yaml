@@ -3,21 +3,24 @@
 #   1. kOrientationSequence:  keep position goal the same, and cycle through a
 #                             sequence of orientations.
 #   2. kFixedGoal:            keep the same goal.
-goal_mode: 0
+#   3. kFixedGoalSequence:    step through a sequence of fixed (position,
+#                             orientation) goals, advancing once the current
+#                             one is reached, and holding at the last goal.
+goal_mode: 3  # This 3D printer demo steps through a fixed goal sequence.
 
 ### Parameters used for multiple goal modes.
 # Success thresholds for position and orientation.
 position_success_threshold: 0.02
 orientation_success_threshold: 0.1  # 0.1 rad = 5.7 degrees
 only_use_xy_position: true
-ignore_roll_when_tracking_orientation: true
+tracked_orientation_axis: [[1.0, 0.0, 0.0]]  # cone's symmetry axis is body +x
 
 #resting_object_height: -0.004                # in world frame
-resting_object_heights: [0.0254]                                               # in world frame
+resting_object_heights: [0.0254]              # in world frame
 ee_target_z_offset_above_object: 0.06   # defines EE goal w.r.t. object position
 
 # Lookahead parameters to define a sub-goal for C3.
-lookahead_step_size: 0.15   # meters
+lookahead_step_size: 0.1    # meters
 lookahead_angle: 2          # rad
 
 # Apply hysteresis on the lookahead angle so the sub-goal orientation doesn't
@@ -35,6 +38,17 @@ angle_err_to_vel_factor: 0
 
 fixed_target_positions: [[0.025, 0.13, 0.05]]
 fixed_target_orientations: [[0.707, 0, 0.707, 0]]
+
+# kFixedGoalSequence:  Sequence of (position, orientation) goals to step
+# through.  Outer index = step, inner index = object.
+fixed_target_position_sequence:
+  - [[0.19, 0.13, 0.0]]
+  # - [[0.16, 0.13, 0.025]]
+  - [[0.025, 0.13, 0.05]]
+fixed_target_orientation_sequence:
+  - [[0.707, 0, -0.707, 0]]
+  # - [[-0.18, 0.0, -0.98, 0.0]]
+  - [[0.707, 0, 0.707, 0]]
 
 
 # Random-specific parameters.

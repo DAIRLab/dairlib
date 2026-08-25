@@ -41,7 +41,6 @@ cc_binary(
     ],
     linkopts = [
         "-L/lib/x86_64-linux-gnu",
-        "-lopenblas",
     ],
 )
 
@@ -71,7 +70,6 @@ cc_binary(
     ],
     linkopts = [
         "-L/lib/x86_64-linux-gnu",
-        "-lopenblas",
     ],
 )
 
@@ -145,7 +143,6 @@ cc_binary(
     ],
     linkopts = [
         "-L/lib/x86_64-linux-gnu",
-        "-lopenblas",
     ],
 )
 
@@ -229,7 +226,6 @@ cc_binary(
     ],
     linkopts = [
         "-L/lib/x86_64-linux-gnu",
-        "-lopenblas",
     ],
 )
 
@@ -256,6 +252,7 @@ cc_library(
         "//lcmtypes:lcmt_robot",
         "//lcm:lcm_trajectory_saver",
         "//common:math_utils",
+        "//common:quaternion_axis_alignment",
         "@drake//:drake_shared_library",
         "@lcm//lcm:lcm-shared",
     ],
@@ -358,7 +355,6 @@ cc_binary(
     ],
     linkopts = [
         "-L/lib/x86_64-linux-gnu",
-        "-lopenblas",
     ],
 )
 
@@ -385,7 +381,6 @@ cc_binary(
     ],
     linkopts = [
         "-L/lib/x86_64-linux-gnu",
-        "-lopenblas",
     ],
 )
 
@@ -418,38 +413,8 @@ cc_binary(
     ],
     linkopts = [
         "-L/lib/x86_64-linux-gnu",
-        "-lopenblas",
     ],
 )
-
-cc_binary(
-    name = "three_d_printer_joint_osc_controller",
-    srcs = ["three_d_printer_joint_osc_controller.cc"],
-    data = [
-        ":urdfs",
-        "//examples/sampling_c3:all_example_params_yamls",
-        "@drake_models//:franka_description",
-    ],
-    deps = [
-        "//examples/sampling_c3:joint_trajectory_generator",
-        "//examples/sampling_c3:sampling_c3_utils",
-        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
-        "//examples/sampling_c3/parameter_headers:lcm_channels",
-        "//examples/sampling_c3/parameter_headers:osc_params",
-        "//common",
-        "//lcm:lcm_trajectory_saver",
-        "//systems:robot_lcm_systems",
-        "//systems:franka_target_joint_position_receiver",
-        "//systems:system_utils",
-        "//systems/controllers:gravity_compensator",
-        "//systems/controllers/osc:operational_space_control",
-        "//systems/framework:lcm_driven_loop",
-        "//systems/trajectory_optimization:lcm_trajectory_systems",
-        "@drake//:drake_shared_library",
-        "@gflags",
-    ],
-)
-
 
 cc_binary(
     name = "three_d_printer_osc_controller",
@@ -468,6 +433,7 @@ cc_binary(
         "//lcm:lcm_trajectory_saver",
         "//systems:robot_lcm_systems",
         "//systems:system_utils",
+        "//systems:three_d_printer_kinematics",
         "//systems/controllers:gravity_compensator",
         "//systems/controllers/osc:operational_space_control",
         "//systems/framework:lcm_driven_loop",
@@ -477,6 +443,5 @@ cc_binary(
     ],
     linkopts = [
         "-L/lib/x86_64-linux-gnu",
-        "-lopenblas",
     ],
 )

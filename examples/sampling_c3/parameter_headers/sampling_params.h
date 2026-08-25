@@ -11,8 +11,10 @@
   3. kFixed:              fixed set of samples.
   4. kRandomOnPerimeter:  random samples on a perimeter offset past the object
                           surface (roughly planar).
-  5. kRandomOnShell:      random samples on a shell offset past the object
-                          surface.
+  5. kRandomOnShell:      random samples on a shell enclosing the object,
+                          projected to a fixed clearance off the object's
+                          true nearest surface point (including edges and
+                          vertices).  Multi-object compatible.
   6. kMeshNormal:         random samples on a mesh surface using the mesh
                           face normal projection offset from the mesh.
 */
@@ -59,8 +61,8 @@ struct SamplingParams {
                                        // kRandomOnPerimeter
   double sample_projection_clearance;  // kRandomOnPerimeter, kRandomOnShell,
                                        // kMeshNormal
-  double min_angle_from_vertical;      // kRandomOnSphere, kRandomOnShell
-  double max_angle_from_vertical;      // kRandomOnSphere, kRandomOnShell
+  double min_angle_from_vertical;      // kRandomOnSphere
+  double max_angle_from_vertical;      // kRandomOnSphere
 
   /// kFixed parameters.
   Eigen::MatrixXd fixed_sample_locations;  // n_samples rows, 3 columns
@@ -68,10 +70,6 @@ struct SamplingParams {
   /// kRandomOnPerimeter parameters.
   std::vector<double> grid_x_limits;
   std::vector<double> grid_y_limits;
-
-  /// kRandomOnShell parameters.
-  double min_sampling_radius;
-  double max_sampling_radius;
 
   // kMeshNormal parameters
   double buffer_distance;
@@ -83,6 +81,12 @@ struct SamplingParams {
   bool gen_planar_samples;
   double c3_min_clearance;
   bool sample_on_wall;
+
+  /// If true, reject any candidate sample whose EE position comes within
+  /// workspace_margins (of SamplingC3Options) plus the EE radius of any
+  /// fixed (non-EE, non-manipulated-object) scene geometry, regardless of
+  /// sampling strategy.
+  bool avoid_sampling_within_fixed_environment_geometries;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -96,8 +100,6 @@ struct SamplingParams {
     a->Visit(DRAKE_NVP(grid_x_limits));
     a->Visit(DRAKE_NVP(grid_y_limits));
     a->Visit(DRAKE_NVP(sample_projection_clearance));
-    a->Visit(DRAKE_NVP(min_sampling_radius));
-    a->Visit(DRAKE_NVP(max_sampling_radius));
     a->Visit(DRAKE_NVP(num_additional_samples_repos));
     a->Visit(DRAKE_NVP(num_additional_samples_c3));
     a->Visit(DRAKE_NVP(consider_best_buffer_sample_when_leaving_c3));
@@ -118,5 +120,6 @@ struct SamplingParams {
     a->Visit(DRAKE_NVP(ee_z_close));
     a->Visit(DRAKE_NVP(gen_planar_samples));
     a->Visit(DRAKE_NVP(sample_on_wall));
+    a->Visit(DRAKE_NVP(avoid_sampling_within_fixed_environment_geometries));
   }
 };

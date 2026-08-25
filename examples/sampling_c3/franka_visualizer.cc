@@ -187,7 +187,7 @@ int do_main(int argc, char* argv[]) {
   // LCM subscribers.
   auto franka_state_sub =
       builder.AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-          lcm_channel_params.franka_state_channel, lcm));
+          lcm_channel_params.robot_state_channel, lcm));
 
   std::vector<LcmSubscriberSystem*> object_state_subs;
   for (int i = 0; i < object_state_receivers.size(); i++) {
@@ -461,7 +461,8 @@ int do_main(int argc, char* argv[]) {
     auto sample_buffer_point_cloud_visualizer =
         builder.AddSystem<MeshcatPointCloudVisualizer>(meshcat,
                                                        "sample_buffer");
-    sample_buffer_point_cloud_visualizer->set_point_size(0.02);
+    sample_buffer_point_cloud_visualizer->set_point_size(
+        vis_params.sample_buffer_point_size);
 
     builder.Connect(sample_buffer_sub->get_output_port(),
                     sample_buffer_to_point_cloud_converter
@@ -472,6 +473,21 @@ int do_main(int argc, char* argv[]) {
     builder.Connect(sample_costs_sub->get_output_port(),
                     sample_buffer_to_point_cloud_converter
                         ->get_input_port_new_sample_costs());
+  }
+
+  if (vis_params.visualize_unsuccessful_sample_buffer) {
+    auto unsuccessful_sample_buffer_sub = builder.AddSystem(
+        LcmSubscriberSystem::Make<dairlib::lcmt_sample_buffer>(
+            lcm_channel_params.unsuccessful_sample_buffer_channel, lcm));
+    auto unsuccessful_sample_buffer_drawer =
+        builder.AddSystem<systems::LcmSampleBufferSphereDrawer>(
+            meshcat, "unsuccessful_sample_buffer",
+            sampling_params.N_unsuccessful_sample_buffer,
+            sampling_params.unsuccessful_radius,
+            vis_params.unsuccessful_sample_buffer_color);
+    builder.Connect(unsuccessful_sample_buffer_sub->get_output_port(),
+                    unsuccessful_sample_buffer_drawer
+                        ->get_input_port_lcmt_sample_buffer());
   }
 
   if (vis_params.visualize_c3_state) {

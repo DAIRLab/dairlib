@@ -141,6 +141,7 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
   void SetRandomizedTargetFinalObjectOrientation(int index) const;
   void AssignObjectIndexToGoalSamplingArea() const;
   void CycleThroughOrientationSequence(int index) const;
+  void CycleThroughFixedGoalSequence(int index) const;
   void OnGoalReached(int index) const;
   std::pair<Eigen::Quaterniond, Eigen::Vector3d>
   GenerateLineTrajectoryWithLookahead(
@@ -166,7 +167,14 @@ class SamplingC3GoalGenerator : public drake::systems::LeafSystem<double> {
   mutable Eigen::Vector3d datum_position_ =
       Eigen::VectorXd::Constant(3, std::numeric_limits<double>::quiet_NaN());
 
-  mutable Eigen::Vector3d last_rotation_axis_ = Eigen::Vector3d::Zero();
+  // Hysteresis state for the 180-degree lookahead singularity, one per object;
+  // kept separate across the four call sites below since each is an
+  // independent Drake output-port calculator with no guaranteed relative call
+  // order/count.
+  mutable std::vector<Eigen::Vector3d> last_rotation_axis_lookahead_;
+  mutable std::vector<Eigen::Vector3d> last_axis_align_lookahead_;
+  mutable std::vector<Eigen::Vector3d> last_axis_align_velocity_;
+  mutable std::vector<Eigen::Vector3d> last_axis_align_final_target_;
   mutable int goal_counter_ = 1;
   mutable int orientation_index_ = -1;
 };

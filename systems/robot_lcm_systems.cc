@@ -1,20 +1,17 @@
-#include <iostream>
 #include "robot_lcm_systems.h"
 
+#include <iostream>
 
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "multibody/multibody_utils.h"
 
+#include "drake/common/trajectories/piecewise_polynomial.h"
+#include "drake/common/trajectories/trajectory.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/lcm/lcm_publisher_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
 #include "drake/systems/primitives/discrete_time_delay.h"
-#include "drake/common/schema/rotation.h"
-#include "drake/geometry/rgba.h"
-#include "drake/common/trajectories/trajectory.h"
-#include "drake/common/trajectories/piecewise_polynomial.h"
-
 
 namespace dairlib {
 namespace systems {
@@ -26,8 +23,8 @@ using drake::systems::BasicVector;
 using drake::systems::Context;
 using drake::systems::lcm::LcmPublisherSystem;
 using drake::systems::lcm::LcmSubscriberSystem;
-using drake::trajectories::Trajectory;
 using drake::trajectories::PiecewisePolynomial;
+using drake::trajectories::Trajectory;
 using Eigen::VectorXd;
 using std::string;
 using systems::OutputVector;
@@ -87,46 +84,38 @@ RobotOutputReceiver::RobotOutputReceiver(
 
 void RobotOutputReceiver::CopyOutput(const Context<double>& context,
                                      OutputVector<double>* output) const {
-
   const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
   const auto& state_msg = input->get_value<dairlib::lcmt_robot_output>();
-  
+
   VectorXd positions = VectorXd::Zero(num_positions_);
   for (int i = 0; i < state_msg.num_positions; i++) {
     auto it = position_index_map_.find(state_msg.position_names[i]);
-
-if (it == position_index_map_.end()) {
-  std::cerr << "[RobotOutputReceiver] missing position key: "
-            << state_msg.position_names[i] << std::endl;
-  throw std::runtime_error("missing position key");
-
-  
-}
-int j = it->second;
+    if (it == position_index_map_.end()) {
+      throw std::runtime_error("missing position key: " +
+                               state_msg.position_names[i]);
+    }
+    int j = it->second;
     positions(j - positions_start_idx_) = state_msg.position[i];
   }
   VectorXd velocities = VectorXd::Zero(num_velocities_);
   for (int i = 0; i < state_msg.num_velocities; i++) {
-    
     auto it = velocity_index_map_.find(state_msg.velocity_names[i]);
-
-if (it == velocity_index_map_.end()) {
-  std::cerr << "[RobotOutputReceiver] missing velocity key: " << state_msg.velocity_names[i] << std::endl;
-  throw std::runtime_error("missing velocity key");
-}
-int j = it->second;
+    if (it == velocity_index_map_.end()) {
+      throw std::runtime_error("missing velocity key: " +
+                               state_msg.velocity_names[i]);
+    }
+    int j = it->second;
     velocities(j - velocities_start_idx_) = state_msg.velocity[i];
   }
   VectorXd efforts = VectorXd::Zero(num_efforts_);
   for (int i = 0; i < state_msg.num_efforts; i++) {
-    
     auto it = effort_index_map_.find(state_msg.effort_names[i]);
-if (it == effort_index_map_.end()) {
-  std::cerr << "[RobotOutputReceiver] missing effort key: " << state_msg.effort_names[i] << std::endl;
-  throw std::runtime_error("missing effort key");
-}
-int j = it->second;
+    if (it == effort_index_map_.end()) {
+      throw std::runtime_error("missing effort key: " +
+                               state_msg.effort_names[i]);
+    }
+    int j = it->second;
     efforts(j) = state_msg.effort[j];
   }
 
@@ -147,139 +136,49 @@ int j = it->second;
 void RobotOutputReceiver::InitializeSubscriberPositions(
     const MultibodyPlant<double>& plant,
     drake::systems::Context<double>& context) const {
-
-  std::cout << "\n==========================================" << std::endl;
-  std::cout << "InitializeSubscriberPositions()" << std::endl;
-  std::cout << "==========================================" << std::endl;
-
   auto& state_msg = context.get_mutable_abstract_state<lcmt_robot_output>(0);
 
   // using the time from the context
   state_msg.utime = context.get_time() * 1e6;
 
-  std::cout << "Extracting ordered names..." << std::endl;
-
   std::vector<std::string> ordered_position_names =
       multibody::ExtractOrderedNamesFromMap(position_index_map_,
                                             positions_start_idx_);
-
   std::vector<std::string> ordered_velocity_names =
       multibody::ExtractOrderedNamesFromMap(velocity_index_map_,
                                             velocities_start_idx_);
 
-  std::vector<std::string> ordered_effort_names =
-      multibody::ExtractOrderedNamesFromMap(effort_index_map_);
-
-  std::cout << "num_positions_              = " << num_positions_ << std::endl;
-  std::cout << "num_velocities_             = " << num_velocities_ << std::endl;
-
-  std::cout << "ordered_position_names.size = "
-            << ordered_position_names.size() << std::endl;
-  std::cout << "ordered_velocity_names.size = "
-            << ordered_velocity_names.size() << std::endl;
-  std::cout << "ordered_effort_names.size   = "
-            << ordered_effort_names.size() << std::endl;
-
   state_msg.num_positions = num_positions_;
   state_msg.num_velocities = num_velocities_;
-
-  std::cout << "Resizing vectors..." << std::endl;
-
   state_msg.position_names.resize(num_positions_);
   state_msg.velocity_names.resize(num_velocities_);
   state_msg.position.resize(num_positions_);
   state_msg.velocity.resize(num_velocities_);
 
-  std::cout << "position_names.size() = "
-            << state_msg.position_names.size() << std::endl;
-  std::cout << "velocity_names.size() = "
-            << state_msg.velocity_names.size() << std::endl;
-  std::cout << "position.size()       = "
-            << state_msg.position.size() << std::endl;
-  std::cout << "velocity.size()       = "
-            << state_msg.velocity.size() << std::endl;
-
-  std::cout << "\nInitializing positions..." << std::endl;
-
   for (int i = 0; i < num_positions_; i++) {
-    std::cout << "  position[" << i << "]" << std::endl;
-
-    if (i >= ordered_position_names.size()) {
-      std::cout << "  ERROR: ordered_position_names out of bounds!"
-                << std::endl;
-    }
-
     state_msg.position_names[i] = ordered_position_names[i];
     state_msg.position[i] = 0;
   }
 
-  std::cout << "Finished position initialization." << std::endl;
-
   // Set quaternion w = 1, assumes drake quaternion ordering of wxyz
-  std::cout << "\nInitializing quaternion..." << std::endl;
-
   if (model_instance_ !=
       drake::multibody::ModelInstanceIndex(DEFAULT_MODEL_INSTANCE_INDEX)) {
-
-    std::cout << "Specific model instance." << std::endl;
-
     if (plant.HasUniqueFreeBaseBody(model_instance_)) {
-      const auto& body = plant.GetUniqueFreeBaseBodyOrThrow(model_instance_);
-
-      std::cout << "floating_positions_start = "
-                << body.floating_positions_start() << std::endl;
-
       state_msg.position.at(0) = 1;
     }
-
   } else {
-
-    std::cout << "Default model instance." << std::endl;
-
     for (const auto& body_idx : plant.GetFloatingBaseBodies()) {
       const auto& body = plant.get_body(body_idx);
-
-      std::cout << "Body: " << body.name()
-                << " quaternion=" << body.has_quaternion_dofs()
-                << std::endl;
-
       if (body.has_quaternion_dofs()) {
-        std::cout << "Setting quaternion at index "
-                  << body.floating_positions_start() << std::endl;
-
         state_msg.position.at(body.floating_positions_start()) = 1;
       }
     }
   }
 
-  std::cout << "\nInitializing velocities..." << std::endl;
-
   for (int i = 0; i < num_velocities_; i++) {
-
-    std::cout << "  velocity[" << i << "]"
-              << "  velocity.size()=" << state_msg.velocity.size()
-              << "  velocity_names.size()="
-              << state_msg.velocity_names.size()
-              << "  ordered_velocity_names.size()="
-              << ordered_velocity_names.size()
-              << std::endl;
-
-    if (i >= state_msg.velocity.size()) {
-      std::cout << "  ERROR: velocity vector out of bounds!" << std::endl;
-    }
-
-    if (i >= ordered_velocity_names.size()) {
-      std::cout << "  ERROR: ordered_velocity_names out of bounds!"
-                << std::endl;
-    }
-
     state_msg.velocity[i] = 0;
     state_msg.velocity_names[i] = ordered_velocity_names[i];
   }
-
-  std::cout << "Finished velocity initialization." << std::endl;
-  std::cout << "InitializeSubscriberPositions() complete." << std::endl;
-  std::cout << "==========================================\n" << std::endl;
 }
 
 /*--------------------------------------------------------------------------*/
@@ -376,65 +275,41 @@ RobotOutputSender::RobotOutputSender(
 /// Populate a state message with all states
 void RobotOutputSender::Output(const Context<double>& context,
                                dairlib::lcmt_robot_output* state_msg) const {
+  const auto state = this->EvalVectorInput(context, state_input_port_);
 
-const auto state = this->EvalVectorInput(context, state_input_port_);
+  // using the time from the context
+  state_msg->utime = context.get_time() * 1e6;
 
+  state_msg->num_positions = num_positions_;
+  state_msg->num_velocities = num_velocities_;
+  state_msg->position_names.resize(num_positions_);
+  state_msg->velocity_names.resize(num_velocities_);
+  state_msg->position.resize(num_positions_);
+  state_msg->velocity.resize(num_velocities_);
 
-
-state_msg->utime = context.get_time() * 1e6;
-
-
-
-state_msg->num_positions = num_positions_;
-state_msg->num_velocities = num_velocities_;
-
-
-
-state_msg->position_names.resize(num_positions_);
-state_msg->velocity_names.resize(num_velocities_);
-state_msg->position.resize(num_positions_);
-state_msg->velocity.resize(num_velocities_);
-
-
-
-for (int i = 0; i < num_positions_; i++) {
-    std::cout << "pos loop " << i << std::endl;
-
+  for (int i = 0; i < num_positions_; i++) {
     state_msg->position_names[i] = ordered_position_names_[i];
-
-    std::cout << "assigned name" << std::endl;
-
     double q = state->GetAtIndex(i);
-
-    std::cout << "q=" << q << std::endl;
-
     state_msg->position[i] = std::isnan(q) ? 0 : q;
-}
+  }
 
-for (int i = 0; i < num_velocities_; i++) {
-    std::cout << "vel loop " << i << std::endl;
-
+  for (int i = 0; i < num_velocities_; i++) {
     state_msg->velocity[i] = state->GetAtIndex(num_positions_ + i);
-
-    std::cout << "assigned velocity" << std::endl;
-
     state_msg->velocity_names[i] = ordered_velocity_names_[i];
-}
+  }
 
+  if (publish_efforts_) {
+    const auto efforts = this->EvalVectorInput(context, effort_input_port_);
 
+    state_msg->num_efforts = num_efforts_;
+    state_msg->effort_names.resize(num_efforts_);
+    state_msg->effort.resize(num_efforts_);
 
-  // if (publish_efforts_) {
-  //   const auto efforts = this->EvalVectorInput(context, effort_input_port_);
-
-  //   state_msg->num_efforts = num_efforts_;
-  //   state_msg->effort_names.resize(num_efforts_);
-  //   state_msg->effort.resize(num_efforts_);
-
-  //   for (int i = 0; i < num_efforts_; i++) {
-  //     state_msg->effort[i] = efforts->GetAtIndex(i);
-  //     state_msg->effort_names[i] = ordered_effort_names_[i];
-  //   }
-  // }
+    for (int i = 0; i < num_efforts_; i++) {
+      state_msg->effort[i] = efforts->GetAtIndex(i);
+      state_msg->effort_names[i] = ordered_effort_names_[i];
+    }
+  }
 
   if (publish_imu_) {
     const auto imu = this->EvalVectorInput(context, imu_input_port_);
@@ -442,7 +317,6 @@ for (int i = 0; i < num_velocities_; i++) {
       state_msg->imu_accel[i] = imu->get_value()[i];
     }
   }
-
 }
 
 ObjectStateReceiver::ObjectStateReceiver(
@@ -498,8 +372,6 @@ void ObjectStateReceiver::CopyOutput(const Context<double>& context,
   const drake::AbstractValue* input = this->EvalAbstractInput(context, 0);
   DRAKE_ASSERT(input != nullptr);
   const auto& state_msg = input->get_value<dairlib::lcmt_object_state>();
-
-
 
   VectorXd positions = VectorXd::Zero(num_positions_);
   for (int i = 0; i < state_msg.num_positions; i++) {
@@ -692,38 +564,36 @@ void RobotInputReceiver::CopyInputOut(const Context<double>& context,
   output->set_timestamp(input_msg.utime * 1.0e-6);
 }
 
-
 ThreeDPrinterInputReceiver::ThreeDPrinterInputReceiver(
-    const drake::multibody::MultibodyPlant<double>& plant)
+    const drake::multibody::MultibodyPlant<double>& plant,
+    const Eigen::VectorXd& q_init)
     : num_positions_(plant.num_positions()),
-      num_velocities_(plant.num_velocities()) {
+      num_velocities_(plant.num_velocities()),
+      q_init_(q_init) {
+  this->DeclareAbstractInputPort("lcmt_robot_output",
+                                 drake::Value<dairlib::lcmt_robot_output>{});
 
-  this->DeclareAbstractInputPort(
-      "lcmt_robot_output",
-      drake::Value<dairlib::lcmt_robot_output>{});
-
-    this->DeclareVectorOutputPort(
-      "x",
-      BasicVector<double>(6),
-      &ThreeDPrinterInputReceiver::CopyInputOut,
-      {all_sources_ticket()});
+  this->DeclareVectorOutputPort("x", BasicVector<double>(6),
+                                &ThreeDPrinterInputReceiver::CopyInputOut,
+                                {all_sources_ticket()});
 
   // Populate the name → index maps from the plant here.
 }
 
 void ThreeDPrinterInputReceiver::CopyInputOut(
-    const Context<double>& context,
-    BasicVector<double>* output) const {
+    const Context<double>& context, BasicVector<double>* output) const {
+  const auto& msg = this->EvalAbstractInput(context, 0)
+                        ->get_value<dairlib::lcmt_robot_output>();
 
-  const auto& msg =
-      this->EvalAbstractInput(context, 0)
-          ->get_value<dairlib::lcmt_robot_output>();
-
+  // Before the first real command arrives, hold q_init_ instead of
+  // snapping the plant's internal PD controller toward zero.
   VectorXd x = VectorXd::Zero(6);
+  x.head(3) = q_init_;
+
+  // If the message is not empty, use those values instead.
   for (int i = 0; i < 3 && i < msg.num_positions; ++i) {
     x[i] = msg.position[i];
   }
-
   for (int i = 0; i < 3 && i < msg.num_velocities; ++i) {
     x[3 + i] = msg.velocity[i];
   }
@@ -732,8 +602,6 @@ void ThreeDPrinterInputReceiver::CopyInputOut(
     output->SetAtIndex(i, x[i]);
   }
 }
-
-
 
 /*--------------------------------------------------------------------------*/
 // methods implementation for RobotCommandSender.
@@ -774,16 +642,13 @@ void RobotCommandSender::OutputCommand(
 }
 
 ThreeDPrinterCommandSender::ThreeDPrinterCommandSender(
-  const drake::multibody::MultibodyPlant<double>& plant,
-  const Eigen::Vector3d& target_offset)
-  : target_offset_(target_offset) {
+    const drake::multibody::MultibodyPlant<double>& plant) {
   // Declare an abstract input port that matches the trajectory output type.
   PiecewisePolynomial<double> empty_pp(Eigen::VectorXd::Zero(3));
   Trajectory<double>& traj_inst = empty_pp;
 
-this->DeclareAbstractInputPort(
-    "trajectory",
-    drake::Value<Trajectory<double>>(traj_inst));
+  this->DeclareAbstractInputPort("trajectory",
+                                 drake::Value<Trajectory<double>>(traj_inst));
 
   this->DeclareAbstractOutputPort("lcmt_robot_output",
                                   &ThreeDPrinterCommandSender::OutputCommand);
@@ -793,43 +658,30 @@ void ThreeDPrinterCommandSender::OutputCommand(
     const Context<double>& context,
     dairlib::lcmt_robot_output* output_msg) const {
   // Get the trajectory from the abstract input port
-  const auto& base =
-    get_input_port(0).Eval<Trajectory<double>>(context);
+  const auto& base = get_input_port(0).Eval<Trajectory<double>>(context);
 
-const auto& trajectory =
-    dynamic_cast<const PiecewisePolynomial<double>&>(base);
+  const auto& trajectory =
+      dynamic_cast<const PiecewisePolynomial<double>&>(base);
 
   // Get current time from context
   double current_time = context.get_time();
-  VectorXd default_position_ = VectorXd::Zero(3);
-  default_position_ << 0.0, 0.0, 0.25;  // Default position if trajectory is empty
 
-  VectorXd desired_position;
-
-  if (trajectory.start_time() < 1e-3) {
-    desired_position = default_position_;
-  } else {
-    desired_position = trajectory.value(current_time);
-  }
-
-  //std::cout << "Desired position before offset: " << desired_position.transpose() << std::endl;
-  desired_position += target_offset_;
-  //std::cout << "Desired position after offset: " << desired_position.transpose() << std::endl;
+  VectorXd desired_position = trajectory.value(current_time);
 
   // Evaluate trajectory derivative at current time to get velocities
   VectorXd desired_velocity = trajectory.EvalDerivative(current_time, 1);
-  
+
   // Initialize the output message
   output_msg->utime = current_time * 1e6;
-  
+
   // Set up position names and values for x, y, z
   output_msg->num_positions = desired_position.size();
   output_msg->position_names.resize(desired_position.size());
   output_msg->position.resize(desired_position.size());
-  
+
   // Use standard coordinate names
   std::vector<std::string> coord_names = {"x", "y", "z"};
-  
+
   for (int i = 0; i < static_cast<int>(desired_position.size()); i++) {
     if (i < static_cast<int>(coord_names.size())) {
       output_msg->position_names[i] = coord_names[i];
@@ -838,14 +690,14 @@ const auto& trajectory =
     }
     output_msg->position[i] = desired_position(i);
   }
-  
+
   // Set up velocity names and values from trajectory derivative
   output_msg->num_velocities = desired_velocity.size();
   output_msg->velocity_names.resize(desired_velocity.size());
   output_msg->velocity.resize(desired_velocity.size());
-  
+
   std::vector<std::string> velocity_names = {"x_vel", "y_vel", "z_vel"};
-  
+
   for (int i = 0; i < static_cast<int>(desired_velocity.size()); i++) {
     if (i < static_cast<int>(velocity_names.size())) {
       output_msg->velocity_names[i] = velocity_names[i];
@@ -854,11 +706,11 @@ const auto& trajectory =
     }
     output_msg->velocity[i] = desired_velocity(i);
   }
-  
+
   output_msg->num_efforts = 0;
   output_msg->effort_names.resize(0);
   output_msg->effort.resize(0);
-  
+
   // Zero out IMU accelerations
   for (int i = 0; i < 3; ++i) {
     output_msg->imu_accel[i] = 0.0;
@@ -925,82 +777,75 @@ drake::systems::LeafSystem<double>* Add3dPrinterStateReceiverAndStateSenderLcm(
     drake::systems::DiagramBuilder<double>* builder,
     const MultibodyPlant<double>& plant,
     drake::systems::lcm::LcmInterfaceSystem* lcm,
-    std::string state_input_channel,
-    std::string state_output_channel,
+    std::string state_input_channel, std::string state_output_channel,
     double publish_rate,
     drake::multibody::ModelInstanceIndex model_instance_index,
-    bool publish_efforts) {
-
+    bool publish_efforts, const Eigen::VectorXd& q_init) {
   // Subscribe to the printer state.
   auto input_sub =
-      builder->AddSystem(
-          LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
-              state_input_channel, lcm));
+      builder->AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+          state_input_channel, lcm));
 
   auto state_receiver =
-      builder->AddSystem<ThreeDPrinterInputReceiver>(plant);
+      builder->AddSystem<ThreeDPrinterInputReceiver>(plant, q_init);
 
   builder->Connect(*input_sub, *state_receiver);
 
-    // Choose a model instance for the end-effector whose state size is 6
-    // (3 positions + 3 velocities). Prefer the named instance if available,
-    // otherwise search for one with the expected size.
-    drake::multibody::ModelInstanceIndex ee_model_instance =
-        drake::multibody::ModelInstanceIndex(DEFAULT_MODEL_INSTANCE_INDEX);
-    bool found = false;
-    if (plant.HasModelInstanceNamed("end_effector_simple")) {
-      ee_model_instance = plant.GetModelInstanceByName("end_effector_simple");
-      int np = plant.num_positions(ee_model_instance);
-      int nv = plant.num_velocities(ee_model_instance);
+  // Choose a model instance for the end-effector whose state size is 6
+  // (3 positions + 3 velocities). Prefer the named instance if available,
+  // otherwise search for one with the expected size.
+  drake::multibody::ModelInstanceIndex ee_model_instance =
+      drake::multibody::ModelInstanceIndex(DEFAULT_MODEL_INSTANCE_INDEX);
+  bool found = false;
+  if (plant.HasModelInstanceNamed("end_effector_simple")) {
+    ee_model_instance = plant.GetModelInstanceByName("end_effector_simple");
+    int np = plant.num_positions(ee_model_instance);
+    int nv = plant.num_velocities(ee_model_instance);
+    if (np + nv == 6) {
+      found = true;
+    }
+  }
+  if (!found) {
+    // Search for any model instance with total state size 6.
+    for (drake::multibody::ModelInstanceIndex mi(0);
+         mi < plant.num_model_instances(); ++mi) {
+      int np = plant.num_positions(mi);
+      int nv = plant.num_velocities(mi);
       if (np + nv == 6) {
+        ee_model_instance = mi;
         found = true;
+        break;
       }
     }
-    if (!found) {
-      // Search for any model instance with total state size 6.
-      for (drake::multibody::ModelInstanceIndex mi(0);
-           mi < plant.num_model_instances(); ++mi) {
-        int np = plant.num_positions(mi);
-        int nv = plant.num_velocities(mi);
-        if (np + nv == 6) {
-          ee_model_instance = mi;
-          found = true;
-          break;
-        }
-      }
-    }
+  }
 
-    if (!found) {
-      std::cerr << "[robot_lcm_systems] Warning: could not find a model "
-                << "instance with total state size 6; using default instance."
-                << std::endl;
-    } else {
-      std::cout << "[robot_lcm_systems] Connecting EE desired-state to model "
-                << plant.GetModelInstanceName(ee_model_instance)
-                << " (positions=" << plant.num_positions(ee_model_instance)
-                << ", velocities=" << plant.num_velocities(ee_model_instance)
-                << ")" << std::endl;
-    }
+  if (!found) {
+    std::cerr << "[robot_lcm_systems] Warning: could not find a model "
+              << "instance with total state size 6; using default instance."
+              << std::endl;
+  }
 
-    builder->Connect(state_receiver->get_output_port(),
-                     plant.get_desired_state_input_port(ee_model_instance));
+  builder->Connect(state_receiver->get_output_port(),
+                   plant.get_desired_state_input_port(ee_model_instance));
 
   // Publish the simulated state.
   auto state_pub =
-      builder->AddSystem(
-          LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
-              state_output_channel, lcm, 1.0 / publish_rate));
+      builder->AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+          state_output_channel, lcm, 1.0 / publish_rate));
 
-    // Publish only the end-effector model instance state (EE-only), not the
-    // full printer model instance, so the published `lcmt_robot_output` has
-    // the EE positions/velocities (expected total size 6).
-    auto state_sender =
-      builder->AddSystem<RobotOutputSender>(
-        plant, ee_model_instance, publish_efforts);
+  // Publish only the end-effector model instance state (EE-only), not the
+  // full printer model instance, so the published `lcmt_robot_output` has
+  // the EE positions/velocities (expected total size 6).
+  auto state_sender = builder->AddSystem<RobotOutputSender>(
+      plant, ee_model_instance, publish_efforts);
 
-  builder->Connect(
-      plant.get_state_output_port(ee_model_instance),
-      state_sender->get_input_port_state());
+  builder->Connect(plant.get_state_output_port(ee_model_instance),
+                   state_sender->get_input_port_state());
+
+  if (publish_efforts) {
+    builder->Connect(plant.get_net_actuation_output_port(ee_model_instance),
+                     state_sender->get_input_port_effort());
+  }
 
   builder->Connect(*state_sender, *state_pub);
 

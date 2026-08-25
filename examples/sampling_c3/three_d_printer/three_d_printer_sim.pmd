@@ -7,45 +7,24 @@ group "simulations" {
 
 group "operator" {
     cmd "visualizer" {
-        exec = "bazel-bin/examples/sampling_c3/three_d_printer_visualizer --demo_type=simulation --demo_name=three_d_printer";
-        host = "localhost";
-    }
-    cmd "drake-director" {
-        exec = "bazel-bin/director/drake-director";
+        exec = "bazel-bin/examples/sampling_c3/three_d_printer_visualizer --is_simulation=true --demo_name=three_d_printer";
         host = "localhost";
     }
     cmd "xbox" {
         exec = "bazel-bin/examples/sampling_c3/xbox_script";
         host = "localhost";
     }
-    cmd "move_to_target_joints" {
-        exec = "bazel-bin/examples/sampling_c3/move_to_target_joint_positions";
+    cmd "radio_GUI" {
+        exec = "python examples/sampling_c3/test/radio.py";
         host = "localhost";
     }
     cmd "start_logging" {
-        exec = "python3 examples/sampling_c3/start_logging.py sim three_d_printer /mnt/data0/three_d_printer/logs";
-        host = "localhost";
-    }
-
-    cmd "generate_files" {
-        exec = "python3 examples/sampling_c3/sampling_generation/full_script.py";
-        host = "localhost";
-    }
-    cmd "multi_rewrite" {
-        exec = "python3 examples/sampling_c3/multiyaml_rewrite.py";
-        host = "localhost";
-    }
-    cmd "install_dependencies" {
-        exec = "pip install -r examples/sampling_c3/sampling_generation/python_requirements.txt";
+        exec = "python3 examples/sampling_c3/start_logging.py sim three_d_printer /home/bibit/3d_printer/logs";
         host = "localhost";
     }
 }
 
-group "controllers" {    
-    cmd "move_to_init" {
-        exec = "bazel-bin/examples/sampling_c3/three_d_printer_joint_osc_controller --is_simulation=true --demo_name=three_d_printer";
-        host = "localhost";
-    }
+group "controllers" {
     cmd "three_d_printer_osc" {
         exec = "bazel-bin/examples/sampling_c3/three_d_printer_osc_controller --is_simulation=true --demo_name=three_d_printer";
         host = "localhost";
@@ -55,29 +34,6 @@ group "controllers" {
         host = "localhost";
     }
 }
-script "init_experiment" {
-    stop cmd "three_d_printer_sim";
-    stop cmd "three_d_printer_osc";
-    stop cmd "sampling_c3";
-    wait ms 1000;
-    start cmd "move_to_init";
-    start cmd "three_d_printer_sim";
-    wait ms 10000;
-    stop cmd "three_d_printer_sim";
-    stop cmd "move_to_init";
-}
-
-script "move_to_target_joints" {
-    stop cmd "three_d_printer_sim";
-    stop cmd "three_d_printer_osc";
-    stop cmd "sampling_c3";
-    stop cmd "move_to_init";
-    wait ms 1000;
-    start cmd "move_to_init";
-    start cmd "three_d_printer_sim";
-    wait ms 10000;
-    start cmd "move_to_target_joints";
-}
 
 group "debug" {
     cmd "lcm-spy" {
@@ -86,9 +42,18 @@ group "debug" {
     }
 }
 
+script "init_experiment" {
+    stop cmd "three_d_printer_sim";
+    stop cmd "three_d_printer_osc";
+    stop cmd "sampling_c3";
+    wait ms 1000;
+    start cmd "three_d_printer_sim";
+    wait ms 10000;
+    stop cmd "three_d_printer_sim";
+}
+
 script "start_experiment_no_logs"{
     stop cmd "start_logging";
-    start cmd "multi_rewrite";
     wait ms 1000;
     restart cmd "three_d_printer_sim";
     restart cmd "three_d_printer_osc";

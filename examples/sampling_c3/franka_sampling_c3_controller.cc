@@ -749,7 +749,7 @@ int DoMain(int argc, char* argv[]) {
   std::shared_ptr<Diagram<double>> shared_diagram = std::move(owned_diagram);
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, shared_diagram, franka_state_receiver,
-      lcm_channel_params.franka_state_channel, true, lcm_buffer_size);
+      lcm_channel_params.robot_state_channel, true, lcm_buffer_size);
   std::cout << "constructed loop" << std::endl;
 
   LcmHandleSubscriptionsUntil(&lcm, [&]() {

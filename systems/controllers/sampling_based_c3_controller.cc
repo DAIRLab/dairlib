@@ -1887,10 +1887,17 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   // Update the previous repositioning target for reference in next loop.
   prev_repositioning_target_ = best_sample_location;
 
-  // Generate knot points according to the repositioning strategy.
-  MatrixXd knots = Reposition(n_q_, n_x_, N_, x_lcs, best_sample_location, dt_,
-                              is_doing_c3_, finished_reposition_flag_,
-                              reposition_params_, sampling_c3_options_);
+  // Generate knot points according to the repositioning strategy.  Passing the
+  // scene's query object lets Reposition() collision-check the move for
+  // adaptive piecewise-linear repositioning (a no-op when that is disabled in
+  // params).
+  const auto& query_object =
+      plant_.get_geometry_query_input_port()
+          .template Eval<drake::geometry::QueryObject<double>>(*context_);
+  MatrixXd knots = Reposition(
+      n_q_, n_x_, N_, x_lcs, best_sample_location, dt_, is_doing_c3_,
+      finished_reposition_flag_, reposition_params_, sampling_c3_options_,
+      &query_object, contact_pairs_.at(0).at(0).first(), ee_radius_);
 
   // A freshly (this-loop) chosen target may already be within one step's
   // distance of the current EE position purely by chance, which would make

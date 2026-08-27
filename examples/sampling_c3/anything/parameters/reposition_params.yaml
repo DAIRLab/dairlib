@@ -34,3 +34,9 @@ max_tilt_angle: 20
 # Piecewise-linear-specific parameters.
 pwl_waypoint_height: 0.07738129
 # This ^ will be overwritten by generating new files.
+
+# Adaptive piecewise-linear repositioning (see reposition_params.h).  Disabled..
+pwl_adaptive_waypoint_height: false
+pwl_clearance_margin: 0.01
+pwl_height_search_step: 0.01
+pwl_num_path_collision_samples: 12

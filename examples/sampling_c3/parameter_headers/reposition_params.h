@@ -46,6 +46,24 @@ struct SamplingC3RepositionParams {
   /// Piecewise-linear-specific parameters.
   double pwl_waypoint_height;
 
+  /// Adaptive piecewise-linear repositioning (opt-in; only used when traj_type
+  /// == kPiecewiseLinear).  When enabled, the controller collision-checks the
+  /// candidate repositioning move each loop and (a) routes straight to the
+  /// diagonal RepositionStraightLine when the direct 3D segment is clear, or
+  /// (b) rises only to the lowest collision-free cruise height instead of the
+  /// fixed pwl_waypoint_height.  This keeps the slow vertical legs as short as
+  /// the scene allows.
+  bool pwl_adaptive_waypoint_height;
+  /// Extra clearance [m] required beyond workspace_margins + ee_radius when
+  /// deciding whether a repositioning segment is collision-free.
+  double pwl_clearance_margin;
+  /// Resolution [m] of the upward scan for the lowest collision-free cruise
+  /// height.
+  double pwl_height_search_step;
+  /// Number of interior points sampled along each candidate segment for the
+  /// collision check (the segment endpoints are always checked in addition).
+  int pwl_num_path_collision_samples;
+
   double max_tilt_angle;  // angle of ee tilt in degrees
 
   template <typename Archive>
@@ -61,6 +79,10 @@ struct SamplingC3RepositionParams {
     a->Visit(DRAKE_NVP(circle_radius));
     a->Visit(DRAKE_NVP(circle_height));
     a->Visit(DRAKE_NVP(pwl_waypoint_height));
+    a->Visit(DRAKE_NVP(pwl_adaptive_waypoint_height));
+    a->Visit(DRAKE_NVP(pwl_clearance_margin));
+    a->Visit(DRAKE_NVP(pwl_height_search_step));
+    a->Visit(DRAKE_NVP(pwl_num_path_collision_samples));
     a->Visit(DRAKE_NVP(max_tilt_angle));
   }
 };

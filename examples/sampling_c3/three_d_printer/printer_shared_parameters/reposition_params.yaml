@@ -34,4 +34,12 @@ circle_height: 0.00
 max_tilt_angle: 20
 
 # Piecewise-linear-specific parameters.
-pwl_waypoint_height: 0.15
+pwl_waypoint_height: 0.15  # Upper cap on the adaptive cruise height.
+
+# Adaptive piecewise-linear repositioning: collision-check the candidate move
+# each control loop and keep the slow vertical legs as short as the scene (the
+# ramp, the object) allows -- either a direct diagonal or a lower cruise height.
+pwl_adaptive_waypoint_height: true
+pwl_clearance_margin: 0.01          # m, extra wiggle room
+pwl_height_search_step: 0.01        # m, cruise-height scan resolution
+pwl_num_path_collision_samples: 12  # interior points checked per segment

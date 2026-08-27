@@ -1,5 +1,7 @@
 #include "robot_lcm_systems.h"
 
+#include <algorithm>
+#include <cmath>
 #include <iostream>
 
 #include "dairlib/lcmt_robot_input.hpp"
@@ -566,10 +568,13 @@ void RobotInputReceiver::CopyInputOut(const Context<double>& context,
 
 ThreeDPrinterInputReceiver::ThreeDPrinterInputReceiver(
     const drake::multibody::MultibodyPlant<double>& plant,
-    const Eigen::VectorXd& q_init)
+    const Eigen::VectorXd& q_init, double max_horizontal_velocity,
+    double max_vertical_velocity)
     : num_positions_(plant.num_positions()),
       num_velocities_(plant.num_velocities()),
-      q_init_(q_init) {
+      q_init_(q_init),
+      max_horizontal_velocity_(max_horizontal_velocity),
+      max_vertical_velocity_(max_vertical_velocity) {
   this->DeclareAbstractInputPort("lcmt_robot_output",
                                  drake::Value<dairlib::lcmt_robot_output>{});
 
@@ -597,6 +602,24 @@ void ThreeDPrinterInputReceiver::CopyInputOut(
   for (int i = 0; i < 3 && i < msg.num_velocities; ++i) {
     x[3 + i] = msg.velocity[i];
   }
+
+  // Mirror the printer driver's behavior (github.com/DAIRLab/printer_robot_
+  // driver): if the commanded velocity exceeds the horizontal (xy) or vertical
+  // (z) speed limit, don't clamp each axis independently -- scale the whole
+  // velocity vector down so the commanded direction of travel is preserved, and
+  // take the fastest step possible in that direction.
+  double horizontal_speed = std::hypot(x[3], x[4]);
+  double vertical_speed = std::abs(x[5]);
+  double scale = 1.0;
+  if (horizontal_speed > max_horizontal_velocity_) {
+    scale = std::min(scale, max_horizontal_velocity_ / horizontal_speed);
+  }
+  if (vertical_speed > max_vertical_velocity_) {
+    scale = std::min(scale, max_vertical_velocity_ / vertical_speed);
+  }
+  x[3] *= scale;
+  x[4] *= scale;
+  x[5] *= scale;
 
   for (int i = 0; i < 6; ++i) {
     output->SetAtIndex(i, x[i]);
@@ -780,14 +803,15 @@ drake::systems::LeafSystem<double>* Add3dPrinterStateReceiverAndStateSenderLcm(
     std::string state_input_channel, std::string state_output_channel,
     double publish_rate,
     drake::multibody::ModelInstanceIndex model_instance_index,
-    bool publish_efforts, const Eigen::VectorXd& q_init) {
+    bool publish_efforts, const Eigen::VectorXd& q_init,
+    double max_horizontal_velocity, double max_vertical_velocity) {
   // Subscribe to the printer state.
   auto input_sub =
       builder->AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
           state_input_channel, lcm));
 
-  auto state_receiver =
-      builder->AddSystem<ThreeDPrinterInputReceiver>(plant, q_init);
+  auto state_receiver = builder->AddSystem<ThreeDPrinterInputReceiver>(
+      plant, q_init, max_horizontal_velocity, max_vertical_velocity);
 
   builder->Connect(*input_sub, *state_receiver);
 

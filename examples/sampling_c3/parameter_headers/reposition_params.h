@@ -25,7 +25,8 @@ struct SamplingC3RepositionParams {
   RepositioningTrajectoryType traj_type;
 
   /// Parameters used for multiple repositioning trajectory types.
-  double speed;
+  double speed_horizontal;
+  double speed_vertical;
 
   /// Thresholds for switching to straight line trajectories.
   double use_straight_line_traj_under_spline;
@@ -50,7 +51,8 @@ struct SamplingC3RepositionParams {
   template <typename Archive>
   void Serialize(Archive* a) {
     ENUM_DESERIALIZE(a, traj_type);
-    a->Visit(DRAKE_NVP(speed));
+    a->Visit(DRAKE_NVP(speed_horizontal));
+    a->Visit(DRAKE_NVP(speed_vertical));
     a->Visit(DRAKE_NVP(use_straight_line_traj_under_spline));
     a->Visit(DRAKE_NVP(use_straight_line_traj_within_angle));
     a->Visit(DRAKE_NVP(use_straight_line_traj_under_piecewise_linear));

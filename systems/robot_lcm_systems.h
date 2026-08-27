@@ -196,9 +196,16 @@ class RobotInputReceiver : public drake::systems::LeafSystem<double> {
 
 class ThreeDPrinterInputReceiver : public drake::systems::LeafSystem<double> {
  public:
+  // `max_horizontal_velocity`/`max_vertical_velocity` (m/s) mirror the real
+  // printer driver's per-axis speed limits
+  // (github.com/DAIRLab/printer_robot_driver). Like the driver, a commanded
+  // velocity that exceeds either limit is not clamped per-component; instead
+  // the whole velocity vector is scaled down so the commanded direction of
+  // travel is preserved (see CopyInputOut).
   ThreeDPrinterInputReceiver(
       const drake::multibody::MultibodyPlant<double>& plant,
-      const Eigen::VectorXd& q_init);
+      const Eigen::VectorXd& q_init, double max_horizontal_velocity = 0.12,
+      double max_vertical_velocity = 0.015);
 
  private:
   void CopyInputOut(const drake::systems::Context<double>& context,
@@ -214,6 +221,9 @@ class ThreeDPrinterInputReceiver : public drake::systems::LeafSystem<double> {
   // message arrives (a default-constructed message reports num_positions == 0,
   // which previously fell back to zero).
   Eigen::VectorXd q_init_;
+
+  double max_horizontal_velocity_;
+  double max_vertical_velocity_;
 };
 
 /// Receives the output of a controller, and outputs it as an LCM
@@ -280,7 +290,9 @@ drake::systems::LeafSystem<double>* Add3dPrinterStateReceiverAndStateSenderLcm(
     std::string state_input_channel, std::string state_output_channel,
     double publish_rate,
     drake::multibody::ModelInstanceIndex model_instance_index,
-    bool publish_efforts, const Eigen::VectorXd& q_init);
+    bool publish_efforts, const Eigen::VectorXd& q_init,
+    double max_horizontal_velocity = 0.12,
+    double max_vertical_velocity = 0.015);
 
 }  // namespace systems
 }  // namespace dairlib

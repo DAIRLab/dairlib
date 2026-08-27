@@ -59,7 +59,6 @@ barycentric_bias: 1 # Values from 0 to infinity, <1 biases towards the vertices,
 # >1 biases towards centroid or edges, =1 is uniform.
 
 z_height: 0.02
-# This ^ will be overwritten by generating new files.
 
 gen_planar_samples: false # true = projects all samples to z_height
 ee_z_close: false # true = require ee to be close to sampling z-height before entering c3

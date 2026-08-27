@@ -33,7 +33,8 @@ robot_radius_limits: [0.25, 0.75]
 workspace_margins: 0.02
 u_horizontal_limits: [-50, 50]
 u_vertical_limits: [-50, 50]
-ee_velocity_limits: [-0.5, 0.5]
+ee_velocity_horizontal_limits: [-0.5, 0.5]
+ee_velocity_vertical_limits: [-0.5, 0.5]
 
 ### Whether to use a predicted EE location for each mode.
 use_predicted_x0_c3: true

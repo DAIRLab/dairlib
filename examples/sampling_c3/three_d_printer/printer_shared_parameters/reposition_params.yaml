@@ -11,7 +11,10 @@
 traj_type: 3
 
 ### Parameters used for multiple repositioning trajectory types.
-speed: 0.1    # m/s
+# These match the printer driver's configured xy/z speed limits
+# (github.com/DAIRLab/printer_robot_driver).
+speed_horizontal: 0.12  # m/s
+speed_vertical: 0.015   # m/s
 
 # Thresholds for switching to straight line trajectories.
 use_straight_line_traj_under_spline: 0.12             # xyz meters for spline
@@ -32,4 +35,3 @@ max_tilt_angle: 20
 
 # Piecewise-linear-specific parameters.
 pwl_waypoint_height: 0.15
-# This ^ will be overwritten by generating new files.

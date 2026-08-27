@@ -1101,12 +1101,20 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
 
     // Add constraint on end-effector velocities
-    for (int i : vector<int>({0, 1, 2})) {
+    for (int i : vector<int>({0, 1})) {
       RowVectorXd A = VectorXd::Zero(n_x_);
       A(n_q_ + i) = 1.0;
       test_c3_object->AddLinearConstraint(
-          A, sampling_c3_options_.ee_velocity_limits[0],
-          sampling_c3_options_.ee_velocity_limits[1],
+          A, sampling_c3_options_.ee_velocity_horizontal_limits[0],
+          sampling_c3_options_.ee_velocity_horizontal_limits[1],
+          c3::ConstraintVariable::STATE);
+    }
+    for (int i : vector<int>({2})) {
+      RowVectorXd A = VectorXd::Zero(n_x_);
+      A(n_q_ + i) = 1.0;
+      test_c3_object->AddLinearConstraint(
+          A, sampling_c3_options_.ee_velocity_vertical_limits[0],
+          sampling_c3_options_.ee_velocity_vertical_limits[1],
           c3::ConstraintVariable::STATE);
     }
 

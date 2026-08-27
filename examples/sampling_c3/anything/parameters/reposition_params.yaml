@@ -11,7 +11,8 @@
 traj_type: 3
 
 ### Parameters used for multiple repositioning trajectory types.
-speed: 0.18    # m/s
+speed_horizontal: 0.18  # m/s
+speed_vertical: 0.18    # m/s
 
 # Thresholds for switching to straight line trajectories.
 use_straight_line_traj_under_spline: 0.12             # xyz meters for spline

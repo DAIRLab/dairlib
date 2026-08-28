@@ -1101,12 +1101,20 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
 
     // Add constraint on end-effector velocities
-    for (int i : vector<int>({0, 1, 2})) {
+    for (int i : vector<int>({0, 1})) {
       RowVectorXd A = VectorXd::Zero(n_x_);
       A(n_q_ + i) = 1.0;
       test_c3_object->AddLinearConstraint(
-          A, sampling_c3_options_.ee_velocity_limits[0],
-          sampling_c3_options_.ee_velocity_limits[1],
+          A, sampling_c3_options_.ee_velocity_horizontal_limits[0],
+          sampling_c3_options_.ee_velocity_horizontal_limits[1],
+          c3::ConstraintVariable::STATE);
+    }
+    for (int i : vector<int>({2})) {
+      RowVectorXd A = VectorXd::Zero(n_x_);
+      A(n_q_ + i) = 1.0;
+      test_c3_object->AddLinearConstraint(
+          A, sampling_c3_options_.ee_velocity_vertical_limits[0],
+          sampling_c3_options_.ee_velocity_vertical_limits[1],
           c3::ConstraintVariable::STATE);
     }
 
@@ -1353,6 +1361,13 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       }
     }
 
+    // Detect if the current location is within the unsuccessful buffer; if so,
+    // prevent entering C3 mode.
+    bool curr_location_avoids_unsuccessful_buffer =
+        !sampling_params_.avoid_choosing_unsuccessful_samples ||
+        SampleAvoidsBadSpots(candidate_states[SampleIndex::kCurrentLocation],
+                             sampling_params_, unsuccessful_sample_buffer_);
+
     // Switch to C3 if forced by xbox controller.
     if (force_c3_mode) {
       std::cout << "Forcing into C3 mode" << std::endl;
@@ -1379,7 +1394,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
              (x_lcs_curr[2] < sampling_params_.z_height +
                                   sampling_params_.c3_min_clearance +
                                   wall_offset ||
-              !sampling_params_.ee_z_close)) {
+              !sampling_params_.ee_z_close) &&
+             curr_location_avoids_unsuccessful_buffer) {
       is_doing_c3_ = true;
       finished_reposition_flag_ = false;
       if (repos_target_cost > progress_params_.finished_reposition_cost) {
@@ -1871,10 +1887,17 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   // Update the previous repositioning target for reference in next loop.
   prev_repositioning_target_ = best_sample_location;
 
-  // Generate knot points according to the repositioning strategy.
-  MatrixXd knots = Reposition(n_q_, n_x_, N_, x_lcs, best_sample_location, dt_,
-                              is_doing_c3_, finished_reposition_flag_,
-                              reposition_params_, sampling_c3_options_);
+  // Generate knot points according to the repositioning strategy.  Passing the
+  // scene's query object lets Reposition() collision-check the move for
+  // adaptive piecewise-linear repositioning (a no-op when that is disabled in
+  // params).
+  const auto& query_object =
+      plant_.get_geometry_query_input_port()
+          .template Eval<drake::geometry::QueryObject<double>>(*context_);
+  MatrixXd knots = Reposition(
+      n_q_, n_x_, N_, x_lcs, best_sample_location, dt_, is_doing_c3_,
+      finished_reposition_flag_, reposition_params_, sampling_c3_options_,
+      &query_object, contact_pairs_.at(0).at(0).first(), ee_radius_);
 
   // A freshly (this-loop) chosen target may already be within one step's
   // distance of the current EE position purely by chance, which would make

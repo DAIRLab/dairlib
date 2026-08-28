@@ -24,13 +24,13 @@ cc_library(
 )
 
 cc_library(
-    name = "franka_sim_params_jacktoy",
+    name = "robot_sim_params_jacktoy",
     hdrs = [],
     data = [
         "parameters/sim_params.yaml",
     ],
     deps = [
-        "//examples/sampling_c3/parameter_headers:franka_sim_params",
+        "//examples/sampling_c3/parameter_headers:robot_sim_params",
         "@drake//:drake_shared_library",
     ],
 )

@@ -17,7 +17,7 @@ cc_binary(
         "@drake//:drake_shared_library",
         "//examples/sampling_c3:sampling_c3_utils",
         "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
-        "//examples/sampling_c3/parameter_headers:franka_sim_params",
+        "//examples/sampling_c3/parameter_headers:robot_sim_params",
         "//examples/sampling_c3/parameter_headers:sampling_c3_options",
         "@c3//:libc3",
     ],

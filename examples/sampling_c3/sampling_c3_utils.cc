@@ -237,15 +237,15 @@ ModelInstanceIndex Add3DPrinterToPlant(MultibodyPlant<double>* plant,
     plant
         ->get_mutable_joint_actuator(
             plant->GetJointActuatorByName("x_axis_actuator").index())
-        .set_controller_gains(k3dPrinterPdGains);
+        .set_controller_gains(k3dPrinterXYAxesPdGains);
     plant
         ->get_mutable_joint_actuator(
             plant->GetJointActuatorByName("y_axis_actuator").index())
-        .set_controller_gains(k3dPrinterPdGains);
+        .set_controller_gains(k3dPrinterXYAxesPdGains);
     plant
         ->get_mutable_joint_actuator(
             plant->GetJointActuatorByName("z_axis_actuator").index())
-        .set_controller_gains(k3dPrinterPdGains);
+        .set_controller_gains(k3dPrinterZAxisPdGains);
   }
 
   if (include_ee) {

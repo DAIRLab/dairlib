@@ -1,29 +1,35 @@
 group "operator" {
   cmd "visualizer" {
-    exec = "bazel-bin/examples/sampling_c3/three_d_printer_visualizer --is_simulation=false --demo_name=three_d_printer";
+    exec =
+        "bazel-bin/examples/sampling_c3/three_d_printer_visualizer "
+        "--is_simulation=false --demo_name=cone";
     host = "localhost";
   }
   cmd "xbox" {
     exec = "bazel-bin/examples/sampling_c3/xbox_script";
     host = "localhost";
   }
-  cmd "radio_GUI" {
-    exec = "python examples/sampling_c3/test/radio.py";
-    host = "localhost";
-  }
   cmd "logger" {
-    exec = "python3 examples/sampling_c3/start_logging.py sim three_d_printer /home/bibit/3d_printer/logs";
+    exec =
+        "python3 examples/sampling_c3/start_logging.py hw three_d_printer/cone "
+        "/mnt/data0/three_d_printer/logs";
     host = "localhost";
   }
 }
 
 group "controllers (hardware)" {
   cmd "three_d_printer_osc" {
-    exec = "bazel-bin/examples/sampling_c3/three_d_printer_osc_controller --is_simulation=false --demo_name=three_d_printer";
+    exec =
+        "bazel-bin/examples/sampling_c3/three_d_printer_osc_controller "
+        "--is_simulation=false --demo_name=cone "
+        "--lcm_url=udpm://239.255.76.67:7667?ttl=1";
     host = "localhost";
   }
   cmd "sampling_c3" {
-    exec = "bazel-bin/examples/sampling_c3/three_d_printer_sampling_c3_controller --is_simulation=false --demo_name=three_d_printer";
+    exec =
+        "bazel-bin/examples/sampling_c3/three_d_printer_sampling_c3_controller "
+        "--is_simulation=false --demo_name=cone "
+        "--lcm_url=udpm://239.255.76.67:7667?ttl=1";
     host = "localhost";
   }
 }

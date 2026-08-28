@@ -11,7 +11,8 @@
 traj_type: 1
 
 ### Parameters used for multiple repositioning trajectory types.
-speed: 0.20    # m/s
+speed_horizontal: 0.20  # m/s
+speed_vertical: 0.20    # m/s
 
 # Thresholds for switching to straight line trajectories.
 use_straight_line_traj_under_spline: 0.12             # xyz meters for spline
@@ -32,3 +33,9 @@ max_tilt_angle: 20
 
 # Piecewise-linear-specific parameters.
 pwl_waypoint_height: 0.06
+
+# Adaptive piecewise-linear repositioning (see reposition_params.h).  Disabled.
+pwl_adaptive_waypoint_height: false
+pwl_clearance_margin: 0.01
+pwl_height_search_step: 0.01
+pwl_num_path_collision_samples: 12

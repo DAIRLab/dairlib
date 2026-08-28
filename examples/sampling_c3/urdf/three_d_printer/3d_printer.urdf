@@ -385,13 +385,19 @@
     Z-axis joint:
     Range of motion:  0 to 0.345 meters
     At z=0, the nozzle is at the top of the build plate.
+
+    Velocity limit of 0.015 m/s reflects the printer driver's configured Z speed
+    (github.com/DAIRLab/printer_robot_driver). Damping is set so that, combined
+    with the effort limit, the joint's terminal speed under a saturated command
+    roughly matches this limit.
   -->
   <joint name="z_axis_joint" type="prismatic">
     <parent link="base_link"/>
     <child link="z_gantry"/>
     <origin xyz="0.175 0.175 0.04415" rpy="0 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit lower="0" upper="0.345" effort="100" velocity="1"/>
+    <limit lower="0" upper="0.345" effort="100" velocity="0.015"/>
+    <dynamics damping="6667"/>
   </joint>
 
   <!--
@@ -435,13 +441,19 @@
     Y-axis joint:
     Range of motion:  0 to 0.35 meters
     At y=0, the nozzle is at the front edge of the build volume.
+
+    Velocity limit of 0.12 m/s reflects the printer driver's configured XY speed
+    (github.com/DAIRLab/printer_robot_driver). Damping is set so that, combined
+    with the effort limit, the joint's terminal speed under a saturated command
+    roughly matches this limit.
   -->
   <joint name="y_axis_joint" type="prismatic">
     <parent link="z_gantry"/>
     <child link="y_beam"/>
     <origin xyz="0 -0.1281 0.00325" rpy="0 0 0"/>
     <axis xyz="0 1 0"/>
-    <limit lower="0" upper="0.35" effort="100" velocity="1"/>
+    <limit lower="0" upper="0.35" effort="100" velocity="0.12"/>
+    <dynamics damping="833"/>
   </joint>
 
   <!--
@@ -502,13 +514,19 @@
     X-axis joint:
     Range of motion:  0 to 0.35 meters
     At x=0, the nozzle is at the left edge of the build volume.
+
+    Velocity limit of 0.12 m/s reflects the printer driver's configured XY speed
+    (github.com/DAIRLab/printer_robot_driver). Damping is set so that, combined
+    with the effort limit, the joint's terminal speed under a saturated command
+    roughly matches this limit.
   -->
   <joint name="x_axis_joint" type="prismatic">
     <parent link="y_beam"/>
     <child link="x_carriage"/>
     <origin xyz="-0.175 -0.0385 0.00565" rpy="0 0 0"/>
     <axis xyz="1 0 0"/>
-    <limit lower="0" upper="0.35" effort="100" velocity="1"/>
+    <limit lower="0" upper="0.35" effort="100" velocity="0.12"/>
+    <dynamics damping="833"/>
   </joint>
 
   <!--

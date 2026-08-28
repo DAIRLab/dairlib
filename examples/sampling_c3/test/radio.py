@@ -29,7 +29,7 @@ RATE = 60  # target rate (Hz) for radio publishing
 MS_INTERVAL = 1000.0 / RATE  # in milliseconds
 
 CONTROLLER_PARAMS_PATH = op.join(
-    DAIRLIB_DIR, "examples/sampling_c3/three_d_printer/parameters/sampling_c3_controller_params.yaml"
+    DAIRLIB_DIR, "examples/sampling_c3/three_d_printer/cone/parameters/sampling_c3_controller_params.yaml"
 )
 
 

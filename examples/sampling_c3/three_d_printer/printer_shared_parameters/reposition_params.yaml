@@ -11,7 +11,10 @@
 traj_type: 3
 
 ### Parameters used for multiple repositioning trajectory types.
-speed: 0.1    # m/s
+# These match the printer driver's configured xy/z speed limits
+# (github.com/DAIRLab/printer_robot_driver).
+speed_horizontal: 0.12  # m/s
+speed_vertical: 0.015   # m/s
 
 # Thresholds for switching to straight line trajectories.
 use_straight_line_traj_under_spline: 0.12             # xyz meters for spline
@@ -31,5 +34,12 @@ circle_height: 0.00
 max_tilt_angle: 20
 
 # Piecewise-linear-specific parameters.
-pwl_waypoint_height: 0.15
-# This ^ will be overwritten by generating new files.
+pwl_waypoint_height: 0.15  # Upper cap on the adaptive cruise height.
+
+# Adaptive piecewise-linear repositioning: collision-check the candidate move
+# each control loop and keep the slow vertical legs as short as the scene (the
+# ramp, the object) allows -- either a direct diagonal or a lower cruise height.
+pwl_adaptive_waypoint_height: true
+pwl_clearance_margin: 0.01          # m, extra wiggle room
+pwl_height_search_step: 0.01        # m, cruise-height scan resolution
+pwl_num_path_collision_samples: 12  # interior points checked per segment

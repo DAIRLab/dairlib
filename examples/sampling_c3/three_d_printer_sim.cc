@@ -22,7 +22,7 @@
 
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
-#include "examples/sampling_c3/parameter_headers/franka_sim_params.h"
+#include "examples/sampling_c3/parameter_headers/robot_sim_params.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
@@ -58,18 +58,23 @@ using Eigen::VectorXd;
 
 DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
               "LCM URL with IP, port, and TTL settings");
-DEFINE_string(demo_name, "three_d_printer",
-              "Name for the demo, used when building filepaths for output.");
+DEFINE_string(demo_name, "cone",
+              "Name for the sampling_c3/three_d_printer demo, used when "
+              "building filepaths for output.");
 
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  if (FLAGS_demo_name != "cone") {
+    throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
+  }
 
   // --------------------------------------------------------------------------
   // Load parameters
   // --------------------------------------------------------------------------
 
   std::string controller_params_path =
-      "examples/sampling_c3/" + FLAGS_demo_name +
+      "examples/sampling_c3/three_d_printer/" + FLAGS_demo_name +
       "/parameters/sampling_c3_controller_params.yaml";
 
   SamplingC3ControllerParams controller_params =
@@ -82,7 +87,7 @@ int DoMain(int argc, char* argv[]) {
   SamplingC3LcmChannels lcm_channel_params =
       drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(lcm_channels_file);
 
-  FrankaSimParams sim_params = drake::yaml::LoadYamlFile<FrankaSimParams>(
+  RobotSimParams sim_params = drake::yaml::LoadYamlFile<RobotSimParams>(
       controller_params.sim_params_file);
 
   SamplingC3Options sampling_c3_options =
@@ -99,7 +104,7 @@ int DoMain(int argc, char* argv[]) {
 
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
 
-  ModelInstanceIndex franka_index = Add3DPrinterToPlant(
+  ModelInstanceIndex robot_index = Add3DPrinterToPlant(
       &plant, &scene_graph, true, true, sampling_c3_options.include_walls);
 
   int num_objects = sim_params.object_models.size();
@@ -120,9 +125,8 @@ int DoMain(int argc, char* argv[]) {
 
   dairlib::systems::Add3dPrinterStateReceiverAndStateSenderLcm(
       &builder, plant, lcm, lcm_channel_params.robot_input_channel,
-      lcm_channel_params.robot_state_channel,
-      sim_params.franka_publish_rate, franka_index, sim_params.publish_efforts,
-      sim_params.q_init_franka);
+      lcm_channel_params.robot_state_channel, sim_params.robot_publish_rate,
+      robot_index, sim_params.publish_efforts, sim_params.q_init_robot);
 
   // --------------------------------------------------------------------------
   // Object publishers
@@ -181,7 +185,7 @@ int DoMain(int argc, char* argv[]) {
 
   VectorXd q = VectorXd::Zero(nq);
 
-  q.head(plant.num_positions(franka_index)) = sim_params.q_init_franka;
+  q.head(plant.num_positions(robot_index)) = sim_params.q_init_robot;
 
   for (int i = 0; i < num_objects; i++) {
     q.segment(3 + 7 * (i), 7) = sim_params.q_init_objects.at(i);

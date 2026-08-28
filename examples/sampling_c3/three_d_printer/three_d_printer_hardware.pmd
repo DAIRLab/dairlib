@@ -1,8 +1,6 @@
 group "operator" {
   cmd "visualizer" {
-    exec =
-        "bazel-bin/examples/sampling_c3/three_d_printer_visualizer "
-        "--is_simulation=false --demo_name=three_d_printer";
+    exec = "bazel-bin/examples/sampling_c3/three_d_printer_visualizer --is_simulation=false --demo_name=three_d_printer";
     host = "localhost";
   }
   cmd "xbox" {
@@ -14,24 +12,18 @@ group "operator" {
     host = "localhost";
   }
   cmd "logger" {
-    exec =
-        "python3 examples/sampling_c3/start_logging.py sim three_d_printer "
-        "/home/bibit/3d_printer/logs";
+    exec = "python3 examples/sampling_c3/start_logging.py sim three_d_printer /home/bibit/3d_printer/logs";
     host = "localhost";
   }
 }
 
 group "controllers (hardware)" {
   cmd "three_d_printer_osc" {
-    exec =
-        "bazel-bin/examples/sampling_c3/three_d_printer_osc_controller "
-        "--is_simulation=false --demo_name=three_d_printer";
+    exec = "bazel-bin/examples/sampling_c3/three_d_printer_osc_controller --is_simulation=false --demo_name=three_d_printer";
     host = "localhost";
   }
   cmd "sampling_c3" {
-    exec =
-        "bazel-bin/examples/sampling_c3/three_d_printer_sampling_c3_controller "
-        "--is_simulation=false --demo_name=three_d_printer";
+    exec = "bazel-bin/examples/sampling_c3/three_d_printer_sampling_c3_controller --is_simulation=false --demo_name=three_d_printer";
     host = "localhost";
   }
 }
@@ -52,8 +44,23 @@ group "drivers" {
 
 group "object tracking" {
   cmd "object_tracking" {
-    exec = "python run_live_demo.py";  // TODO
+    exec = "python /mnt/data0/three_d_printer/FoundationPose/run_live_demo.py --system=diamond";
     host = "vision_host";
+  }
+}
+
+group "printer operations" {
+  cmd "print_part_1" {
+    exec = "/home/three_d_printer/printer_robot_driver/two_part_print.py --model diamond --part1";
+    host = "printer_driver_host";
+  }
+  cmd "push_and_attach" {
+    exec = "/home/three_d_printer/printer_robot_driver/two_part_print.py --model diamond --push-and-attach";
+    host = "printer_driver_host";
+  }
+  cmd "detach_and_part2" {
+    exec = "/home/three_d_printer/printer_robot_driver/two_part_print.py --model diamond --detach-and-part2";
+    host = "printer_driver_host";
   }
 }
 
@@ -63,33 +70,27 @@ script "start operator commands" {
   restart cmd "lcm-spy";
 }
 
-// Responsible for:
-// 1) Printing part 1.
 script "step 1:  print part 1" {
+  stop cmd "print_part_1";
+  stop cmd "push_and_attach";
+  stop cmd "detach_and_part2";
   stop cmd "logger";
   stop cmd "object_tracking";
   stop cmd "printer_driver";
   stop cmd "three_d_printer_osc";
   stop cmd "sampling_c3";
-  // TODO more stop commands potentially
   wait ms 1000;
-  // TODO print part 1
+  start cmd "print_part_1";
+
 }
 
-// Responsible for:
-// 1) Starting LCM logging.
-// 2) Starting FoundationPose object tracking.
-// 3) Knocking the object off the build plate.
-// 4) Installing the end effector.
-// 5) Starting the printer driver.
-// 6) Starting the SC3 controller.
 script "step 2:  transition to controller" {
+  stop cmd "print_part_1";
   start cmd "logger";
   wait ms 50;
   start cmd "object_tracking";
   wait ms 1000;
-  // TODO knock object off build plate
-  // TODO install end effector
+  start cmd "push_and_attach";
   start cmd "printer_driver";
   wait ms 1000;
   start cmd "three_d_printer_osc";
@@ -97,26 +98,24 @@ script "step 2:  transition to controller" {
   start cmd "sampling_c3";
 }
 
-// Responsible for:
-// 1) Stopping FoundationPose and SC3.
-// 2) Uninstalling the end effector.
-// 3) Printing part 2.
 script "step 3:  transition out of controller; print part 2" {
+  stop cmd "push_and_attach";
   stop cmd "sampling_c3";
   stop cmd "three_d_printer_osc";
   stop cmd "object_tracking";
   stop cmd "printer_driver";
   stop cmd "logger";
   wait ms 1000;
-  // TODO uninstall end effector
-  // TODO print part 2
+  start cmd "detach_and_part2";
 }
 
 script "end experiment" {
+  stop cmd "print_part_1";
+  stop cmd "push_and_attach";
+  stop cmd "detach_and_part2";
   stop cmd "logger";
   stop cmd "object_tracking";
   stop cmd "printer_driver";
   stop cmd "three_d_printer_osc";
   stop cmd "sampling_c3";
-  // TODO more stop commands potentially
 }

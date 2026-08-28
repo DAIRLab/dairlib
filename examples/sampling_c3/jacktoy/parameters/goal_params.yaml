@@ -15,6 +15,9 @@ tracked_orientation_axis: [[0.0, 0.0, 0.0]]  # disabled: track full orientation
 resting_object_heights: [0.031971466]   # in world frame
 ee_target_z_offset_above_object: 0.06   # defines EE goal w.r.t. object position
 
+# Where the EE parks (and holds) once all fixed goals are reached.
+ee_parked_position: [0.3, 0.4, 0.1]
+
 # Lookahead parameters to define a sub-goal for C3.
 lookahead_step_size: 0.15   # meters
 lookahead_angle: 2          # rad

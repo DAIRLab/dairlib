@@ -437,6 +437,17 @@ Vector3d ShellSampling(const VectorXd& x_lcs,
     }
   }
 
+  // Warn if every object is already on target, then fall back to sampling
+  // around all objects.
+  if (selectable_object_indices.empty()) {
+    std::cerr << "!!! WARNING !!! ShellSampling called with all objects on "
+                 "target; falling back to sampling around all objects."
+              << std::endl;
+    for (int i = 0; i < num_objects; i++) {
+      selectable_object_indices.push_back(i);
+    }
+  }
+
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_int_distribution<int> dist(0,
@@ -645,6 +656,25 @@ VectorXd MeshNormalSamplingMultiObject(
   // Only consider objects not already on target
   for (int i = 0; i < object_on_target.size(); i++) {
     if (!object_on_target.at(i)) {
+      num_objects_selected++;
+      total_area_all_objects += total_area_per_object.at(i);
+      faces_per_object_selected.push_back(faces_per_object.at(i));
+      face_bins_per_object_selected.push_back(face_bins_per_object.at(i));
+      total_area_per_object_selected.push_back(total_area_per_object.at(i));
+      object_quats_selected.push_back(object_quats.at(i));
+      object_positions_selected.push_back(object_positions.at(i));
+    }
+  }
+
+  // Warn if every object is already on target, then fall back to sampling
+  // around all objects.
+  if (num_objects_selected == 0) {
+    std::cerr
+        << "!!! WARNING !!! MeshNormalSamplingMultiObject called with all "
+           "objects on target; falling back to sampling around all "
+           "objects."
+        << std::endl;
+    for (int i = 0; i < object_on_target.size(); i++) {
       num_objects_selected++;
       total_area_all_objects += total_area_per_object.at(i);
       faces_per_object_selected.push_back(faces_per_object.at(i));

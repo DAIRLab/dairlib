@@ -888,6 +888,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     x_final_target_ = x_lcs_final_des.value();
     // is_doing_c3_ = false;
     detected_goal_changes_++;
+    // A new goal means we're no longer parked at a terminal fixed goal.
+    achieved_fixed_goal_ = false;
+    consecutive_all_reached_loops_ = 0;
 
     // Reset the sample buffers now that the costs have changed.
     ResetSampleBuffers();
@@ -948,19 +951,32 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     all_reached = all_reached && object_on_target[i];
   }
 
+  // A way to detect that the final goal has been reached and will not change
+  // (e.g. if the final goal in a kFixedGoalSequence has been reached).
+  if (all_reached && !final_target_changed) {
+    consecutive_all_reached_loops_++;
+  } else {
+    consecutive_all_reached_loops_ = 0;
+  }
+
   // Generate states, differing from the current state only by EE sample
   // locations.
-  // Used fixed samples if fixed goal and all objects on target.
+  // Use fixed parked samples once a fixed goal (or the terminal goal of a fixed
+  // goal sequence) has been reached and all objects are on target.
   vector<VectorXd> candidate_states;
-  if (achieved_fixed_goal_ ||
-      (all_reached && goal_params_.goal_mode == GoalMode::kFixedGoal)) {
+  bool at_terminal_fixed_goal =
+      all_reached &&
+      (goal_params_.goal_mode == GoalMode::kFixedGoal ||
+       (goal_params_.goal_mode == GoalMode::kFixedGoalSequence &&
+        consecutive_all_reached_loops_ >= kParkAfterAllReachedLoops));
+  if (achieved_fixed_goal_ || at_terminal_fixed_goal) {
     achieved_fixed_goal_ = true;
     int num_samples = is_doing_c3_
                           ? sampling_params_.num_additional_samples_c3
                           : sampling_params_.num_additional_samples_repos;
     for (int i = 0; i < num_samples; i++) {
       candidate_states.push_back(x_lcs_curr);
-      candidate_states[i].head(3) << 0.3, 0.4, 0.1;
+      candidate_states[i].head(3) = goal_params_.ee_parked_position;
     }
   }
   // Generate new samples according to sampling strategy.
@@ -1882,8 +1898,14 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
 // Compute repositioning trajectory.
 void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     const VectorXd& x_lcs, const double& t_context) const {
-  // Get the best sample location.
-  Vector3d best_sample_location = all_sample_locations_[best_sample_index_];
+  // Get the best sample location.  Once all fixed goals have been reached,
+  // drive the EE deterministically to the configured parked position rather
+  // than whichever sample happened to win on C3 cost -- the parked-sample
+  // copies and the previous repositioning target otherwise compete on cost and
+  // the EE ends up somewhere arbitrary.
+  Vector3d best_sample_location =
+      achieved_fixed_goal_ ? goal_params_.ee_parked_position
+                           : all_sample_locations_[best_sample_index_];
   // Update the previous repositioning target for reference in next loop.
   prev_repositioning_target_ = best_sample_location;
 

@@ -31,6 +31,12 @@ struct SamplingC3GoalParams {
   std::vector<double> resting_object_heights;  // in world frame for each object
   double ee_target_z_offset_above_object;  // defines EE goal wrt object height
 
+  /// End-effector position the robot moves to (and holds) to get out of the way
+  /// once every fixed goal has been reached.  Used for kFixedGoal and for the
+  /// terminal goal of a kFixedGoalSequence.  Must lie within the workspace
+  /// limits so the robot can actually reach it.
+  Eigen::Vector3d ee_parked_position;
+
   // Per-object body-frame axis to align with the target's world-frame body axis
   // direction, tracking twist about that axis freely. A zero vector (the
   // default) means "track full orientation" for that object.
@@ -80,6 +86,7 @@ struct SamplingC3GoalParams {
     a->Visit(DRAKE_NVP(orientation_success_threshold));
     a->Visit(DRAKE_NVP(resting_object_heights));
     a->Visit(DRAKE_NVP(ee_target_z_offset_above_object));
+    a->Visit(DRAKE_NVP(ee_parked_position));
     a->Visit(DRAKE_NVP(tracked_orientation_axis));
     a->Visit(DRAKE_NVP(lookahead_step_size));
     a->Visit(DRAKE_NVP(lookahead_angle));

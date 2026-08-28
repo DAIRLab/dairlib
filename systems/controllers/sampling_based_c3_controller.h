@@ -507,6 +507,13 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable Eigen::VectorXd x_final_target_;
   mutable int detected_goal_changes_ = -1;
   mutable bool achieved_fixed_goal_ = false;
+  // Number of consecutive control loops during which every goal has been
+  // reached without the final target changing.  Used to detect that a
+  // kFixedGoalSequence has settled on its terminal goal (intermediate goals
+  // advance the target as soon as they're reached), at which point the
+  // controller parks the EE just like it does for kFixedGoal.
+  mutable int consecutive_all_reached_loops_ = 0;
+  static constexpr int kParkAfterAllReachedLoops = 3;
 
   // Sample buffer-related variables.
   mutable int num_in_buffer_ = 0;

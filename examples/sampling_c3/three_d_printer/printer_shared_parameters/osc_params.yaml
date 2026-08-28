@@ -32,9 +32,9 @@ teleop_neutral_position: true
 # If using teleop_neutral_position, it's beneficial for the x/y/z_scales to be
 # relatively small, i.e. 0.0002 works well (compared to 0.2 for the locked
 # neutral position scheme).
-x_scale: 0.00005
-y_scale: 0.00005
-z_scale: 0.00005
+x_scale: 0.001
+y_scale: 0.001
+z_scale: 0.001
 
 end_effector_acceleration: 10
 track_end_effector_orientation: false

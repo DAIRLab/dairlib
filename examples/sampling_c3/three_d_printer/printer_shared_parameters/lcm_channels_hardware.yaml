@@ -1,7 +1,7 @@
 # All messages are of type lcmt_timestamped_saved_traj unless otherwise noted.
 
 robot_state_channel: PRINTER_STATE              # lcmt_robot_output
-object_state_channels: [OBJECT_STATE_SIMULATION] # lcmt_object_state
+object_state_channels: [OBJECT_STATE] # lcmt_object_state
 robot_input_channel: PRINTER_INPUT              # lcmt_robot_output
 
 osc_channel: OSC_PRINTER                        # lcmt_robot_output

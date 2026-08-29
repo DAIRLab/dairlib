@@ -60,7 +60,14 @@ static const Eigen::Vector3d kWorldToGroundOffset =
 /// 3D printer offsets and other constants.
 static const Eigen::Vector3d k3dPrinterToolAttachmentFrame = {0.0, 0.0,
                                                               -0.054582};
-static const Eigen::Vector3d k3dPrinterRampAttachmentFrame = {0.0, 0.1, 0.0};
+// World-frame pose of the printed ramp, taken from Part1DiamondDemo.gcode (ramp
+// mesh body48569): its vertical back wall prints at x = 43.6 mm, its front face
+// at y = 39.7 mm, and its base sits on the build plate. The 180 deg yaw below
+// maps the ramp mesh (authored along -x, -y) onto that footprint, so the
+// translation places the min-x/min-y/base corner of the mesh at (0.0437, 0.04,
+// 0) in the world (= the printer build-volume origin).
+static const Eigen::Vector3d k3dPrinterRampAttachmentFrame = {0.0437, 0.0400,
+                                                              0.0};
 static const drake::math::RotationMatrix<double>
     k3dPrinterRampAttachmentRotationMatrix(
         drake::math::RollPitchYaw<double>(0, 0, 3.14159));
@@ -160,17 +167,12 @@ std::vector<drake::multibody::ModelInstanceIndex> AddLCSModelsToPlant(
 /// Add the 3D printer to a given multibody plant and scene graph.
 /// @param plant a pointer to the MultibodyPlant
 /// @param scene_graph a pointer to the SceneGraph--may be nullptr (or omitted)
-/// @param include_walls whether to add border walls to workspace
-/// @param include_ground_and_platform whether to include the ground and
-/// platform in the plant. If false, only the Franka and end effector will be
-/// added.
+/// @param include_ee whether to include the end effector
 /// @return the ModelInstanceIndex of the Franka in the plant
 drake::multibody::ModelInstanceIndex Add3DPrinterToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
-    const bool& include_ee = true,
-    const bool& include_ground_and_platform = true,
-    const bool& include_walls = false);
+    const bool& include_ee = true);
 
 /// Add 3D printer LCS models to a given multibody plant and scene graph.
 /// @param plant a pointer to the MultibodyPlant

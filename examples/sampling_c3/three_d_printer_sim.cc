@@ -22,8 +22,8 @@
 
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
-#include "examples/sampling_c3/parameter_headers/robot_sim_params.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
+#include "examples/sampling_c3/parameter_headers/robot_sim_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "examples/sampling_c3/sampling_c3_utils.h"
@@ -104,8 +104,8 @@ int DoMain(int argc, char* argv[]) {
 
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
 
-  ModelInstanceIndex robot_index = Add3DPrinterToPlant(
-      &plant, &scene_graph, true, true, sampling_c3_options.include_walls);
+  ModelInstanceIndex robot_index =
+      Add3DPrinterToPlant(&plant, &scene_graph, true);
 
   int num_objects = sim_params.object_models.size();
 

@@ -203,9 +203,7 @@ vector<ModelInstanceIndex> AddLCSModelsToPlant(
 
 ModelInstanceIndex Add3DPrinterToPlant(MultibodyPlant<double>* plant,
                                        SceneGraph<double>* scene_graph,
-                                       const bool& include_ee,
-                                       const bool& include_ground_and_platform,
-                                       const bool& include_walls) {
+                                       const bool& include_ee) {
   Parser parser(plant, scene_graph);
   parser.SetAutoRenaming(true);
 

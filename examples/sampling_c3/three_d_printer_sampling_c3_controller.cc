@@ -89,9 +89,9 @@ int DoMain(int argc, char* argv[]) {
       drake::yaml::LoadYamlFile<SamplingC3Options>(
           controller_params.sampling_c3_options_file);
 
-  // Create a Franka-only plant (no need to add walls to this).
+  // Create a printer-only plant (no need to add walls to this).
   MultibodyPlant<double> plant_three_d_printer(0.0);
-  Add3DPrinterToPlant(&plant_three_d_printer, nullptr, true, true, false);
+  Add3DPrinterToPlant(&plant_three_d_printer, nullptr, true);
   plant_three_d_printer.Finalize();
   auto three_d_printer_context = plant_three_d_printer.CreateDefaultContext();
 
@@ -205,8 +205,8 @@ int DoMain(int argc, char* argv[]) {
 
       const std::vector<drake::geometry::GeometryId>
           object_geoms_without_spheres =
-              std::vector<drake::geometry::GeometryId>(
-                  object_geoms.begin(), object_geoms.end() - 7);
+              std::vector<drake::geometry::GeometryId>(object_geoms.begin(),
+                                                       object_geoms.end() - 7);
 
       ee_contact_pairs.push_back(
           SortedPair(contact_geoms["EE"], object_geoms[0]));

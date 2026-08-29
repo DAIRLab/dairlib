@@ -111,8 +111,8 @@ int do_main(int argc, char* argv[]) {
 
   // Build the visualizer plant.
   MultibodyPlant<double> plant(0.0);
-  ModelInstanceIndex printer_index = Add3DPrinterToPlant(
-      &plant, &scene_graph, true, true, sampling_c3_options.include_walls);
+  ModelInstanceIndex printer_index =
+      Add3DPrinterToPlant(&plant, &scene_graph, true);
 
   // Getting vector of object indices for all objects
   std::vector<ModelInstanceIndex> object_indices_plant =
@@ -121,7 +121,7 @@ int do_main(int argc, char* argv[]) {
 
   // Create a printer-only plant.
   MultibodyPlant<double> plant_printer(0.0);
-  Add3DPrinterToPlant(&plant_printer, nullptr, true, false);
+  Add3DPrinterToPlant(&plant_printer, nullptr, true);
   plant_printer.Finalize();
   auto printer_context = plant_printer.CreateDefaultContext();
 

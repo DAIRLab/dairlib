@@ -25,10 +25,23 @@ double ComputeAxisMisalignmentAngle(const Eigen::Quaterniond& curr_quat,
 // the two directions are nearly parallel or antiparallel, and applies
 // hysteresis near the antipodal singularity so the chosen axis does not flip
 // back and forth between consecutive calls.
+//
+// swing_angle / swing_axis (if non-null) receive the rotation q_align that was
+// used to build the return value, i.e.
+//   goal_quat == Quaterniond(AngleAxisd(*swing_angle, *swing_axis))
+//                * curr_quat.normalized()   (up to global sign).
+// *swing_angle is NOT canonicalized to [0, pi]: near the antipodal singularity
+// the hysteresis logic may deliberately return a reflex angle (slightly > pi)
+// about the hysteresis-consistent axis. Callers that clamp or scale the swing
+// (e.g. a lookahead cap) MUST use these outputs rather than re-extracting
+// axis-angle from goal_quat, because Eigen's AngleAxisd(Quaterniond) forces the
+// angle into [0, pi] and negates the axis when the scalar part is negative,
+// which silently discards the hysteresis choice.
 Eigen::Quaterniond ComputeAxisAlignedGoalQuaternion(
     const Eigen::Quaterniond& curr_quat,
     const Eigen::Quaterniond& reference_quat,
     const Eigen::Vector3d& tracked_axis_body, double angle_hysteresis,
-    Eigen::Vector3d* hysteresis_axis_state);
+    Eigen::Vector3d* hysteresis_axis_state, double* swing_angle = nullptr,
+    Eigen::Vector3d* swing_axis = nullptr);
 
 }  // namespace dairlib

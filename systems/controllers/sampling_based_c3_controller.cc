@@ -937,8 +937,15 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     double object_position_error = (x_lcs_curr.segment(7 + 7 * i, 2) -
                                     x_lcs_des.get_value().segment(7 + 7 * i, 2))
                                        .norm();
-    Quaterniond q_des(x_lcs_des.get_value().segment<4>(3 + 7 * i));
-    Quaterniond q_curr(x_lcs_curr.segment<4>(3 + 7 * i));
+    // The LCS state stores the quaternion as (w, x, y, z); build it
+    // element-by-element rather than via the single-argument constructor, which
+    // reads coeffs() in (x, y, z, w) order.
+    Quaterniond q_des(x_lcs_des.get_value()[3 + 7 * i],
+                      x_lcs_des.get_value()[4 + 7 * i],
+                      x_lcs_des.get_value()[5 + 7 * i],
+                      x_lcs_des.get_value()[6 + 7 * i]);
+    Quaterniond q_curr(x_lcs_curr[3 + 7 * i], x_lcs_curr[4 + 7 * i],
+                       x_lcs_curr[5 + 7 * i], x_lcs_curr[6 + 7 * i]);
 
     double object_angular_error = AngleAxisd(q_des * q_curr.inverse()).angle();
 

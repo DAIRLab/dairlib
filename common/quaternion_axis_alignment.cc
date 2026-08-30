@@ -28,7 +28,9 @@ Quaterniond ComputeAxisAlignedGoalQuaternion(const Quaterniond& curr_quat,
                                              const Quaterniond& reference_quat,
                                              const Vector3d& tracked_axis_body,
                                              double angle_hysteresis,
-                                             Vector3d* hysteresis_axis_state) {
+                                             Vector3d* hysteresis_axis_state,
+                                             double* swing_angle,
+                                             Vector3d* swing_axis) {
   constexpr double kAxisEpsilon = 1e-9;
 
   // See the normalization comment in ComputeAxisMisalignmentAngle above -- also
@@ -69,6 +71,12 @@ Quaterniond ComputeAxisAlignedGoalQuaternion(const Quaterniond& curr_quat,
     axis = -axis;
   }
   *hysteresis_axis_state = axis;
+
+  // Report the (un-canonicalized) swing actually used, so callers that clamp or
+  // scale it don't have to reconstruct it from the returned quaternion (which
+  // loses the reflex-angle / axis-sign choice made above).
+  if (swing_angle != nullptr) *swing_angle = angle;
+  if (swing_axis != nullptr) *swing_axis = axis;
 
   Quaterniond q_align(AngleAxisd(angle, axis));
   return q_align * curr_quat_n;

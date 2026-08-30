@@ -233,13 +233,26 @@ void SamplingC3GoalGenerator::CalcObjectVelocityTarget(
   Quaterniond y_quat(normalized_q(0), normalized_q(1), normalized_q(2),
                      normalized_q(3));
 
-  // If tracking axis alignment only, project the final target down to the axis-
-  // aligned goal so the commanded velocity doesn't fight the object's current
-  // twist about the tracked axis.
+  // If tracking axis alignment only, command the angular velocity straight from
+  // the hysteresis-consistent swing (angle, axis) that aligns the tracked axis.
+  // Going through PiecewiseQuaternionSlerp here (as the full-orientation path
+  // below does) would re-flatten the swing to the <= pi geodesic and discard
+  // the antipodal hysteresis choice, giving a sign-flipping velocity command
+  // near the singularity.
   if (goal_params_.HasTrackedAxis(index)) {
-    y_quat_des = dairlib::ComputeAxisAlignedGoalQuaternion(
+    double swing_angle;
+    Vector3d swing_axis;
+    dairlib::ComputeAxisAlignedGoalQuaternion(
         y_quat, y_quat_des, goal_params_.tracked_orientation_axis.at(index),
-        goal_params_.angle_hysteresis, &last_axis_align_velocity_.at(index));
+        goal_params_.angle_hysteresis, &last_axis_align_velocity_.at(index),
+        &swing_angle, &swing_axis);
+    double lookahead_angle = std::min(swing_angle, goal_params_.lookahead_angle);
+    VectorXd angle_error =
+        lookahead_angle * swing_axis * goal_params_.angle_err_to_vel_factor;
+    VectorXd target_obj_velocity = VectorXd::Zero(6);
+    target_obj_velocity << angle_error, VectorXd::Zero(3);
+    target->SetFromVector(target_obj_velocity);
+    return;
   }
 
   // Compute the orientation error, apply the lookahead angle, and convert the
@@ -502,14 +515,16 @@ SamplingC3GoalGenerator::GenerateLineTrajectoryWithLookahead(
     // The antipodal-singularity hysteresis has already been resolved once,
     // inside ComputeAxisAlignedGoalQuaternion against its own dedicated state;
     // do not re-run the full-quaternion hysteresis check below against a
-    // different state array on top of it.
-    Quaterniond goal_quat = dairlib::ComputeAxisAlignedGoalQuaternion(
+    // different state array on top of it. Take the swing (angle, axis)
+    // directly from that function -- re-extracting it from goal_quat via
+    // AngleAxisd would canonicalize the angle to [0, pi] and flip the axis
+    // sign, discarding the hysteresis choice and making the lookahead target
+    // oscillate near the singularity.
+    dairlib::ComputeAxisAlignedGoalQuaternion(
         quat_curr_orientation, y_quat_des,
         goal_params_.tracked_orientation_axis.at(index),
-        goal_params_.angle_hysteresis, &last_axis_align_lookahead_.at(index));
-    AngleAxisd angle_axis_diff(goal_quat * quat_curr_orientation.inverse());
-    angle = angle_axis_diff.angle();
-    axis = angle_axis_diff.axis();
+        goal_params_.angle_hysteresis, &last_axis_align_lookahead_.at(index),
+        &angle, &axis);
   } else {
     AngleAxisd angle_axis_diff(y_quat_des * quat_curr_orientation.inverse());
     angle = angle_axis_diff.angle();

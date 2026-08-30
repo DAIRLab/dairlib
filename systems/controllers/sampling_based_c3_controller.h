@@ -271,6 +271,27 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void ProjectPlanAwayFromFixedGeometries(
       Eigen::MatrixXd* ee_position_traj) const;
 
+  /// Stretch `time_vector` in place so that, under a FirstOrderHold over
+  /// (*time_vector, ee_position_traj), no segment exceeds the printer's
+  /// configured horizontal (xy) / vertical (z) EE speed limits
+  /// (sampling_c3_options_.ee_velocity_{horizontal,vertical}_limits).  Only ever
+  /// slows the plan down: knot 0 is left where it is and later knots slide out,
+  /// so the geometric path is untouched and no discontinuity is introduced.
+  /// Times are kept strictly increasing.  A no-op (with a one-time warning) if
+  /// the configured limits are missing or non-positive.
+  void RetimeEEPlanToVelocityLimits(
+      const Eigen::Ref<const Eigen::MatrixXd>& ee_position_traj,
+      Eigen::VectorXd* time_vector) const;
+
+  /// Interpolate the current plan (full LCS state `knots`, columns aligned with
+  /// `timestamps`) at `filtered_solve_time_` past the plan start and store it in
+  /// `x_pred_curr_plan_`.  Handles a non-uniform (retimed) `timestamps` grid and
+  /// overwrites the predicted EE velocity with the retimed segment's actual
+  /// slope, so the predicted x0 handed to the next solve stays within the
+  /// printer's EE speed limits.
+  void PredictPlanStateAtSolveTime(const Eigen::MatrixXd& knots,
+                                   const Eigen::VectorXd& timestamps) const;
+
   /// Output port functions
   void OutputC3SolutionCurrPlan(
       const drake::systems::Context<double>& context,

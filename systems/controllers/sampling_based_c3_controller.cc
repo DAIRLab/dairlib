@@ -1,5 +1,7 @@
 #include "sampling_based_c3_controller.h"
 
+#include <algorithm>
+#include <cmath>
 #include <ctime>
 #include <iostream>
 #include <limits>
@@ -1826,21 +1828,6 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
     timestamps[i] = t_context + filtered_solve_time_ + (i)*dt_;
   }
 
-  // Update predicted next state if in this mode.
-  if (is_doing_c3_) {
-    if (filtered_solve_time_ < (N_ - 1) * dt_) {
-      int last_passed_index = filtered_solve_time_ / dt_;
-      double fraction_to_next_index =
-          (filtered_solve_time_ / dt_) - (double)last_passed_index;
-      x_pred_curr_plan_ =
-          knots.col(last_passed_index) +
-          fraction_to_next_index *
-              (knots.col(last_passed_index + 1) - knots.col(last_passed_index));
-    } else {
-      x_pred_curr_plan_ = knots.col(N_ - 1);
-    }
-  }
-
   double wall_offset = 0;
 
   if (sampling_c3_options_.include_walls && sampling_params_.sample_on_wall) {
@@ -1870,6 +1857,15 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
           sampling_params_.z_height + wall_offset;  // keep ee height constant
       knots(n_q_ + 2, i) = 0;                       // keep ee z-velo zero
     }
+  }
+
+  // Stretch the plan's time grid so no segment asks the printer to exceed its
+  // EE speed limits (C3 does not reliably enforce the tight vertical bound).
+  RetimeEEPlanToVelocityLimits(knots.topRows(3), &timestamps);
+
+  // Update predicted next state if in this mode, on the retimed grid.
+  if (is_doing_c3_) {
+    PredictPlanStateAtSolveTime(knots, timestamps);
   }
 
   // Add end effector position target to LCM Trajectory.
@@ -1937,25 +1933,21 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     finished_reposition_flag_ = false;
   }
 
-  // Update predicted next state if in this mode.
-  if (!is_doing_c3_) {
-    if (filtered_solve_time_ < (N_ - 1) * dt_) {
-      int last_passed_index = filtered_solve_time_ / dt_;
-      double fraction_to_next_index =
-          (filtered_solve_time_ / dt_) - (double)last_passed_index;
-      x_pred_curr_plan_ =
-          knots.col(last_passed_index) +
-          fraction_to_next_index *
-              (knots.col(last_passed_index + 1) - knots.col(last_passed_index));
-    } else {
-      x_pred_curr_plan_ = knots.col(N_ - 1);
-    }
-  }
-
   // Set up the trajectory.
   VectorXd timestamps = VectorXd::Zero(N_);
   for (int i = 0; i < N_; i++) {
     timestamps[i] = t_context + filtered_solve_time_ + (i)*dt_;
+  }
+
+  // Stretch the plan's time grid so no segment exceeds the printer's EE speed
+  // limits.  Repositioning trajectories are already built to respect these
+  // limits, so this is normally a no-op, but it keeps a single guaranteed clamp
+  // point shared with the C3 path.
+  RetimeEEPlanToVelocityLimits(knots.topRows(3), &timestamps);
+
+  // Update predicted next state if in this mode, on the retimed grid.
+  if (!is_doing_c3_) {
+    PredictPlanStateAtSolveTime(knots, timestamps);
   }
 
   LcmTrajectory::Trajectory ee_traj;
@@ -2484,6 +2476,80 @@ void SamplingC3Controller::ProjectPlanAwayFromFixedGeometries(
   }
 }
 
+// Stretch `time_vector` so no FirstOrderHold segment exceeds the printer's
+// configured EE speed limits.  Only ever slows the plan down.
+void SamplingC3Controller::RetimeEEPlanToVelocityLimits(
+    const Eigen::Ref<const Eigen::MatrixXd>& ee_position_traj,
+    Eigen::VectorXd* time_vector) const {
+  DRAKE_DEMAND(ee_position_traj.rows() == 3);
+  DRAKE_DEMAND(ee_position_traj.cols() == time_vector->size());
+
+  const auto& v_xy_limits = sampling_c3_options_.ee_velocity_horizontal_limits;
+  const auto& v_z_limits = sampling_c3_options_.ee_velocity_vertical_limits;
+  if (v_xy_limits.size() < 2 || v_z_limits.size() < 2) {
+    static bool warned = false;
+    if (!warned) {
+      std::cout << "WARNING: RetimeEEPlanToVelocityLimits: "
+                   "ee_velocity_{horizontal,vertical}_limits not configured; "
+                   "skipping EE velocity-limit retiming."
+                << std::endl;
+      warned = true;
+    }
+    return;
+  }
+  const double v_xy_max =
+      std::min(std::abs(v_xy_limits[0]), std::abs(v_xy_limits[1]));
+  const double v_z_max =
+      std::min(std::abs(v_z_limits[0]), std::abs(v_z_limits[1]));
+  if (!(v_xy_max > 0.0) || !(v_z_max > 0.0)) {
+    static bool warned = false;
+    if (!warned) {
+      std::cout << "WARNING: RetimeEEPlanToVelocityLimits: non-positive EE "
+                   "velocity limit; skipping EE velocity-limit retiming."
+                << std::endl;
+      warned = true;
+    }
+    return;
+  }
+
+  // Mirrors reposition.cc's denom = std::max(total_travel_time, 0.0001).
+  constexpr double kMinKnotDt = 1e-4;
+  for (int i = 1; i < ee_position_traj.cols(); ++i) {
+    const Vector3d step = ee_position_traj.col(i) - ee_position_traj.col(i - 1);
+    const double dxy = step.head(2).norm();
+    const double dz = std::abs(step(2));
+    const double dt_min = std::max({(*time_vector)(i) - (*time_vector)(i - 1),
+                                    dxy / v_xy_max, dz / v_z_max, kMinKnotDt});
+    (*time_vector)(i) = (*time_vector)(i - 1) + dt_min;
+  }
+}
+
+// Interpolate the current plan at `filtered_solve_time_` past the plan start,
+// on a possibly-non-uniform (retimed) grid, into `x_pred_curr_plan_`.
+void SamplingC3Controller::PredictPlanStateAtSolveTime(
+    const Eigen::MatrixXd& knots, const Eigen::VectorXd& timestamps) const {
+  DRAKE_DEMAND(knots.cols() == N_);
+  DRAKE_DEMAND(timestamps.size() == N_);
+  const double t_eval = timestamps(0) + filtered_solve_time_;
+  if (t_eval >= timestamps(N_ - 1)) {
+    x_pred_curr_plan_ = knots.col(N_ - 1);
+    return;
+  }
+  int k = 0;
+  while (k < N_ - 2 && timestamps(k + 1) <= t_eval) {
+    ++k;
+  }
+  const double seg_dt = timestamps(k + 1) - timestamps(k);
+  const double frac = seg_dt > 1e-12 ? (t_eval - timestamps(k)) / seg_dt : 0.0;
+  x_pred_curr_plan_ = knots.col(k) + frac * (knots.col(k + 1) - knots.col(k));
+  // Make the predicted EE velocity consistent with the retimed EE-position
+  // motion, so the x0 handed to the next solve respects the printer limits.
+  for (int i = 0; i < 3; ++i) {
+    x_pred_curr_plan_(n_q_ + i) =
+        seg_dt > 1e-12 ? (knots(i, k + 1) - knots(i, k)) / seg_dt : 0.0;
+  }
+}
+
 // Output port handlers for current location
 void SamplingC3Controller::OutputC3SolutionCurrPlanActor(
     const drake::systems::Context<double>& context,
@@ -2864,6 +2930,10 @@ void SamplingC3Controller::OutputC3TrajExecuteActor(
   DRAKE_DEMAND(end_effector_traj.datapoints.rows() == 3);
   ProjectPlanAwayFromFixedGeometries(&end_effector_traj.datapoints);
   ClampPlanToWorkspaceLimits(&end_effector_traj.datapoints);
+  // Re-assert the EE speed limits: Project/Clamp above can lengthen a segment
+  // relative to the grid set in UpdateC3ExecutionTrajectory.
+  RetimeEEPlanToVelocityLimits(end_effector_traj.datapoints,
+                               &end_effector_traj.time_vector);
   LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},
                          "end_effector_position_target",
                          "end_effector_position_target", false);
@@ -2871,11 +2941,13 @@ void SamplingC3Controller::OutputC3TrajExecuteActor(
   if (adaptive_ee_tilt_) {
     LcmTrajectory::Trajectory ee_orientation_traj =
         c3_execution_lcm_traj_.GetTrajectory("end_effector_orientation_target");
+    ee_orientation_traj.time_vector = end_effector_traj.time_vector;
     lcm_traj.AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
   }
 
   LcmTrajectory::Trajectory force_traj =
       c3_execution_lcm_traj_.GetTrajectory("end_effector_force_target");
+  force_traj.time_vector = end_effector_traj.time_vector;
   lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);
 
   output_c3_execution_lcm_traj->saved_traj = lcm_traj.GenerateLcmObject();
@@ -2892,6 +2964,10 @@ void SamplingC3Controller::OutputReposTrajExecuteActor(
   DRAKE_DEMAND(end_effector_traj.datapoints.rows() == 3);
   ProjectPlanAwayFromFixedGeometries(&end_effector_traj.datapoints);
   ClampPlanToWorkspaceLimits(&end_effector_traj.datapoints);
+  // Re-assert the EE speed limits: Project/Clamp above can lengthen a segment
+  // relative to the grid set in UpdateRepositioningExecutionTrajectory.
+  RetimeEEPlanToVelocityLimits(end_effector_traj.datapoints,
+                               &end_effector_traj.time_vector);
   LcmTrajectory lcm_traj({end_effector_traj}, {"end_effector_position_target"},
                          "end_effector_position_target",
                          "end_effector_position_target", false);
@@ -2900,11 +2976,13 @@ void SamplingC3Controller::OutputReposTrajExecuteActor(
     LcmTrajectory::Trajectory ee_orientation_traj =
         repos_execution_lcm_traj_.GetTrajectory(
             "end_effector_orientation_target");
+    ee_orientation_traj.time_vector = end_effector_traj.time_vector;
     lcm_traj.AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
   }
 
   LcmTrajectory::Trajectory force_traj =
       repos_execution_lcm_traj_.GetTrajectory("end_effector_force_target");
+  force_traj.time_vector = end_effector_traj.time_vector;
   lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);
 
   output_repos_execution_lcm_traj->saved_traj = lcm_traj.GenerateLcmObject();
@@ -2924,6 +3002,11 @@ void SamplingC3Controller::OutputTrajExecuteActor(
   MatrixXd pre_projection_datapoints = end_effector_traj.datapoints;
   ProjectPlanAwayFromFixedGeometries(&end_effector_traj.datapoints);
   ClampPlanToWorkspaceLimits(&end_effector_traj.datapoints);
+  // Re-assert the EE speed limits: Project/Clamp above can lengthen a segment
+  // relative to the grid set in Update{C3,Repositioning}ExecutionTrajectory.
+  // This is the trajectory published on TRACKING_TRAJECTORY_ACTOR.
+  RetimeEEPlanToVelocityLimits(end_effector_traj.datapoints,
+                               &end_effector_traj.time_vector);
 
   // Sanity-check the trajectory actually being published (this is what
   // TRACKING_TRAJECTORY_ACTOR carries, downstream of the check in
@@ -2999,12 +3082,14 @@ void SamplingC3Controller::OutputTrajExecuteActor(
   if (adaptive_ee_tilt_) {
     LcmTrajectory::Trajectory ee_orientation_traj =
         execution_lcm_traj.GetTrajectory("end_effector_orientation_target");
+    ee_orientation_traj.time_vector = end_effector_traj.time_vector;
     lcm_traj.AddTrajectory(ee_orientation_traj.traj_name, ee_orientation_traj);
   }
 
   MatrixXd force_samples = MatrixXd::Zero(3, N_);
   LcmTrajectory::Trajectory force_traj =
       execution_lcm_traj.GetTrajectory("end_effector_force_target");
+  force_traj.time_vector = end_effector_traj.time_vector;
   lcm_traj.AddTrajectory(force_traj.traj_name, force_traj);
 
   output_execution_lcm_traj->saved_traj = lcm_traj.GenerateLcmObject();

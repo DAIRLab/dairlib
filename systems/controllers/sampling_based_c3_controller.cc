@@ -1828,6 +1828,14 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
     timestamps[i] = t_context + filtered_solve_time_ + (i)*dt_;
   }
 
+  // Pin the plan's first knot to x0 so the executed command is continuous with
+  // the (predicted) current state even if the C3/ADMM solution has initial-state
+  // slack.  Repositioning already does this (reposition.cc).  Done before the
+  // retiming and predicted-state steps below so segment 0 is timed from the true
+  // start point and the next-loop x0 prediction interpolates a plan that starts
+  // at truth.
+  knots.col(0) = x_lcs;
+
   double wall_offset = 0;
 
   if (sampling_c3_options_.include_walls && sampling_params_.sample_on_wall) {

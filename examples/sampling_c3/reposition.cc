@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "drake/common/drake_assert.h"
+
 namespace dairlib {
 namespace systems {
 
@@ -90,6 +92,11 @@ Eigen::MatrixXd Reposition(const int& n_q, const int& n_x, const int& N,
                               finished_reposition_flag, reposition_params,
                               adaptive_waypoint_height);
   }
+
+  // Every strategy above pins the first knot to x0 (the current, predicted EE
+  // state); the C3 execution path relies on the same invariant.  Assert it here
+  // so a future strategy edit can't silently break plan/state continuity.
+  DRAKE_DEMAND((knots.col(0).head(3) - x_lcs.head(3)).norm() < 1e-9);
 
   if (!allow_ground_penetration) {
     EnforceNoGroundPenetration(knots,

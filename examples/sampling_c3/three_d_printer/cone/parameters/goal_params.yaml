@@ -46,10 +46,13 @@ fixed_target_orientations: [[0.707, 0, 0.707, 0]]
 # kFixedGoalSequence:  Sequence of (position, orientation) goals to step
 # through.  Outer index = step, inner index = object.
 fixed_target_position_sequence:
-  - [[0.234, 0.07, 0.0]]
+  # - [[0.280, 0.224, 0.0]]   # this is where the cone is printed
+  - [[0.280, 0.07, 0.0]]      # line up cone with ramp in Y
+  - [[0.234, 0.07, 0.0]]      # get cone close to ramp in X
   # - [[0.204, 0.07, 0.025]]
-  - [[0.069, 0.07, 0.05]]
+  - [[0.069, 0.07, 0.05]]     # final position at end of ramp 
 fixed_target_orientation_sequence:
+  - [[0.707, 0, -0.707, 0]]
   - [[0.707, 0, -0.707, 0]]
   # - [[-0.18, 0.0, -0.98, 0.0]]
   - [[0.707, 0, 0.707, 0]]

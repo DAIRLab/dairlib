@@ -41,22 +41,22 @@ group "drivers" {
 
 group "object tracking" {
   cmd "object_tracking" {
-    exec = "python /mnt/data0/three_d_printer/FoundationPose/run_live_demo.py --system=diamond";
+    exec = "python /mnt/data0/three_d_printer/FoundationPose/run_live_demo.py --system=cone";
     host = "vision_host";
   }
 }
 
 group "printer operations" {
   cmd "print_part_1" {
-    exec = "/home/three_d_printer/printer_robot_driver/two_part_print.py --model diamond --part1";
+    exec = "python /home/three_d_printer/printer_robot_driver/two_part_print.py --model test --part1";
     host = "printer_driver_host";
   }
   cmd "push_and_attach" {
-    exec = "/home/three_d_printer/printer_robot_driver/two_part_print.py --model diamond --push-and-attach";
+    exec = "python /home/three_d_printer/printer_robot_driver/two_part_print.py --model test --push-and-attach";
     host = "printer_driver_host";
   }
   cmd "detach_and_part2" {
-    exec = "/home/three_d_printer/printer_robot_driver/two_part_print.py --model diamond --detach-and-part2";
+    exec = "python /home/three_d_printer/printer_robot_driver/two_part_print.py --model test --detach-and-part2";
     host = "printer_driver_host";
   }
 }
@@ -86,8 +86,9 @@ script "step 2:  transition to controller" {
   start cmd "logger";
   wait ms 50;
   start cmd "object_tracking";
-  wait ms 1000;
+  wait ms 10000;
   start cmd "push_and_attach";
+  wait ms 145000;
   start cmd "printer_driver";
   wait ms 1000;
   start cmd "three_d_printer_osc";

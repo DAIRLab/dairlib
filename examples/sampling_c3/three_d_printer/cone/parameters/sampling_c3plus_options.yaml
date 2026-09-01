@@ -28,7 +28,7 @@ qp_projection_scaling: 1
 # Workspace limits specified as linear constraints [x, y, z, lb, ub]
 workspace_limits: [[1, 0, 0, 0, 0.35],
                    [0, 1, 0, 0, 0.35],
-                   [0, 0, 1, 0.006, 0.248]]
+                   [0, 0, 1, 0.015, 0.248]]
 
 robot_radius_limits: [0.0, 10.0]  # printer has no radius limits, so set large
 workspace_margins: 0.002

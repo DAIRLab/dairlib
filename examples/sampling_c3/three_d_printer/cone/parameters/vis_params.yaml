@@ -8,6 +8,11 @@ camera_target: [0.2, 0, 0.2]
 visualize_c3_workspace: false
 visualize_c3_state: true
 
+# keep_out_color can be empty ([]), [r, g, b] (alpha defaults to 0.25), or
+# [r, g, b, a].
+visualize_keep_out_regions: true
+keep_out_color: [0.9, 0.2, 0.2, 0.25]
+
 visualize_center_of_mass_plan_curr: false
 visualize_c3_forces_curr: false
 visualize_center_of_mass_plan_best: false

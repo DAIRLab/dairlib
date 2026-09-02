@@ -4,6 +4,7 @@
 
 #include "common/find_resource.h"
 
+#include "drake/common/drake_assert.h"
 #include "drake/multibody/parsing/parser.h"
 
 namespace dairlib {
@@ -288,6 +289,32 @@ vector<ModelInstanceIndex> AddLCSModelsTo3DPrinterPlant(
                     X_World_Ramp);
 
   return obj_models;
+}
+
+vector<ModelInstanceIndex> AddKeepOutModelsToPlant(
+    MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph,
+    const vector<std::string>& keep_out_models) {
+  DRAKE_DEMAND(scene_graph != nullptr);
+  vector<ModelInstanceIndex> indices;
+  indices.reserve(keep_out_models.size());
+
+  Parser parser(plant, scene_graph);
+  parser.SetAutoRenaming(true);
+  for (const std::string& model_path : keep_out_models) {
+    if (model_path.empty()) {
+      indices.push_back(ModelInstanceIndex{});  // invalid: no regions this step
+      continue;
+    }
+    ModelInstanceIndex model_instance =
+        parser.AddModels(FindResourceOrThrow(model_path)).at(0);
+    // The URDF root link must be named "keep_out_base"; each region link is
+    // connected via a fixed joint.
+    plant->WeldFrames(plant->world_frame(),
+                      plant->GetFrameByName("keep_out_base", model_instance),
+                      RigidTransform<double>::Identity());
+    indices.push_back(model_instance);
+  }
+  return indices;
 }
 
 }  // namespace dairlib

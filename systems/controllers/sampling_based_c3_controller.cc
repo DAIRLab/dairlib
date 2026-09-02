@@ -23,10 +23,12 @@
 #include "dairlib/lcmt_radio_out.hpp"
 #include "examples/sampling_c3/generate_samples.h"
 #include "examples/sampling_c3/reposition.h"
+#include "examples/sampling_c3/sampling_c3_utils.h"
 #include "multibody/multibody_utils.h"
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/multibody/plant/multibody_plant.h"
+#include "drake/systems/framework/diagram_builder.h"
 
 namespace dairlib {
 
@@ -459,6 +461,12 @@ SamplingC3Controller::SamplingC3Controller(
   }
   fixed_obstacle_geometries_ = drake::geometry::GeometrySet(fixed_geometry_ids);
 
+  // Build the private keep-out scene, then seed the per-goal-step settings for
+  // goal step 0.  RefreshPerGoalSettings is called again from ComputePlan
+  // whenever the detected goal step advances.
+  BuildKeepOutScene();
+  RefreshPerGoalSettings(0);
+
   // Below code loads in the mesh and enumerates triangular faces.
   if (sampling_params_.sampling_strategy == SamplingStrategy::kMeshNormal ||
       sampling_params_.sampling_strategy ==
@@ -890,6 +898,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     x_final_target_ = x_lcs_final_des.value();
     // is_doing_c3_ = false;
     detected_goal_changes_++;
+    // Select the per-goal-step settings (cost switching threshold, keep-out
+    // geometry) for the goal we just advanced to.
+    RefreshPerGoalSettings(detected_goal_changes_);
     // A new goal means we're no longer parked at a terminal fixed goal.
     achieved_fixed_goal_ = false;
     consecutive_all_reached_loops_ = 0;
@@ -906,7 +917,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                     x_lcs_final_des.value().segment(7 + 7 * i, 2))
                        .norm();
     }
-    if (pose_diff < progress_params_.cost_switching_threshold_distance *
+    if (pose_diff < active_cost_switching_threshold_distance_ *
                         controller_params_.num_objects) {
       crossed_cost_switching_threshold_ = true;
       dt_ = sampling_c3_options_.planning_dt_pose;  // Always set dt_ according
@@ -942,10 +953,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     // The LCS state stores the quaternion as (w, x, y, z); build it
     // element-by-element rather than via the single-argument constructor, which
     // reads coeffs() in (x, y, z, w) order.
-    Quaterniond q_des(x_lcs_des.get_value()[3 + 7 * i],
-                      x_lcs_des.get_value()[4 + 7 * i],
-                      x_lcs_des.get_value()[5 + 7 * i],
-                      x_lcs_des.get_value()[6 + 7 * i]);
+    Quaterniond q_des(
+        x_lcs_des.get_value()[3 + 7 * i], x_lcs_des.get_value()[4 + 7 * i],
+        x_lcs_des.get_value()[5 + 7 * i], x_lcs_des.get_value()[6 + 7 * i]);
     Quaterniond q_curr(x_lcs_curr[3 + 7 * i], x_lcs_curr[4 + 7 * i],
                        x_lcs_curr[5 + 7 * i], x_lcs_curr[6 + 7 * i]);
 
@@ -996,7 +1006,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         contact_pairs_, faces_, face_bins_, faces_per_object_,
         face_bins_per_object_, total_area_per_object_, object_on_target,
         unsuccessful_sample_buffer_, object_geometry_ids_,
-        object_enclosing_radius_, ee_radius_, fixed_obstacle_geometries_);
+        object_enclosing_radius_, ee_radius_, fixed_obstacle_geometries_,
+        KeepOutQuery{keep_out_query_object(), active_keep_out_geometries_});
     if (verbose_) {
       std::cout << "Generated " << candidate_states.size()
                 << " candidate sample states." << std::endl;
@@ -1829,11 +1840,11 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
   }
 
   // Pin the plan's first knot to x0 so the executed command is continuous with
-  // the (predicted) current state even if the C3/ADMM solution has initial-state
-  // slack.  Repositioning already does this (reposition.cc).  Done before the
-  // retiming and predicted-state steps below so segment 0 is timed from the true
-  // start point and the next-loop x0 prediction interpolates a plan that starts
-  // at truth.
+  // the (predicted) current state even if the C3/ADMM solution has
+  // initial-state slack.  Repositioning already does this (reposition.cc). Done
+  // before the retiming and predicted-state steps below so segment 0 is timed
+  // from the true start point and the next-loop x0 prediction interpolates a
+  // plan that starts at truth.
   knots.col(0) = x_lcs;
 
   double wall_offset = 0;
@@ -2341,6 +2352,98 @@ void SamplingC3Controller::KeepTrackOfC3ModeProgress(
   } else if (best_progress_steps_ago_ > num_control_loops_to_wait) {
     met_minimum_progress = false;
   }
+}
+
+// Builds a self-contained plant/scene-graph diagram holding only the per-goal
+// keep-out models.
+void SamplingC3Controller::BuildKeepOutScene() {
+  keep_out_geometry_sets_.clear();
+  keep_out_step_has_regions_.clear();
+
+  const auto& keep_out_models = controller_params_.keep_out_model_sequence;
+  if (!keep_out_models.has_value()) {
+    return;
+  }
+  const bool any_models =
+      std::any_of(keep_out_models->begin(), keep_out_models->end(),
+                  [](const std::string& path) { return !path.empty(); });
+  if (!any_models) {
+    return;
+  }
+
+  drake::systems::DiagramBuilder<double> builder;
+  auto [keep_out_plant, keep_out_scene_graph] =
+      drake::multibody::AddMultibodyPlantSceneGraph(&builder, 0.0);
+  const std::vector<drake::multibody::ModelInstanceIndex> model_instances =
+      AddKeepOutModelsToPlant(&keep_out_plant, &keep_out_scene_graph,
+                              *keep_out_models);
+  keep_out_plant.Finalize();
+
+  // The plant and scene graph are owned by the diagram once it is built; the
+  // references above stay valid for the diagram's lifetime.
+  keep_out_plant_ = &keep_out_plant;
+  keep_out_diagram_ = builder.Build();
+  keep_out_diagram_context_ = keep_out_diagram_->CreateDefaultContext();
+
+  keep_out_geometry_sets_.reserve(model_instances.size());
+  keep_out_step_has_regions_.reserve(model_instances.size());
+  for (const drake::multibody::ModelInstanceIndex& model_instance :
+       model_instances) {
+    std::vector<GeometryId> step_geometry_ids;
+    if (model_instance.is_valid()) {
+      for (const drake::multibody::BodyIndex& body_index :
+           keep_out_plant_->GetBodyIndices(model_instance)) {
+        for (const GeometryId& id :
+             keep_out_plant_->GetCollisionGeometriesForBody(
+                 keep_out_plant_->get_body(body_index))) {
+          step_geometry_ids.push_back(id);
+        }
+      }
+    }
+    keep_out_step_has_regions_.push_back(!step_geometry_ids.empty());
+    keep_out_geometry_sets_.emplace_back(step_geometry_ids);
+  }
+}
+
+const drake::geometry::QueryObject<double>*
+SamplingC3Controller::keep_out_query_object() const {
+  if (keep_out_diagram_ == nullptr) {
+    return nullptr;
+  }
+  const auto& keep_out_plant_context =
+      keep_out_plant_->GetMyContextFromRoot(*keep_out_diagram_context_);
+  return &keep_out_plant_->get_geometry_query_input_port()
+              .Eval<drake::geometry::QueryObject<double>>(
+                  keep_out_plant_context);
+}
+
+void SamplingC3Controller::RefreshPerGoalSettings(int goal_step) const {
+  const auto& threshold_sequence =
+      progress_params_.cost_switching_threshold_distance_sequence;
+  if (threshold_sequence.has_value() && !threshold_sequence->empty()) {
+    int i = std::clamp(goal_step, 0,
+                       static_cast<int>(threshold_sequence->size()) - 1);
+    active_cost_switching_threshold_distance_ = threshold_sequence->at(i);
+  } else {
+    active_cost_switching_threshold_distance_ =
+        progress_params_.cost_switching_threshold_distance;
+  }
+
+  active_keep_out_geometries_ = nullptr;
+  if (!keep_out_geometry_sets_.empty()) {
+    int i = std::clamp(goal_step, 0,
+                       static_cast<int>(keep_out_geometry_sets_.size()) - 1);
+    if (keep_out_step_has_regions_.at(i)) {
+      active_keep_out_geometries_ = &keep_out_geometry_sets_.at(i);
+    }
+  }
+
+  std::cout << "RefreshPerGoalSettings: goal step " << goal_step
+            << " -> cost_switching_threshold_distance = "
+            << active_cost_switching_threshold_distance_
+            << ", keep-out regions active: "
+            << (active_keep_out_geometries_ != nullptr ? "yes" : "no")
+            << std::endl;
 }
 
 // Reset the metrics used to track progress in C3 mode.

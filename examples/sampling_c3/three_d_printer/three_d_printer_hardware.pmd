@@ -96,6 +96,15 @@ script "step 2:  transition to controller" {
   start cmd "sampling_c3";
 }
 
+script "cancel step 2" {
+  stop cmd "sampling_c3";
+  stop cmd "three_d_printer_osc";
+  stop cmd "printer_driver";
+  stop cmd "push_and_attach";
+  stop cmd "object_tracking";
+  stop cmd "logger";
+}
+
 script "step 3:  transition out of controller; print part 2" {
   stop cmd "push_and_attach";
   stop cmd "sampling_c3";

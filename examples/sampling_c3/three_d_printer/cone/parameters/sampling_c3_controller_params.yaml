@@ -16,6 +16,13 @@ lcm_channels_simulation_file: examples/sampling_c3/three_d_printer/printer_share
 object_models: [examples/sampling_c3/urdf/cone/cone_controller.sdf]
 base_names: [cone]
 
+# Optional per-goal-step keep-out geometry: one entry per step in
+# goal_params.yaml's fixed_target_position_sequence (startup throws on a length
+# mismatch).  "" = no keep-out regions for that goal; otherwise a URDF path (see
+# examples/sampling_c3/urdf/cone/keep_out_example.urdf) whose obstacle geometry
+# samples must avoid for that goal.
+keep_out_model_sequence: ["", "", "examples/sampling_c3/urdf/cone/keep_out_goal_2.urdf"]
+
 include_end_effector_orientation: false  # Unused for 3D printer
                                          # (orientation never included).
 

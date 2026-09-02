@@ -26,6 +26,7 @@
 #include "systems/three_d_printer_kinematics.h"
 #include "systems/trajectory_optimization/lcm_trajectory_systems.h"
 #include "systems/visualization/lcm_visualization_systems.h"
+#include "systems/visualization/static_visualization_systems.h"
 
 #include "drake/common/find_resource.h"
 #include "drake/common/text_logging.h"
@@ -265,6 +266,22 @@ int do_main(int argc, char* argv[]) {
   params.publish_period = 1.0 / vis_params.visualizer_publish_rate;
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
   meshcat->SetCameraPose(vis_params.camera_pose, vis_params.camera_target);
+
+  // Render the per-goal keep-out regions, nested under keep_out/goal_{i} so
+  // they can be toggled per goal in meshcat).
+  systems::StaticModelDrawer keep_out_drawer(meshcat);
+  if (vis_params.visualize_keep_out_regions &&
+      controller_params.keep_out_model_sequence.has_value()) {
+    const auto& keep_out_models = *controller_params.keep_out_model_sequence;
+    for (int i = 0; i < static_cast<int>(keep_out_models.size()); ++i) {
+      if (keep_out_models.at(i).empty()) {
+        continue;  // No keep-out regions for this goal step.
+      }
+      keep_out_drawer.AddModel(
+          FindResourceOrThrow(keep_out_models.at(i)), "keep_out_base",
+          "keep_out/goal_" + std::to_string(i), vis_params.keep_out_color);
+    }
+  }
 
   if (vis_params.visualize_c3_workspace) {
     // Note:  There are also robot radius limits which are not visualized.

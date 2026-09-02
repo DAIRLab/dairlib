@@ -32,6 +32,12 @@ track_c3_progress_via: 3
 # Ignore orientation errors when object is beyond this threshold from the goal.
 cost_switching_threshold_distance: 0.05
 
+# Optional per-goal-step override of cost_switching_threshold_distance, one
+# entry per step in goal_params.yaml's fixed_target_position_sequence (startup
+# throws on a length mismatch).  Comment out to use the single value above for
+# every goal.
+cost_switching_threshold_distance_sequence: [0.0, 0.0, 0.05]
+
 # Penalize repositioning distance.
 travel_cost_per_meter: 0
 

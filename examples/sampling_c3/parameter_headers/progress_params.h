@@ -1,5 +1,9 @@
 #pragma once
 
+#include <vector>
+
+#include <optional>
+
 #include "common/file_utils.h"
 
 #include "drake/common/yaml/yaml_read_archive.h"
@@ -50,6 +54,12 @@ struct SamplingC3ProgressParams {
   double progress_enforced_cost_drop;
   int progress_enforced_over_n_loops;
   double cost_switching_threshold_distance;
+  // Optional per-goal-step override of cost_switching_threshold_distance,
+  // indexed by the controller's goal-sequence step.  When set, its length must
+  // equal the number of goal-sequence steps (validated in
+  // SamplingC3ControllerParams::Serialize); unset => every goal uses the scalar
+  // cost_switching_threshold_distance above.
+  std::optional<std::vector<double>> cost_switching_threshold_distance_sequence;
   double travel_cost_per_meter;
   double hyst_c3_to_repos;
   double hyst_c3_to_repos_position;
@@ -76,6 +86,7 @@ struct SamplingC3ProgressParams {
     a->Visit(DRAKE_NVP(progress_enforced_cost_drop));
     a->Visit(DRAKE_NVP(progress_enforced_over_n_loops));
     a->Visit(DRAKE_NVP(cost_switching_threshold_distance));
+    a->Visit(DRAKE_NVP(cost_switching_threshold_distance_sequence));
     a->Visit(DRAKE_NVP(travel_cost_per_meter));
     a->Visit(DRAKE_NVP(hyst_c3_to_repos));
     a->Visit(DRAKE_NVP(hyst_c3_to_repos_position));

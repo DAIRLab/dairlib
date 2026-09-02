@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<!--
+  Template keep-out geometry for one goal in a kFixedGoalSequence.
+
+  Reference this file (or a copy of it) from an entry of keep_out_model_sequence
+  in sampling_c3_controller_params.yaml.  While that goal is active, EE samples
+  must stay clear of every <collision> geometry below.
+-->
+<robot xmlns:drake="http://drake.mit.edu" name="keep_out">
+
+  <!-- Must keep this as the base link (do not change name): -->
+  <link name="keep_out_base">
+  </link>
+
+  <!-- Example region: a box centered at (0.20, 0.07, 0.10) in the world. -->
+  <link name="keep_out_1">
+    <visual>
+      <origin xyz="0.20 0.07 0.10" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.10 0.10 0.20"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0.20 0.07 0.10" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.10 0.10 0.20"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="keep_out_1_joint" type="fixed">
+    <parent link="keep_out_base"/>
+    <child link="keep_out_1"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+</robot>

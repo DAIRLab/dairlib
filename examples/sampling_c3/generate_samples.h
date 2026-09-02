@@ -22,6 +22,15 @@ using Eigen::VectorXd;
 namespace dairlib {
 namespace systems {
 
+/// Keep-out regions for the current goal.
+struct KeepOutQuery {
+  const drake::geometry::QueryObject<double>* query_object = nullptr;
+  const drake::geometry::GeometrySet* geometries = nullptr;
+  bool active() const {
+    return query_object != nullptr && geometries != nullptr;
+  }
+};
+
 /// Public function
 std::vector<Eigen::VectorXd> GenerateSampleStates(
     const int& n_q, const int& n_v, const int& n_u,
@@ -43,7 +52,8 @@ std::vector<Eigen::VectorXd> GenerateSampleStates(
     const MatrixXd& unsuccessful_sample_buffer,
     const std::vector<drake::geometry::GeometryId>& object_geometry_ids,
     const std::vector<double>& object_enclosing_radius, const double& ee_radius,
-    const drake::geometry::GeometrySet& fixed_obstacle_geometries);
+    const drake::geometry::GeometrySet& fixed_obstacle_geometries,
+    const KeepOutQuery& keep_out = {});
 
 bool SampleIsAcceptable(
     const Eigen::VectorXd& candidate_state,
@@ -52,18 +62,18 @@ bool SampleIsAcceptable(
     const MatrixXd& unsuccessful_samples,
     const drake::geometry::QueryObject<double>& query_object,
     const drake::geometry::GeometrySet& fixed_obstacle_geometries,
-    const double& ee_radius);
+    const double& ee_radius, const KeepOutQuery& keep_out = {});
 
 bool SampleAvoidsBadSpots(const Eigen::VectorXd& candidate_state,
                           const SamplingParams& sampling_params,
                           const MatrixXd& unsuccessful_samples);
 
-bool SampleAvoidsFixedGeometries(
+/// True iff the sample is at least @p clearance away from every geometry in @p
+/// geometries.
+bool SampleAvoidsGeometries(
     const Eigen::VectorXd& candidate_state,
-    const SamplingC3Options& sampling_c3_options,
     const drake::geometry::QueryObject<double>& query_object,
-    const drake::geometry::GeometrySet& fixed_obstacle_geometries,
-    const double& ee_radius);
+    const drake::geometry::GeometrySet& geometries, const double& clearance);
 
 /// Individual sampling strategies returning 3D EE position
 Eigen::Vector3d RadiallySymmetricSampling(const int& n_q, const int& n_v,

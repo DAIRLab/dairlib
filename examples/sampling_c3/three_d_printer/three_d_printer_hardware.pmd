@@ -59,12 +59,20 @@ group "printer operations" {
     exec = "python /home/three_d_printer/printer_robot_driver/two_part_print.py --model test --detach-and-part2";
     host = "printer_driver_host";
   }
+  cmd "homing" {
+    exec = "python /home/three_d_printer/printer_robot_driver/homing.py";
+    host = "printer_driver_host";
+  }
 }
 
 script "start operator commands" {
   restart cmd "visualizer";
   restart cmd "xbox";
   restart cmd "lcm-spy";
+}
+
+script "check homing/home printer" {
+  start cmd "homing";
 }
 
 script "step 1:  print part 1" {

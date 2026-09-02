@@ -50,3 +50,21 @@ cc_test(
         "@googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "keep_out_regions_test",
+    size = "small",
+    srcs = [
+        "keep_out_regions_test.cc",
+    ],
+    data = [
+        "//examples/sampling_c3:urdfs",
+    ],
+    deps = [
+        "//common:find_resource",
+        "//examples/sampling_c3:generate_samples",
+        "//examples/sampling_c3:sampling_c3_utils",
+        "@drake//:drake_shared_library",
+        "@googletest//:gtest_main",
+    ],
+)

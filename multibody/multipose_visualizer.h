@@ -50,12 +50,17 @@ class MultiposeVisualizer {
   /// @param pose_trace_name Name of the pose trace to use in meshcat
   /// @param rgb the RGB color to use for all bodies.  If not provided, the
   /// color will default to what is defined in the model file.
+  /// @param meshcat_params Parameters for the underlying MeshcatVisualizer.
+  /// Most usefully `prefix`, which selects the meshcat subtree this instance
+  /// draws under, and `default_color`, which colors any geometry whose model
+  /// file defines no material.
   MultiposeVisualizer(
       std::string model_file, int num_poses, const Eigen::VectorXd& alpha_scale,
       std::string weld_frame_to_world = "",
       std::shared_ptr<drake::geometry::Meshcat> meshcat = nullptr,
       const std::string& pose_trace_name = "",
-      const Eigen::VectorXd& rgb = Eigen::VectorXd());
+      const Eigen::VectorXd& rgb = Eigen::VectorXd(),
+      drake::geometry::MeshcatVisualizerParams meshcat_params = {});
 
   /// Draws the poses in the given (num_positions x num_poses) matrix
   /// Note: the matrix can have extra rows (e.g. velocities), which will be

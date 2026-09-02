@@ -4,6 +4,7 @@
 #include "drake/systems/framework/diagram_builder.h"
 
 using drake::geometry::Meshcat;
+using drake::geometry::MeshcatVisualizerParams;
 using drake::geometry::SceneGraph;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
@@ -32,7 +33,8 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
                                          string weld_frame_to_world,
                                          std::shared_ptr<Meshcat> meshcat,
                                          const std::string& pose_trace_name,
-                                         const Eigen::VectorXd& rgb)
+                                         const Eigen::VectorXd& rgb,
+                                         MeshcatVisualizerParams meshcat_params)
     : num_poses_(num_poses) {
   DRAKE_DEMAND(num_poses == alpha_scale.size());
   DiagramBuilder<double> builder;
@@ -41,7 +43,8 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
   std::tie(plant_, scene_graph) =
       drake::multibody::AddMultibodyPlantSceneGraph(&builder, 0.0);
 
-  Parser parser(plant_, scene_graph, pose_trace_name + "_pose_trace");
+  Parser parser(plant_, scene_graph,
+                pose_trace_name.empty() ? "" : pose_trace_name + "_pose_trace");
   parser.SetAutoRenaming(true);
   // Add num_poses copies of the plant, giving each a unique name
   for (int i = 0; i < num_poses_; i++) {
@@ -100,7 +103,7 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
   }
   meshcat_visualizer_ =
       &drake::geometry::MeshcatVisualizer<double>::AddToBuilder(
-          &builder, *scene_graph, meshcat_);
+          &builder, *scene_graph, meshcat_, std::move(meshcat_params));
 
   diagram_ = builder.Build();
   diagram_context_ = diagram_->CreateDefaultContext();

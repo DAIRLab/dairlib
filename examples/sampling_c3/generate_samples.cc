@@ -44,7 +44,8 @@ vector<VectorXd> GenerateSampleStates(
     const MatrixXd& unsuccessful_sample_buffer,
     const vector<GeometryId>& object_geometry_ids,
     const vector<double>& object_enclosing_radius, const double& ee_radius,
-    const drake::geometry::GeometrySet& fixed_obstacle_geometries) {
+    const drake::geometry::GeometrySet& fixed_obstacle_geometries,
+    const KeepOutQuery& keep_out) {
   // Determine number of samples based on mode.
   int num_samples;
   if (is_doing_c3) {
@@ -79,7 +80,7 @@ vector<VectorXd> GenerateSampleStates(
       if (!SampleIsAcceptable(candidate_states[i], sampling_params,
                               sampling_c3_options, unsuccessful_sample_buffer,
                               query_object, fixed_obstacle_geometries,
-                              ee_radius)) {
+                              ee_radius, keep_out)) {
         throw std::runtime_error(
             "Error:  Radially symmetric sample location is outside workspace.");
       }
@@ -90,10 +91,10 @@ vector<VectorXd> GenerateSampleStates(
         candidate_states[i].head(3) = RandomOnCircleSampling(
             n_q, n_v, x_lcs, sampling_params.sampling_radius,
             sampling_params.sampling_height);
-      } while (!SampleIsAcceptable(candidate_states[i], sampling_params,
-                                   sampling_c3_options,
-                                   unsuccessful_sample_buffer, query_object,
-                                   fixed_obstacle_geometries, ee_radius));
+      } while (!SampleIsAcceptable(
+          candidate_states[i], sampling_params, sampling_c3_options,
+          unsuccessful_sample_buffer, query_object, fixed_obstacle_geometries,
+          ee_radius, keep_out));
     }
   } else if (strategy == SamplingStrategy::kRandomOnSphere) {
     for (int i = 0; i < num_samples; i++) {
@@ -102,10 +103,10 @@ vector<VectorXd> GenerateSampleStates(
             n_q, n_v, x_lcs, sampling_params.sampling_radius,
             sampling_params.min_angle_from_vertical,
             sampling_params.max_angle_from_vertical);
-      } while (!SampleIsAcceptable(candidate_states[i], sampling_params,
-                                   sampling_c3_options,
-                                   unsuccessful_sample_buffer, query_object,
-                                   fixed_obstacle_geometries, ee_radius));
+      } while (!SampleIsAcceptable(
+          candidate_states[i], sampling_params, sampling_c3_options,
+          unsuccessful_sample_buffer, query_object, fixed_obstacle_geometries,
+          ee_radius, keep_out));
     }
   } else if (strategy == SamplingStrategy::kFixed) {
     if (num_samples > sampling_params.fixed_sample_locations.size()) {
@@ -121,7 +122,7 @@ vector<VectorXd> GenerateSampleStates(
       if (!SampleIsAcceptable(candidate_states[i], sampling_params,
                               sampling_c3_options, unsuccessful_sample_buffer,
                               query_object, fixed_obstacle_geometries,
-                              ee_radius)) {
+                              ee_radius, keep_out)) {
         throw std::runtime_error(
             "Error:  Fixed sample location is outside workspace.");
       }
@@ -132,10 +133,10 @@ vector<VectorXd> GenerateSampleStates(
         candidate_states[i].head(3) = PerimeterSampling(
             n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad,
             contact_geoms, sampling_params, sampling_c3_options);
-      } while (!SampleIsAcceptable(candidate_states[i], sampling_params,
-                                   sampling_c3_options,
-                                   unsuccessful_sample_buffer, query_object,
-                                   fixed_obstacle_geometries, ee_radius));
+      } while (!SampleIsAcceptable(
+          candidate_states[i], sampling_params, sampling_c3_options,
+          unsuccessful_sample_buffer, query_object, fixed_obstacle_geometries,
+          ee_radius, keep_out));
     }
   } else if (strategy == SamplingStrategy::kRandomOnShell) {
     for (int i = 0; i < num_samples; i++) {
@@ -151,10 +152,10 @@ vector<VectorXd> GenerateSampleStates(
               "workspace after " +
               std::to_string(sampling_params.max_attempts) + " attempts.");
         }
-      } while (!SampleIsAcceptable(candidate_states[i], sampling_params,
-                                   sampling_c3_options,
-                                   unsuccessful_sample_buffer, query_object,
-                                   fixed_obstacle_geometries, ee_radius));
+      } while (!SampleIsAcceptable(
+          candidate_states[i], sampling_params, sampling_c3_options,
+          unsuccessful_sample_buffer, query_object, fixed_obstacle_geometries,
+          ee_radius, keep_out));
     }
   } else if (strategy == SamplingStrategy::kMeshNormal) {
     for (int i = 0; i < num_samples; i++) {
@@ -162,10 +163,10 @@ vector<VectorXd> GenerateSampleStates(
         candidate_states[i] = MeshNormalSampling(
             n_q, n_v, n_u, x_lcs, plant, context, plant_ad, context_ad,
             sampling_params, query_object, faces, face_bins);
-      } while (!SampleIsAcceptable(candidate_states[i], sampling_params,
-                                   sampling_c3_options,
-                                   unsuccessful_sample_buffer, query_object,
-                                   fixed_obstacle_geometries, ee_radius));
+      } while (!SampleIsAcceptable(
+          candidate_states[i], sampling_params, sampling_c3_options,
+          unsuccessful_sample_buffer, query_object, fixed_obstacle_geometries,
+          ee_radius, keep_out));
     }
   } else if (strategy == SamplingStrategy::kMeshNormalMultiObject) {
     for (int i = 0; i < num_samples; i++) {
@@ -175,10 +176,10 @@ vector<VectorXd> GenerateSampleStates(
             contact_geoms, sampling_params, sampling_c3_options, query_object,
             faces_per_object, face_bins_per_object, total_area_per_object,
             object_on_target);
-      } while (!SampleIsAcceptable(candidate_states[i], sampling_params,
-                                   sampling_c3_options,
-                                   unsuccessful_sample_buffer, query_object,
-                                   fixed_obstacle_geometries, ee_radius));
+      } while (!SampleIsAcceptable(
+          candidate_states[i], sampling_params, sampling_c3_options,
+          unsuccessful_sample_buffer, query_object, fixed_obstacle_geometries,
+          ee_radius, keep_out));
     }
   }
 
@@ -194,7 +195,7 @@ bool SampleIsAcceptable(
     const MatrixXd& unsuccessful_samples,
     const QueryObject<double>& query_object,
     const drake::geometry::GeometrySet& fixed_obstacle_geometries,
-    const double& ee_radius) {
+    const double& ee_radius, const KeepOutQuery& keep_out) {
   // Condition 1:  Sample is within the workspace.
   bool is_in_workspace =
       IsSampleInWorkspace(candidate_state, sampling_c3_options);
@@ -209,16 +210,27 @@ bool SampleIsAcceptable(
                          : true;
 
   // Condition 3:  Sample avoids fixed (non-EE, non-object) environment
-  // geometries.
-  bool avoids_fixed_geometries = SampleAvoidsFixedGeometries(
-      candidate_state, sampling_c3_options, query_object,
-      fixed_obstacle_geometries, ee_radius);
+  // geometries.  Use workspace_margin + ee_radius as the clearance.
+  bool avoids_fixed_geometries = SampleAvoidsGeometries(
+      candidate_state, query_object, fixed_obstacle_geometries,
+      sampling_c3_options.workspace_margins + ee_radius);
   bool condition_3 =
       sampling_params.avoid_sampling_within_fixed_environment_geometries
           ? avoids_fixed_geometries
           : true;
 
-  return condition_1 && condition_2 && condition_3;
+  // Condition 4:  Sample avoids the keep-out regions active for the current
+  // goal.  Always enforced when present (independent of the safety-filter
+  // toggles above).  Note this queries the keep-out scene, not `query_object`.
+  // Use 0 as the clearance, and ensure the keep-out regions are defined with
+  // the sample's center in mind.
+  bool condition_4 = true;
+  if (keep_out.active()) {
+    condition_4 = SampleAvoidsGeometries(
+        candidate_state, *keep_out.query_object, *keep_out.geometries, 0.0);
+  }
+
+  return condition_1 && condition_2 && condition_3 && condition_4;
 }
 
 bool SampleAvoidsBadSpots(const VectorXd& candidate_state,
@@ -241,21 +253,17 @@ bool SampleAvoidsBadSpots(const VectorXd& candidate_state,
   return true;
 }
 
-bool SampleAvoidsFixedGeometries(
-    const VectorXd& candidate_state,
-    const SamplingC3Options& sampling_c3_options,
-    const QueryObject<double>& query_object,
-    const drake::geometry::GeometrySet& fixed_obstacle_geometries,
-    const double& ee_radius) {
+bool SampleAvoidsGeometries(const VectorXd& candidate_state,
+                            const QueryObject<double>& query_object,
+                            const drake::geometry::GeometrySet& geometries,
+                            const double& clearance) {
   const auto& results = query_object.ComputeSignedDistanceGeometryToPoint(
-      candidate_state.head(3), fixed_obstacle_geometries);
+      candidate_state.head(3), geometries);
   double min_distance = std::numeric_limits<double>::infinity();
   for (const auto& result : results) {
     min_distance = std::min(min_distance, result.distance);
   }
-  const double target_clearance =
-      sampling_c3_options.workspace_margins + ee_radius;
-  return !std::isfinite(min_distance) || min_distance >= target_clearance;
+  return !std::isfinite(min_distance) || min_distance >= clearance;
 }
 
 // kRadiallySymmetric:  Equally spaced on perimeter of circle of fixed radius

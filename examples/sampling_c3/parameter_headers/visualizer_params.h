@@ -15,6 +15,9 @@ struct SamplingC3VisualizerParams {
   bool visualize_c3_workspace;
   bool visualize_c3_state;
 
+  bool visualize_keep_out_regions;
+  Eigen::VectorXd keep_out_color;
+
   bool visualize_center_of_mass_plan_curr;
   bool visualize_c3_forces_curr;
   bool visualize_center_of_mass_plan_best;
@@ -53,6 +56,8 @@ struct SamplingC3VisualizerParams {
     a->Visit(DRAKE_NVP(camera_target));
     a->Visit(DRAKE_NVP(visualize_c3_workspace));
     a->Visit(DRAKE_NVP(visualize_c3_state));
+    a->Visit(DRAKE_NVP(visualize_keep_out_regions));
+    a->Visit(DRAKE_NVP(keep_out_color));
     a->Visit(DRAKE_NVP(visualize_center_of_mass_plan_curr));
     a->Visit(DRAKE_NVP(visualize_c3_forces_curr));
     a->Visit(DRAKE_NVP(visualize_center_of_mass_plan_best));

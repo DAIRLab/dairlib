@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include <Eigen/Dense>
 
@@ -182,5 +183,16 @@ std::vector<drake::multibody::ModelInstanceIndex> AddLCSModelsTo3DPrinterPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
     std::vector<std::string> object_models = {});
+
+/// Add per-goal keep-out obstacle models to a plant.  For each non-empty entry
+/// in @p keep_out_models, parse the URDF and weld its `keep_out_base` link to
+/// the world frame.
+/// @param scene_graph must be non-null.
+/// @return one ModelInstanceIndex per entry, parallel to @p keep_out_models; an
+///   invalid (default-constructed) index for each empty entry.
+std::vector<drake::multibody::ModelInstanceIndex> AddKeepOutModelsToPlant(
+    drake::multibody::MultibodyPlant<double>* plant,
+    drake::geometry::SceneGraph<double>* scene_graph,
+    const std::vector<std::string>& keep_out_models);
 
 }  // namespace dairlib

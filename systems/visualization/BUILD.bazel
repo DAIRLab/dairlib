@@ -22,6 +22,16 @@ cc_library(
 )
 
 cc_library(
+    name = "static_visualization_systems",
+    srcs = ["static_visualization_systems.cc"],
+    hdrs = ["static_visualization_systems.h"],
+    deps = [
+        "//multibody:multipose_visualizer",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "meshcat_dynamic_camera",
     srcs = ["meshcat_dynamic_camera.cc"],
     hdrs = ["meshcat_dynamic_camera.h"],

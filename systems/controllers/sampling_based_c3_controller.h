@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <queue>
 #include <string>
 #include <vector>
@@ -8,6 +9,7 @@
 #include <drake/geometry/geometry_set.h>
 #include <drake/geometry/proximity/obj_to_surface_mesh.h>
 #include <drake/geometry/proximity/triangle_surface_mesh.h>
+#include <drake/geometry/query_object.h>
 
 #include "c3/core/c3.h"
 #include "c3/core/c3_options.h"
@@ -30,6 +32,7 @@
 #include "systems/controllers/face.h"
 #include "systems/framework/timestamped_vector.h"
 
+#include "drake/systems/framework/diagram.h"
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
@@ -262,6 +265,23 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
 
   void ResetSampleBuffers() const;
 
+  /// Refresh the per-goal-step "active" settings (cost switching threshold and
+  /// keep-out geometry) for the given 0-based goal-sequence step.  The step is
+  /// clamped into range defensively; the *_sequence parameter lengths are
+  /// already validated against the goal-step count at YAML-load time.  Falls
+  /// back to the scalar cost_switching_threshold_distance / an empty keep-out
+  /// set when the corresponding sequence is unset.
+  void RefreshPerGoalSettings(int goal_step) const;
+
+  /// Build the keep-out scene from controller_params_.keep_out_model_sequence
+  /// and populate keep_out_geometry_sets_ / keep_out_step_has_regions_.  A
+  /// no-op when no goal step declares a keep-out model.  Called from the
+  /// constructor before RefreshPerGoalSettings(0).
+  void BuildKeepOutScene();
+
+  /// QueryObject for the private keep-out scene, or nullptr when there is none.
+  const drake::geometry::QueryObject<double>* keep_out_query_object() const;
+
   void IncludeEEOrientationTargetIfEnabled(
       LcmTrajectory* lcm_trajectory, const Eigen::Vector3d& ee_position,
       const Eigen::VectorXd& timestamps) const;
@@ -274,19 +294,19 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   /// Stretch `time_vector` in place so that, under a FirstOrderHold over
   /// (*time_vector, ee_position_traj), no segment exceeds the printer's
   /// configured horizontal (xy) / vertical (z) EE speed limits
-  /// (sampling_c3_options_.ee_velocity_{horizontal,vertical}_limits).  Only ever
-  /// slows the plan down: knot 0 is left where it is and later knots slide out,
-  /// so the geometric path is untouched and no discontinuity is introduced.
-  /// Times are kept strictly increasing.  A no-op (with a one-time warning) if
-  /// the configured limits are missing or non-positive.
+  /// (sampling_c3_options_.ee_velocity_{horizontal,vertical}_limits).  Only
+  /// ever slows the plan down: knot 0 is left where it is and later knots slide
+  /// out, so the geometric path is untouched and no discontinuity is
+  /// introduced. Times are kept strictly increasing.  A no-op (with a one-time
+  /// warning) if the configured limits are missing or non-positive.
   void RetimeEEPlanToVelocityLimits(
       const Eigen::Ref<const Eigen::MatrixXd>& ee_position_traj,
       Eigen::VectorXd* time_vector) const;
 
   /// Interpolate the current plan (full LCS state `knots`, columns aligned with
-  /// `timestamps`) at `filtered_solve_time_` past the plan start and store it in
-  /// `x_pred_curr_plan_`.  Handles a non-uniform (retimed) `timestamps` grid and
-  /// overwrites the predicted EE velocity with the retimed segment's actual
+  /// `timestamps`) at `filtered_solve_time_` past the plan start and store it
+  /// in `x_pred_curr_plan_`.  Handles a non-uniform (retimed) `timestamps` grid
+  /// and overwrites the predicted EE velocity with the retimed segment's actual
   /// slope, so the predicted x0 handed to the next solve stays within the
   /// printer's EE speed limits.
   void PredictPlanStateAtSolveTime(const Eigen::MatrixXd& knots,
@@ -385,6 +405,19 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // scene that exported EE plans must stay workspace_margins (plus ee_radius_)
   // away from.
   drake::geometry::GeometrySet fixed_obstacle_geometries_;
+
+  // A private scene holding ONLY the per-goal keep-out geometry.  Null when no
+  // goal step declares a keep-out model.
+  std::unique_ptr<drake::systems::Diagram<double>> keep_out_diagram_;
+  const drake::multibody::MultibodyPlant<double>* keep_out_plant_ = nullptr;
+  std::unique_ptr<drake::systems::Context<double>> keep_out_diagram_context_;
+
+  // One keep-out GeometrySet per goal-sequence step (empty when that step has
+  // no keep-out model), indexing into the private scene above.
+  std::vector<drake::geometry::GeometrySet> keep_out_geometry_sets_;
+  // Parallel to keep_out_geometry_sets_: whether that step actually has any
+  // keep-out geometry (a GeometrySet exposes no size, so track it explicitly).
+  std::vector<bool> keep_out_step_has_regions_;
 
   drake::systems::InputPortIndex radio_port_;
   drake::systems::InputPortIndex final_target_input_port_;
@@ -523,6 +556,12 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // the investigation notes in the repo history / plan doc for 2026-08-05.
   mutable Eigen::Vector3d last_published_ee_knot0_ = Eigen::Vector3d::Zero();
   mutable bool has_last_published_ee_knot0_ = false;
+
+  // Per-goal-step settings, refreshed by RefreshPerGoalSettings() whenever the
+  // detected goal step changes (and seeded for step 0 in the constructor).
+  mutable double active_cost_switching_threshold_distance_ = 0.0;
+  mutable const drake::geometry::GeometrySet* active_keep_out_geometries_ =
+      nullptr;
 
   // To detect if the final goal has been updated.
   mutable Eigen::VectorXd x_final_target_;

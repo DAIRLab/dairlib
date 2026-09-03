@@ -275,6 +275,15 @@ cc_library(
 )
 
 cc_library(
+    name = "ee_plan_retiming",
+    srcs = ["ee_plan_retiming.cc"],
+    hdrs = ["ee_plan_retiming.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "reposition",
     srcs = ["reposition.cc"],
     hdrs = ["reposition.h"],

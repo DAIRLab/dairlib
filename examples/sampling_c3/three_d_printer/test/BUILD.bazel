@@ -37,6 +37,19 @@ cc_binary(
 )
 
 cc_test(
+    name = "ee_plan_retiming_test",
+    size = "small",
+    srcs = [
+        "ee_plan_retiming_test.cc",
+    ],
+    deps = [
+        "//examples/sampling_c3:ee_plan_retiming",
+        "@drake//:drake_shared_library",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "adaptive_reposition_test",
     size = "small",
     srcs = [
@@ -46,6 +59,19 @@ cc_test(
         "//examples/sampling_c3:reposition",
         "//examples/sampling_c3/parameter_headers:reposition_params",
         "//examples/sampling_c3/parameter_headers:sampling_c3_options",
+        "@drake//:drake_shared_library",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "goal_success_test",
+    size = "small",
+    srcs = [
+        "goal_success_test.cc",
+    ],
+    deps = [
+        "//examples/sampling_c3/parameter_headers:goal_params",
         "@drake//:drake_shared_library",
         "@googletest//:gtest_main",
     ],

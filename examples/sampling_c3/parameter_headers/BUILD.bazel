@@ -47,7 +47,10 @@ cc_library(
     name = "goal_params",
     hdrs = ["goal_params.h"],
     visibility = ["//visibility:public"],
-    deps = ["//common:file_utils"],
+    deps = [
+        "//common:file_utils",
+        "//common:quaternion_axis_alignment",
+    ],
 )
 
 cc_library(

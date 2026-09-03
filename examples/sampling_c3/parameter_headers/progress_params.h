@@ -35,6 +35,14 @@ enum ProgressMetric { kC3Cost, kConfigCost, kPosOrRotCost, kConfigCostDrop };
                                     the end.
   5. kSimImpedanceObjectCostOnly:   The same as kSimImpedance except only the
                                     object terms contribute to the final cost.
+  6. kSimImpedanceRetimedObjectCostOnly:
+                                    The same as kSimImpedanceObjectCostOnly
+                                    except the EE plan is first slowed to the
+                                    configured EE velocity limits and then
+                                    resampled back onto the original knot
+                                    times, so every sample's cost covers the
+                                    same amount of time and a plan that has to
+                                    be slowed down simply gets less far.
 */
 enum C3CostComputationType {
   kSimLCS,
@@ -43,6 +51,7 @@ enum C3CostComputationType {
   kSimImpedance,
   kSimImpedanceReplaceC3EEPlan,
   kSimImpedanceObjectCostOnly,
+  kSimImpedanceRetimedObjectCostOnly,
 };
 
 struct SamplingC3ProgressParams {

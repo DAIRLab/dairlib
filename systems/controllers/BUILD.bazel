@@ -62,6 +62,7 @@ cc_library(
         "//solvers:solver_options_io",
         ":face",
         "//systems/framework:vector",
+        "//examples/sampling_c3:ee_plan_retiming",
         "//examples/sampling_c3:generate_samples",
         "//examples/sampling_c3:reposition",
         "//examples/sampling_c3:sampling_c3_utils",

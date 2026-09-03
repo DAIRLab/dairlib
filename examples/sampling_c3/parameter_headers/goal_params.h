@@ -3,6 +3,7 @@
 #include <numeric>
 
 #include "common/file_utils.h"
+#include "common/quaternion_axis_alignment.h"
 
 #include "drake/common/drake_assert.h"
 #include "drake/common/yaml/yaml_read_archive.h"
@@ -110,6 +111,30 @@ struct SamplingC3GoalParams {
 
   bool HasTrackedAxis(int index) const {
     return tracked_orientation_axis.at(index).squaredNorm() > 1e-12;
+  }
+
+  /// The single definition of "object `index` has reached its goal", shared by
+  /// the goal generator (which uses it to advance the goal) and the controller
+  /// (which uses it to decide which objects still need samples and when to park
+  /// at a terminal fixed goal).
+  ///
+  /// Position is compared in xy only when only_use_xy_position is set.
+  /// Orientation is compared as the tracked axis's misalignment when this
+  /// object tracks an axis, and as the full quaternion error otherwise.
+  bool IsObjectOnTarget(int index, const Eigen::Vector3d& p_curr,
+                        const Eigen::Quaterniond& q_curr,
+                        const Eigen::Vector3d& p_des,
+                        const Eigen::Quaterniond& q_des) const {
+    double position_error = only_use_xy_position
+                                ? (p_curr - p_des).head(2).norm()
+                                : (p_curr - p_des).norm();
+    double orientation_error =
+        HasTrackedAxis(index)
+            ? dairlib::ComputeAxisMisalignmentAngle(
+                  q_curr, q_des, tracked_orientation_axis.at(index))
+            : Eigen::AngleAxisd(q_des * q_curr.inverse()).angle();
+    return (position_error < position_success_threshold) &&
+           (orientation_error < orientation_success_threshold);
   }
 
  private:

@@ -273,6 +273,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   /// set when the corresponding sequence is unset.
   void RefreshPerGoalSettings(int goal_step) const;
 
+  /// For a kFixedGoalSequence, whether the goal generator's published final
+  /// target `x_lcs_final_des` is the last step of the sequence.
+  bool IsFinalTargetTerminalGoal(const Eigen::VectorXd& x_lcs_final_des) const;
+
   /// Build the keep-out scene from controller_params_.keep_out_model_sequence
   /// and populate keep_out_geometry_sets_ / keep_out_step_has_regions_.  A
   /// no-op when no goal step declares a keep-out model.  Called from the
@@ -291,6 +295,12 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void ProjectPlanAwayFromFixedGeometries(
       Eigen::MatrixXd* ee_position_traj) const;
 
+  /// Collapse sampling_c3_options_.ee_velocity_{horizontal,vertical}_limits,
+  /// each a [min, max] pair, into the scalar speeds the retiming works with.
+  /// Returns false (with a one-time warning) if either limit is missing or
+  /// non-positive, in which case callers should skip retiming entirely.
+  bool GetEEVelocityLimits(double* v_xy_max, double* v_z_max) const;
+
   /// Stretch `time_vector` in place so that, under a FirstOrderHold over
   /// (*time_vector, ee_position_traj), no segment exceeds the printer's
   /// configured horizontal (xy) / vertical (z) EE speed limits
@@ -302,6 +312,21 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void RetimeEEPlanToVelocityLimits(
       const Eigen::Ref<const Eigen::MatrixXd>& ee_position_traj,
       Eigen::VectorXd* time_vector) const;
+
+  /// Slow the C3 plan's EE path to the configured velocity limits and then
+  /// resample it back onto the plan's original knot times, so that the returned
+  /// reference covers the same amount of time as the unretimed plan but only as
+  /// much of the path as the printer can actually cover in that time.
+  ///
+  /// Only the EE position and velocity rows of `x_plan` are rewritten; the
+  /// object rows are left alone because SimulatePDControlWithLCS's Kp/Kd touch
+  /// the EE rows only.  `u_plan` is carried onto the same map (held from the
+  /// segment each resampled knot came from) so the feedforward force stays
+  /// aligned with where along the path the reference is.  A no-op if the
+  /// configured limits are missing or non-positive.
+  void RetimeAndResampleC3PlanForCost(
+      double dt, std::vector<Eigen::VectorXd>* x_plan,
+      std::vector<Eigen::VectorXd>* u_plan) const;
 
   /// Interpolate the current plan (full LCS state `knots`, columns aligned with
   /// `timestamps`) at `filtered_solve_time_` past the plan start and store it

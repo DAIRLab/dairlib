@@ -151,34 +151,9 @@ void SamplingC3GoalGenerator::CalcObjectTarget(
       target_final_object_orientations_.at(index)[3]);
 
   // Check if success has been met. Update goal if necessary.
-  double object_position_error;
-  if (goal_params_.only_use_xy_position) {
-    object_position_error =
-        (obj_curr_position.segment(0, 2) -
-         target_final_object_positions_.at(index).segment(0, 2))
-            .norm();
-  } else {
-    object_position_error =
-        (obj_curr_position - target_final_object_positions_.at(index)).norm();
-  }
-
-  double object_angular_error;
-  if (goal_params_.HasTrackedAxis(index)) {
-    object_angular_error = dairlib::ComputeAxisMisalignmentAngle(
-        curr_quat, target_obj_orientation,
-        goal_params_.tracked_orientation_axis.at(index));
-  } else {
-    AngleAxisd angle_axis_diff(target_obj_orientation * curr_quat.inverse());
-    object_angular_error = angle_axis_diff.angle();
-  }
-
-  if ((object_position_error < goal_params_.position_success_threshold) &&
-      (object_angular_error < goal_params_.orientation_success_threshold)) {
-    // std::cout << "\nObject " << index << " Met pose goal!\n" << std::endl;
-    reached_goal_[index] = true;
-  } else {
-    reached_goal_[index] = false;
-  }
+  reached_goal_[index] = goal_params_.IsObjectOnTarget(
+      index, obj_curr_position, curr_quat,
+      target_final_object_positions_.at(index), target_obj_orientation);
 
   bool all_reached = true;
   for (int i = 0; i < reached_goal_.size(); i++) {
@@ -246,7 +221,8 @@ void SamplingC3GoalGenerator::CalcObjectVelocityTarget(
         y_quat, y_quat_des, goal_params_.tracked_orientation_axis.at(index),
         goal_params_.angle_hysteresis, &last_axis_align_velocity_.at(index),
         &swing_angle, &swing_axis);
-    double lookahead_angle = std::min(swing_angle, goal_params_.lookahead_angle);
+    double lookahead_angle =
+        std::min(swing_angle, goal_params_.lookahead_angle);
     VectorXd angle_error =
         lookahead_angle * swing_axis * goal_params_.angle_err_to_vel_factor;
     VectorXd target_obj_velocity = VectorXd::Zero(6);

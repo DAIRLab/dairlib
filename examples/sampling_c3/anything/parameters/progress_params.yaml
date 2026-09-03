@@ -1,5 +1,5 @@
 # Ways of computing C3 costs after solving the MPC problem (defined as
-# C3CostComputationType enum in c3_options.h):
+# C3CostComputationType enum in progress_params.h):
 #  0. kSimLCS:                       Simulate the LCS dynamics from the planned
 #                                    inputs.
 #  1. kUseC3Plan:                    Use the C3 planned trajectory and inputs.
@@ -15,6 +15,14 @@
 #                                    at the end.
 #  5. kSimImpedanceObjectCostOnly:   The same as kSimImpedance except only the
 #                                    object terms contribute to the final cost.
+#  6. kSimImpedanceRetimedObjectCostOnly:
+#                                    The same as kSimImpedanceObjectCostOnly
+#                                    except the EE plan is first slowed to the
+#                                    configured EE velocity limits and then
+#                                    resampled back onto the original knot
+#                                    times, so every sample's cost covers the
+#                                    same amount of time and a plan that has to
+#                                    be slowed down simply gets less far.
 cost_type: 3
 cost_type_position: 3
 

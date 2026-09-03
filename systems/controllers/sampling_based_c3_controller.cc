@@ -21,6 +21,7 @@
 #include "common/quaternion_axis_alignment.h"
 #include "common/quaternion_error_hessian.h"
 #include "dairlib/lcmt_radio_out.hpp"
+#include "examples/sampling_c3/ee_plan_retiming.h"
 #include "examples/sampling_c3/generate_samples.h"
 #include "examples/sampling_c3/reposition.h"
 #include "examples/sampling_c3/sampling_c3_utils.h"
@@ -654,6 +655,31 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
     XX = XX_sim;
     UU = UU_sim;
 
+  } else if (cost_type ==
+             C3CostComputationType::kSimImpedanceRetimedObjectCostOnly) {
+    // The same, except the plan the impedance controller is asked to track is
+    // first slowed to the EE velocity limits and then sampled back onto the
+    // plan's original knot times.  Prevents unfair cost benefits by samples
+    // whose plans violate the robot's velocity limits.
+    vector<VectorXd> x_plan_retimed = x_plan;
+    vector<VectorXd> UU_retimed = UU;
+    RetimeAndResampleC3PlanForCost(lcs_for_plan.dt(), &x_plan_retimed,
+                                   &UU_retimed);
+
+    auto [XX_sim, UU_sim] = TrajectoryEvaluator::SimulatePDControlWithLCS(
+        x_plan_retimed, UU_retimed, Kp_for_cost_, Kd_for_cost_, lcs_for_plan,
+        lcs_for_cost, !force_tracking_disabled, simulate_config);
+    XX = XX_sim;
+    UU = UU_sim;
+
+  } else {
+    throw std::runtime_error(
+        "SamplingC3Controller::CalcCost: unrecognized C3CostComputationType " +
+        std::to_string(static_cast<int>(cost_type)) + ".");
+  }
+
+  if (cost_type == C3CostComputationType::kSimImpedanceObjectCostOnly ||
+      cost_type == C3CostComputationType::kSimImpedanceRetimedObjectCostOnly) {
     // Set R and the robot portion of the Q matrix to zero so that only the
     // object state errors contribute to cost.
     for (int i = 0; i < N_ + 1; i++) {
@@ -947,26 +973,19 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   vector<bool> object_on_target;
   bool all_reached = true;
   for (int i = 0; i < controller_params_.num_objects; i++) {
-    double object_position_error = (x_lcs_curr.segment(7 + 7 * i, 2) -
-                                    x_lcs_des.get_value().segment(7 + 7 * i, 2))
-                                       .norm();
     // The LCS state stores the quaternion as (w, x, y, z); build it
     // element-by-element rather than via the single-argument constructor, which
     // reads coeffs() in (x, y, z, w) order.
-    Quaterniond q_des(
-        x_lcs_des.get_value()[3 + 7 * i], x_lcs_des.get_value()[4 + 7 * i],
-        x_lcs_des.get_value()[5 + 7 * i], x_lcs_des.get_value()[6 + 7 * i]);
+    Quaterniond q_des(x_lcs_final_des.get_value()[3 + 7 * i],
+                      x_lcs_final_des.get_value()[4 + 7 * i],
+                      x_lcs_final_des.get_value()[5 + 7 * i],
+                      x_lcs_final_des.get_value()[6 + 7 * i]);
     Quaterniond q_curr(x_lcs_curr[3 + 7 * i], x_lcs_curr[4 + 7 * i],
                        x_lcs_curr[5 + 7 * i], x_lcs_curr[6 + 7 * i]);
 
-    double object_angular_error = AngleAxisd(q_des * q_curr.inverse()).angle();
-
-    object_on_target.push_back(
-        ((crossed_cost_switching_threshold_) &&
-         (object_position_error < goal_params_.position_success_threshold) &&
-         (object_angular_error < goal_params_.orientation_success_threshold)) ||
-        ((!crossed_cost_switching_threshold_) &&
-         (object_position_error < goal_params_.position_success_threshold)));
+    object_on_target.push_back(goal_params_.IsObjectOnTarget(
+        i, x_lcs_curr.segment(7 + 7 * i, 3), q_curr,
+        x_lcs_final_des.get_value().segment(7 + 7 * i, 3), q_des));
     all_reached = all_reached && object_on_target[i];
   }
 
@@ -987,7 +1006,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       all_reached &&
       (goal_params_.goal_mode == GoalMode::kFixedGoal ||
        (goal_params_.goal_mode == GoalMode::kFixedGoalSequence &&
-        consecutive_all_reached_loops_ >= kParkAfterAllReachedLoops));
+        consecutive_all_reached_loops_ >= kParkAfterAllReachedLoops &&
+        IsFinalTargetTerminalGoal(x_lcs_final_des.value())));
   if (achieved_fixed_goal_ || at_terminal_fixed_goal) {
     achieved_fixed_goal_ = true;
     int num_samples = is_doing_c3_
@@ -2417,6 +2437,21 @@ SamplingC3Controller::keep_out_query_object() const {
                   keep_out_plant_context);
 }
 
+bool SamplingC3Controller::IsFinalTargetTerminalGoal(
+    const VectorXd& x_lcs_final_des) const {
+  const auto& last_step = goal_params_.fixed_target_position_sequence.back();
+  const int num_compared = goal_params_.only_use_xy_position ? 2 : 3;
+  constexpr double kTerminalGoalTolerance = 1e-6;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    if ((x_lcs_final_des.segment(7 + 7 * i, num_compared) -
+         last_step.at(i).head(num_compared))
+            .norm() > kTerminalGoalTolerance) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void SamplingC3Controller::RefreshPerGoalSettings(int goal_step) const {
   const auto& threshold_sequence =
       progress_params_.cost_switching_threshold_distance_sequence;
@@ -2587,6 +2622,37 @@ void SamplingC3Controller::ProjectPlanAwayFromFixedGeometries(
   }
 }
 
+// Collapse the configured [min, max] EE velocity limits into scalar speeds.
+bool SamplingC3Controller::GetEEVelocityLimits(double* v_xy_max,
+                                               double* v_z_max) const {
+  const auto& v_xy_limits = sampling_c3_options_.ee_velocity_horizontal_limits;
+  const auto& v_z_limits = sampling_c3_options_.ee_velocity_vertical_limits;
+  if (v_xy_limits.size() < 2 || v_z_limits.size() < 2) {
+    static bool warned = false;
+    if (!warned) {
+      std::cout << "WARNING: GetEEVelocityLimits: "
+                   "ee_velocity_{horizontal,vertical}_limits not configured; "
+                   "skipping EE velocity-limit retiming."
+                << std::endl;
+      warned = true;
+    }
+    return false;
+  }
+  *v_xy_max = std::min(std::abs(v_xy_limits[0]), std::abs(v_xy_limits[1]));
+  *v_z_max = std::min(std::abs(v_z_limits[0]), std::abs(v_z_limits[1]));
+  if (!(*v_xy_max > 0.0) || !(*v_z_max > 0.0)) {
+    static bool warned = false;
+    if (!warned) {
+      std::cout << "WARNING: GetEEVelocityLimits: non-positive EE "
+                   "velocity limit; skipping EE velocity-limit retiming."
+                << std::endl;
+      warned = true;
+    }
+    return false;
+  }
+  return true;
+}
+
 // Stretch `time_vector` so no FirstOrderHold segment exceeds the printer's
 // configured EE speed limits.  Only ever slows the plan down.
 void SamplingC3Controller::RetimeEEPlanToVelocityLimits(
@@ -2595,43 +2661,59 @@ void SamplingC3Controller::RetimeEEPlanToVelocityLimits(
   DRAKE_DEMAND(ee_position_traj.rows() == 3);
   DRAKE_DEMAND(ee_position_traj.cols() == time_vector->size());
 
-  const auto& v_xy_limits = sampling_c3_options_.ee_velocity_horizontal_limits;
-  const auto& v_z_limits = sampling_c3_options_.ee_velocity_vertical_limits;
-  if (v_xy_limits.size() < 2 || v_z_limits.size() < 2) {
-    static bool warned = false;
-    if (!warned) {
-      std::cout << "WARNING: RetimeEEPlanToVelocityLimits: "
-                   "ee_velocity_{horizontal,vertical}_limits not configured; "
-                   "skipping EE velocity-limit retiming."
-                << std::endl;
-      warned = true;
-    }
+  double v_xy_max, v_z_max;
+  if (!GetEEVelocityLimits(&v_xy_max, &v_z_max)) {
     return;
   }
-  const double v_xy_max =
-      std::min(std::abs(v_xy_limits[0]), std::abs(v_xy_limits[1]));
-  const double v_z_max =
-      std::min(std::abs(v_z_limits[0]), std::abs(v_z_limits[1]));
-  if (!(v_xy_max > 0.0) || !(v_z_max > 0.0)) {
-    static bool warned = false;
-    if (!warned) {
-      std::cout << "WARNING: RetimeEEPlanToVelocityLimits: non-positive EE "
-                   "velocity limit; skipping EE velocity-limit retiming."
-                << std::endl;
-      warned = true;
-    }
+  dairlib::RetimeEEPlanToVelocityLimits(ee_position_traj, v_xy_max, v_z_max,
+                                        time_vector);
+}
+
+// Slow the plan's EE path to the velocity limits, then sample it back onto the
+// plan's original knot times so the cost covers a fixed amount of time.
+void SamplingC3Controller::RetimeAndResampleC3PlanForCost(
+    double dt, vector<VectorXd>* x_plan, vector<VectorXd>* u_plan) const {
+  const int n = x_plan->size();
+  DRAKE_DEMAND(n >= 2);
+  DRAKE_DEMAND(static_cast<int>(u_plan->size()) == n - 1);
+  DRAKE_DEMAND(dt > 0.0);
+
+  double v_xy_max, v_z_max;
+  if (!GetEEVelocityLimits(&v_xy_max, &v_z_max)) {
     return;
   }
 
-  // Mirrors reposition.cc's denom = std::max(total_travel_time, 0.0001).
-  constexpr double kMinKnotDt = 1e-4;
-  for (int i = 1; i < ee_position_traj.cols(); ++i) {
-    const Vector3d step = ee_position_traj.col(i) - ee_position_traj.col(i - 1);
-    const double dxy = step.head(2).norm();
-    const double dz = std::abs(step(2));
-    const double dt_min = std::max({(*time_vector)(i) - (*time_vector)(i - 1),
-                                    dxy / v_xy_max, dz / v_z_max, kMinKnotDt});
-    (*time_vector)(i) = (*time_vector)(i - 1) + dt_min;
+  MatrixXd ee_positions(3, n);
+  VectorXd times(n);
+  for (int i = 0; i < n; i++) {
+    ee_positions.col(i) = x_plan->at(i).head(3);
+    times(i) = i * dt;
+  }
+  dairlib::RetimeEEPlanToVelocityLimits(ee_positions, v_xy_max, v_z_max,
+                                        &times);
+
+  const RetimedPlanSampling sampling =
+      ResampleEEPlanOnUniformGrid(ee_positions, times, dt);
+
+  // The plan has to be read before any of it is overwritten, since the segment
+  // a resampled knot came from is always at or behind that knot.
+  const vector<VectorXd> x_plan_original = *x_plan;
+  const vector<VectorXd> u_plan_original = *u_plan;
+  for (int i = 0; i < n; i++) {
+    const int k = sampling.segment.at(i);
+    x_plan->at(i).head(3) = sampling.positions.col(i);
+    // Track the same planned EE velocity, scaled down by however much this
+    // segment had to be slowed to respect the limits.  When nothing was
+    // slowed this is the plan's own velocity at its own knot, so the whole
+    // resampling collapses to the identity.
+    const Vector3d v_plan_k = x_plan_original.at(k).segment(n_q_, 3);
+    const Vector3d v_plan_next = x_plan_original.at(k + 1).segment(n_q_, 3);
+    x_plan->at(i).segment(n_q_, 3) =
+        sampling.time_scale(i) *
+        (v_plan_k + sampling.fraction(i) * (v_plan_next - v_plan_k));
+    if (i < n - 1) {
+      u_plan->at(i) = u_plan_original.at(k);
+    }
   }
 }
 

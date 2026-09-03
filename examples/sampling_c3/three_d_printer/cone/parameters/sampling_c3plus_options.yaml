@@ -32,8 +32,17 @@ workspace_limits: [[1, 0, 0, 0, 0.35],
 
 robot_radius_limits: [0.0, 10.0]  # printer has no radius limits, so set large
 workspace_margins: 0.002
-u_horizontal_limits: [-10, 10]
-u_vertical_limits: [-3, 3]
+
+# Bounds on the planned EE force, per axis, in Newtons.  For the printer, these
+# bound planned contact force only, since u can't be accepted by the printer
+# hardware (so it is dropped by three_d_printer_osc_controller).  They bind only
+# in contact, where lambda opposes u, which makes them a cap on how hard C3
+# believes it may press on the object.
+#
+# These true values should ideally match the force at which the printer's
+# stepper motors start skipping, but we haven't measured this.
+u_horizontal_limits: [-15, 15]
+u_vertical_limits: [-15, 15]
 # These match the printer driver's configured xy/z speed limits
 # (github.com/DAIRLab/printer_robot_driver).
 ee_velocity_horizontal_limits: [-0.12, 0.12]
@@ -51,7 +60,7 @@ use_predicted_x0_reset_mechanism: false  # Resets if prediction is too far.
 #   3. object-ground
 #   4. object-object (C(N, 2) sub-lists)
 #   5. object-wall (N sub-lists, where N is the number of objects)
-mu_per_pair_type: [0.823, 0.42, 0.46, 0.375]                                                                     # match URDFs with (2mu1*mu2)/(mu1+mu2)
+mu_per_pair_type: [0.823, 0.42, 0.46, 0.375]  # match URDFs with (2mu1*mu2)/(mu1+mu2)
 
 resolve_contacts_to_lists: [[0, 1, 4, 0],[0,1,6,0]]
 # Per-group contact model flags (same length/order as resolve_contacts_to_lists):
@@ -67,6 +76,8 @@ planning_dt_position: 0.075
 planning_dt_pose: 0.075
 
 lcs_dt_resolution: 4
+# Heuristic acceleration bound (m/s^2) used only to clamp the predicted x0,
+# not by the C3 solve.
 nominal_ee_accel: 2
 
 include_walls: false     # Unused for 3D printer (walls never included).

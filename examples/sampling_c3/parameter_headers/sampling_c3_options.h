@@ -120,10 +120,18 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
   std::vector<std::vector<double>> u_eta_t_position_list;
   std::vector<std::vector<double>> u_eta_position_list;
 
-  std::vector<double>
-      u_horizontal_limits;  ///< Limits for horizontal actuator inputs.
-  std::vector<double>
-      u_vertical_limits;  ///< Limits for vertical actuator inputs.
+  /// Bounds on the C3 input u, in Newtons: the generalized force on the LCS end
+  /// effector, which every demo models as a free point mass on three prismatic
+  /// joints (0.057 kg in both the Franka and 3D printer simple models).  Imposed
+  /// as hard constraints at every knot i = 0 ... N-1, unlike the EE velocity
+  /// limits below, which are state constraints and so skip i = 0 and i = N.
+  ///
+  /// Whether that planned force is also *executed* is per demo -- the Franka OSC
+  /// consumes the controller's end_effector_force_target as a feedforward, while
+  /// the 3D printer path drops it and commands positions -- so what these bounds
+  /// physically mean is documented in each demo's own options yaml.
+  std::vector<double> u_horizontal_limits;  ///< u bounds on the x and y axes.
+  std::vector<double> u_vertical_limits;    ///< u bounds on the z axis.
   std::vector<Eigen::VectorXd>
       workspace_limits;      ///< Workspace boundaries as vectors.
   double workspace_margins;  ///< Margins to be maintained within the workspace.

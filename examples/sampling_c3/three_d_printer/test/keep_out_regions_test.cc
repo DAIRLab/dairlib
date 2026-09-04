@@ -34,7 +34,7 @@ using drake::math::RigidTransformd;
 using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::ModelInstanceIndex;
 
-Eigen::VectorXd EeState(const Eigen::Vector3d& ee) {
+Eigen::VectorXd EEState(const Eigen::Vector3d& ee) {
   // SampleAvoidsGeometries only reads .head(3); size beyond that is irrelevant.
   Eigen::VectorXd x = Eigen::VectorXd::Zero(19);
   x.head(3) = ee;
@@ -71,13 +71,13 @@ BoxScene MakeBoxScene() {
 
 TEST(KeepOutRegionsTest, SampleInsideRegionIsRejected) {
   const BoxScene s = MakeBoxScene();
-  EXPECT_FALSE(SampleAvoidsGeometries(EeState({0.20, 0.07, 0.10}), s.query(),
+  EXPECT_FALSE(SampleAvoidsGeometries(EEState({0.20, 0.07, 0.10}), s.query(),
                                       s.geometries, /*clearance=*/0.0));
 }
 
 TEST(KeepOutRegionsTest, SampleFarFromRegionIsAccepted) {
   const BoxScene s = MakeBoxScene();
-  EXPECT_TRUE(SampleAvoidsGeometries(EeState({0.50, 0.50, 0.15}), s.query(),
+  EXPECT_TRUE(SampleAvoidsGeometries(EEState({0.50, 0.50, 0.15}), s.query(),
                                      s.geometries, /*clearance=*/0.02));
 }
 
@@ -85,7 +85,7 @@ TEST(KeepOutRegionsTest, ClearanceInflatesTheRegion) {
   const BoxScene s = MakeBoxScene();
   // 0.01 m outside the +x face: accepted with no clearance, rejected once the
   // required clearance exceeds the gap.
-  const Eigen::VectorXd just_outside = EeState({0.26, 0.07, 0.10});
+  const Eigen::VectorXd just_outside = EEState({0.26, 0.07, 0.10});
   EXPECT_TRUE(SampleAvoidsGeometries(just_outside, s.query(), s.geometries,
                                      /*clearance=*/0.0));
   EXPECT_FALSE(SampleAvoidsGeometries(just_outside, s.query(), s.geometries,
@@ -95,7 +95,7 @@ TEST(KeepOutRegionsTest, ClearanceInflatesTheRegion) {
 TEST(KeepOutRegionsTest, EmptyGeometrySetAlwaysPasses) {
   const BoxScene s = MakeBoxScene();
   const GeometrySet empty;
-  EXPECT_TRUE(SampleAvoidsGeometries(EeState({0.20, 0.07, 0.10}), s.query(),
+  EXPECT_TRUE(SampleAvoidsGeometries(EEState({0.20, 0.07, 0.10}), s.query(),
                                      empty, /*clearance=*/1.0));
 }
 
@@ -131,9 +131,9 @@ TEST(KeepOutRegionsTest, AddKeepOutModelsToPlantLoadsAndWeldsExampleUrdf) {
       plant.get_geometry_query_input_port().Eval<QueryObject<double>>(
           plant_context);
   // The example region is a box centred at (0.20, 0.07, 0.10).
-  EXPECT_FALSE(SampleAvoidsGeometries(EeState({0.20, 0.07, 0.10}), query_object,
+  EXPECT_FALSE(SampleAvoidsGeometries(EEState({0.20, 0.07, 0.10}), query_object,
                                       keep_out, /*clearance=*/0.0));
-  EXPECT_TRUE(SampleAvoidsGeometries(EeState({0.20, 0.30, 0.10}), query_object,
+  EXPECT_TRUE(SampleAvoidsGeometries(EEState({0.20, 0.30, 0.10}), query_object,
                                      keep_out, /*clearance=*/0.0));
 }
 
@@ -179,18 +179,16 @@ TEST(KeepOutRegionsTest, InactiveGoalStepDoesNotFilterSamples) {
 
   // The controller only builds an active KeepOutQuery for a step that has
   // regions, so step 0's is inactive.
-  const KeepOutQuery step_0{&query_object, per_step_has_regions[0]
-                                               ? &per_step_sets[0]
-                                               : nullptr};
-  const KeepOutQuery step_1{&query_object, per_step_has_regions[1]
-                                               ? &per_step_sets[1]
-                                               : nullptr};
+  const KeepOutQuery step_0{
+      &query_object, per_step_has_regions[0] ? &per_step_sets[0] : nullptr};
+  const KeepOutQuery step_1{
+      &query_object, per_step_has_regions[1] ? &per_step_sets[1] : nullptr};
   EXPECT_FALSE(step_0.active());
   EXPECT_TRUE(step_1.active());
 
   // A point inside step 1's box: rejected on step 1, accepted on step 0.
   const Eigen::Vector3d inside_step_1_region(0.20, 0.07, 0.10);
-  EXPECT_FALSE(SampleAvoidsGeometries(EeState(inside_step_1_region),
+  EXPECT_FALSE(SampleAvoidsGeometries(EEState(inside_step_1_region),
                                       *step_1.query_object, *step_1.geometries,
                                       /*clearance=*/0.0));
   EXPECT_FALSE(step_0.active());  // -> SampleIsAcceptable skips condition 4

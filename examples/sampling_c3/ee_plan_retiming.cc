@@ -76,4 +76,59 @@ RetimedPlanSampling ResampleEEPlanOnUniformGrid(
   return sampling;
 }
 
+void RetimeAndResampleEEPlan(double dt, double v_xy_max, double v_z_max,
+                             int ee_velocity_offset,
+                             std::vector<VectorXd>* x_plan,
+                             std::vector<VectorXd>* u_plan,
+                             std::vector<VectorXd>* lambda_plan) {
+  const int n = x_plan->size();
+  DRAKE_THROW_UNLESS(n >= 2);
+  DRAKE_THROW_UNLESS(static_cast<int>(u_plan->size()) == n - 1);
+  DRAKE_THROW_UNLESS(lambda_plan == nullptr ||
+                     static_cast<int>(lambda_plan->size()) == n - 1);
+  DRAKE_THROW_UNLESS(dt > 0.0);
+  DRAKE_THROW_UNLESS(ee_velocity_offset >= 3);
+
+  MatrixXd ee_positions(3, n);
+  VectorXd times(n);
+  for (int i = 0; i < n; i++) {
+    ee_positions.col(i) = x_plan->at(i).head(3);
+    times(i) = i * dt;
+  }
+  RetimeEEPlanToVelocityLimits(ee_positions, v_xy_max, v_z_max, &times);
+
+  const RetimedPlanSampling sampling =
+      ResampleEEPlanOnUniformGrid(ee_positions, times, dt);
+
+  // The plan has to be read before any of it is overwritten, since the segment
+  // a resampled knot came from is always at or behind that knot.
+  const std::vector<VectorXd> x_plan_original = *x_plan;
+  const std::vector<VectorXd> u_plan_original = *u_plan;
+  for (int i = 0; i < n; i++) {
+    const int k = sampling.segment.at(i);
+    x_plan->at(i).head(3) = sampling.positions.col(i);
+    // Track the same planned EE velocity, scaled down by however much this
+    // segment had to be slowed to respect the limits.  Nothing is changed when
+    // the segment was not slowed down.
+    const Vector3d v_plan_k =
+        x_plan_original.at(k).segment(ee_velocity_offset, 3);
+    const Vector3d v_plan_next =
+        x_plan_original.at(k + 1).segment(ee_velocity_offset, 3);
+    x_plan->at(i).segment(ee_velocity_offset, 3) =
+        sampling.time_scale(i) *
+        (v_plan_k + sampling.fraction(i) * (v_plan_next - v_plan_k));
+    if (i < n - 1) {
+      u_plan->at(i) = u_plan_original.at(k);
+    }
+  }
+  // lambda is held from the same segments, but has to be read from its own
+  // untouched copy for the same reason the states did.
+  if (lambda_plan != nullptr) {
+    const std::vector<VectorXd> lambda_plan_original = *lambda_plan;
+    for (int i = 0; i < n - 1; i++) {
+      lambda_plan->at(i) = lambda_plan_original.at(sampling.segment.at(i));
+    }
+  }
+}
+
 }  // namespace dairlib

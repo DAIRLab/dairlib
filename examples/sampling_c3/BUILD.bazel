@@ -275,6 +275,34 @@ cc_library(
 )
 
 cc_library(
+    name = "jamming_metrics",
+    srcs = ["jamming_metrics.cc"],
+    hdrs = ["jamming_metrics.h"],
+    deps = [
+        ":ee_plan_retiming",
+        "@c3//:libc3",
+        "@c3//core:traj_eval",
+        "@drake//:drake_shared_library",
+    ],
+    copts = [
+        "-fopenmp",
+    ],
+    linkopts = [
+        "-lgomp",
+    ],
+)
+
+cc_library(
+    name = "jamming_ground_truth",
+    srcs = ["jamming_ground_truth.cc"],
+    hdrs = ["jamming_ground_truth.h"],
+    deps = [
+        ":sampling_c3_utils",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "ee_plan_retiming",
     srcs = ["ee_plan_retiming.cc"],
     hdrs = ["ee_plan_retiming.h"],

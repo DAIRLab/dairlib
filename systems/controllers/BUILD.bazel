@@ -64,6 +64,7 @@ cc_library(
         "//systems/framework:vector",
         "//examples/sampling_c3:ee_plan_retiming",
         "//examples/sampling_c3:generate_samples",
+        "//examples/sampling_c3:jamming_metrics",
         "//examples/sampling_c3:reposition",
         "//examples/sampling_c3:sampling_c3_utils",
         "//common:quaternion_axis_alignment",

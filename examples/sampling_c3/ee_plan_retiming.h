@@ -71,4 +71,25 @@ RetimedPlanSampling ResampleEEPlanOnUniformGrid(
     const Eigen::Ref<const Eigen::MatrixXd>& ee_position_traj,
     const Eigen::VectorXd& retimed_times, double dt);
 
+/// The two steps above composed, applied to a whole C3 plan: slows the plan's
+/// EE path to @p v_xy_max / @p v_z_max and samples it back onto the plan's own
+/// uniform grid t_i = i * @p dt, so the result covers the same amount of time
+/// as the plan did but only as much of the path as the machine can actually
+/// cover in that time.
+///
+/// Only the EE position rows (0, 1, 2) and the EE velocity rows
+/// (@p ee_velocity_offset and the two after it, i.e. n_q) of @p x_plan are
+/// rewritten; the object rows are left alone.  @p u_plan (length n-1) and, when
+/// non-null, @p lambda_plan (length n-1) are carried onto the same map, held
+/// from the segment each resampled knot came from, so a per segment quantity
+/// stays aligned with where along the path the reference now is.
+///
+/// @p x_plan has length n >= 2.  If no segment had to be slowed this is the
+/// identity.  Both speeds must be positive; callers whose limits are
+/// unconfigured should skip the call rather than pass zeros.
+void RetimeAndResampleEEPlan(
+    double dt, double v_xy_max, double v_z_max, int ee_velocity_offset,
+    std::vector<Eigen::VectorXd>* x_plan, std::vector<Eigen::VectorXd>* u_plan,
+    std::vector<Eigen::VectorXd>* lambda_plan = nullptr);
+
 }  // namespace dairlib

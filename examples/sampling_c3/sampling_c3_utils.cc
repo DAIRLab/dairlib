@@ -317,4 +317,121 @@ vector<ModelInstanceIndex> AddKeepOutModelsToPlant(
   return indices;
 }
 
+vector<vector<drake::SortedPair<drake::geometry::GeometryId>>>
+BuildConeContactPairs(const MultibodyPlant<double>& plant_lcs,
+                      const vector<std::string>& base_names) {
+  using drake::SortedPair;
+  using drake::geometry::GeometryId;
+
+  vector<vector<SortedPair<GeometryId>>> contact_pairs;
+  vector<SortedPair<GeometryId>> ee_contact_pairs;
+  vector<SortedPair<GeometryId>> ground_object_contact_pairs;
+  std::unordered_map<std::string, GeometryId> contact_geoms;
+
+  // All demos include the end effector and ground.
+  GeometryId ee_contact_points = plant_lcs.GetCollisionGeometriesForBody(
+      plant_lcs.GetBodyByName("end_effector_simple"))[0];
+  GeometryId ground_geoms = plant_lcs.GetCollisionGeometriesForBody(
+      plant_lcs.GetBodyByName("ground"))[0];
+
+  contact_geoms["EE"] = ee_contact_points;
+  contact_geoms["GROUND"] = ground_geoms;
+
+  vector<SortedPair<GeometryId>> ee_ground_contact{
+      SortedPair(contact_geoms["EE"], contact_geoms["GROUND"])};
+
+  // For each pair of object-object or wall-object, we store the contact pairs
+  // between their convex pieces
+  vector<vector<SortedPair<GeometryId>>> object_object_contact_pairs;
+  vector<vector<SortedPair<GeometryId>>> wall_object_contact_pairs;
+
+  // Build the demo-specific contact pairs: EE-object, object-ground,
+  // ramp-object, EE-ramp, and object-object.
+  vector<vector<GeometryId>> all_object_geoms;
+  for (int i = 0; i < base_names.size(); i++) {
+    std::string body_name = base_names.at(i);
+    const vector<GeometryId>& object_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName(body_name));
+    const vector<GeometryId>& ramp_geoms =
+        plant_lcs.GetCollisionGeometriesForBody(
+            plant_lcs.GetBodyByName("ramp_link"));
+
+    GeometryId corner_1_sphere_geoms = object_geoms[1];
+    GeometryId corner_2_sphere_geoms = object_geoms[2];
+    GeometryId corner_3_sphere_geoms = object_geoms[3];
+    GeometryId corner_4_sphere_geoms = object_geoms[4];
+    GeometryId corner_5_sphere_geoms = object_geoms[5];
+    GeometryId corner_6_sphere_geoms = object_geoms[6];
+    GeometryId corner_7_sphere_geoms = object_geoms[7];
+
+    contact_geoms["CORNER_1_SPHERE"] = corner_1_sphere_geoms;
+    contact_geoms["CORNER_2_SPHERE"] = corner_2_sphere_geoms;
+    contact_geoms["CORNER_3_SPHERE"] = corner_3_sphere_geoms;
+    contact_geoms["CORNER_4_SPHERE"] = corner_4_sphere_geoms;
+    contact_geoms["CORNER_5_SPHERE"] = corner_5_sphere_geoms;
+    contact_geoms["CORNER_6_SPHERE"] = corner_6_sphere_geoms;
+    contact_geoms["CORNER_7_SPHERE"] = corner_7_sphere_geoms;
+
+    ground_object_contact_pairs.push_back(
+        SortedPair(contact_geoms["CORNER_1_SPHERE"], contact_geoms["GROUND"]));
+    ground_object_contact_pairs.push_back(
+        SortedPair(contact_geoms["CORNER_2_SPHERE"], contact_geoms["GROUND"]));
+    ground_object_contact_pairs.push_back(
+        SortedPair(contact_geoms["CORNER_3_SPHERE"], contact_geoms["GROUND"]));
+    ground_object_contact_pairs.push_back(
+        SortedPair(contact_geoms["CORNER_4_SPHERE"], contact_geoms["GROUND"]));
+    ground_object_contact_pairs.push_back(
+        SortedPair(contact_geoms["CORNER_5_SPHERE"], contact_geoms["GROUND"]));
+    ground_object_contact_pairs.push_back(
+        SortedPair(contact_geoms["CORNER_6_SPHERE"], contact_geoms["GROUND"]));
+    ground_object_contact_pairs.push_back(
+        SortedPair(contact_geoms["CORNER_7_SPHERE"], contact_geoms["GROUND"]));
+
+    for (int j = 0; j < ramp_geoms.size(); j++) {
+      for (int k = 1; k < object_geoms.size(); k++) {
+        ground_object_contact_pairs.push_back(
+            SortedPair(ramp_geoms[j], object_geoms[k]));
+      }
+      ee_contact_pairs.push_back(
+          SortedPair(contact_geoms["EE"], ramp_geoms[j]));
+    }
+
+    const vector<GeometryId> object_geoms_without_spheres =
+        vector<GeometryId>(object_geoms.begin(), object_geoms.end() - 7);
+
+    ee_contact_pairs.push_back(
+        SortedPair(contact_geoms["EE"], object_geoms[0]));
+    all_object_geoms.push_back(object_geoms_without_spheres);
+  }
+
+  // Object-object contact pairs (excluding end effector), each pair of
+  // convex pieces for each pair of objects
+  for (int i = 0; i + 1 < base_names.size(); i++) {
+    for (int j = i + 1; j < base_names.size(); j++) {
+      vector<SortedPair<GeometryId>> convex_piece_pairs;
+      const vector<GeometryId>& object_1_geoms = all_object_geoms.at(i);
+      const vector<GeometryId>& object_2_geoms = all_object_geoms.at(j);
+
+      for (const auto& g1 : object_1_geoms) {
+        for (const auto& g2 : object_2_geoms) {
+          convex_piece_pairs.emplace_back(g1, g2);
+        }
+      }
+      object_object_contact_pairs.push_back(std::move(convex_piece_pairs));
+    }
+  }
+  // Order:  EE-ground, EE-object, object-ground, object-object, object-wall
+  contact_pairs.push_back(ee_ground_contact);
+  contact_pairs.push_back(ee_contact_pairs);
+  contact_pairs.push_back(ground_object_contact_pairs);
+  for (const auto& obj_obj_pair : object_object_contact_pairs) {
+    contact_pairs.push_back(obj_obj_pair);
+  }
+  for (const auto& wall_obj_pair : wall_object_contact_pairs) {
+    contact_pairs.push_back(wall_obj_pair);
+  }
+  return contact_pairs;
+}
+
 }  // namespace dairlib

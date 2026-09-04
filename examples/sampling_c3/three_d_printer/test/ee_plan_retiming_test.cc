@@ -248,5 +248,110 @@ TEST(EEPlanRetimingTest, ResampleTracksPathAndSourceSegments) {
   ExpectWithinVelocityLimits(sampling.positions, MakeUniformTimes(5, kDt));
 }
 
+// RetimeAndResampleEEPlan composes the two steps above over a whole C3 plan.
+// Its contract on the per segment quantities is that each is held from the
+// segment its resampled knot came from, and that the object rows of the state
+// are not touched at all.
+TEST(EEPlanRetimingTest, WholePlanRemapHoldsPerSegmentQuantities) {
+  // 6 state rows of EE (3 position, 3 velocity) followed by one object row that
+  // must survive untouched.
+  constexpr int kNx = 7;
+  constexpr int kEEVelocityOffset = 3;
+  constexpr int kN = 4;  // 5 knots, 4 inputs
+
+  // A vertical plan asking for 8x the vertical speed limit, so every resampled
+  // knot lands inside the first stretched segment.
+  const double dz = 8.0 * kVzMax * kDt;
+  vector<VectorXd> x_plan;
+  for (int i = 0; i < kN + 1; i++) {
+    VectorXd x = VectorXd::Zero(kNx);
+    x(2) = dz * i;
+    x(kEEVelocityOffset + 2) = dz / kDt;
+    x(kNx - 1) = 100.0 + i;  // the object row
+    x_plan.push_back(x);
+  }
+  vector<VectorXd> u_plan;
+  vector<VectorXd> lambda_plan;
+  for (int i = 0; i < kN; i++) {
+    u_plan.push_back(Vector3d(0.0, 0.0, 1.0 + i));
+    lambda_plan.push_back(VectorXd::Constant(2, 10.0 + i));
+  }
+
+  const vector<VectorXd> x_original = x_plan;
+  RetimeAndResampleEEPlan(kDt, kVxyMax, kVzMax, kEEVelocityOffset, &x_plan,
+                          &u_plan, &lambda_plan);
+
+  // Every knot resampled out of the first segment, so every per segment
+  // quantity is that segment's.
+  for (int i = 0; i < kN; i++) {
+    EXPECT_NEAR(u_plan[i](2), 1.0, kTol);
+    EXPECT_NEAR(lambda_plan[i](0), 10.0, kTol);
+    EXPECT_NEAR(lambda_plan[i](1), 10.0, kTol);
+  }
+
+  // The EE path is slowed to the limit and the object rows are untouched.
+  MatrixXd ee_positions(3, kN + 1);
+  for (int i = 0; i < kN + 1; i++) {
+    ee_positions.col(i) = x_plan[i].head(3);
+    EXPECT_NEAR(x_plan[i](kNx - 1), x_original[i](kNx - 1), kTol);
+  }
+  ExpectWithinVelocityLimits(ee_positions, MakeUniformTimes(kN + 1, kDt));
+
+  // The planned EE velocity is scaled down by the same stretch, so it stays
+  // consistent with the slowed path rather than describing the raw one.
+  for (int i = 0; i < kN + 1; i++) {
+    EXPECT_LT(x_plan[i](kEEVelocityOffset + 2),
+              x_original[i](kEEVelocityOffset + 2));
+    EXPECT_LE(std::abs(x_plan[i](kEEVelocityOffset + 2)), kVzMax * (1 + 1e-9));
+  }
+}
+
+// A plan already inside the limits comes back exactly as it went in, so the
+// retimed variant of anything measured from it is the raw variant.
+TEST(EEPlanRetimingTest, WholePlanRemapOfAFeasiblePlanIsTheIdentity) {
+  constexpr int kNx = 6;
+  constexpr int kEEVelocityOffset = 3;
+  constexpr int kN = 4;
+
+  const double dz = 0.5 * kVzMax * kDt;  // half the limit
+  vector<VectorXd> x_plan;
+  for (int i = 0; i < kN + 1; i++) {
+    VectorXd x = VectorXd::Zero(kNx);
+    x(2) = dz * i;
+    x(kEEVelocityOffset + 2) = dz / kDt;
+    x_plan.push_back(x);
+  }
+  vector<VectorXd> u_plan;
+  vector<VectorXd> lambda_plan;
+  for (int i = 0; i < kN; i++) {
+    u_plan.push_back(Vector3d(0.0, 0.0, 1.0 + i));
+    lambda_plan.push_back(VectorXd::Constant(2, 10.0 + i));
+  }
+
+  const vector<VectorXd> x_original = x_plan;
+  const vector<VectorXd> u_original = u_plan;
+  const vector<VectorXd> lambda_original = lambda_plan;
+  RetimeAndResampleEEPlan(kDt, kVxyMax, kVzMax, kEEVelocityOffset, &x_plan,
+                          &u_plan, &lambda_plan);
+
+  for (int i = 0; i < kN + 1; i++) {
+    EXPECT_NEAR((x_plan[i] - x_original[i]).norm(), 0.0, kTol);
+  }
+  for (int i = 0; i < kN; i++) {
+    EXPECT_NEAR((u_plan[i] - u_original[i]).norm(), 0.0, kTol);
+    EXPECT_NEAR((lambda_plan[i] - lambda_original[i]).norm(), 0.0, kTol);
+  }
+}
+
+// lambda is optional, since the cost path has no use for it.
+TEST(EEPlanRetimingTest, WholePlanRemapAcceptsNoLambda) {
+  constexpr int kNx = 6;
+  constexpr int kN = 2;
+  vector<VectorXd> x_plan(kN + 1, VectorXd::Zero(kNx));
+  vector<VectorXd> u_plan(kN, VectorXd::Zero(3));
+  EXPECT_NO_THROW(
+      RetimeAndResampleEEPlan(kDt, kVxyMax, kVzMax, 3, &x_plan, &u_plan));
+}
+
 }  // namespace
 }  // namespace dairlib

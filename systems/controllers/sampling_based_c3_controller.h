@@ -23,6 +23,7 @@
 #include "dairlib/lcmt_sampling_c3_debug.hpp"
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
+#include "examples/sampling_c3/jamming_metrics.h"
 #include "examples/sampling_c3/parameter_headers/progress_params.h"
 #include "examples/sampling_c3/parameter_headers/reposition_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
@@ -69,6 +70,27 @@ enum ModeSwitchReason {
 };
 
 enum PursuedTargetSource { kNoTarget, kPrevious, kNewSample, kFromBuffer };
+
+/// One sample's worth of offline jamming analysis: the predicted peak EE effort
+/// alongside the C3 cost the controller would have scored that sample with, so
+/// the two can be compared.
+struct SampleJammingResult {
+  JammingMetrics metrics;
+  double c3_cost = 0.0;
+  /// EE positions of the retimed plan the metrics were measured on, one per
+  /// knot.  A ground truth sim replays this, so its label describes the same
+  /// trajectory the metrics scored rather than a push of its own invention.
+  std::vector<Eigen::Vector3d> retimed_ee_plan;
+  /// Seconds between those knots -- the planning dt this solve ran at, which
+  /// the controller picks per goal.  Reported rather than left for a caller to
+  /// re-derive, since replaying the plan at the wrong rate would rescale every
+  /// speed in it.
+  double planning_dt = 0.0;
+  /// True if any of this sample's QP solves fell back to "hold state, zero
+  /// inputs".  Such a sample's metrics understate the force and must not be
+  /// read as a low-force location.
+  bool solve_fell_back = false;
+};
 
 class SamplingC3Controller : public drake::systems::LeafSystem<double> {
  public:
@@ -197,6 +219,42 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
     return this->get_output_port(unsuccessful_sample_buffer_costs_port_);
   }
 
+  /// Solves C3 for each of @p ee_samples -- candidate end effector positions,
+  /// all evaluated against the same scene state @p x_lcs_curr -- and returns
+  /// the jamming metrics and C3 cost of each.  Intended for offline analysis
+  /// (see three_d_printer/test/jamming_sweep.cc); it publishes nothing and does
+  /// not touch the mode-switching state, but it does refresh the per-goal
+  /// settings and cost matrices, so do not interleave it with ComputePlan.
+  ///
+  /// @p x_lcs_des is the state C3 tracks; @p x_lcs_final_des is the goal used
+  /// to decide whether the position-tracking or pose-tracking cost applies.
+  /// Callers with no lookahead sub-goal can pass the same vector for both.
+  ///
+  /// @p num_threads bounds the solve loop's parallelism; pass 1 for a serial
+  /// loop, or 0 to use the controller's configured thread count.  Solver
+  /// fallbacks are attributed per sample either way.
+  ///
+  /// The metrics describe the plan retimed to the configured EE velocity
+  /// limits -- what the execution path publishes and what a
+  /// kSimImpedanceRetimedObjectCostOnly cost scores.  With
+  /// ee_velocity_{horizontal,vertical}_limits unconfigured there is nothing to
+  /// retime and the plan is measured as solved.
+  std::vector<SampleJammingResult> EvaluateJammingMetricsForSamples(
+      const Eigen::VectorXd& x_lcs_curr, const Eigen::VectorXd& x_lcs_des,
+      const Eigen::VectorXd& x_lcs_final_des,
+      const std::vector<Eigen::Vector3d>& ee_samples, int goal_step,
+      int num_threads = 0) const;
+
+  /// Draws candidate end effector positions with the demo's configured sampling
+  /// strategy, deliberately with keep-out regions DISABLED, so an offline sweep
+  /// can measure the force field everywhere the sampler would otherwise be
+  /// allowed to go -- including inside a hand-authored keep-out region, which
+  /// is the thing under study.  Every other filter (workspace limits, fixed
+  /// geometry avoidance) still applies.  Offline analysis only.
+  std::vector<Eigen::Vector3d> GenerateSampleEEPositionsIgnoringKeepOut(
+      const Eigen::VectorXd& x_lcs_curr, bool is_doing_c3,
+      const std::vector<bool>& object_on_target) const;
+
  private:
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
       C3CostComputationType cost_type, const c3::LCS& lcs_for_cost,
@@ -235,6 +293,14 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const std::vector<Eigen::VectorXd>& candidate_states,
       const drake::VectorX<double>& x_lcs_curr,
       const LCSFactoryOptions& lcs_factory_options) const;
+
+  /// Builds (but does not solve) the C3 problem for a single sample: picks the
+  /// projection type and adds the workspace, end effector velocity, and input
+  /// constraints.
+  std::shared_ptr<c3::C3> MakeC3ForSample(
+      const c3::LCS& lcs, const c3::C3::CostMatrices& cost_matrices,
+      const std::vector<Eigen::VectorXd>& x_desired,
+      const C3Options& c3_options) const;
 
   void UpdateC3ExecutionTrajectory(const Eigen::VectorXd& x_lcs,
                                    const double& t_context) const;

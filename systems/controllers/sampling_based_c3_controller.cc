@@ -1110,87 +1110,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     LCS test_system = lcs_candidates.at(i);
 
     // Set up C3 with proper projection type and post-solve cost matrices.
-    std::shared_ptr<C3> test_c3_object;
     vector<VectorXd> x_desired(N_ + 1, x_lcs_des.value());
-
     C3::CostMatrices c3_costmat(Q_, R_, G_, U_);
-    if (sampling_c3_options_.projection_type == "MIQP") {
-      test_c3_object = std::make_shared<C3MIQP>(test_system, c3_costmat,
-                                                x_desired, c3_options);
-    } else if (sampling_c3_options_.projection_type == "QP") {
-      test_c3_object = std::make_shared<C3QP>(test_system, c3_costmat,
-                                              x_desired, c3_options);
-    } else if (sampling_c3_options_.projection_type == "C3+") {
-      test_c3_object = std::make_shared<C3Plus>(test_system, c3_costmat,
-                                                x_desired, c3_options);
-    }  // Unknown projection types are rejected in the initialization.
-
-    if (!sampling_c3_options_.include_walls) {
-      // Set actor bounds.
-      for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
-        RowVectorXd A = VectorXd::Zero(n_x_);
-        A.segment(0, 3) =
-            sampling_c3_options_.workspace_limits[i].segment(0, 3);
-        test_c3_object->AddLinearConstraint(
-            A,
-            sampling_c3_options_.workspace_limits[i][3] +
-                sampling_c3_options_.workspace_margins,
-            sampling_c3_options_.workspace_limits[i][4] -
-                sampling_c3_options_.workspace_margins,
-            c3::ConstraintVariable::STATE);
-      }
-      // Set object bounds
-      for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
-        for (int j = 0; j < controller_params_.num_objects; j++) {
-          RowVectorXd A = VectorXd::Zero(n_x_);
-          A.segment(7 + 7 * j, 3) =
-              sampling_c3_options_.workspace_limits[i].segment(0, 3);
-          test_c3_object->AddLinearConstraint(
-              A,
-              sampling_c3_options_.workspace_limits[i][3] +
-                  sampling_c3_options_.workspace_margins,
-              sampling_c3_options_.workspace_limits[i][4] -
-                  sampling_c3_options_.workspace_margins,
-              c3::ConstraintVariable::STATE);
-        }
-      }
-    }
-
-    // Add constraint on end-effector velocities
-    for (int i : vector<int>({0, 1})) {
-      RowVectorXd A = VectorXd::Zero(n_x_);
-      A(n_q_ + i) = 1.0;
-      test_c3_object->AddLinearConstraint(
-          A, sampling_c3_options_.ee_velocity_horizontal_limits[0],
-          sampling_c3_options_.ee_velocity_horizontal_limits[1],
-          c3::ConstraintVariable::STATE);
-    }
-    for (int i : vector<int>({2})) {
-      RowVectorXd A = VectorXd::Zero(n_x_);
-      A(n_q_ + i) = 1.0;
-      test_c3_object->AddLinearConstraint(
-          A, sampling_c3_options_.ee_velocity_vertical_limits[0],
-          sampling_c3_options_.ee_velocity_vertical_limits[1],
-          c3::ConstraintVariable::STATE);
-    }
-
-    // Add input constraints
-    for (int i : vector<int>({0, 1})) {
-      RowVectorXd A = VectorXd::Zero(n_u_);
-      A(i) = 1.0;
-      test_c3_object->AddLinearConstraint(
-          A, sampling_c3_options_.u_horizontal_limits[0],
-          sampling_c3_options_.u_horizontal_limits[1],
-          c3::ConstraintVariable::INPUT);
-    }
-    for (int i : vector<int>({2})) {
-      RowVectorXd A = VectorXd::Zero(n_u_);
-      A(i) = 1.0;
-      test_c3_object->AddLinearConstraint(
-          A, sampling_c3_options_.u_vertical_limits[0],
-          sampling_c3_options_.u_vertical_limits[1],
-          c3::ConstraintVariable::INPUT);
-    }
+    std::shared_ptr<C3> test_c3_object =
+        MakeC3ForSample(test_system, c3_costmat, x_desired, c3_options);
 
     // Solve C3, store resulting object and cost.
     test_c3_object->SetSolverOptions(solver_options_);
@@ -1758,6 +1681,284 @@ vector<SortedPair<GeometryId>> SamplingC3Controller::GetResolvedContactPairs(
   }
   DRAKE_DEMAND(resolved_contacts.size() == n_contacts);
   return resolved_contacts;
+}
+
+vector<Vector3d> SamplingC3Controller::GenerateSampleEEPositionsIgnoringKeepOut(
+    const VectorXd& x_lcs_curr, bool is_doing_c3,
+    const vector<bool>& object_on_target) const {
+  // Identical to the ComputePlan call site except for the KeepOutQuery, which
+  // is left inactive on purpose -- see the header.
+  vector<VectorXd> candidate_states = GenerateSampleStates(
+      n_q_, n_v_, n_u_, x_lcs_curr, is_doing_c3, sampling_params_,
+      sampling_c3_options_, plant_, context_, plant_ad_, context_ad_,
+      contact_pairs_, faces_, face_bins_, faces_per_object_,
+      face_bins_per_object_, total_area_per_object_, object_on_target,
+      unsuccessful_sample_buffer_, object_geometry_ids_,
+      object_enclosing_radius_, ee_radius_, fixed_obstacle_geometries_,
+      KeepOutQuery{});
+
+  vector<Vector3d> ee_positions;
+  ee_positions.reserve(candidate_states.size());
+  for (const VectorXd& candidate_state : candidate_states) {
+    ee_positions.push_back(candidate_state.head(3));
+  }
+  return ee_positions;
+}
+
+// Offline analysis entry point: solve C3 at each candidate EE position against
+// a single fixed scene state, and score each solve for how hard the end
+// effector is predicted to have to push.  Deliberately mirrors the setup
+// ComputePlan does -- same per-goal settings, same cost matrices, same LCS
+// pair, same constraints -- so the numbers mean what they would mean live.
+vector<SampleJammingResult>
+SamplingC3Controller::EvaluateJammingMetricsForSamples(
+    const VectorXd& x_lcs_curr, const VectorXd& x_lcs_des,
+    const VectorXd& x_lcs_final_des, const vector<Vector3d>& ee_samples,
+    int goal_step, int num_threads) const {
+  // Select the per-goal settings for the goal step under study.  Note this also
+  // sets active_keep_out_geometries_, which only the sampler reads -- this path
+  // never samples, so keep-out regions do not filter anything here.
+  RefreshPerGoalSettings(goal_step);
+
+  // Decide between the position-tracking and pose-tracking cost the same way
+  // ComputePlan does: on the object's XY distance to the final goal.
+  double pose_diff = 0;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    pose_diff += (x_lcs_curr.segment(7 + 7 * i, 2) -
+                  x_lcs_final_des.segment(7 + 7 * i, 2))
+                     .norm();
+  }
+  crossed_cost_switching_threshold_ =
+      pose_diff < active_cost_switching_threshold_distance_ *
+                      controller_params_.num_objects;
+  dt_ = crossed_cost_switching_threshold_
+            ? sampling_c3_options_.planning_dt_pose
+            : sampling_c3_options_.planning_dt_position;
+
+  C3Options c3_options =
+      sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_);
+  LCSFactoryOptions lcs_factory_options =
+      sampling_c3_options_.GetLCSFactoryOptions(
+          crossed_cost_switching_threshold_);
+
+  BasicVector<double> x_lcs_des_vector(x_lcs_des);
+  UpdateCostMatrices(x_lcs_curr, x_lcs_des_vector, c3_options);
+
+  // Each candidate state differs from the scene state only in the EE position,
+  // exactly as GenerateSampleStates produces them.
+  vector<VectorXd> candidate_states;
+  candidate_states.reserve(ee_samples.size());
+  for (const Vector3d& ee_sample : ee_samples) {
+    VectorXd candidate_state = x_lcs_curr;
+    candidate_state.head(3) = ee_sample;
+    candidate_states.push_back(candidate_state);
+  }
+
+  auto [lcs_candidates, lcs_candidates_for_cost] = CreateLCSObjectsForSamples(
+      candidate_states, x_lcs_curr, lcs_factory_options);
+
+  // The contact pairs are resolved in group order (EE-ground, EE-object,
+  // object-ground, object-object, object-wall), so the EE's contacts own the
+  // leading entries of lambda and the object-ground group's follow them.  The
+  // ramp is welded to the world, so object/ramp contacts live in that group
+  // too: it is everything the scene braces the object against.
+  const vector<int>& resolve_contacts_to =
+      sampling_c3_options_.resolve_contacts_to;
+  DRAKE_DEMAND(resolve_contacts_to.size() >= 3);
+  const vector<int>& friction_dirs =
+      sampling_c3_options_.num_friction_directions_per_contact.value();
+  const auto contact_model = c3::multibody::GetContactModelMap().at(
+      controller_params_.sampling_c3_options.contact_model);
+  // Sized per group with GetNumContactVariables rather than by assuming every
+  // contact owns an equal block: contacts flagged planar carry fewer friction
+  // directions than the rest.
+  auto num_lambda_entries = [&](int first_contact, int num_contacts) {
+    return LCSFactory::GetNumContactVariables(
+        contact_model, num_contacts,
+        vector<int>(friction_dirs.begin() + first_contact,
+                    friction_dirs.begin() + first_contact + num_contacts));
+  };
+  const int num_ee_contacts = resolve_contacts_to[0] + resolve_contacts_to[1];
+  const int num_ee_lambda_entries = num_lambda_entries(0, num_ee_contacts);
+  const int num_object_ground_lambda_entries =
+      num_lambda_entries(num_ee_contacts, resolve_contacts_to[2]);
+
+  const int num_samples = static_cast<int>(candidate_states.size());
+
+  // The contact descriptions depend on the plant context, which is shared, so
+  // build every sample's force bases serially before parallelizing the solves.
+  vector<JammingForceBases> force_bases(num_samples);
+  for (int i = 0; i < num_samples; i++) {
+    UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
+                  candidate_states.at(i));
+    vector<SortedPair<GeometryId>> resolved_contact_pairs =
+        GetResolvedContactPairs(plant_, *context_, contact_pairs_,
+                                resolve_contacts_to, friction_dirs, false);
+    const vector<LCSContactDescription> contact_descriptions =
+        LCSFactory(plant_, *context_, plant_ad_, *context_ad_,
+                   resolved_contact_pairs, lcs_factory_options)
+            .GetContactDescriptions();
+    force_bases.at(i).ee =
+        MakeEEContactForceBasis(contact_descriptions, num_ee_lambda_entries);
+    force_bases.at(i).object_ground =
+        MakeContactForceBasis(contact_descriptions, num_ee_lambda_entries,
+                              num_object_ground_lambda_entries);
+  }
+  // Leave the context where CreateLCSObjectsForSamples left it.
+  UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
+                x_lcs_curr);
+
+  auto simulate_config = c3::LCSSimulateConfig();
+  simulate_config.regularized = true;
+  simulate_config.min_exp = -8;
+
+  const C3CostComputationType cost_type =
+      crossed_cost_switching_threshold_ ? progress_params_.cost_type
+                                        : progress_params_.cost_type_position;
+
+  vector<SampleJammingResult> results(num_samples);
+  vector<VectorXd> x_desired(N_ + 1, x_lcs_des);
+  C3::CostMatrices c3_costmat(Q_, R_, G_, U_);
+
+  // The retiming inputs, resolved once: GetEEVelocityLimits warns on a bad
+  // configuration, which is not something to do inside the parallel loop.  An
+  // invalid EEVelocityLimits leaves the plan unretimed, the same no-op the
+  // cost path takes when the limits are missing.
+  EEVelocityLimits ee_velocity_limits;
+  if (GetEEVelocityLimits(&ee_velocity_limits.v_xy_max,
+                          &ee_velocity_limits.v_z_max)) {
+    ee_velocity_limits.ee_velocity_offset = n_q_;
+  }
+
+  // The same bounds the C3 solves below impose on u, so the metrics can report
+  // how much of each plan sits pinned against them.  Also resolved once.
+  const UInputLimits u_input_limits =
+      MakeUInputLimits(sampling_c3_options_.u_horizontal_limits,
+                       sampling_c3_options_.u_vertical_limits);
+
+  // Where to read the object's pose out of the rollout states.  Object 0: the
+  // jamming study is single-object, and a per-object breakdown would be a
+  // scene-specific split of exactly the kind these metrics avoid.
+  const ObjectStateLayout object_layout = MakeObjectStateLayout(0);
+
+  // Watch for QP solves that fall back to "hold state, zero inputs"; those
+  // samples' metrics understate the force and must be flagged, not trusted.
+  const C3FallbackWatcher fallback_watcher;
+  const int threads = num_threads > 0 ? num_threads : num_threads_to_use_;
+
+#pragma omp parallel for num_threads(threads)
+  for (int i = 0; i < num_samples; i++) {
+    std::shared_ptr<C3> c3_object = MakeC3ForSample(
+        lcs_candidates.at(i), c3_costmat, x_desired, c3_options);
+    c3_object->SetSolverOptions(solver_options_);
+
+    // A sample's whole Solve() runs on one thread, so this thread's fallback
+    // count before and after brackets exactly this sample's solves.
+    const int fallbacks_before = fallback_watcher.CountForThisThread();
+    c3_object->Solve(candidate_states.at(i));
+    results.at(i).solve_fell_back =
+        fallback_watcher.CountForThisThread() > fallbacks_before;
+
+    results.at(i).metrics = ComputeJammingMetrics(
+        c3_object.get(), lcs_candidates.at(i), lcs_candidates_for_cost.at(i),
+        Kp_for_cost_, Kd_for_cost_, force_bases.at(i), simulate_config,
+        ee_velocity_limits, u_input_limits, object_layout,
+        &results.at(i).retimed_ee_plan);
+    results.at(i).planning_dt = lcs_candidates.at(i).dt();
+    results.at(i).c3_cost =
+        CalcCost(cost_type, lcs_candidates_for_cost.at(i), c3_costmat,
+                 c3_object, /*force_tracking_disabled=*/false,
+                 controller_params_.num_objects,
+                 /*print_cost_breakdown=*/false)
+            .first;
+  }
+
+  return results;
+}
+
+// Build (but do not solve) the C3 problem for one sample: the right projection
+// type, plus the workspace, end effector velocity, and input constraints.
+std::shared_ptr<C3> SamplingC3Controller::MakeC3ForSample(
+    const LCS& lcs, const C3::CostMatrices& cost_matrices,
+    const vector<VectorXd>& x_desired, const C3Options& c3_options) const {
+  std::shared_ptr<C3> c3_object;
+  if (sampling_c3_options_.projection_type == "MIQP") {
+    c3_object =
+        std::make_shared<C3MIQP>(lcs, cost_matrices, x_desired, c3_options);
+  } else if (sampling_c3_options_.projection_type == "QP") {
+    c3_object =
+        std::make_shared<C3QP>(lcs, cost_matrices, x_desired, c3_options);
+  } else if (sampling_c3_options_.projection_type == "C3+") {
+    c3_object =
+        std::make_shared<C3Plus>(lcs, cost_matrices, x_desired, c3_options);
+  }  // Unknown projection types are rejected in the initialization.
+
+  if (!sampling_c3_options_.include_walls) {
+    // Set actor bounds.
+    for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
+      RowVectorXd A = VectorXd::Zero(n_x_);
+      A.segment(0, 3) = sampling_c3_options_.workspace_limits[i].segment(0, 3);
+      c3_object->AddLinearConstraint(
+          A,
+          sampling_c3_options_.workspace_limits[i][3] +
+              sampling_c3_options_.workspace_margins,
+          sampling_c3_options_.workspace_limits[i][4] -
+              sampling_c3_options_.workspace_margins,
+          c3::ConstraintVariable::STATE);
+    }
+    // Set object bounds
+    for (int i = 0; i < sampling_c3_options_.workspace_limits.size(); ++i) {
+      for (int j = 0; j < controller_params_.num_objects; j++) {
+        RowVectorXd A = VectorXd::Zero(n_x_);
+        A.segment(7 + 7 * j, 3) =
+            sampling_c3_options_.workspace_limits[i].segment(0, 3);
+        c3_object->AddLinearConstraint(
+            A,
+            sampling_c3_options_.workspace_limits[i][3] +
+                sampling_c3_options_.workspace_margins,
+            sampling_c3_options_.workspace_limits[i][4] -
+                sampling_c3_options_.workspace_margins,
+            c3::ConstraintVariable::STATE);
+      }
+    }
+  }
+
+  // Add constraint on end-effector velocities
+  for (int i : vector<int>({0, 1})) {
+    RowVectorXd A = VectorXd::Zero(n_x_);
+    A(n_q_ + i) = 1.0;
+    c3_object->AddLinearConstraint(
+        A, sampling_c3_options_.ee_velocity_horizontal_limits[0],
+        sampling_c3_options_.ee_velocity_horizontal_limits[1],
+        c3::ConstraintVariable::STATE);
+  }
+  for (int i : vector<int>({2})) {
+    RowVectorXd A = VectorXd::Zero(n_x_);
+    A(n_q_ + i) = 1.0;
+    c3_object->AddLinearConstraint(
+        A, sampling_c3_options_.ee_velocity_vertical_limits[0],
+        sampling_c3_options_.ee_velocity_vertical_limits[1],
+        c3::ConstraintVariable::STATE);
+  }
+
+  // Add input constraints
+  for (int i : vector<int>({0, 1})) {
+    RowVectorXd A = VectorXd::Zero(n_u_);
+    A(i) = 1.0;
+    c3_object->AddLinearConstraint(A,
+                                   sampling_c3_options_.u_horizontal_limits[0],
+                                   sampling_c3_options_.u_horizontal_limits[1],
+                                   c3::ConstraintVariable::INPUT);
+  }
+  for (int i : vector<int>({2})) {
+    RowVectorXd A = VectorXd::Zero(n_u_);
+    A(i) = 1.0;
+    c3_object->AddLinearConstraint(A, sampling_c3_options_.u_vertical_limits[0],
+                                   sampling_c3_options_.u_vertical_limits[1],
+                                   c3::ConstraintVariable::INPUT);
+  }
+
+  return c3_object;
 }
 
 // Create LCS objects (for the C3 solve and also for the C3 cost calculation)
@@ -2682,39 +2883,7 @@ void SamplingC3Controller::RetimeAndResampleC3PlanForCost(
   if (!GetEEVelocityLimits(&v_xy_max, &v_z_max)) {
     return;
   }
-
-  MatrixXd ee_positions(3, n);
-  VectorXd times(n);
-  for (int i = 0; i < n; i++) {
-    ee_positions.col(i) = x_plan->at(i).head(3);
-    times(i) = i * dt;
-  }
-  dairlib::RetimeEEPlanToVelocityLimits(ee_positions, v_xy_max, v_z_max,
-                                        &times);
-
-  const RetimedPlanSampling sampling =
-      ResampleEEPlanOnUniformGrid(ee_positions, times, dt);
-
-  // The plan has to be read before any of it is overwritten, since the segment
-  // a resampled knot came from is always at or behind that knot.
-  const vector<VectorXd> x_plan_original = *x_plan;
-  const vector<VectorXd> u_plan_original = *u_plan;
-  for (int i = 0; i < n; i++) {
-    const int k = sampling.segment.at(i);
-    x_plan->at(i).head(3) = sampling.positions.col(i);
-    // Track the same planned EE velocity, scaled down by however much this
-    // segment had to be slowed to respect the limits.  When nothing was
-    // slowed this is the plan's own velocity at its own knot, so the whole
-    // resampling collapses to the identity.
-    const Vector3d v_plan_k = x_plan_original.at(k).segment(n_q_, 3);
-    const Vector3d v_plan_next = x_plan_original.at(k + 1).segment(n_q_, 3);
-    x_plan->at(i).segment(n_q_, 3) =
-        sampling.time_scale(i) *
-        (v_plan_k + sampling.fraction(i) * (v_plan_next - v_plan_k));
-    if (i < n - 1) {
-      u_plan->at(i) = u_plan_original.at(k);
-    }
-  }
+  RetimeAndResampleEEPlan(dt, v_xy_max, v_z_max, n_q_, x_plan, u_plan);
 }
 
 // Interpolate the current plan at `filtered_solve_time_` past the plan start,

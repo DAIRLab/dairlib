@@ -36,6 +36,34 @@ cc_binary(
     ],
 )
 
+cc_binary(
+    name = "jamming_sweep",
+    srcs = [
+        "jamming_sweep.cc",
+    ],
+    data = [
+        "//examples/sampling_c3:all_example_params_yamls",
+        "//examples/sampling_c3:urdfs",
+        "//examples/sampling_c3/three_d_printer:printer_shared_params_yamls",
+        "//examples/sampling_c3/three_d_printer/cone:parameters",
+    ],
+    deps = [
+        "//common:find_resource",
+        "//examples/sampling_c3:generate_samples",
+        "//examples/sampling_c3:jamming_ground_truth",
+        "//examples/sampling_c3:jamming_metrics",
+        "//examples/sampling_c3:sampling_c3_utils",
+        "//examples/sampling_c3/parameter_headers:goal_params",
+        "//examples/sampling_c3/parameter_headers:robot_sim_params",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
+        "//examples/sampling_c3/parameter_headers:sampling_params",
+        "//systems/controllers:sampling_c3_controller",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
 cc_test(
     name = "ee_plan_retiming_test",
     size = "small",
@@ -44,6 +72,22 @@ cc_test(
     ],
     deps = [
         "//examples/sampling_c3:ee_plan_retiming",
+        "@drake//:drake_shared_library",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "jamming_ground_truth_test",
+    size = "medium",
+    srcs = [
+        "jamming_ground_truth_test.cc",
+    ],
+    data = [
+        "//examples/sampling_c3:urdfs",
+    ],
+    deps = [
+        "//examples/sampling_c3:jamming_ground_truth",
         "@drake//:drake_shared_library",
         "@googletest//:gtest_main",
     ],
@@ -59,6 +103,44 @@ cc_test(
         "//examples/sampling_c3:reposition",
         "//examples/sampling_c3/parameter_headers:reposition_params",
         "//examples/sampling_c3/parameter_headers:sampling_c3_options",
+        "@drake//:drake_shared_library",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_binary(
+    name = "jamming_visualizer",
+    srcs = [
+        "jamming_visualizer.cc",
+    ],
+    data = [
+        "//examples/sampling_c3:all_example_params_yamls",
+        "//examples/sampling_c3:urdfs",
+        "//examples/sampling_c3/three_d_printer:printer_shared_params_yamls",
+        "//examples/sampling_c3/three_d_printer/cone:parameters",
+    ],
+    deps = [
+        "//common:find_resource",
+        "//examples/sampling_c3:sampling_c3_utils",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
+        "//examples/sampling_c3/parameter_headers:visualizer_params",
+        "//systems/senders:cost_colormap",
+        "//systems/visualization:static_visualization_systems",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_test(
+    name = "jamming_metrics_test",
+    size = "small",
+    srcs = [
+        "jamming_metrics_test.cc",
+    ],
+    deps = [
+        "//examples/sampling_c3:ee_plan_retiming",
+        "//examples/sampling_c3:jamming_metrics",
+        "//systems/senders:cost_colormap",
         "@drake//:drake_shared_library",
         "@googletest//:gtest_main",
     ],

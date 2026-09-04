@@ -195,4 +195,17 @@ std::vector<drake::multibody::ModelInstanceIndex> AddKeepOutModelsToPlant(
     drake::geometry::SceneGraph<double>* scene_graph,
     const std::vector<std::string>& keep_out_models);
 
+/// Build the contact pair groups for the 3D printer cone demo, from a finalized
+/// LCS plant built by AddLCSModelsTo3DPrinterPlant.  The groups come back in
+/// the order the LCS factory's resolve_contacts_to list expects: EE-ground,
+/// EE-{object, ramp}, object-{ground, ramp}, then one group per pair of
+/// objects.  (The demo includes no walls.)
+///
+/// @param plant_lcs a finalized LCS plant containing the simple end effector,
+///   the ground, the ramp, and one body per entry in @p base_names
+/// @param base_names the body name of each object, in order
+std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>
+BuildConeContactPairs(const drake::multibody::MultibodyPlant<double>& plant_lcs,
+                      const std::vector<std::string>& base_names);
+
 }  // namespace dairlib

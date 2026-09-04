@@ -342,6 +342,14 @@ int DoMain(int argc, char* argv[]) {
       plant_lcs, &plant_lcs_context, *plant_lcs_autodiff,
       plant_lcs_context_ad.get(), contact_pairs, controller_params);
 
+  // Unconditional, unlike in the live controller:  this is offline analysis,
+  // the sims cost milliseconds to build, and without them a progress_params
+  // configured for kSimDrakeObjectOnly could not be swept at all.
+  const auto controller_sim_params = drake::yaml::LoadYamlFile<RobotSimParams>(
+      controller_params.sim_params_file);
+  controller.EnableGroundTruthCostSim(controller_sim_params.object_models,
+                                      controller_sim_params.dt);
+
   // --- The frozen scene state: the cone at its second-to-last goal. ---
   const int n_x = plant_lcs.num_positions() + plant_lcs.num_velocities();
   const int num_objects = controller_params.num_objects;

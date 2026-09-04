@@ -23,6 +23,20 @@
 #                                    times, so every sample's cost covers the
 #                                    same amount of time and a plan that has to
 #                                    be slowed down simply gets less far.
+#  7. kSimDrakeObjectOnly:           The same as
+#                                    kSimImpedanceRetimedObjectCostOnly except
+#                                    the retimed EE plan is replayed through
+#                                    the demo's real Drake sim rather than the
+#                                    LCS, so the cost is the object motion the
+#                                    real contact model actually produces.
+#                                    Only the object terms contribute.
+#                                    Warning 1:  Drake sims are likely slower
+#                                    than the other LCS-based approaches.
+#                                    Warning 2:  Drake sims are much more
+#                                    conservative than LCS sims, so the cost
+#                                    distribution is much tighter with most
+#                                    samples having very similar (and fairly
+#                                    high) costs.
 cost_type: 6
 cost_type_position: 6
 

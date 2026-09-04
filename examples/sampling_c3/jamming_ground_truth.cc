@@ -19,6 +19,7 @@ using drake::multibody::ContactResults;
 using drake::multibody::ModelInstanceIndex;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::PrismaticJoint;
+using drake::multibody::SpatialVelocity;
 using drake::systems::Context;
 using drake::systems::DiagramBuilder;
 using drake::systems::Simulator;
@@ -33,6 +34,11 @@ namespace {
 constexpr const char* kJointNames[] = {"x_axis_joint", "y_axis_joint",
                                        "z_axis_joint"};
 constexpr const char* kEEBodyName = "end_effector_tip";
+
+// The controller's LCS state for one object: 3 end effector positions, the
+// object's 7-vector pose, 3 end effector velocities, the object's 6-vector
+// spatial velocity.  One object is all JammingGroundTruthSim accepts.
+constexpr int kLCSStateSize = 19;
 
 // Peak magnitude of every contact force in the results, point-pair and
 // hydroelastic alike -- the plant's default contact model can produce either,
@@ -107,12 +113,12 @@ JammingGroundTruthSim::JammingGroundTruthSim(
   DRAKE_THROW_UNLESS((probed - ee_to_joint_offset_ - probe).norm() < 1e-9);
 }
 
-void JammingGroundTruthSim::Rollout(const Vector4d& object_quaternion,
-                                    const Vector3d& object_position,
-                                    const vector<Vector3d>& ee_plan,
-                                    double knot_dt, double* travel,
-                                    double* rotation, double* max_contact_force,
-                                    double* max_ee_tracking_error) {
+void JammingGroundTruthSim::Rollout(
+    const Vector4d& object_quaternion, const Vector3d& object_position,
+    const vector<Vector3d>& ee_plan, double knot_dt, double* travel,
+    double* rotation, double* max_contact_force, double* max_ee_tracking_error,
+    const RolloutInitialVelocities& initial_velocities,
+    vector<VectorXd>* knot_states) const {
   DRAKE_THROW_UNLESS(!ee_plan.empty());
   DRAKE_THROW_UNLESS(knot_dt > 0.0);
 
@@ -138,6 +144,15 @@ void JammingGroundTruthSim::Rollout(const Vector4d& object_quaternion,
           object_position));
   plant_->SetVelocities(&plant_context,
                         VectorXd::Zero(plant_->num_velocities()));
+  for (int i = 0; i < 3; ++i) {
+    plant_->GetJointByName<PrismaticJoint>(kJointNames[i])
+        .set_translation_rate(&plant_context,
+                              initial_velocities.ee_velocity(i));
+  }
+  plant_->SetFreeBodySpatialVelocity(
+      &plant_context, plant_->get_body(object_body_index_),
+      SpatialVelocity<double>(initial_velocities.object_angular_velocity,
+                              initial_velocities.object_linear_velocity));
 
   const auto& contact_port = plant_->get_contact_results_output_port();
   const auto& desired_state_port =
@@ -165,8 +180,38 @@ void JammingGroundTruthSim::Rollout(const Vector4d& object_quaternion,
   *rotation = 0.0;
   if (max_contact_force != nullptr) *max_contact_force = 0.0;
   if (max_ee_tracking_error != nullptr) *max_ee_tracking_error = 0.0;
+  if (knot_states != nullptr) knot_states->clear();
+
+  // The scene in the controller's single-object LCS layout.  The printer's
+  // axes are world-aligned and unit-scaled -- the constructor refuses to build
+  // otherwise -- so the joint rates are the tip's world velocity.
+  auto record_state = [&]() {
+    if (knot_states == nullptr) return;
+    const auto& object_pose = plant_->EvalBodyPoseInWorld(
+        plant_context, plant_->get_body(object_body_index_));
+    const SpatialVelocity<double> object_velocity =
+        plant_->EvalBodySpatialVelocityInWorld(
+            plant_context, plant_->get_body(object_body_index_));
+    const Eigen::Quaterniond object_orientation =
+        object_pose.rotation().ToQuaternion();
+    Vector3d ee_velocity;
+    for (int i = 0; i < 3; ++i) {
+      ee_velocity(i) = plant_->GetJointByName<PrismaticJoint>(kJointNames[i])
+                           .get_translation_rate(plant_context);
+    }
+    VectorXd state(kLCSStateSize);
+    state << plant_
+                 ->EvalBodyPoseInWorld(plant_context,
+                                       plant_->GetBodyByName(kEEBodyName))
+                 .translation(),
+        object_orientation.w(), object_orientation.vec(),
+        object_pose.translation(), ee_velocity, object_velocity.rotational(),
+        object_velocity.translational();
+    knot_states->push_back(state);
+  };
 
   simulator.Initialize();
+  record_state();
   const int num_knots = static_cast<int>(ee_plan.size());
   for (int step = 0; step < num_knots - 1 + num_settle_steps; ++step) {
     // Step k drives to knot k+1, the position the plan wants reached by the end
@@ -209,6 +254,7 @@ void JammingGroundTruthSim::Rollout(const Vector4d& object_quaternion,
           std::max(*max_ee_tracking_error,
                    (ee_actual - (target + ee_to_joint_offset_)).norm());
     }
+    record_state();
   }
 }
 
@@ -216,7 +262,7 @@ GroundTruthLabel JammingGroundTruthSim::Label(const Vector4d& object_quaternion,
                                               const Vector3d& object_position,
                                               const vector<Vector3d>& ee_plan,
                                               double knot_dt,
-                                              int plan_is_real) {
+                                              int plan_is_real) const {
   GroundTruthLabel label;
 
   double rotation = 0.0;

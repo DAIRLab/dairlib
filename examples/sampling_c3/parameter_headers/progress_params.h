@@ -43,6 +43,15 @@ enum ProgressMetric { kC3Cost, kConfigCost, kPosOrRotCost, kConfigCostDrop };
                                     times, so every sample's cost covers the
                                     same amount of time and a plan that has to
                                     be slowed down simply gets less far.
+  7. kSimDrakeObjectOnly:           The same as
+                                    kSimImpedanceRetimedObjectCostOnly except
+                                    the retimed EE plan is replayed through the
+                                    demo's real Drake sim rather than the LCS,
+                                    so the cost is the object motion the real
+                                    contact model actually produces.  Only the
+                                    object terms contribute.  Warning:  Drake
+                                    sims are likely slower than the other
+                                    LCS-based approaches.
 */
 enum C3CostComputationType {
   kSimLCS,
@@ -52,6 +61,7 @@ enum C3CostComputationType {
   kSimImpedanceReplaceC3EEPlan,
   kSimImpedanceObjectCostOnly,
   kSimImpedanceRetimedObjectCostOnly,
+  kSimDrakeObjectOnly,
 };
 
 struct SamplingC3ProgressParams {

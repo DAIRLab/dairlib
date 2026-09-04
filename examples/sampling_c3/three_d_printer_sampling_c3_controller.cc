@@ -15,6 +15,7 @@
 #include "c3/systems/lcmt_generators/contact_force_generator.h"
 #include "common/eigen_utils.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
+#include "examples/sampling_c3/parameter_headers/robot_sim_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/sampling_c3_utils.h"
 #include "goal_generator.h"
@@ -266,6 +267,20 @@ int DoMain(int argc, char* argv[]) {
   auto controller = builder.AddSystem<systems::SamplingC3Controller>(
       plant_lcs, &plant_lcs_context, *plant_lcs_autodiff,
       plant_lcs_context_ad.get(), contact_pairs, controller_params);
+
+  // The Drake-sim cost type scores samples by replaying their plans through
+  // the demo's own sim, which only sim_params.yaml describes.  The controller
+  // never reads that file, so hand its contents over here.
+  const SamplingC3ProgressParams& progress_params =
+      controller_params.progress_params;
+  if (progress_params.cost_type == C3CostComputationType::kSimDrakeObjectOnly ||
+      progress_params.cost_type_position ==
+          C3CostComputationType::kSimDrakeObjectOnly) {
+    RobotSimParams sim_params = drake::yaml::LoadYamlFile<RobotSimParams>(
+        controller_params.sim_params_file);
+    controller->EnableGroundTruthCostSim(sim_params.object_models,
+                                         sim_params.dt);
+  }
 
   // Systems for publishing the current and best planned trajectories.
   auto actor_trajectory_sender_curr_plan = builder.AddSystem(

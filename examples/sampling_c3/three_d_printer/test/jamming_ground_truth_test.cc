@@ -8,6 +8,7 @@
 
 #include <cmath>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -132,6 +133,100 @@ TEST(JammingGroundTruthTest, ANoOpPlanIsNotLabelledJammed) {
   const GroundTruthLabel unknown = sim.Label(
       kConeQuaternion, kConePosition, plan, kKnotDt, /*plan_is_real=*/-1);
   EXPECT_TRUE(std::isnan(unknown.jammed));
+}
+
+// The per-knot states a cost type scores.  With no settle window the rollout
+// reports one state per knot: the frozen scene, then the result of each step.
+TEST(JammingGroundTruthTest, RolloutReportsOneStatePerKnot) {
+  JammingGroundTruthSim sim(kObjectModels, kSimDt, /*settle_fraction=*/0.0);
+  const Vector3d start(0.30, 0.07, 0.15);
+  const vector<Vector3d> plan = MakePlan(start, Vector3d(0.21, 0.07, 0.15));
+
+  double travel = 0.0;
+  double rotation = 0.0;
+  vector<Eigen::VectorXd> knot_states;
+  sim.Rollout(kConeQuaternion, kConePosition, plan, kKnotDt, &travel, &rotation,
+              nullptr, nullptr, {}, &knot_states);
+
+  ASSERT_EQ(knot_states.size(), plan.size());
+  for (const Eigen::VectorXd& state : knot_states) {
+    ASSERT_EQ(state.size(), 19);
+  }
+  // Entry 0 is the scene before anything moves: the end effector parked at the
+  // plan's first knot, the cone where it was put, everything at rest.
+  EXPECT_LT((knot_states.front().head(3) - start).norm(), 1e-9);
+  EXPECT_LT((knot_states.front().segment(7, 3) - kConePosition).norm(), 1e-9);
+  EXPECT_LT(knot_states.front().tail(9).norm(), 1e-9);
+  // The quaternion is stored w-first, as the LCS state and Drake both do.
+  EXPECT_NEAR(knot_states.front().segment(3, 4).normalized()(0),
+              kConeQuaternion.normalized()(0), 1e-9);
+  // And the end effector column follows the plan it was given, to within the
+  // same lag bound the tracking test allows.
+  for (size_t i = 0; i < plan.size(); ++i) {
+    EXPECT_LT((knot_states.at(i).head(3) - plan.at(i)).norm(),
+              0.1 * (plan.back() - plan.front()).norm());
+  }
+}
+
+// A rollout that assumes a scene at rest describes a different push than the
+// one a moving scene is actually undergoing, so the initial velocities have to
+// reach the sim.  A cone already sliding toward the ramp ends up further along
+// than the same cone started from rest.
+TEST(JammingGroundTruthTest, InitialObjectVelocityChangesWhereTheConeEndsUp) {
+  JammingGroundTruthSim sim(kObjectModels, kSimDt, /*settle_fraction=*/0.0);
+  // Parked well clear of the cone, so the difference is the scene's own motion
+  // rather than anything the end effector did.
+  const Vector3d parked(0.30, 0.07, 0.15);
+  const vector<Vector3d> plan = MakePlan(parked, parked);
+
+  double at_rest = 0.0;
+  double moving = 0.0;
+  double rotation = 0.0;
+  sim.Rollout(kConeQuaternion, kConePosition, plan, kKnotDt, &at_rest,
+              &rotation, nullptr, nullptr);
+
+  RolloutInitialVelocities initial_velocities;
+  initial_velocities.object_linear_velocity = Vector3d(-0.1, 0.0, 0.0);
+  sim.Rollout(kConeQuaternion, kConePosition, plan, kKnotDt, &moving, &rotation,
+              nullptr, nullptr, initial_velocities);
+
+  EXPECT_GT(moving, at_rest);
+}
+
+// The controller scores its samples in a parallel loop, so rollouts run
+// concurrently on one instance.  Identical results from many threads is the
+// assertion that the class holds no state they could be sharing.
+TEST(JammingGroundTruthTest, ConcurrentRolloutsMatchTheSerialOne) {
+  JammingGroundTruthSim sim(kObjectModels, kSimDt, /*settle_fraction=*/0.0);
+  const vector<Vector3d> plan =
+      MakePlan(Vector3d(0.285, 0.07, 0.025), Vector3d(0.215, 0.07, 0.025));
+
+  auto roll = [&sim, &plan]() {
+    double travel = 0.0;
+    double rotation = 0.0;
+    vector<Eigen::VectorXd> knot_states;
+    sim.Rollout(kConeQuaternion, kConePosition, plan, kKnotDt, &travel,
+                &rotation, nullptr, nullptr, {}, &knot_states);
+    return knot_states;
+  };
+
+  const vector<Eigen::VectorXd> expected = roll();
+  constexpr int kNumThreads = 8;
+  vector<vector<Eigen::VectorXd>> results(kNumThreads);
+  vector<std::thread> threads;
+  for (int i = 0; i < kNumThreads; ++i) {
+    threads.emplace_back([&results, &roll, i]() { results.at(i) = roll(); });
+  }
+  for (std::thread& thread : threads) {
+    thread.join();
+  }
+
+  for (const vector<Eigen::VectorXd>& result : results) {
+    ASSERT_EQ(result.size(), expected.size());
+    for (size_t i = 0; i < expected.size(); ++i) {
+      EXPECT_TRUE(result.at(i) == expected.at(i));
+    }
+  }
 }
 
 TEST(JammingGroundTruthTest, RowCarriesTheColumnsInHeaderOrder) {

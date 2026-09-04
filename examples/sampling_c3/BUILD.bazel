@@ -435,6 +435,7 @@ cc_binary(
         "//examples/sampling_c3:sampling_c3_utils",
         "//examples/sampling_c3:goal_generator",
         "//examples/sampling_c3/parameter_headers:lcm_channels",
+        "//examples/sampling_c3/parameter_headers:robot_sim_params",
         "//common",
         "//lcm:lcm_trajectory_saver",
         "//systems:franka_kinematics",

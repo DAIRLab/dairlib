@@ -58,6 +58,18 @@ struct GroundTruthLabel {
   double jammed = std::numeric_limits<double>::quiet_NaN();
 };
 
+/// The scene's velocities at the instant a rollout starts.  The offline sweep
+/// freezes the scene and leaves these all zero; a caller scoring a live
+/// candidate passes what the object and end effector are actually doing, since
+/// a rollout that pretends the scene is at rest describes a different push.
+struct RolloutInitialVelocities {
+  Eigen::Vector3d ee_velocity = Eigen::Vector3d::Zero();
+  /// Both expressed in the world frame, matching Drake's floating body
+  /// velocities and the LCS state layout alike.
+  Eigen::Vector3d object_angular_velocity = Eigen::Vector3d::Zero();
+  Eigen::Vector3d object_linear_velocity = Eigen::Vector3d::Zero();
+};
+
 /// Progress below which a push counts as having achieved nothing, in meters.
 /// The only tuned constant in the label, and it is a length rather than a
 /// force: a millimeter is well inside the noise of where the cone ends up, and
@@ -85,7 +97,32 @@ class JammingGroundTruthSim {
   GroundTruthLabel Label(const Eigen::Vector4d& object_quaternion,
                          const Eigen::Vector3d& object_position,
                          const std::vector<Eigen::Vector3d>& ee_plan,
-                         double knot_dt, int plan_is_real);
+                         double knot_dt, int plan_is_real) const;
+
+  /// One rollout: drive the printer to each entry of @p ee_plan in turn, then
+  /// hold the last one through the settle window.  Returns the object's peak
+  /// travel and rotation, and writes the peak contact force, the peak end
+  /// effector tracking error, and the per-knot state if asked.
+  ///
+  /// @p knot_states, when given, receives the scene state at the start and
+  /// after every step, so it is one longer than the number of steps taken --
+  /// exactly ee_plan.size() entries when settle_fraction is zero.  Each entry
+  /// is in the controller's single-object LCS layout,
+  /// [ee_position(3), object_quaternion(4), object_position(3),
+  ///  ee_velocity(3), object_angular_velocity(3), object_linear_velocity(3)],
+  /// so a caller can score it against the same Q the LCS-based cost types use.
+  ///
+  /// Holds no state of its own: every rollout builds its own context, and the
+  /// only plant methods it calls are const ones writing into that context.  So
+  /// concurrent rollouts on one instance are safe, and the controller's
+  /// parallel cost loop relies on it.
+  void Rollout(const Eigen::Vector4d& object_quaternion,
+               const Eigen::Vector3d& object_position,
+               const std::vector<Eigen::Vector3d>& ee_plan, double knot_dt,
+               double* travel, double* rotation, double* max_contact_force,
+               double* max_ee_tracking_error,
+               const RolloutInitialVelocities& initial_velocities = {},
+               std::vector<Eigen::VectorXd>* knot_states = nullptr) const;
 
   /// The offset between an end effector world position and the printer joint
   /// coordinates that put the tip there, resolved from the plant at
@@ -98,15 +135,6 @@ class JammingGroundTruthSim {
   static Eigen::VectorXd AsRow(const GroundTruthLabel& label);
 
  private:
-  /// One rollout: drive the printer to each entry of @p ee_plan in turn, then
-  /// hold the last one through the settle window.  Returns the object's peak
-  /// travel and rotation, and writes the peak contact force if asked.
-  void Rollout(const Eigen::Vector4d& object_quaternion,
-               const Eigen::Vector3d& object_position,
-               const std::vector<Eigen::Vector3d>& ee_plan, double knot_dt,
-               double* travel, double* rotation, double* max_contact_force,
-               double* max_ee_tracking_error);
-
   std::unique_ptr<drake::systems::Diagram<double>> diagram_;
   drake::multibody::MultibodyPlant<double>* plant_ = nullptr;
   drake::multibody::ModelInstanceIndex printer_index_;

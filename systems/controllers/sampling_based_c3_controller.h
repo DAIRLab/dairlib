@@ -23,6 +23,7 @@
 #include "dairlib/lcmt_sampling_c3_debug.hpp"
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
+#include "examples/sampling_c3/jamming_ground_truth.h"
 #include "examples/sampling_c3/jamming_metrics.h"
 #include "examples/sampling_c3/parameter_headers/progress_params.h"
 #include "examples/sampling_c3/parameter_headers/reposition_params.h"
@@ -218,6 +219,17 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   get_output_port_unsuccessful_sample_buffer_costs() const {
     return this->get_output_port(unsuccessful_sample_buffer_costs_port_);
   }
+
+  /// Builds the Drake sims that C3CostComputationType::kSimDrakeObjectOnly
+  /// scores samples with:  one per parallel thread, since the cost loop runs
+  /// them concurrently.  The sim's contents come from the demo's
+  /// sim_params.yaml, which the controller does not itself read, so the demo's
+  /// controller binary has to hand them over -- and only the 3D printer demos
+  /// can, since JammingGroundTruthSim builds a printer.  Call it after
+  /// construction and before the first control loop; cost type 7 throws
+  /// without it.
+  void EnableGroundTruthCostSim(
+      const std::vector<std::string>& object_models, double sim_dt);
 
   /// Solves C3 for each of @p ee_samples -- candidate end effector positions,
   /// all evaluated against the same scene state @p x_lcs_curr -- and returns
@@ -685,6 +697,12 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // pose.
   mutable bool crossed_cost_switching_threshold_ = false;
   mutable int num_threads_to_use_;
+
+  // One Drake sim per thread of the cost loop, empty unless
+  // EnableGroundTruthCostSim has been called.  A single instance would do --
+  // JammingGroundTruthSim::Rollout holds no state -- but a sim apiece keeps
+  // the threads out of each other's allocators.
+  std::vector<std::unique_ptr<JammingGroundTruthSim>> ground_truth_sims_;
 
   mutable SampleIndex best_sample_index_ = kCurrentLocation;
   mutable ModeSwitchReason mode_switch_reason_ = kNoSwitch;

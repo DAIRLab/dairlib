@@ -546,6 +546,23 @@ SamplingC3Controller::SamplingC3Controller(
   }
 }
 
+void SamplingC3Controller::EnableGroundTruthCostSim(
+    const std::vector<std::string>& object_models, double sim_dt) {
+  if (controller_params_.num_objects != 1) {
+    throw std::runtime_error(
+        "SamplingC3Controller::EnableGroundTruthCostSim: the ground truth sim "
+        "handles exactly one object.");
+  }
+  ground_truth_sims_.clear();
+  for (int i = 0; i < num_threads_to_use_; i++) {
+    // No settle window:  the cost scores exactly the plan's N+1 knots, so
+    // there is nowhere for states past the horizon to go -- and holding the
+    // last knot afterwards would double the rollout's time for them.
+    ground_truth_sims_.push_back(std::make_unique<JammingGroundTruthSim>(
+        object_models, sim_dt, /*settle_fraction=*/0.0));
+  }
+}
+
 // This function relies on the previously computed z_fin from Solve.
 std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
     C3CostComputationType cost_type, const LCS& lcs_for_cost,
@@ -672,6 +689,54 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
     XX = XX_sim;
     UU = UU_sim;
 
+  } else if (cost_type == C3CostComputationType::kSimDrakeObjectOnly) {
+    // The same retimed plan as above, but executed by the demo's real Drake
+    // sim instead of the LCS, so the object motion in the cost is the one the
+    // real contact model produces.  Retiming is not optional here:  a plan
+    // that violates the printer's velocity limits is one its PD cannot track,
+    // and every such sample would score as a push that never happened.
+    if (ground_truth_sims_.empty()) {
+      throw std::runtime_error(
+          "SamplingC3Controller::CalcCost: cost type kSimDrakeObjectOnly needs "
+          "EnableGroundTruthCostSim to have been called, which only the 3D "
+          "printer demos do.");
+    }
+    vector<VectorXd> x_plan_retimed = x_plan;
+    vector<VectorXd> UU_retimed = UU;
+    RetimeAndResampleC3PlanForCost(lcs_for_plan.dt(), &x_plan_retimed,
+                                   &UU_retimed);
+
+    vector<Vector3d> ee_plan;
+    ee_plan.reserve(x_plan_retimed.size());
+    for (const VectorXd& x : x_plan_retimed) {
+      ee_plan.push_back(x.head(3));
+    }
+
+    // The scene the rollout starts from is the plan's own initial condition:
+    // the sample's EE position, and the object exactly as it is now.
+    const VectorXd& x0 = x_plan_retimed.front();
+    RolloutInitialVelocities initial_velocities;
+    initial_velocities.ee_velocity = x0.segment(ee_vel_index, 3);
+    initial_velocities.object_angular_velocity =
+        x0.segment(ee_vel_index + 3, 3);
+    initial_velocities.object_linear_velocity = x0.segment(ee_vel_index + 6, 3);
+
+    double travel = 0.0;
+    double rotation = 0.0;
+    vector<VectorXd> knot_states;
+    // Rollout keeps no state, so two threads sharing a sim is safe; the modulo
+    // only matters for callers that ask for more threads than the controller
+    // is configured with.
+    ground_truth_sims_.at(omp_get_thread_num() % ground_truth_sims_.size())
+        ->Rollout(x0.segment(3, 4), x0.segment(7, 3), ee_plan,
+                  lcs_for_plan.dt(), &travel, &rotation,
+                  /*max_contact_force=*/nullptr,
+                  /*max_ee_tracking_error=*/nullptr, initial_velocities,
+                  &knot_states);
+    DRAKE_THROW_UNLESS(static_cast<int>(knot_states.size()) == N_ + 1);
+    XX = knot_states;
+    UU = UU_retimed;
+
   } else {
     throw std::runtime_error(
         "SamplingC3Controller::CalcCost: unrecognized C3CostComputationType " +
@@ -679,7 +744,8 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
   }
 
   if (cost_type == C3CostComputationType::kSimImpedanceObjectCostOnly ||
-      cost_type == C3CostComputationType::kSimImpedanceRetimedObjectCostOnly) {
+      cost_type == C3CostComputationType::kSimImpedanceRetimedObjectCostOnly ||
+      cost_type == C3CostComputationType::kSimDrakeObjectOnly) {
     // Set R and the robot portion of the Q matrix to zero so that only the
     // object state errors contribute to cost.
     for (int i = 0; i < N_ + 1; i++) {

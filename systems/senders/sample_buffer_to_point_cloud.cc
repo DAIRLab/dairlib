@@ -36,8 +36,8 @@ PointCloudFromSampleBuffer::PointCloudFromSampleBuffer() {
               &PointCloudFromSampleBuffer::OutputSampleBufferAsPointCloud)
           .get_index();
 
-  color_floats_ = colorFloatMap();
-  RGBs_ = RGBMap();
+  color_floats_ = RdYlGnReversedPositions();
+  RGBs_ = RdYlGnReversedTable();
 }
 
 void PointCloudFromSampleBuffer::OutputSampleBufferAsPointCloud(

@@ -49,7 +49,7 @@
         </drake:proximity_properties>
       </collision>
 
-      <visual name="corner_0">
+      <!-- <visual name="corner_0">
         <pose>0 -0.0254 0 0 0 0</pose>
         <geometry>
           <sphere>
@@ -130,7 +130,7 @@
         <material>
           <diffuse>1 1 1 1</diffuse>
         </material>
-      </visual>
+      </visual> -->
 
       <collision name="corner_0">
         <pose>0 -0.0254 0 0 0 0</pose>

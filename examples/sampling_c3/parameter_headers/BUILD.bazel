@@ -34,6 +34,7 @@ cc_library(
         "//examples/sampling_c3/parameter_headers:progress_params",
         "//examples/sampling_c3/parameter_headers:sampling_params",
         "//examples/sampling_c3/parameter_headers:goal_params",
+        "//examples/sampling_c3/parameter_headers:risk_params",
     ],
 )
 
@@ -72,4 +73,11 @@ cc_library(
     hdrs = ["progress_params.h"],
     visibility = ["//visibility:public"],
     deps = ["//common:file_utils"],
+)
+
+cc_library(
+    name = "risk_params",
+    hdrs = ["risk_params.h"],
+    visibility = ["//visibility:public"],
+    deps = ["@drake//:drake_shared_library"],
 )

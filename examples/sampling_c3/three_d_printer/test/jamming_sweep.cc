@@ -24,6 +24,14 @@
 // Samples come from the demo's real kRandomOnShell sampling strategy, so the
 // distribution shown is the one the controller actually faces.
 //
+// Every sample is also labelled by the fast approximate jam labeller in the
+// configuration the demo's risk_params.yaml ships -- the one the controller
+// itself runs -- so a sweep carries the controller's own verdict per sample
+// without paying for the ground truth's two full rollouts.  It costs about a
+// millisecond a sample against the ground truth's ~180, which is why it is on
+// by default; --label_with_sim adds the ground truth it approximates, and
+// --label_variants adds the knob ladder that measured the gap between them.
+//
 // Outputs one np.loadtxt-friendly file, jamming_sweep_random.txt, for
 // three_d_printer/test/plot_jamming_sweep.py and jamming_visualizer.cc.
 
@@ -110,6 +118,14 @@ DEFINE_bool(label_with_sim, false,
             "extra columns on the same file.  Ground truth for ranking the "
             "predictors against -- every other column is derived from the LCS, "
             "so they cannot be checked against each other.");
+DEFINE_bool(label_with_fast, true,
+            "Label every sample with the fast approximate labeller "
+            "(examples/sampling_c3/fast_jamming_label.h) in the configuration "
+            "the demo's risk_params.yaml ships -- the configuration the "
+            "controller itself runs -- as fast_configured_{travel,jammed} "
+            "columns.  Roughly a millisecond a sample, so it is on by "
+            "default; it needs no ground truth and is what jamming_visualizer "
+            "draws as the fast label.");
 DEFINE_bool(label_variants, false,
             "Additionally label every sample with each configuration of the "
             "fast approximate labeller (examples/sampling_c3/"
@@ -214,6 +230,12 @@ void WriteStateComment(std::ostream& out, const string& name,
   }
   out << "\n";
 }
+
+// The name the shipped configuration's columns and cost line go by:
+// fast_configured_travel, fast_configured_jammed, "# label_cost configured".
+// It rides in the same LabelVariant machinery as the study ladder so a file
+// carries all of them the same way, whichever flags produced it.
+constexpr const char* kConfiguredVariantName = "configured";
 
 // One configuration of the fast approximate labeller, and what it produced.
 struct LabelVariant {
@@ -651,9 +673,40 @@ int DoMain(int argc, char* argv[]) {
                "solve_fell_back column."
             << std::endl;
 
+  // --- The fast approximate label, in the configuration the demo ships. ---
+  // Deliberately independent of the ground truth: this is the label the
+  // controller computes per sample, and a sweep should carry it whether or not
+  // anyone paid for the reference to check it against.
+  vector<LabelVariant> variants;
+  if (FLAGS_label_with_fast) {
+    if (!controller_params.risk_params.has_value()) {
+      std::cout << "Not computing the fast label: " << controller_params_path
+                << " sets no risk_params_file." << std::endl;
+    } else {
+      LabelVariant configured;
+      configured.name = kConfiguredVariantName;
+      configured.config =
+          systems::MakeFastJammingLabelConfig(*controller_params.risk_params);
+      std::cout << "Labelling " << results.size()
+                << " samples with the fast approximate labeller configured in "
+                << *controller_params.risk_params_file << " ("
+                << configured.config.Describe() << ", parallel across samples, "
+                << omp_get_max_threads() << " threads)..." << std::endl;
+      RunLabelVariant(controller_params.risk_params->object_models, results,
+                      object_orientation, object_position, &configured);
+      int num_fast_jammed = 0;
+      for (const double jammed : configured.jammed) {
+        num_fast_jammed += jammed > 0.5 ? 1 : 0;
+      }
+      std::cout << "  " << num_fast_jammed << " of " << results.size()
+                << " samples labelled jammed, at "
+                << configured.seconds_per_sample << " s/sample" << std::endl;
+      variants.push_back(configured);
+    }
+  }
+
   // --- Ground truth, if asked for. ---
   vector<systems::GroundTruthLabel> labels;
-  vector<LabelVariant> variants;
   double ground_truth_seconds_per_sample = 0.0;
   if (FLAGS_label_variants && !FLAGS_label_with_sim) {
     throw std::runtime_error(
@@ -702,12 +755,18 @@ int DoMain(int argc, char* argv[]) {
               << " s/sample (serial)" << std::endl;
 
     if (FLAGS_label_variants) {
-      variants = MakeLabelVariants();
-      std::cout << "Labelling the same " << results.size()
-                << " samples under " << variants.size()
+      // Appended, so the shipped configuration stays in the file alongside the
+      // ladder rather than being replaced by it.
+      const size_t first_ladder_variant = variants.size();
+      for (const LabelVariant& variant : MakeLabelVariants()) {
+        variants.push_back(variant);
+      }
+      std::cout << "Labelling the same " << results.size() << " samples under "
+                << (variants.size() - first_ladder_variant)
                 << " fast configurations (parallel across samples, "
                 << omp_get_max_threads() << " threads)..." << std::endl;
-      for (LabelVariant& variant : variants) {
+      for (size_t v = first_ladder_variant; v < variants.size(); ++v) {
+        LabelVariant& variant = variants.at(v);
         RunLabelVariant(sim_params.object_models, results, object_orientation,
                         object_position, &variant);
         std::cout << "  " << variant.name << ": "

@@ -1,0 +1,43 @@
+# Configuration for the fast approximate jam label the sampling C3 controller
+# computes for each candidate sample (see examples/sampling_c3/
+# fast_jamming_label.h, where every knob below is documented).
+#
+# These are the settings the offline sweep measured as the best speed-for-
+# agreement trade against the ground truth labeller: about 0.9 ms per sample,
+# disagreeing with the ground truth on 0.6-1.1% of real plans across two
+# independent 1000-sample draws.  Regenerate the comparison with
+#   ./bazel-bin/examples/sampling_c3/three_d_printer/test/jamming_sweep \
+#       --label_with_sim --label_variants
+# run from the repo root, then analyze_label_variants.py on its output.
+#
+# Only the 3D printer demos configure this file; the other sampling C3 demos
+# leave risk_params_file unset in their controller params and compute no labels.
+
+# The SIMULATION's cone, not the controller's simplified cone_controller.sdf:
+# the label approximates what the real sim would do, and the study that measured
+# its agreement used this geometry.
+object_models: [examples/sampling_c3/urdf/cone/cone.sdf]
+
+# 4 ms is ~3.7x cheaper than the ground truth's 1 ms step for 0.6-0.8%
+# disagreement.  8 ms is another 1.8x but is the least stable knob across draws.
+sim_dt: 0.004
+
+# The ground truth's own kJammedProgressThreshold (1e-3) plus this scene's
+# passive gravity settle (9.9938e-05), which the fast labeller does not subtract
+# -- a derived quantity, not a tuned one.  Deliberately NOT coarsened: at 2e-3
+# the same rollout disagrees with the ground truth on 7.4-8.0%.
+travel_threshold: 0.00110
+
+# Hold the plan's last EE position for a quarter of the plan's duration rather
+# than the ground truth's full duration.  1.5x for 0.2-0.5% disagreement.
+settle_fraction: 0.25
+
+# Stop as soon as travel crosses the threshold.  Exact, not an approximation:
+# travel is a running maximum, so a crossing can never be undone.
+early_exit: true
+
+# Both measured at 1.0x speed on the cone sweep, so neither is worth its risk.
+# The prescribed EE was also the worst knob for agreement (5-6%): an end
+# effector that cannot stall cannot show a jam.
+point_contact: false
+prescribed_ee: false

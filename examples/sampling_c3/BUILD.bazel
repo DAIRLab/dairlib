@@ -309,6 +309,7 @@ cc_library(
     deps = [
         ":jamming_ground_truth",
         ":sampling_c3_utils",
+        "//examples/sampling_c3/parameter_headers:risk_params",
         "@drake//:drake_shared_library",
     ],
 )

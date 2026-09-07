@@ -64,6 +64,18 @@ FastJammingLabelConfig FastJammingLabelConfig::Reference() {
   return config;
 }
 
+FastJammingLabelConfig MakeFastJammingLabelConfig(
+    const SampleRiskParams& risk_params) {
+  FastJammingLabelConfig config;
+  config.sim_dt = risk_params.sim_dt;
+  config.travel_threshold = risk_params.travel_threshold;
+  config.settle_fraction = risk_params.settle_fraction;
+  config.early_exit = risk_params.early_exit;
+  config.point_contact = risk_params.point_contact;
+  config.prescribed_ee = risk_params.prescribed_ee;
+  return config;
+}
+
 string FastJammingLabelConfig::Describe() const {
   char dt_buffer[32];
   std::snprintf(dt_buffer, sizeof(dt_buffer), "dt%.0fms", 1000.0 * sim_dt);

@@ -30,6 +30,8 @@
 
 #include <Eigen/Dense>
 
+#include "examples/sampling_c3/parameter_headers/risk_params.h"
+
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/diagram.h"
 
@@ -145,6 +147,14 @@ struct FastJammingLabelConfig {
   /// A short slug naming the knob settings, for column names in a study.
   std::string Describe() const;
 };
+
+/// The knobs a demo's risk_params.yaml configured, as a config.  The one place
+/// the two representations are mapped onto each other, so a test can pin a
+/// shipped yaml to the configuration a study measured without going through a
+/// controller.  Does not carry object_models, which name a scene rather than
+/// configure the rollout.
+FastJammingLabelConfig MakeFastJammingLabelConfig(
+    const SampleRiskParams& risk_params);
 
 /// What the fast sim made of one candidate sample's plan.
 struct FastJammingLabel {

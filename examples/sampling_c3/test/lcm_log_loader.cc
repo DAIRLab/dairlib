@@ -484,11 +484,25 @@ int DoMain(int argc, char* argv[]) {
                     << "seconds utime: " << (message.utime) / 1e6
                     << " and event "
                     << "timestamp " << adjusted_utimestamp / 1e6 << std::endl;
-          for (size_t i = 0;
-               i < message.saved_traj.trajectories[0].datapoints[0].size();
-               i++) {
-            sample_costs_in_log.push_back(Eigen::VectorXd::Constant(
-                1, message.saved_traj.trajectories[0].datapoints[0][i]));
+          // Looked up by name, not by position: LcmTrajectory holds its
+          // trajectories in an unordered_map, so the order they serialize in
+          // is unspecified.  This message carries the jam label columns too
+          // when the controller was configured with risk_params.
+          const lcmt_trajectory_block* costs_block = nullptr;
+          for (const auto& block : message.saved_traj.trajectories) {
+            if (block.trajectory_name == "sample_costs") {
+              costs_block = &block;
+              break;
+            }
+          }
+          if (costs_block == nullptr) {
+            std::cerr << "SAMPLE_COSTS message carries no sample_costs "
+                      << "trajectory" << std::endl;
+          } else {
+            for (size_t i = 0; i < costs_block->datapoints[0].size(); i++) {
+              sample_costs_in_log.push_back(
+                  Eigen::VectorXd::Constant(1, costs_block->datapoints[0][i]));
+            }
           }
         } else {
           std::cerr << "Failed to decode SAMPLE_COSTS message" << std::endl;

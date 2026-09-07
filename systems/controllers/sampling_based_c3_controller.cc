@@ -1,6 +1,7 @@
 #include "sampling_based_c3_controller.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <ctime>
 #include <iostream>
@@ -67,6 +68,14 @@ using Eigen::VectorXd;
 using Eigen::VectorXf;
 using std::vector;
 using systems::TimestampedVector;
+
+namespace {
+// What every jam column holds where nothing labelled it:  an empty buffer
+// slot, a controller with no labeller configured, or a sample whose plan was
+// never simulated.  NaN rather than a negative sentinel because 0 and 1 are
+// both meaningful jam labels.
+const double kUnlabelled = std::numeric_limits<double>::quiet_NaN();
+}  // namespace
 
 namespace systems {
 
@@ -397,6 +406,25 @@ SamplingC3Controller::SamplingC3Controller(
               unsuccessful_sample_costs_buffer_,
               &SamplingC3Controller::OutputUnsuccessfulSampleBufferCosts)
           .get_index();
+  // The jam data ports exist only when this demo configured a labeller -- the
+  // same switch that decides whether the jam columns are ever anything but
+  // NaN.  Gated on risk_params rather than fast_jamming_label_sim_ because the
+  // sim is built further down in this constructor; the two agree, since
+  // building it either succeeds or throws whenever risk_params is set.
+  publishes_jam_data_ = controller_params_.risk_params.has_value();
+  if (publishes_jam_data_) {
+    sample_buffer_jam_data_port_ =
+        this->DeclareAbstractOutputPort(
+                "sample_buffer_jam_data", sample_jam_buffer_,
+                &SamplingC3Controller::OutputSampleBufferJamData)
+            .get_index();
+    unsuccessful_sample_buffer_jam_data_port_ =
+        this->DeclareAbstractOutputPort(
+                "unsuccessful_sample_buffer_jam_data",
+                unsuccessful_sample_jam_buffer_,
+                &SamplingC3Controller::OutputUnsuccessfulSampleBufferJamData)
+            .get_index();
+  }
 
   plan_start_time_index_ = DeclareDiscreteState(1);
   x_pred_curr_plan_ = VectorXd::Zero(n_x_);
@@ -467,6 +495,41 @@ SamplingC3Controller::SamplingC3Controller(
   // whenever the detected goal step advances.
   BuildKeepOutScene();
   RefreshPerGoalSettings(0);
+
+  // The fast approximate jam labeller, if this demo configured one.  Left null
+  // otherwise, which is what switches the per-sample labelling off entirely --
+  // the labeller builds a 3D printer plant, so only the printer demos set
+  // risk_params_file.
+  if (controller_params_.risk_params.has_value()) {
+    const SampleRiskParams& risk_params = *controller_params_.risk_params;
+    if (risk_params.object_models.size() != 1) {
+      throw std::runtime_error(
+          "SamplingC3Controller: risk_params.object_models has " +
+          std::to_string(risk_params.object_models.size()) +
+          " entries, but the fast jam labeller simulates exactly one free "
+          "object.  Unset risk_params_file to disable jam labelling.");
+    }
+    const FastJammingLabelConfig label_config =
+        MakeFastJammingLabelConfig(risk_params);
+    // Built once here rather than per tick: the constructor -- which builds and
+    // finalizes a whole plant -- is the expensive part, and the class holds no
+    // mutable state precisely so one instance can serve every thread.
+    fast_jamming_label_sim_ = std::make_unique<const FastJammingLabelSim>(
+        risk_params.object_models, label_config);
+
+    // The budget a plan is called a no-op against, from the same bounds the C3
+    // solves impose on u.  Resolved once; it does not change per sample.
+    const UInputLimits u_input_limits =
+        MakeUInputLimits(sampling_c3_options_.u_horizontal_limits,
+                         sampling_c3_options_.u_vertical_limits);
+    u_budget_for_label_ =
+        Vector2d(u_input_limits.u_xy_max, u_input_limits.u_z_max).norm();
+
+    if (verbose_) {
+      std::cout << "Fast jam labelling enabled: " << label_config.Describe()
+                << std::endl;
+    }
+  }
 
   // Below code loads in the mesh and enumerates triangular faces.
   if (sampling_params_.sampling_strategy == SamplingStrategy::kMeshNormal ||
@@ -1091,6 +1154,13 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   double repos_target_raw_cost = std::numeric_limits<double>::infinity();
   all_sample_dynamically_feasible_plans_ = vector<vector<VectorXd>>(
       num_total_samples, vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_)));
+  // NaN-filled, and left that way when no labeller is configured, so a
+  // consumer can tell "not labelled" from "labelled not jammed".
+  all_sample_jam_labels_ = vector<double>(num_total_samples, kUnlabelled);
+  all_sample_jam_travel_ = vector<double>(num_total_samples, kUnlabelled);
+  all_sample_plan_is_real_ = vector<double>(num_total_samples, kUnlabelled);
+  std::atomic<int> num_samples_labelled{0};
+  std::atomic<int> num_samples_no_op{0};
   vector<std::shared_ptr<C3>> c3_objects(num_total_samples, nullptr);
   bool force_tracking_disabled = radio_out->channel[11];
   C3CostComputationType cost_type = progress_params_.cost_type;
@@ -1137,6 +1207,41 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     all_sample_costs_[i] =
         c3_cost + progress_params_.travel_cost_per_meter * xy_travel_distance;
 
+    // Fast approximate jam label for this sample, if this demo configured one.
+    // Deliberately does not feed the cost above -- it is reported, not acted
+    // on.
+    if (fast_jamming_label_sim_ != nullptr) {
+      double max_u_norm = 0.0;
+      const vector<Vector3d> ee_plan =
+          BuildRetimedEEPlanForLabel(test_c3_object, test_system, &max_u_norm);
+
+      // The same rule jamming_metrics.cc applies for no_op_plan: a solve that
+      // produced nothing to execute commands only a small fraction of its
+      // input budget over the whole horizon.  A plan that never pushed cannot
+      // be jammed by a push it never made, and its verdict is known without
+      // simulating it, so it does not pay for a rollout.
+      const bool plan_is_real =
+          max_u_norm >= kNoOpInputFraction * u_budget_for_label_;
+      all_sample_plan_is_real_[i] = plan_is_real ? 1.0 : 0.0;
+      if (plan_is_real) {
+        // The object pose comes from the scene state, not from test_state:
+        // candidate states differ from it only in the EE position, and reading
+        // the scene from one place keeps that explicit.
+        const FastJammingLabel label = fast_jamming_label_sim_->Label(
+            x_lcs_curr.segment(3, 4), x_lcs_curr.segment(7, 3), ee_plan,
+            test_system.dt(), /*plan_is_real=*/1);
+        all_sample_jam_labels_[i] = label.jammed;
+        all_sample_jam_travel_[i] = label.travel;
+        ++num_samples_labelled;
+      } else {
+        // What the ground truth labeller returns for a no-op, reached without
+        // the rollout that would only confirm it.  Travel stays NaN: nothing
+        // measured it.
+        all_sample_jam_labels_[i] = 0.0;
+        ++num_samples_no_op;
+      }
+    }
+
     // Add additional costs based on repositioning progress.  Record the
     // un-penalized cost separately so the repos-to-repos hysteresis check
     // below judges this sample on its own merits; the penalized cost still
@@ -1152,6 +1257,17 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   auto c3_end = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double, std::milli> duration_ms = c3_end - c3_start;
   // End of parallelization
+
+  if (verbose_ && fast_jamming_label_sim_ != nullptr) {
+    // The labels are inside the timed loop above, so this is the only place
+    // their live per-tick cost is visible -- and the no-op count is what says
+    // how many samples skipped a rollout, which the offline sweep can only
+    // guess at.
+    std::cout << "Sample loop took " << duration_ms.count() << " ms for "
+              << num_total_samples << " samples; jam-labelled "
+              << num_samples_labelled.load() << ", skipped "
+              << num_samples_no_op.load() << " no-op plans." << std::endl;
+  }
 
   // Update the sample buffer.  Do this before switching modes since 1) if in
   // repositioning mode, don't add the repositioning target over and over again,
@@ -1265,6 +1381,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         // Remove the sample from the buffer.
         sample_buffer_.row(num_in_buffer_ - 1) = VectorXd::Zero(n_q_);
         sample_costs_buffer_[num_in_buffer_ - 1] = -1;
+        sample_jam_buffer_.row(num_in_buffer_ - 1) =
+            RowVectorXd::Constant(kNumJamColumns, kUnlabelled);
         num_in_buffer_--;
       } else {
         pursued_target_source_ = PursuedTargetSource::kNewSample;
@@ -1356,7 +1474,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // Add the current state to the unsuccessful sample buffer.  It gets
       // automatically removed if the object moves beyond the buffer movement
       // thresholds.
-      AddToUnsuccessfulBuffer(candidate_states[0]);
+      AddToUnsuccessfulBuffer(candidate_states[SampleIndex::kCurrentLocation],
+                              SampleIndex::kCurrentLocation);
     }
     // Stay in repositioning if fixed goal is met.
     else if (achieved_fixed_goal_) {
@@ -1385,14 +1504,17 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         // gets automatically removed if the object moves beyond the buffer
         // movement thresholds.
         AddToUnsuccessfulBuffer(
-            candidate_states[SampleIndex::kCurrentReposTarget]);
+            candidate_states[SampleIndex::kCurrentReposTarget],
+            SampleIndex::kCurrentReposTarget);
       } else {
         mode_switch_reason_ = ModeSwitchReason::kToC3Cost;
         std::cout << "Switching to C3 because lower in cost" << std::endl;
         // Add the current state to the unsuccessful sample buffer.  It gets
         // automatically removed if the object moves beyond the buffer movement
         // thresholds.
-        AddToUnsuccessfulBuffer(candidate_states[0]);
+        AddToUnsuccessfulBuffer(
+            candidate_states[SampleIndex::kCurrentLocation],
+            SampleIndex::kCurrentLocation);
       }
       pursued_target_source_ = PursuedTargetSource::kNoTarget;
     }
@@ -2217,7 +2339,8 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
 // Prune outdated samples from a sample buffer, based on object motion.
 void SamplingC3Controller::PruneOutdatedSamplesFromBuffer(
     const VectorXd& x_lcs, int* num_in_buffer, MatrixXd* sample_buffer,
-    VectorXd* sample_costs_buffer, const double& pos_error_sample_retention,
+    VectorXd* sample_costs_buffer, MatrixXd* sample_jam_buffer,
+    const double& pos_error_sample_retention,
     const double& ang_error_sample_retention) const {
   int n_buffer_length = sample_costs_buffer->size();
   // Get object positions and orientations, both current and from the buffer.
@@ -2248,6 +2371,8 @@ void SamplingC3Controller::PruneOutdatedSamplesFromBuffer(
   int retained_count = 0;
   MatrixXd retained_samples = MatrixXd::Zero(n_buffer_length, n_q_);
   VectorXd retained_costs = -1 * VectorXd::Ones(n_buffer_length);
+  MatrixXd retained_jam_data =
+      MatrixXd::Constant(n_buffer_length, kNumJamColumns, kUnlabelled);
   for (int i = 0; i < *num_in_buffer; i++) {
     if ((*sample_costs_buffer)[i] < 0) {
       break;
@@ -2262,12 +2387,14 @@ void SamplingC3Controller::PruneOutdatedSamplesFromBuffer(
     if (keep) {
       retained_samples.row(retained_count) = sample_buffer->row(i);
       retained_costs[retained_count] = (*sample_costs_buffer)[i];
+      retained_jam_data.row(retained_count) = sample_jam_buffer->row(i);
       retained_count++;
     }
   }
   *num_in_buffer = retained_count;
   *sample_buffer = retained_samples;
   *sample_costs_buffer = retained_costs;
+  *sample_jam_buffer = retained_jam_data;
 }
 
 // Maintain the sample buffers (both for keeping track of unattempted samples
@@ -2279,14 +2406,14 @@ void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs) const {
   // controller goes from repositioning to C3 mode.
   PruneOutdatedSamplesFromBuffer(
       x_lcs, &num_in_unsuccessful_buffer_, &unsuccessful_sample_buffer_,
-      &unsuccessful_sample_costs_buffer_,
+      &unsuccessful_sample_costs_buffer_, &unsuccessful_sample_jam_buffer_,
       sampling_params_.unsuccessful_pos_error_sample_retention,
       sampling_params_.unsuccessful_ang_error_sample_retention);
 
   // Second, handle the unattempted sample buffer.  First, prune outdated
   // samples.
   PruneOutdatedSamplesFromBuffer(x_lcs, &num_in_buffer_, &sample_buffer_,
-                                 &sample_costs_buffer_,
+                                 &sample_costs_buffer_, &sample_jam_buffer_,
                                  sampling_params_.pos_error_sample_retention,
                                  sampling_params_.ang_error_sample_retention);
   int retained_count = num_in_buffer_;
@@ -2313,6 +2440,8 @@ void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs) const {
         sample_buffer_.block(shift_by, 0, retained_count, n_q_);
     sample_costs_buffer_.segment(0, retained_count) =
         sample_costs_buffer_.segment(shift_by, retained_count);
+    sample_jam_buffer_.block(0, 0, retained_count, kNumJamColumns) =
+        sample_jam_buffer_.block(shift_by, 0, retained_count, kNumJamColumns);
   }
 
   // Fourth, add the new samples stored in all_sample_locations_ and
@@ -2344,6 +2473,14 @@ void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs) const {
       }
       sample_buffer_.row(buffer_count) = new_config;
       sample_costs_buffer_[buffer_count] = all_sample_costs_[i] - travel_cost;
+      // The jam label this tick computed for the same sample, so a sample
+      // recalled from the buffer later comes back labelled.  This runs before
+      // AugmentSamplesWithBuffer, so index i still means the same sample in
+      // both all_sample_costs_ and the jam vectors.
+      sample_jam_buffer_(buffer_count, kJamLabel) = all_sample_jam_labels_[i];
+      sample_jam_buffer_(buffer_count, kJamTravel) = all_sample_jam_travel_[i];
+      sample_jam_buffer_(buffer_count, kPlanIsReal) =
+          all_sample_plan_is_real_[i];
       buffer_count++;
     }
   }
@@ -2365,17 +2502,23 @@ void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs) const {
     int lowest_cost_index;
     double lowest_buffer_cost = eligible_costs.minCoeff(&lowest_cost_index);
     VectorXd lowest_cost_sample = sample_buffer_.row(lowest_cost_index);
+    VectorXd lowest_cost_jam_data = sample_jam_buffer_.row(lowest_cost_index);
     sample_buffer_.row(lowest_cost_index) =
         sample_buffer_.row(num_in_buffer_ - 1);
     sample_costs_buffer_[lowest_cost_index] =
         sample_costs_buffer_[num_in_buffer_ - 1];
+    sample_jam_buffer_.row(lowest_cost_index) =
+        sample_jam_buffer_.row(num_in_buffer_ - 1);
     sample_buffer_.row(num_in_buffer_ - 1) = lowest_cost_sample;
     sample_costs_buffer_[num_in_buffer_ - 1] = lowest_buffer_cost;
+    sample_jam_buffer_.row(num_in_buffer_ - 1) = lowest_cost_jam_data;
   }
 
   DRAKE_DEMAND(sample_buffer_.rows() == sampling_params_.N_sample_buffer);
   DRAKE_DEMAND(sample_buffer_.cols() == n_q_);
   DRAKE_DEMAND(sample_costs_buffer_.size() == sampling_params_.N_sample_buffer);
+  DRAKE_DEMAND(sample_jam_buffer_.rows() == sampling_params_.N_sample_buffer);
+  DRAKE_DEMAND(sample_jam_buffer_.cols() == kNumJamColumns);
 }
 
 // If eligible, augment the current control loop's considered samples with the
@@ -2431,13 +2574,26 @@ void SamplingC3Controller::AugmentSamplesWithBuffer(
       c3_objects.push_back(c3_buffer_plan_);
       all_sample_dynamically_feasible_plans_.push_back(
           dynamically_feasible_buffer_plan_);
+      // Recall the label stored beside this sample's cost rather than
+      // spending a rollout to recompute it.  It was measured on the tick that
+      // first solved this sample, but the buffer drops any sample whose object
+      // pose has drifted past the retention thresholds, so the label is no
+      // more stale than the cost it is recalled with.
+      all_sample_jam_labels_.push_back(
+          sample_jam_buffer_(num_in_buffer_ - 1, kJamLabel));
+      all_sample_jam_travel_.push_back(
+          sample_jam_buffer_(num_in_buffer_ - 1, kJamTravel));
+      all_sample_plan_is_real_.push_back(
+          sample_jam_buffer_(num_in_buffer_ - 1, kPlanIsReal));
     }
   }
 }
 
-// Add the current state to the unsuccessful buffer.
-void SamplingC3Controller::AddToUnsuccessfulBuffer(
-    const VectorXd& x_lcs) const {
+// Add the given state to the unsuccessful buffer.
+void SamplingC3Controller::AddToUnsuccessfulBuffer(const VectorXd& x_lcs,
+                                                   int sample_index) const {
+  DRAKE_DEMAND(sample_index >= 0 &&
+               sample_index < static_cast<int>(all_sample_costs_.size()));
   // Check if the unsuccessful buffer is going to overflow.
   if (num_in_unsuccessful_buffer_ ==
       sampling_params_.N_unsuccessful_sample_buffer) {
@@ -2448,14 +2604,23 @@ void SamplingC3Controller::AddToUnsuccessfulBuffer(
           unsuccessful_sample_buffer_.row(i + 1);
       unsuccessful_sample_costs_buffer_[i] =
           unsuccessful_sample_costs_buffer_[i + 1];
+      unsuccessful_sample_jam_buffer_.row(i) =
+          unsuccessful_sample_jam_buffer_.row(i + 1);
     }
     num_in_unsuccessful_buffer_--;
   }
-  // Add the current location to the unsuccessful buffer.
+  // Add the given location to the unsuccessful buffer, along with the cost and
+  // jam label of the sample it came from.
   unsuccessful_sample_buffer_.row(num_in_unsuccessful_buffer_) =
       x_lcs.head(n_q_);
   unsuccessful_sample_costs_buffer_[num_in_unsuccessful_buffer_] =
-      all_sample_costs_[0];
+      all_sample_costs_[sample_index];
+  unsuccessful_sample_jam_buffer_(num_in_unsuccessful_buffer_, kJamLabel) =
+      all_sample_jam_labels_[sample_index];
+  unsuccessful_sample_jam_buffer_(num_in_unsuccessful_buffer_, kJamTravel) =
+      all_sample_jam_travel_[sample_index];
+  unsuccessful_sample_jam_buffer_(num_in_unsuccessful_buffer_, kPlanIsReal) =
+      all_sample_plan_is_real_[sample_index];
   num_in_unsuccessful_buffer_++;
 
   // If desired, remove nearby samples from the unattempted sample buffer.
@@ -2465,6 +2630,8 @@ void SamplingC3Controller::AddToUnsuccessfulBuffer(
         MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
     VectorXd retained_costs =
         -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
+    MatrixXd retained_jam_data = MatrixXd::Constant(
+        sampling_params_.N_sample_buffer, kNumJamColumns, kUnlabelled);
     for (int i = 0; i < num_in_buffer_; i++) {
       // Check the EE position of the sample, and remove the sample from the
       // buffer if too close to the new unsuccessful sample.
@@ -2473,12 +2640,14 @@ void SamplingC3Controller::AddToUnsuccessfulBuffer(
       if (ee_dist > sampling_params_.unsuccessful_radius) {
         retained_samples.row(retained_count) = sample_buffer_.row(i);
         retained_costs[retained_count] = sample_costs_buffer_[i];
+        retained_jam_data.row(retained_count) = sample_jam_buffer_.row(i);
         retained_count++;
       }
     }
     num_in_buffer_ = retained_count;
     sample_buffer_ = retained_samples;
     sample_costs_buffer_ = retained_costs;
+    sample_jam_buffer_ = retained_jam_data;
   }
 }
 
@@ -2696,13 +2865,21 @@ void SamplingC3Controller::ResetProgressMetrics() const {
 }
 
 void SamplingC3Controller::ResetSampleBuffers() const {
+  // The jam buffers use NaN, not the costs' -1 sentinel, for an empty slot:
+  // 0 and 1 are both meaningful jam labels, so there is no negative value free
+  // to mean "nothing here".
   sample_buffer_ = MatrixXd::Zero(sampling_params_.N_sample_buffer, n_q_);
   sample_costs_buffer_ = -1 * VectorXd::Ones(sampling_params_.N_sample_buffer);
+  sample_jam_buffer_ = MatrixXd::Constant(sampling_params_.N_sample_buffer,
+                                          kNumJamColumns, kUnlabelled);
   num_in_buffer_ = 0;
   unsuccessful_sample_buffer_ =
       MatrixXd::Zero(sampling_params_.N_unsuccessful_sample_buffer, n_q_);
   unsuccessful_sample_costs_buffer_ =
       -1 * VectorXd::Ones(sampling_params_.N_unsuccessful_sample_buffer);
+  unsuccessful_sample_jam_buffer_ =
+      MatrixXd::Constant(sampling_params_.N_unsuccessful_sample_buffer,
+                         kNumJamColumns, kUnlabelled);
   num_in_unsuccessful_buffer_ = 0;
 }
 
@@ -2884,6 +3061,55 @@ void SamplingC3Controller::RetimeAndResampleC3PlanForCost(
     return;
   }
   RetimeAndResampleEEPlan(dt, v_xy_max, v_z_max, n_q_, x_plan, u_plan);
+}
+
+// The EE path one solved sample's plan describes, on the same retimed grid the
+// retimed cost path uses -- which is the trajectory the offline jamming study
+// labelled, so the label means here what it meant there.  Written out
+// separately from CalcCost rather than plumbed out of it, so the label stays
+// independent of which cost type happens to be configured.
+vector<Vector3d> SamplingC3Controller::BuildRetimedEEPlanForLabel(
+    const std::shared_ptr<C3>& c3_object, const LCS& lcs_for_plan,
+    double* max_u_norm) const {
+  DRAKE_DEMAND(max_u_norm != nullptr);
+
+  // Read the plan out of z_sol_ rather than the x_sol_/u_sol_ getters, for the
+  // same reason CalcCost does: the two can disagree when end_on_qp_step is
+  // false, and z_sol_ is the one that describes the trajectory.
+  const vector<VectorXd> z_plan = c3_object->GetFullSolution();
+  DRAKE_THROW_UNLESS(static_cast<int>(z_plan.size()) == N_);
+  vector<VectorXd> x_plan(N_);
+  vector<VectorXd> lambda_plan(N_);
+  vector<VectorXd> u_plan(N_);
+  for (int i = 0; i < N_; i++) {
+    x_plan[i] = z_plan[i].segment(0, n_x_);
+    lambda_plan[i] = z_plan[i].segment(n_x_, n_lambda_);
+    u_plan[i] = z_plan[i].segment(n_x_ + n_lambda_, n_u_);
+  }
+  // z_sol_ carries no x_N, so roll the last step forward to get one.
+  x_plan.push_back(lcs_for_plan.A().back() * x_plan.back() +
+                   lcs_for_plan.B().back() * u_plan.back() +
+                   lcs_for_plan.D().back() * lambda_plan.back() +
+                   lcs_for_plan.d().back());
+
+  // A no-op when the EE velocity limits are unconfigured, matching what the
+  // cost path does in the same situation.
+  RetimeAndResampleC3PlanForCost(lcs_for_plan.dt(), &x_plan, &u_plan);
+
+  // Measured on the RETIMED plan, because ComputeJammingMetrics measures its
+  // no_op_plan flag after retiming; taking it from the raw plan here would call
+  // a different set of samples no-ops than the study did.
+  *max_u_norm = 0.0;
+  for (const VectorXd& u : u_plan) {
+    *max_u_norm = std::max(*max_u_norm, u.head(3).norm());
+  }
+
+  vector<Vector3d> ee_plan;
+  ee_plan.reserve(x_plan.size());
+  for (const VectorXd& x : x_plan) {
+    ee_plan.push_back(x.head(3));
+  }
+  return ee_plan;
 }
 
 // Interpolate the current plan at `filtered_solve_time_` past the plan start,
@@ -3730,7 +3956,43 @@ void SamplingC3Controller::OutputAllSampleCosts(
   sample_costs_traj.datatypes = vector<std::string>(1, "double");
   sample_costs_traj.datapoints = cost_datapoints;
   sample_costs_traj.time_vector = timestamps.cast<double>();
-  LcmTrajectory cost_traj({sample_costs_traj}, {"sample_costs"}, "sample_costs",
+
+  vector<LcmTrajectory::Trajectory> trajectories{sample_costs_traj};
+  vector<std::string> traj_names{"sample_costs"};
+
+  // The jam columns ride along on this message only when a labeller is
+  // configured, so a demo without one publishes exactly what it did before.
+  //
+  // Consumers must look these up by name.  LcmTrajectory stores its
+  // trajectories in an unordered_map, so the order they serialize in is
+  // unspecified and "sample_costs is first" is not a property anything can
+  // rely on once there is more than one of them.
+  if (fast_jamming_label_sim_ != nullptr) {
+    auto add_column = [&](const std::string& name,
+                          const vector<double>& values) {
+      MatrixXd datapoints = MatrixXd::Zero(1, all_sample_costs_.size());
+      for (int i = 0; i < all_sample_costs_.size(); i++) {
+        // Guarded rather than assumed equal: the costs are the length every
+        // consumer indexes by, so a short jam column pads with NaN instead of
+        // shifting every later sample's label onto the wrong sample.
+        datapoints(0, i) = i < static_cast<int>(values.size())
+                               ? values[i]
+                               : std::numeric_limits<double>::quiet_NaN();
+      }
+      LcmTrajectory::Trajectory traj;
+      traj.traj_name = name;
+      traj.datatypes = vector<std::string>(1, "double");
+      traj.datapoints = datapoints;
+      traj.time_vector = timestamps.cast<double>();
+      trajectories.push_back(traj);
+      traj_names.push_back(name);
+    };
+    add_column("sample_jam_labels", all_sample_jam_labels_);
+    add_column("sample_jam_travel", all_sample_jam_travel_);
+    add_column("sample_plan_is_real", all_sample_plan_is_real_);
+  }
+
+  LcmTrajectory cost_traj(trajectories, traj_names, "sample_costs",
                           "sample_costs", false);
 
   output_all_sample_costs->saved_traj = cost_traj.GenerateLcmObject();
@@ -3793,6 +4055,18 @@ void SamplingC3Controller::OutputUnsuccessfulSampleBufferCosts(
     const drake::systems::Context<double>& context,
     VectorXd* unsuccessful_sample_buffer_costs) const {
   *unsuccessful_sample_buffer_costs = unsuccessful_sample_costs_buffer_;
+}
+
+void SamplingC3Controller::OutputSampleBufferJamData(
+    const drake::systems::Context<double>& context,
+    MatrixXd* sample_buffer_jam_data) const {
+  *sample_buffer_jam_data = sample_jam_buffer_;
+}
+
+void SamplingC3Controller::OutputUnsuccessfulSampleBufferJamData(
+    const drake::systems::Context<double>& context,
+    MatrixXd* unsuccessful_sample_buffer_jam_data) const {
+  *unsuccessful_sample_buffer_jam_data = unsuccessful_sample_jam_buffer_;
 }
 
 }  // namespace systems

@@ -510,6 +510,16 @@ int DoMain(int argc, char* argv[]) {
   builder.Connect(
       controller->get_output_port_unsuccessful_sample_buffer_costs(),
       unsuccessful_sample_buffer_sender->get_input_port_sample_costs());
+  // The jam data ports exist only when this demo's parameters configured a
+  // risk_params jam labeller.  Left unconnected otherwise, the senders publish
+  // NaN jam arrays rather than a verdict nothing computed.
+  if (controller->publishes_jam_data()) {
+    builder.Connect(controller->get_output_port_sample_buffer_jam_data(),
+                    sample_buffer_sender->get_input_port_jam_data());
+    builder.Connect(
+        controller->get_output_port_unsuccessful_sample_buffer_jam_data(),
+        unsuccessful_sample_buffer_sender->get_input_port_jam_data());
+  }
 
   auto owned_diagram = builder.Build();
   owned_diagram->set_name(("sampling_c3_controller_" + FLAGS_demo_name));

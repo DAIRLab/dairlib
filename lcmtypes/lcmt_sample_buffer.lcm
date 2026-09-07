@@ -10,4 +10,12 @@ struct lcmt_sample_buffer
 
   float costs[buffer_length];
   float configurations[buffer_length][num_configurations];
+
+  // Fast jam label carried alongside each buffered sample, NaN wherever the
+  // sample carries no label:  an empty buffer slot, or a controller running
+  // without risk_params, which leaves the jam data unconnected entirely.
+  // These mean exactly what the same-named SAMPLE_COSTS trajectories mean.
+  float jam_labels[buffer_length];
+  float jam_travel[buffer_length];
+  float plan_is_real[buffer_length];
 }

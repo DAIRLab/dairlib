@@ -27,6 +27,7 @@
 // Outputs one np.loadtxt-friendly file, jamming_sweep_random.txt, for
 // three_d_printer/test/plot_jamming_sweep.py and jamming_visualizer.cc.
 
+#include <chrono>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -36,7 +37,9 @@
 
 #include <Eigen/Dense>
 #include <gflags/gflags.h>
+#include <omp.h>
 
+#include "examples/sampling_c3/fast_jamming_label.h"
 #include "examples/sampling_c3/generate_samples.h"
 #include "examples/sampling_c3/jamming_ground_truth.h"
 #include "examples/sampling_c3/jamming_metrics.h"
@@ -107,6 +110,15 @@ DEFINE_bool(label_with_sim, false,
             "extra columns on the same file.  Ground truth for ranking the "
             "predictors against -- every other column is derived from the LCS, "
             "so they cannot be checked against each other.");
+DEFINE_bool(label_variants, false,
+            "Additionally label every sample with each configuration of the "
+            "fast approximate labeller (examples/sampling_c3/"
+            "fast_jamming_label.h), as extra columns on the same file, and "
+            "report what each one cost in time.  Requires --label_with_sim: "
+            "the whole point is to compare against the ground truth, and the "
+            "sample draws are seeded from std::random_device, so the "
+            "comparison only means anything within a single run.  Analysed by "
+            "three_d_printer/test/analyze_label_variants.py.");
 DEFINE_int32(
     osqp_max_iter, 0,
     "If positive, override OSQP's max_iter.  Lowering it forces solver "
@@ -203,6 +215,127 @@ void WriteStateComment(std::ostream& out, const string& name,
   out << "\n";
 }
 
+// One configuration of the fast approximate labeller, and what it produced.
+struct LabelVariant {
+  string name;
+  systems::FastJammingLabelConfig config;
+  vector<double> travel;
+  vector<double> jammed;
+  double seconds_per_sample = 0.0;
+};
+
+// The ladder the study walks.  One knob moves at a time from a common base, so
+// a disagreement can be attributed to the knob that caused it, plus one
+// cumulative configuration showing what they cost together.
+//
+// "reference" is the control: the ground truth's own physics, and its own
+// threshold.  It still differs from the ground truth by the passive baseline it
+// does not subtract, so its *travel* is what must match, not its verdict -- the
+// analysis script recovers the verdict by shifting the threshold.
+vector<LabelVariant> MakeLabelVariants() {
+  using systems::FastJammingLabelConfig;
+  // Every variant but the control thresholds raw travel at the ground truth's
+  // own threshold plus the cone scene's passive settle, which is where the
+  // labeller actually runs.  Coarsening it was the original expectation and is
+  // measurably wrong: the thr2mm variant below keeps that evidence, costing
+  // ~7 points of agreement for no time.
+  const auto base = []() {
+    FastJammingLabelConfig config = FastJammingLabelConfig::Reference();
+    config.travel_threshold = 1.10e-3;
+    return config;
+  };
+
+  vector<LabelVariant> variants;
+  const auto add = [&variants](const string& name,
+                               const FastJammingLabelConfig& config) {
+    LabelVariant variant;
+    variant.name = name;
+    variant.config = config;
+    variants.push_back(variant);
+  };
+
+  add("reference", FastJammingLabelConfig::Reference());
+  // The reference physics at the threshold the study started out assuming was
+  // necessary, so the ladder carries its own evidence that it is not: same
+  // speed as "reference", an order of magnitude worse agreement.
+  {
+    FastJammingLabelConfig config = base();
+    config.travel_threshold = 2e-3;
+    add("thr2mm", config);
+  }
+  // The base itself, i.e. the reference physics at the threshold everything
+  // else is scored at -- the zero point the cheap knobs are measured against.
+  add("thr1.1mm", base());
+  for (const double dt : {0.002, 0.004, 0.008}) {
+    FastJammingLabelConfig config = base();
+    config.sim_dt = dt;
+    char name[32];
+    std::snprintf(name, sizeof(name), "dt%.0fms", 1000.0 * dt);
+    add(name, config);
+  }
+  {
+    FastJammingLabelConfig config = base();
+    config.point_contact = true;
+    add("point", config);
+  }
+  for (const double settle : {0.25, 0.0}) {
+    FastJammingLabelConfig config = base();
+    config.settle_fraction = settle;
+    char name[32];
+    std::snprintf(name, sizeof(name), "settle%.0f", 100.0 * settle);
+    add(name, config);
+  }
+  {
+    FastJammingLabelConfig config = base();
+    config.prescribed_ee = true;
+    add("kinee", config);
+  }
+  {
+    // Every knob that earned its place, together, with the early exit on.
+    // Point contact and the prescribed end effector are left out: both measured
+    // at 1.0x, so they cost complexity for no time.  The exit cannot change the
+    // verdict, so this variant's speed is the honest number while its travel is
+    // only a lower bound on the samples that bailed.
+    FastJammingLabelConfig config = base();
+    config.sim_dt = 0.004;
+    config.settle_fraction = 0.25;
+    config.early_exit = true;
+    add("fast_all", config);
+  }
+  return variants;
+}
+
+// Labels every sample under one configuration, in parallel across samples --
+// which is also the check that FastJammingLabelSim::Label is safe to call that
+// way, since that is how the controller would eventually use it.
+void RunLabelVariant(const vector<string>& object_models,
+                     const vector<SampleJammingResult>& results,
+                     const Vector4d& object_orientation,
+                     const Vector3d& object_position, LabelVariant* variant) {
+  const systems::FastJammingLabelSim sim(object_models, variant->config);
+  const int num_samples = static_cast<int>(results.size());
+  variant->travel.assign(num_samples, 0.0);
+  variant->jammed.assign(num_samples, 0.0);
+
+  const auto start = std::chrono::steady_clock::now();
+#pragma omp parallel for
+  for (int i = 0; i < num_samples; ++i) {
+    const SampleJammingResult& result = results.at(i);
+    const int plan_is_real =
+        std::isnan(result.metrics.no_op_plan)
+            ? -1
+            : (result.metrics.no_op_plan > 0.5 ? 0 : 1);
+    const systems::FastJammingLabel label =
+        sim.Label(object_orientation, object_position, result.retimed_ee_plan,
+                  result.planning_dt, plan_is_real);
+    variant->travel.at(i) = label.travel;
+    variant->jammed.at(i) = label.jammed;
+  }
+  const std::chrono::duration<double> elapsed =
+      std::chrono::steady_clock::now() - start;
+  variant->seconds_per_sample = elapsed.count() / num_samples;
+}
+
 void WriteResults(const string& path, const vector<SweptSample>& samples,
                   const vector<SampleJammingResult>& results,
                   const Vector3d& object_position,
@@ -210,7 +343,9 @@ void WriteResults(const string& path, const vector<SweptSample>& samples,
                   const VectorXd& x_lcs_curr, const VectorXd& x_lcs_des,
                   const VectorXd& x_lcs_final_des,
                   const SamplingC3Options& sampling_c3_options,
-                  const vector<systems::GroundTruthLabel>& labels) {
+                  const vector<systems::GroundTruthLabel>& labels,
+                  const vector<LabelVariant>& variants,
+                  double ground_truth_seconds_per_sample) {
   DRAKE_DEMAND(samples.size() == results.size());
   DRAKE_DEMAND(labels.empty() || labels.size() == results.size());
   std::ofstream out(path);
@@ -246,6 +381,22 @@ void WriteResults(const string& path, const vector<SweptSample>& samples,
   WriteStateComment(out, "c3_state_actual", x_lcs_curr);
   WriteStateComment(out, "c3_state_target", x_lcs_des);
   WriteStateComment(out, "c3_state_final_target", x_lcs_final_des);
+  // What each labelling configuration cost, so the analysis can report a
+  // speedup without having to time anything itself.
+  if (ground_truth_seconds_per_sample > 0.0) {
+    out << "# label_cost ground_truth seconds_per_sample "
+        << ground_truth_seconds_per_sample << "\n";
+  }
+  if (!variants.empty()) {
+    // The ground truth is timed serially and the variants across all available
+    // threads, so the two costs are not directly comparable without this.
+    out << "# label_threads " << omp_get_max_threads() << "\n";
+  }
+  for (const LabelVariant& variant : variants) {
+    out << "# label_cost " << variant.name << " seconds_per_sample "
+        << variant.seconds_per_sample << " config "
+        << variant.config.Describe() << "\n";
+  }
   out << "# ee_x ee_y ee_z acceptable inside_keep_out solve_fell_back c3_cost";
   for (const string& name : JammingMetricsColumnNames()) {
     out << " " << name;
@@ -254,6 +405,10 @@ void WriteResults(const string& path, const vector<SweptSample>& samples,
     for (const string& name : systems::JammingGroundTruthSim::ColumnNames()) {
       out << " " << name;
     }
+  }
+  for (const LabelVariant& variant : variants) {
+    out << " fast_" << variant.name << "_travel"
+        << " fast_" << variant.name << "_jammed";
   }
   out << "\n";
   for (size_t i = 0; i < samples.size(); ++i) {
@@ -273,6 +428,9 @@ void WriteResults(const string& path, const vector<SweptSample>& samples,
       for (int j = 0; j < label_row.size(); ++j) {
         out << " " << label_row(j);
       }
+    }
+    for (const LabelVariant& variant : variants) {
+      out << " " << variant.travel.at(i) << " " << variant.jammed.at(i);
     }
     out << "\n";
   }
@@ -495,6 +653,14 @@ int DoMain(int argc, char* argv[]) {
 
   // --- Ground truth, if asked for. ---
   vector<systems::GroundTruthLabel> labels;
+  vector<LabelVariant> variants;
+  double ground_truth_seconds_per_sample = 0.0;
+  if (FLAGS_label_variants && !FLAGS_label_with_sim) {
+    throw std::runtime_error(
+        "--label_variants needs --label_with_sim: the variants are only "
+        "meaningful next to the ground truth they approximate, and the sample "
+        "draws are random, so both have to be measured in the same run.");
+  }
   if (FLAGS_label_with_sim) {
     const auto sim_params = drake::yaml::LoadYamlFile<RobotSimParams>(
         "examples/sampling_c3/three_d_printer/" + FLAGS_demo_name +
@@ -508,6 +674,7 @@ int DoMain(int argc, char* argv[]) {
 
     labels.resize(results.size());
     int num_jammed = 0;
+    const auto ground_truth_start = std::chrono::steady_clock::now();
     for (size_t i = 0; i < results.size(); ++i) {
       const SampleJammingResult& result = results.at(i);
       // A solve that produced nothing to execute has nothing to replay, and
@@ -523,15 +690,40 @@ int DoMain(int argc, char* argv[]) {
         std::cout << "  " << (i + 1) << " / " << results.size() << std::endl;
       }
     }
+    const std::chrono::duration<double> ground_truth_elapsed =
+        std::chrono::steady_clock::now() - ground_truth_start;
+    ground_truth_seconds_per_sample =
+        ground_truth_elapsed.count() / results.size();
     std::cout << num_jammed << " of " << results.size()
               << " samples are labelled jammed: the plan commanded real effort "
                  "and moved the object no further than holding still would."
               << std::endl;
+    std::cout << "  ground truth cost " << ground_truth_seconds_per_sample
+              << " s/sample (serial)" << std::endl;
+
+    if (FLAGS_label_variants) {
+      variants = MakeLabelVariants();
+      std::cout << "Labelling the same " << results.size()
+                << " samples under " << variants.size()
+                << " fast configurations (parallel across samples, "
+                << omp_get_max_threads() << " threads)..." << std::endl;
+      for (LabelVariant& variant : variants) {
+        RunLabelVariant(sim_params.object_models, results, object_orientation,
+                        object_position, &variant);
+        std::cout << "  " << variant.name << ": "
+                  << variant.seconds_per_sample << " s/sample" << std::endl;
+      }
+      std::cout << "Wrote per-variant travel and verdict columns; run "
+                   "analyze_label_variants.py on the output for the "
+                   "agreement report."
+                << std::endl;
+    }
   }
 
   WriteResults(FLAGS_out_dir + "/jamming_sweep_random.txt", samples, results,
                object_position, object_orientation, goal_step, x_lcs_curr,
-               x_lcs_des, x_lcs_final_des, sampling_c3_options, labels);
+               x_lcs_des, x_lcs_final_des, sampling_c3_options, labels,
+               variants, ground_truth_seconds_per_sample);
 
   return 0;
 }

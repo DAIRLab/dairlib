@@ -6,6 +6,8 @@
 #include <ctime>
 #include <iostream>
 #include <limits>
+#include <sstream>
+#include <string>
 #include <thread>
 #include <unordered_set>
 #include <utility>
@@ -75,6 +77,16 @@ namespace {
 // never simulated.  NaN rather than a negative sentinel because 0 and 1 are
 // both meaningful jam labels.
 const double kUnlabelled = std::numeric_limits<double>::quiet_NaN();
+
+// Compact summary of a mode switch's cost gap against the hysteresis it had to
+// clear, both in absolute cost and as a fraction of the cost the relative
+// hysteresis is taken against.
+std::string HysteresisMargin(double gap, double threshold, double reference) {
+  std::stringstream ss;
+  ss << "  [gap " << gap << " = " << 100 * gap / reference << "%, need "
+     << threshold << " = " << 100 * threshold / reference << "%]";
+  return ss.str();
+}
 }  // namespace
 
 namespace systems {
@@ -616,14 +628,118 @@ void SamplingC3Controller::EnableGroundTruthCostSim(
         "SamplingC3Controller::EnableGroundTruthCostSim: the ground truth sim "
         "handles exactly one object.");
   }
-  ground_truth_sims_.clear();
-  for (int i = 0; i < num_threads_to_use_; i++) {
-    // No settle window:  the cost scores exactly the plan's N+1 knots, so
-    // there is nowhere for states past the horizon to go -- and holding the
-    // last knot afterwards would double the rollout's time for them.
-    ground_truth_sims_.push_back(std::make_unique<JammingGroundTruthSim>(
-        object_models, sim_dt, /*settle_fraction=*/0.0));
+  // A settle window past the plan's last knot is scored along with the plan,
+  // so CalcCost sizes its cost matrices from what Rollout returns rather than
+  // assuming N+1 knots.  Zero reproduces the original behaviour exactly.
+  const double settle_fraction =
+      progress_params_.sim_cost_settle_fraction.value_or(0.0);
+  if (settle_fraction < 0.0) {
+    throw std::runtime_error(
+        "SamplingC3Controller::EnableGroundTruthCostSim: "
+        "sim_cost_settle_fraction must not be negative.");
   }
+  const double dt_pose = progress_params_.sim_cost_dt.value_or(sim_dt);
+  const double dt_position =
+      progress_params_.sim_cost_dt_position.value_or(sim_dt);
+
+  // The two contact/actuation knobs the fast jam labeller offers.  Both are
+  // physics changes rather than cheaper solves of the same physics, so they
+  // are off unless a demo asks for them.
+  const bool point_contact =
+      progress_params_.sim_cost_point_contact.value_or(false);
+  const bool prescribed_ee =
+      progress_params_.sim_cost_prescribed_ee.value_or(false);
+
+  auto build = [&](double dt) {
+    std::vector<std::unique_ptr<JammingGroundTruthSim>> sims;
+    for (int i = 0; i < num_threads_to_use_; i++) {
+      sims.push_back(std::make_unique<JammingGroundTruthSim>(
+          object_models, dt, settle_fraction, point_contact, prescribed_ee));
+    }
+    return sims;
+  };
+
+  ground_truth_sims_ = build(dt_pose);
+  // Only a second set of plants when the two phases actually differ; they are
+  // cheap to build but there is no reason to hold twice as many.
+  ground_truth_sims_position_.clear();
+  if (dt_position != dt_pose) {
+    ground_truth_sims_position_ = build(dt_position);
+  }
+}
+
+const std::vector<std::unique_ptr<JammingGroundTruthSim>>&
+SamplingC3Controller::ActiveGroundTruthSims() const {
+  if (!crossed_cost_switching_threshold_ &&
+      !ground_truth_sims_position_.empty()) {
+    return ground_truth_sims_position_;
+  }
+  return ground_truth_sims_;
+}
+
+void SamplingC3Controller::ZeroNonObjectCostBlocks(
+    int num_objects, vector<MatrixXd>* Q_cost, vector<MatrixXd>* R_cost) const {
+  // Set R and the robot portion of the Q matrix to zero so that only the
+  // object state errors contribute to cost.
+  for (int i = 0; i < static_cast<int>(Q_cost->size()); i++) {
+    Q_cost->at(i).block(0, 0, 3, 3) *= 0.0;
+    Q_cost->at(i).block(3 + 7 * num_objects, 3 + 7 * num_objects, 3, 3) *= 0.0;
+    if (R_cost != nullptr && i < static_cast<int>(R_cost->size())) {
+      R_cost->at(i) *= 0.0;
+    }
+  }
+}
+
+double SamplingC3Controller::ComputePassiveRolloutCost(
+    const VectorXd& x_lcs_curr, const VectorXd& x_lcs_des) const {
+  if (ActiveGroundTruthSims().empty()) {
+    throw std::runtime_error(
+        "SamplingC3Controller::ComputePassiveRolloutCost needs "
+        "EnableGroundTruthCostSim to have been called, which only the 3D "
+        "printer demos do.");
+  }
+  const int num_objects = controller_params_.num_objects;
+  const int ee_vel_index = 3 + 7 * num_objects;
+
+  // The end effector never moving, for exactly as many knots as a sample's
+  // plan covers:  the same window, so the two costs are on the same scale and
+  // their difference is what the push achieved.
+  const vector<Vector3d> held(N_ + 1, x_lcs_curr.head(3));
+
+  // The scene as it actually is, velocities included.  A rollout that pretends
+  // the object is at rest describes a different do-nothing than the one the
+  // controller is choosing against.
+  RolloutInitialVelocities initial_velocities;
+  initial_velocities.ee_velocity = x_lcs_curr.segment(ee_vel_index, 3);
+  initial_velocities.object_angular_velocity =
+      x_lcs_curr.segment(ee_vel_index + 3, 3);
+  initial_velocities.object_linear_velocity =
+      x_lcs_curr.segment(ee_vel_index + 6, 3);
+
+  double travel = 0.0;
+  double rotation = 0.0;
+  vector<VectorXd> knot_states;
+  ActiveGroundTruthSims().front()->Rollout(
+      x_lcs_curr.segment(3, 4), x_lcs_curr.segment(7, 3), held, dt_, &travel,
+      &rotation, /*max_contact_force=*/nullptr,
+      /*max_ee_tracking_error=*/nullptr, initial_velocities, &knot_states);
+  DRAKE_THROW_UNLESS(static_cast<int>(knot_states.size()) >= N_ + 1);
+
+  // The same Q a kSimDrakeObjectOnly sample is scored with, grown to whatever
+  // window the settle fraction produced so the two cover the same span.  There is no
+  // input trajectory to score here -- the end effector is holding still -- so
+  // R is not needed at all.
+  vector<MatrixXd> Q_cost = Q_;
+  Q_cost.insert(Q_cost.end(), knot_states.size() - Q_cost.size(),
+                Q_cost.back());
+  ZeroNonObjectCostBlocks(num_objects, &Q_cost, /*R_cost=*/nullptr);
+  const double terminal_weight =
+      progress_params_.sim_cost_terminal_weight.value_or(1.0);
+  if (terminal_weight != 1.0) {
+    Q_cost.back() *= terminal_weight;
+  }
+  return TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(knot_states,
+                                                             x_lcs_des, Q_cost);
 }
 
 // This function relies on the previously computed z_fin from Solve.
@@ -675,6 +791,10 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
   vector<MatrixXd> R_cost = cost_mats.R;
 
   // Set a few more variables necessary for some of the cost types.
+  // Knots scored beyond the plan's own N+1, which only a settling Drake
+  // rollout produces.  Zero everywhere else, so every other cost type sizes
+  // its matrices exactly as before.
+  int num_settle_knots = 0;
   const int ee_vel_index = 3 + 7 * num_objects;
   auto simulate_config = c3::LCSSimulateConfig();
   simulate_config.regularized = true;
@@ -790,15 +910,24 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
     // Rollout keeps no state, so two threads sharing a sim is safe; the modulo
     // only matters for callers that ask for more threads than the controller
     // is configured with.
-    ground_truth_sims_.at(omp_get_thread_num() % ground_truth_sims_.size())
+    const auto& sims = ActiveGroundTruthSims();
+    sims.at(omp_get_thread_num() % sims.size())
         ->Rollout(x0.segment(3, 4), x0.segment(7, 3), ee_plan,
                   lcs_for_plan.dt(), &travel, &rotation,
                   /*max_contact_force=*/nullptr,
                   /*max_ee_tracking_error=*/nullptr, initial_velocities,
                   &knot_states);
-    DRAKE_THROW_UNLESS(static_cast<int>(knot_states.size()) == N_ + 1);
+    // One state per knot, plus one per settle step.  Take the settle length
+    // from what Rollout returned rather than recomputing it from the
+    // configured fraction:  the rounding lives in JammingGroundTruthSim, and
+    // two copies of it would eventually disagree.
+    DRAKE_THROW_UNLESS(static_cast<int>(knot_states.size()) >= N_ + 1);
+    num_settle_knots = static_cast<int>(knot_states.size()) - (N_ + 1);
     XX = knot_states;
     UU = UU_retimed;
+    // The goal does not move during the settle, so the extra knots are scored
+    // against the same desired state as the plan's last one.
+    x_desired.insert(x_desired.end(), num_settle_knots, x_desired.back());
 
   } else {
     throw std::runtime_error(
@@ -806,17 +935,27 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
         std::to_string(static_cast<int>(cost_type)) + ".");
   }
 
+  // The settle knots are scored on the same terms as the plan's last one.
+  // R and UU are untouched:  the settle commands no inputs, and
+  // ComputeQuadraticTrajectoryCost scores the (UU, R) pair against its own
+  // length rather than the state trajectory's.
+  Q_cost.insert(Q_cost.end(), num_settle_knots, Q_cost.back());
+
   if (cost_type == C3CostComputationType::kSimImpedanceObjectCostOnly ||
       cost_type == C3CostComputationType::kSimImpedanceRetimedObjectCostOnly ||
       cost_type == C3CostComputationType::kSimDrakeObjectOnly) {
-    // Set R and the robot portion of the Q matrix to zero so that only the
-    // object state errors contribute to cost.
-    for (int i = 0; i < N_ + 1; i++) {
-      Q_cost[i].block(0, 0, 3, 3) *= 0.0;
-      Q_cost[i].block(3 + 7 * num_objects, 3 + 7 * num_objects, 3, 3) *= 0.0;
-      if (i < N_) {
-        R_cost[i] *= 0.0;
-      }
+    ZeroNonObjectCostBlocks(num_objects, &Q_cost, &R_cost);
+  }
+
+  // Emphasise where the object ended up over how it got there.  The last
+  // scored knot is the plan's final knot without a settle window and the
+  // object's resting pose with one; the latter is the quantity worth
+  // weighting, so a demo that raises this should also set a settle fraction.
+  if (cost_type == C3CostComputationType::kSimDrakeObjectOnly) {
+    const double terminal_weight =
+        progress_params_.sim_cost_terminal_weight.value_or(1.0);
+    if (terminal_weight != 1.0) {
+      Q_cost.back() *= terminal_weight;
     }
   }
 
@@ -926,6 +1065,13 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
     std::cout << "\n\n";
   }
 
+  // Downstream consumers -- the dynamically feasible plan buffers and the
+  // output ports -- are all sized to the plan's own horizon, and
+  // AugmentSamplesWithBuffer uses "size() != N_ + 1" as its uninitialised
+  // sentinel.  The settle knots were scored; they are not part of the plan.
+  if (num_settle_knots > 0) {
+    XX.resize(N_ + 1);
+  }
   std::pair<double, vector<VectorXd>> ret(cost, XX);
   return ret;
 }
@@ -1433,7 +1579,13 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
              !force_c3_mode) {
       is_doing_c3_ = false;
       mode_switch_reason_ = ModeSwitchReason::kToReposCost;
-      std::cout << "Repositioning because found good sample" << std::endl;
+      const double hyst_used = progress_params_.use_relative_hysteresis
+                                   ? hyst_c3_to_repos_frac * curr_cost
+                                   : hyst_c3_to_repos;
+      std::cout << "Repositioning because found good sample"
+                << HysteresisMargin(curr_cost - best_other_cost, hyst_used,
+                                    curr_cost)
+                << std::endl;
     }
 
     // Reset progress metrics if switching to repositioning.
@@ -1493,7 +1645,14 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // repos_to_repos hysteresis value here before the comparison to the
       // current location C3 cost with repos_to_c3 hysteresis afterwards.
       else {
-        std::cout << "Repos -> Repos:  Switching to new sample" << std::endl;
+        const double hyst_used =
+            progress_params_.use_relative_hysteresis
+                ? hyst_repos_to_repos_frac * repos_target_raw_cost
+                : hyst_repos_to_repos;
+        std::cout << "Repos -> Repos:  Switching to new sample"
+                  << HysteresisMargin(repos_target_raw_cost - best_other_cost,
+                                      hyst_used, repos_target_raw_cost)
+                  << std::endl;
         pursued_target_source_ = PursuedTargetSource::kNewSample;
         if (!progress_params_.use_relative_hysteresis) {
           best_other_cost += hyst_repos_to_repos;
@@ -1574,7 +1733,13 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
             SampleIndex::kCurrentReposTarget);
       } else {
         mode_switch_reason_ = ModeSwitchReason::kToC3Cost;
-        std::cout << "Switching to C3 because lower in cost" << std::endl;
+        const double hyst_used = progress_params_.use_relative_hysteresis
+                                     ? hyst_repos_to_c3_frac * best_other_cost
+                                     : hyst_repos_to_c3;
+        std::cout << "Switching to C3 because lower in cost"
+                  << HysteresisMargin(best_other_cost - curr_cost, hyst_used,
+                                      best_other_cost)
+                  << std::endl;
         // Add the current state to the unsuccessful sample buffer.  It gets
         // automatically removed if the object moves beyond the buffer movement
         // thresholds.
@@ -1902,7 +2067,7 @@ vector<SampleJammingResult>
 SamplingC3Controller::EvaluateJammingMetricsForSamples(
     const VectorXd& x_lcs_curr, const VectorXd& x_lcs_des,
     const VectorXd& x_lcs_final_des, const vector<Vector3d>& ee_samples,
-    int goal_step, int num_threads) const {
+    int goal_step, int num_threads, double* passive_cost) const {
   // Select the per-goal settings for the goal step under study.  Note this also
   // sets active_keep_out_geometries_, which only the sampler reads -- this path
   // never samples, so keep-out regions do not filter anything here.
@@ -2007,6 +2172,13 @@ SamplingC3Controller::EvaluateJammingMetricsForSamples(
   vector<SampleJammingResult> results(num_samples);
   vector<VectorXd> x_desired(N_ + 1, x_lcs_des);
   C3::CostMatrices c3_costmat(Q_, R_, G_, U_);
+
+  // One rollout for the whole sweep, not one per sample:  every candidate
+  // differs from the others only in where the end effector starts, so "the
+  // object with no help at all" is the same scene for all of them.
+  if (passive_cost != nullptr) {
+    *passive_cost = ComputePassiveRolloutCost(x_lcs_curr, x_lcs_des);
+  }
 
   // The retiming inputs, resolved once: GetEEVelocityLimits warns on a bad
   // configuration, which is not something to do inside the parallel loop.  An

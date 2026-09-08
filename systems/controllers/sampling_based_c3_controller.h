@@ -275,6 +275,11 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   /// loop, or 0 to use the controller's configured thread count.  Solver
   /// fallbacks are attributed per sample either way.
   ///
+  /// @p passive_cost, when given, receives the cost of holding the end
+  /// effector still (ComputePassiveRolloutCost) for this same scene -- one
+  /// scalar for the whole call, since every sample shares the object's pose.
+  /// Requires EnableGroundTruthCostSim; left untouched without it.
+  ///
   /// The metrics describe the plan retimed to the configured EE velocity
   /// limits -- what the execution path publishes and what a
   /// kSimImpedanceRetimedObjectCostOnly cost scores.  With
@@ -284,7 +289,16 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const Eigen::VectorXd& x_lcs_curr, const Eigen::VectorXd& x_lcs_des,
       const Eigen::VectorXd& x_lcs_final_des,
       const std::vector<Eigen::Vector3d>& ee_samples, int goal_step,
-      int num_threads = 0) const;
+      int num_threads = 0, double* passive_cost = nullptr) const;
+
+  /// Whether the last EvaluateJammingMetricsForSamples or ComputePlan call
+  /// found the object inside the goal's cost switching threshold, and so used
+  /// the pose-tracking cost type and hysteresis rather than the
+  /// position-tracking ones.  Offline analysis reads it to record which of the
+  /// two parameter sets its numbers describe.
+  bool crossed_cost_switching_threshold() const {
+    return crossed_cost_switching_threshold_;
+  }
 
   /// Draws candidate end effector positions with the demo's configured sampling
   /// strategy, deliberately with keep-out regions DISABLED, so an offline sweep
@@ -303,6 +317,33 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const std::shared_ptr<c3::C3>& c3_object,
       const bool& force_tracking_disabled, int num_objects,
       const bool& print_cost_breakdown) const;
+
+  /// Zeroes the robot blocks of @p Q_cost and the whole of @p R_cost, so only
+  /// the object's state errors contribute.  @p R_cost may be null for a caller
+  /// with no input trajectory to score.  Shared by the object-only cost
+  /// types and by the passive rollout the offline sweep scores against, so the
+  /// two are guaranteed to be measured with the same matrices.
+  void ZeroNonObjectCostBlocks(int num_objects,
+                               std::vector<Eigen::MatrixXd>* Q_cost,
+                               std::vector<Eigen::MatrixXd>* R_cost) const;
+
+  /// The cost rollout sims for the phase currently in effect:  the position
+  /// set when the object is still outside the goal's cost switching threshold
+  /// and that phase was given its own sim step, the pose set otherwise.
+  const std::vector<std::unique_ptr<JammingGroundTruthSim>>&
+  ActiveGroundTruthSims() const;
+
+  /// Scores the scene with the end effector held exactly where it is:  what
+  /// the object does over one plan's worth of time with no help at all.  This
+  /// is the reference an object-only sim cost is a level above, and the sweep
+  /// reports it so a threshold can be expressed as progress over doing nothing
+  /// rather than as a fraction of a level.
+  ///
+  /// Uses the same rollout, knot count, knot spacing and cost matrices a cost
+  /// type 7 sample does, so the difference between the two is only the end
+  /// effector's motion.  Requires EnableGroundTruthCostSim.
+  double ComputePassiveRolloutCost(const Eigen::VectorXd& x_lcs_curr,
+                                   const Eigen::VectorXd& x_lcs_des) const;
   /// Function for computing one control loop
   drake::systems::EventStatus ComputePlan(
       const drake::systems::Context<double>& context,
@@ -804,6 +845,11 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // JammingGroundTruthSim::Rollout holds no state -- but a sim apiece keeps
   // the threads out of each other's allocators.
   std::vector<std::unique_ptr<JammingGroundTruthSim>> ground_truth_sims_;
+  /// A second set at the position phase's sim step, built only when
+  /// sim_cost_dt_position resolves to something different from sim_cost_dt.
+  /// Empty means both phases share ground_truth_sims_.
+  std::vector<std::unique_ptr<JammingGroundTruthSim>>
+      ground_truth_sims_position_;
 
   mutable SampleIndex best_sample_index_ = kCurrentLocation;
   mutable ModeSwitchReason mode_switch_reason_ = kNoSwitch;

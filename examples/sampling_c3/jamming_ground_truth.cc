@@ -15,6 +15,7 @@ namespace systems {
 
 using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::BodyIndex;
+using drake::multibody::ContactModel;
 using drake::multibody::ContactResults;
 using drake::multibody::ModelInstanceIndex;
 using drake::multibody::MultibodyPlant;
@@ -59,8 +60,11 @@ double TotalContactForce(const ContactResults<double>& results) {
 }  // namespace
 
 JammingGroundTruthSim::JammingGroundTruthSim(
-    const vector<string>& object_models, double sim_dt, double settle_fraction)
-    : settle_fraction_(settle_fraction) {
+    const vector<string>& object_models, double sim_dt, double settle_fraction,
+    bool point_contact, bool prescribed_ee)
+    : sim_dt_(sim_dt),
+      settle_fraction_(settle_fraction),
+      prescribed_ee_(prescribed_ee) {
   DRAKE_THROW_UNLESS(sim_dt >
                      0.0);  // The actuator PD gains need a discrete plant.
   DRAKE_THROW_UNLESS(settle_fraction >= 0.0);
@@ -68,6 +72,14 @@ JammingGroundTruthSim::JammingGroundTruthSim(
 
   DiagramBuilder<double> builder;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
+
+  // Before Finalize, and before any geometry is registered, so the whole scene
+  // is resolved under one model.  Every collision in this scene declares a
+  // point contact stiffness, so the point model is fully parameterised.
+  if (point_contact) {
+    plant.set_contact_model(ContactModel::kPoint);
+  }
+
   printer_index_ =
       Add3DPrinterToPlant(&plant, &scene_graph, /*include_ee=*/true);
   const vector<ModelInstanceIndex> object_indices =
@@ -242,12 +254,42 @@ void JammingGroundTruthSim::Rollout(
     // the object not being pushed and read as a jam.
     VectorXd desired_state = VectorXd::Zero(6);
     desired_state.head(3) = target;
-    if (step < num_knots - 1) {
-      desired_state.tail(3) = (ee_plan[knot] - ee_plan[knot - 1]) / knot_dt;
-    }
+    const Vector3d plan_velocity =
+        step < num_knots - 1
+            ? Vector3d((ee_plan[knot] - ee_plan[knot - 1]) / knot_dt)
+            : Vector3d::Zero();
+    desired_state.tail(3) = plan_velocity;
     desired_state_port.FixValue(&plant_context, desired_state);
 
-    simulator.AdvanceTo((step + 1) * knot_dt);
+    if (prescribed_ee_) {
+      // Write the interpolated axis positions straight into the state each
+      // step instead of asking the PD to reach them, exactly as
+      // FastJammingLabelSim::Label does.  Where this step starts from: the
+      // previous knot while the plan is still running, and the target itself
+      // once it has run out, so the settle window holds the last knot rather
+      // than re-walking the final segment on every one of its steps.
+      const Vector3d previous =
+          step < num_knots - 1
+              ? Vector3d(ee_plan[knot - 1] - ee_to_joint_offset_)
+              : target;
+      const double knot_start_time = step * knot_dt;
+      double time = knot_start_time;
+      while (time < (step + 1) * knot_dt - 1e-12) {
+        const double next_time = std::min(time + sim_dt_, (step + 1) * knot_dt);
+        const double alpha = (next_time - knot_start_time) / knot_dt;
+        const Vector3d axes = previous + alpha * (target - previous);
+        for (int i = 0; i < 3; ++i) {
+          const auto& joint =
+              plant_->GetJointByName<PrismaticJoint>(kJointNames[i]);
+          joint.set_translation(&plant_context, axes(i));
+          joint.set_translation_rate(&plant_context, plan_velocity(i));
+        }
+        simulator.AdvanceTo(next_time);
+        time = next_time;
+      }
+    } else {
+      simulator.AdvanceTo((step + 1) * knot_dt);
+    }
 
     const auto& pose = plant_->EvalBodyPoseInWorld(
         plant_context, plant_->get_body(object_body_index_));

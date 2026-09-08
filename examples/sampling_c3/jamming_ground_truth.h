@@ -102,8 +102,23 @@ class JammingGroundTruthSim {
   /// @param settle_fraction how long to hold the plan's last end effector
   ///        position after the plan runs out, as a fraction of the plan's own
   ///        duration, so the object's response finishes inside the window.
+  /// @param point_contact use Drake's point contact model instead of the
+  ///        default hydroelastic-with-fallback.  Every collision in the printer
+  ///        scene declares a point contact stiffness, so the point model is
+  ///        fully parameterised; it is a different contact model, though, not a
+  ///        cheaper solve of the same one, so it changes the physics.  The same
+  ///        knob as FastJammingLabelConfig::point_contact, which measured it at
+  ///        1.0x on the cone sweep.
+  /// @param prescribed_ee write the interpolated end effector position straight
+  ///        into the state each step instead of asking the printer's PD to
+  ///        track it.  The same knob as FastJammingLabelConfig::prescribed_ee:
+  ///        it makes the end effector infinitely stiff, so it ploughs through
+  ///        the object rather than stalling against it.  A rollout under this
+  ///        reports a max_ee_tracking_error near zero by construction.
   JammingGroundTruthSim(const std::vector<std::string>& object_models,
-                        double sim_dt, double settle_fraction = 1.0);
+                        double sim_dt, double settle_fraction = 1.0,
+                        bool point_contact = false,
+                        bool prescribed_ee = false);
 
   /// Simulates @p ee_plan from the frozen scene and reports what the object
   /// did.  @p knot_dt is the plan's knot spacing.  @p plan_is_real says whether
@@ -164,7 +179,9 @@ class JammingGroundTruthSim {
   drake::multibody::ModelInstanceIndex printer_index_;
   drake::multibody::BodyIndex object_body_index_;
   Eigen::Vector3d ee_to_joint_offset_ = Eigen::Vector3d::Zero();
+  double sim_dt_ = 0.0;
   double settle_fraction_ = 1.0;
+  bool prescribed_ee_ = false;
 };
 
 }  // namespace systems

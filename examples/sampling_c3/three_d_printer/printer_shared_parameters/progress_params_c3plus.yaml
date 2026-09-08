@@ -37,8 +37,29 @@
 #                                    distribution is much tighter with most
 #                                    samples having very similar (and fairly
 #                                    high) costs.
-cost_type: 6
-cost_type_position: 6
+cost_type: 7
+cost_type_position: 7
+
+# --- Shape and speed of the Drake rollout cost type 7 scores. -----------------
+# How long to keep simulating past the plan's last knot, holding the end
+# effector there, as a fraction of the plan's own duration.  0.0 scores exactly
+# the plan's N+1 knots.
+sim_cost_settle_fraction: 0.0
+
+# Weight on the final scored knot relative to the rest.  1.0 weights every knot
+# equally.
+sim_cost_terminal_weight: 1.0
+
+# The rollout's discrete step, in seconds.
+sim_cost_dt: 0.001
+sim_cost_dt_position: 0.001
+
+# Drake's point contact model instead of the default hydroelastic-with-fallback.
+sim_cost_point_contact: false
+
+# Write the end effector position straight into the state each step instead of
+# asking the printer's PD to track it.
+sim_cost_prescribed_ee: false
 
 # Progress metric to use to determine if C3 is making progress, all phrased as
 # improvement requirements over a number of control loops (defined as
@@ -58,7 +79,7 @@ cost_switching_threshold_distance: 0.05
 # entry per step in goal_params.yaml's fixed_target_position_sequence (startup
 # throws on a length mismatch).  Comment out to use the single value above for
 # every goal.
-cost_switching_threshold_distance_sequence: [0.0, 0.0, 0.05]
+cost_switching_threshold_distance_sequence: [0.0, 0.0, 0.1, 0.05]
 
 # Penalize repositioning distance.
 travel_cost_per_meter: 0
@@ -75,6 +96,9 @@ progress_enforced_over_n_loops: 100
 ### Hysteresis parameters for switching between C3 and repositioning modes.
 finished_reposition_cost: 1000000000
 
+# Unread while use_relative_hysteresis is true, and left at their LCS-era
+# values rather than retuned:  on cost type 7 they would all need re-deriving
+# per scene, which is the thing the relative form exists to avoid.
 hyst_c3_to_repos: 300000
 hyst_c3_to_repos_position: 300000
 hyst_repos_to_c3: 200000
@@ -82,11 +106,49 @@ hyst_repos_to_c3_position: 200000
 hyst_repos_to_repos: 60000000000000
 hyst_repos_to_repos_position: 60000000000000
 
-# Relative hysteresis is in terms of a fraction of the current cost.
+# Relative hysteresis is in terms of a fraction of the current cost.  Kept
+# relative rather than absolute because the two scenes these were tuned on sit
+# 16x apart in cost level (403k at the endgame, 24.6k at the ramp base) while
+# their spreads are comparable in relative terms:  a fraction transfers between
+# them, an absolute margin does not.
+#
+# Retuned wholesale for cost type 7.  A Drake rollout is far more conservative
+# than the LCS:  its costs have a coefficient of variation of 0.018 (endgame)
+# and 0.009 (ramp base), against 0.5-0.9 for the LCS cost these fractions were
+# originally set for.  Asking for 85% of the current cost, as the LCS-era value
+# did, is unreachable on a distribution that tight -- 0 of 5000 draws clear it
+# -- so the mode never switches on cost.
+#
+# Derived from two 2000-draw jamming_sweep runs with --label_with_sim, one per
+# scene, by Monte Carlo over the real 5-samples-per-loop draw.  Reported below
+# as the per-loop probability the gate fires.  With the ground truth in hand,
+# the endgame gate picks a top-10%-by-progress sample 95% of the time it fires
+# (10% for a random pick) and a jammed sample 4% of the time (65% at random).
+# At the ramp base cost 7 does not rank the good samples any better than chance
+# (~11% vs 10%), but it does avoid the jammed ones just as strongly (4-5% vs
+# 49%), which is the failure that scene is prone to.
 use_relative_hysteresis: true
-hyst_c3_to_repos_frac: 0.85
-hyst_c3_to_repos_frac_position: 0.6
-hyst_repos_to_c3_frac: 0.3
-hyst_repos_to_c3_frac_position: 0.5
+
+# 7.5% of loops at the endgame, 6.9% at the ramp base:  roughly one switch
+# every 14 control loops in both phases.  The position value is larger because
+# the ramp base's cost distribution has a longer low tail relative to its
+# width, so the same fraction fires three times as often there.
+hyst_c3_to_repos_frac: 0.25 #0.015
+hyst_c3_to_repos_frac_position: 0.25 #0.03
+
+# Deliberately rarer than the gate above (2.3% and 4.5% per loop):  this is the
+# route that abandons a reposition part-way, and the route that ends one by
+# arriving (finished_reposition_cost) should stay the usual one.  Lowered from
+# the LCS-era 0.3/0.5 all the same, because at that value the cost route is
+# unreachable on cost 7 and arriving would be the ONLY way back into C3.
+hyst_repos_to_c3_frac: 0.16 #0.005
+hyst_repos_to_c3_frac_position: 0.3 #0.01
+
+# Left at the LCS-era value on purpose.  0.3 asks a new sample to beat the
+# target being pursued by 30%, which never happens on a CoV-0.018 distribution,
+# so the controller commits to a repositioning target once it picks one -- the
+# same behaviour these had before, since 6e13 absolute meant the same thing.
+# Lowering these to the scale of the gates above would switch targets on ~7% of
+# loops and churn mid-reposition.
 hyst_repos_to_repos_frac: 0.3
 hyst_repos_to_repos_frac_position: 0.3

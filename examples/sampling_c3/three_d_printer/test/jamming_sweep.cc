@@ -35,10 +35,13 @@
 // Outputs one np.loadtxt-friendly file, jamming_sweep_random.txt, for
 // three_d_printer/test/plot_jamming_sweep.py and jamming_visualizer.cc.
 
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -367,7 +370,8 @@ void WriteResults(const string& path, const vector<SweptSample>& samples,
                   const SamplingC3Options& sampling_c3_options,
                   const vector<systems::GroundTruthLabel>& labels,
                   const vector<LabelVariant>& variants,
-                  double ground_truth_seconds_per_sample) {
+                  double ground_truth_seconds_per_sample, double passive_cost,
+                  int cost_type) {
   DRAKE_DEMAND(samples.size() == results.size());
   DRAKE_DEMAND(labels.empty() || labels.size() == results.size());
   std::ofstream out(path);
@@ -405,6 +409,20 @@ void WriteResults(const string& path, const vector<SweptSample>& samples,
   WriteStateComment(out, "c3_state_final_target", x_lcs_final_des);
   // What each labelling configuration cost, so the analysis can report a
   // speedup without having to time anything itself.
+  // The cost of this scene with the end effector held still, so a reader can
+  // express a sample's cost as progress over doing nothing rather than as a
+  // fraction of a level that varies with the object's distance to goal.  One
+  // number for the whole file:  every sample shares the object's pose.
+  //
+  // The cost type is recorded beside it because the two are only comparable
+  // under kSimDrakeObjectOnly (7):  the passive rollout is always the Drake
+  // sim, so subtracting it from an LCS-based sample cost subtracts one
+  // physics from another.  Analysis must check this field before using the
+  // c3_cost_minus_passive column.
+  if (std::isfinite(passive_cost)) {
+    out << "# passive_cost " << passive_cost << " cost_type " << cost_type
+        << "\n";
+  }
   if (ground_truth_seconds_per_sample > 0.0) {
     out << "# label_cost ground_truth seconds_per_sample "
         << ground_truth_seconds_per_sample << "\n";
@@ -419,7 +437,8 @@ void WriteResults(const string& path, const vector<SweptSample>& samples,
         << variant.seconds_per_sample << " config "
         << variant.config.Describe() << "\n";
   }
-  out << "# ee_x ee_y ee_z acceptable inside_keep_out solve_fell_back c3_cost";
+  out << "# ee_x ee_y ee_z acceptable inside_keep_out solve_fell_back c3_cost"
+      << " c3_cost_minus_passive";
   for (const string& name : JammingMetricsColumnNames()) {
     out << " " << name;
   }
@@ -439,7 +458,8 @@ void WriteResults(const string& path, const vector<SweptSample>& samples,
         << sample.ee_position(2) << " " << (sample.acceptable ? 1 : 0) << " "
         << (sample.inside_keep_out ? 1 : 0) << " "
         << (results.at(i).solve_fell_back ? 1 : 0) << " "
-        << results.at(i).c3_cost;
+        << results.at(i).c3_cost << " "
+        << (results.at(i).c3_cost - passive_cost);
     const VectorXd row = JammingMetricsAsRow(results.at(i).metrics);
     for (int j = 0; j < row.size(); ++j) {
       out << " " << row(j);
@@ -666,10 +686,54 @@ int DoMain(int argc, char* argv[]) {
   std::cout << "Solving C3 for " << ee_positions.size() << " samples ("
             << (FLAGS_parallel_solves ? "parallel" : "serial") << ")..."
             << std::endl;
+  double passive_cost = std::numeric_limits<double>::quiet_NaN();
+  const auto solve_start = std::chrono::steady_clock::now();
   const vector<SampleJammingResult> results =
-      controller.EvaluateJammingMetricsForSamples(x_lcs_curr, x_lcs_des,
-                                                  x_lcs_final_des, ee_positions,
-                                                  goal_step, num_threads);
+      controller.EvaluateJammingMetricsForSamples(
+          x_lcs_curr, x_lcs_des, x_lcs_final_des, ee_positions, goal_step,
+          num_threads, &passive_cost);
+  const std::chrono::duration<double> solve_elapsed =
+      std::chrono::steady_clock::now() - solve_start;
+  // The per-sample cost of the same solve-and-score work ComputePlan does, so
+  // a sim_cost_* configuration can be priced against the controller's budget
+  // rather than guessed at.  The live loop scores its samples in waves of
+  // num_outer_threads, so a loop costs this times the number of waves --
+  // reported here for the C3-mode sample count.  Only meaningful with
+  // --parallel_solves, which is how the controller runs.
+  const double seconds_per_sample =
+      solve_elapsed.count() / static_cast<double>(ee_positions.size());
+  const int samples_per_loop =
+      1 + sampling_params.num_additional_samples_c3;
+  const int threads_per_wave = std::max(1, sampling_c3_options.num_outer_threads);
+  const int num_waves =
+      (samples_per_loop + threads_per_wave - 1) / threads_per_wave;
+  std::cout << "Solve and score took " << solve_elapsed.count() << " s for "
+            << ee_positions.size() << " samples ("
+            << 1e3 * seconds_per_sample << " ms/sample";
+  if (FLAGS_parallel_solves) {
+    std::cout << ", " << threads_per_wave << " threads";
+  }
+  std::cout << ").\n  Estimated control loop: " << samples_per_loop
+            << " C3-mode samples in " << num_waves << " wave(s) of "
+            << threads_per_wave << " ~= "
+            << 1e3 * seconds_per_sample * threads_per_wave * num_waves
+            << " ms" << std::endl;
+  // The same choice the controller makes:  the pose-tracking cost type once
+  // the object is inside the goal's cost switching threshold, the
+  // position-tracking one before that.
+  const C3CostComputationType active_cost_type =
+      controller.crossed_cost_switching_threshold()
+          ? controller_params.progress_params.cost_type
+          : controller_params.progress_params.cost_type_position;
+  std::cout << "Passive (end effector held still) cost for this scene: "
+            << passive_cost << " (cost type "
+            << static_cast<int>(active_cost_type) << ")" << std::endl;
+  if (active_cost_type != C3CostComputationType::kSimDrakeObjectOnly) {
+    std::cout << "  NOTE:  the sample costs are not Drake rollouts at this "
+                 "cost type, so c3_cost_minus_passive subtracts one physics "
+                 "from another and is not a meaningful improvement."
+              << std::endl;
+  }
 
   int num_fell_back = 0;
   for (const SampleJammingResult& result : results) {
@@ -790,7 +854,8 @@ int DoMain(int argc, char* argv[]) {
   WriteResults(FLAGS_out_dir + "/jamming_sweep_random.txt", samples, results,
                object_position, object_orientation, goal_step, x_lcs_curr,
                x_lcs_des, x_lcs_final_des, sampling_c3_options, labels,
-               variants, ground_truth_seconds_per_sample);
+               variants, ground_truth_seconds_per_sample, passive_cost,
+               static_cast<int>(active_cost_type));
 
   return 0;
 }

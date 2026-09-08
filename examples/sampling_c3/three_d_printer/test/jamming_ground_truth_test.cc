@@ -168,6 +168,73 @@ TEST(JammingGroundTruthTest, RolloutReportsOneStatePerKnot) {
   }
 }
 
+// The prescribed end effector writes the interpolated axis positions straight
+// into the state instead of asking the PD to reach them, so it goes where the
+// plan says whatever is in the way.  Driving the tip down through the build
+// plate is the cleanest demonstration: the PD-tracked printer stalls against a
+// surface it cannot penetrate, and the prescribed one does not notice it.
+//
+// This is the knob's cost as well as its description.  A jam IS the end
+// effector stalling, so a rollout under this cannot report one.
+TEST(JammingGroundTruthTest, APrescribedEndEffectorIgnoresWhatIsInItsWay) {
+  // Straight down from clear air to well below the plate.
+  const vector<Vector3d> plan =
+      MakePlan(Vector3d(0.30, 0.07, 0.05), Vector3d(0.30, 0.07, -0.02));
+
+  const JammingGroundTruthSim tracked(kObjectModels, kSimDt,
+                                      /*settle_fraction=*/0.0);
+  const GroundTruthLabel pd = tracked.Label(kConeQuaternion, kConePosition,
+                                            plan, kKnotDt, /*plan_is_real=*/1);
+
+  const JammingGroundTruthSim prescribed(kObjectModels, kSimDt,
+                                         /*settle_fraction=*/0.0,
+                                         /*point_contact=*/false,
+                                         /*prescribed_ee=*/true);
+  const GroundTruthLabel written = prescribed.Label(
+      kConeQuaternion, kConePosition, plan, kKnotDt, /*plan_is_real=*/1);
+
+  // The plate stops the real printer well short of where it was asked to go.
+  EXPECT_GT(pd.sim_ee_tracking_error, 0.01);
+  // The prescribed one arrives, so its tracking error is the interpolation
+  // residual and nothing else.
+  EXPECT_LT(written.sim_ee_tracking_error, 1e-4);
+}
+
+// Point contact is a different contact model, not a cheaper solve of the same
+// one, so a rollout under it is a different rollout wherever the default model
+// was doing hydroelastic work.  Asserted as "the object does not do exactly the
+// same thing" rather than as a direction, since which model predicts more
+// motion is not a property either one guarantees.
+TEST(JammingGroundTruthTest, PointContactIsADifferentContactModel) {
+  // The cone up on the ramp, which is where the two models actually differ:
+  // at the foot of the ramp every pair in the scene already falls back to
+  // point contact, so switching models there is bit-for-bit a no-op.
+  const Vector4d ramp_quaternion(-0.150330, -0.232180, -0.481138, 0.831865);
+  const Vector3d ramp_position(0.097918, 0.069893, 0.057393);
+  const Vector3d parked(0.14, 0.07, 0.15);
+  const vector<Vector3d> plan = MakePlan(parked, parked);
+
+  const JammingGroundTruthSim hydroelastic(kObjectModels, kSimDt,
+                                           /*settle_fraction=*/0.0);
+  const GroundTruthLabel default_model = hydroelastic.Label(
+      ramp_quaternion, ramp_position, plan, kKnotDt, /*plan_is_real=*/1);
+
+  const JammingGroundTruthSim point(kObjectModels, kSimDt,
+                                    /*settle_fraction=*/0.0,
+                                    /*point_contact=*/true);
+  const GroundTruthLabel point_model = point.Label(
+      ramp_quaternion, ramp_position, plan, kKnotDt, /*plan_is_real=*/1);
+  // Every collision in this scene declares a point contact stiffness, so the
+  // point model is fully parameterised: the cone is still held up by the ramp
+  // rather than falling through it.
+  EXPECT_GT(default_model.sim_max_contact_force, 0.0);
+  EXPECT_GT(point_model.sim_max_contact_force, 0.0);
+  // But it is not the same physics.  The cone resting on the ramp creeps about
+  // three times as far under the point model over the same window.
+  EXPECT_NE(point_model.sim_object_travel, default_model.sim_object_travel);
+  EXPECT_LT(point_model.sim_object_travel, 1e-3);  // still a resting cone
+}
+
 // A rollout that assumes a scene at rest describes a different push than the
 // one a moving scene is actually undergoing, so the initial velocities have to
 // reach the sim.  A cone already sliding toward the ramp ends up further along

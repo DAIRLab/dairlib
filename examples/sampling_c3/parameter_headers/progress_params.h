@@ -80,6 +80,61 @@ struct SamplingC3ProgressParams {
   // cost_switching_threshold_distance above.
   std::optional<std::vector<double>> cost_switching_threshold_distance_sequence;
   double travel_cost_per_meter;
+
+  // --- Shape of the window a Drake-sim cost (kSimDrakeObjectOnly) scores. ---
+  // All optional so the demos that never select cost type 7 need no entry;
+  // unset means the behaviour these knobs were introduced to vary.
+
+  // How long to keep simulating after the plan's last knot, holding the end
+  // effector there, as a fraction of the plan's own duration.  Unset (0.0)
+  // scores exactly the plan's N+1 knots, which stops the measurement while
+  // the object is often still moving:  under the real sim the median sample
+  // scores within a fraction of a percent of doing nothing, and letting the
+  // response finish is the direct way to separate the samples that pushed
+  // from the samples that only looked like they did.  The settled knots are
+  // scored too, so a longer window is a larger cost, not just a later one.
+  std::optional<double> sim_cost_settle_fraction;
+  // Weight on the final scored knot, relative to the rest.  Unset (1.0)
+  // weights every knot equally, which dilutes a signal that arrives late:
+  // the object's pose partway through a push does not say where the push put
+  // it.  With sim_cost_settle_fraction set, the final knot is where the
+  // object came to rest, which is the quantity this is meant to emphasise.
+  std::optional<double> sim_cost_terminal_weight;
+  // The Drake sim's discrete step for the cost rollout, in seconds, for the
+  // pose- and position-tracking phases respectively.  Unset means the demo's
+  // sim_params.yaml dt.  Coarsening buys most of the controller's per-loop
+  // budget back but is scene dependent -- at the endgame pose a 4 ms step
+  // invents millimetres of object motion that never happened -- so it must be
+  // measured against cost ranking, per scene, before being lowered.
+  std::optional<double> sim_cost_dt;
+  std::optional<double> sim_cost_dt_position;
+  // Drake's point contact model instead of the default
+  // hydroelastic-with-fallback.  The cone declares compliant hydroelastic
+  // properties on a *mesh*, so the default builds tet meshes and computes
+  // contact surfaces every step for what is geometrically a 7-vertex cone.
+  // Every collision in the scene also declares a point contact stiffness, so
+  // the point model is fully parameterised -- but it is a different contact
+  // model, not a cheaper solve of the same one, so it changes the physics and
+  // therefore the cost.  Unset (false) is the default hydroelastic model.
+  // The same knob as SampleRiskParams::point_contact.
+  std::optional<bool> sim_cost_point_contact;
+  // Write the interpolated end effector position straight into the state each
+  // step instead of asking the printer's PD to track it.  This drops the three
+  // actuated axes, the stiff PD and the joint damping -- the stiffest part of
+  // the system -- but it also makes the end effector infinitely stiff, so it
+  // ploughs through the object instead of stalling against it.  A cost built
+  // on this cannot see a sample the printer could not actually execute, which
+  // is most of what a Drake rollout is being paid for.  Unset (false) keeps
+  // the PD-tracked end effector.  The same knob as
+  // SampleRiskParams::prescribed_ee.
+  std::optional<bool> sim_cost_prescribed_ee;
+  //
+  // SampleRiskParams::early_exit has no counterpart here on purpose:  it stops
+  // a rollout as soon as a binary travel threshold is crossed, and a cost
+  // needs every knot of the window scored, so there is nothing for it to
+  // shorten.  SampleRiskParams::travel_threshold likewise configures that
+  // label rather than a rollout.
+
   double hyst_c3_to_repos;
   double hyst_c3_to_repos_position;
   double finished_reposition_cost;
@@ -107,6 +162,12 @@ struct SamplingC3ProgressParams {
     a->Visit(DRAKE_NVP(cost_switching_threshold_distance));
     a->Visit(DRAKE_NVP(cost_switching_threshold_distance_sequence));
     a->Visit(DRAKE_NVP(travel_cost_per_meter));
+    a->Visit(DRAKE_NVP(sim_cost_settle_fraction));
+    a->Visit(DRAKE_NVP(sim_cost_terminal_weight));
+    a->Visit(DRAKE_NVP(sim_cost_dt));
+    a->Visit(DRAKE_NVP(sim_cost_dt_position));
+    a->Visit(DRAKE_NVP(sim_cost_point_contact));
+    a->Visit(DRAKE_NVP(sim_cost_prescribed_ee));
     a->Visit(DRAKE_NVP(hyst_c3_to_repos));
     a->Visit(DRAKE_NVP(hyst_c3_to_repos_position));
     a->Visit(DRAKE_NVP(finished_reposition_cost));

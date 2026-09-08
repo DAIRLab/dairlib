@@ -6,6 +6,7 @@
 #include <ctime>
 #include <iostream>
 #include <limits>
+#include <numeric>
 #include <thread>
 #include <unordered_set>
 #include <utility>
@@ -1512,9 +1513,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         // Add the current state to the unsuccessful sample buffer.  It gets
         // automatically removed if the object moves beyond the buffer movement
         // thresholds.
-        AddToUnsuccessfulBuffer(
-            candidate_states[SampleIndex::kCurrentLocation],
-            SampleIndex::kCurrentLocation);
+        AddToUnsuccessfulBuffer(candidate_states[SampleIndex::kCurrentLocation],
+                                SampleIndex::kCurrentLocation);
       }
       pursued_target_source_ = PursuedTargetSource::kNoTarget;
     }
@@ -2418,11 +2418,9 @@ void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs) const {
                                  sampling_params_.ang_error_sample_retention);
   int retained_count = num_in_buffer_;
 
-  // Third, in preparation for adding new samples stored in
-  // all_sample_locations_ (excluding the current location), if the buffer is
-  // going to overflow, get rid of the oldest samples first.  NOTE:  Step 4
-  // moves the lowest cost sample in the buffer to the end, so the best sample
-  // is usually excluded from this cut.
+  // Third, combine retained and new samples in a temporary buffer.  If the
+  // buffer is going to overflow, the highest-cost candidates will be removed
+  // after both sources have been considered.
   int num_to_add = all_sample_locations_.size() - 1;
   if (!is_doing_c3_ && all_sample_locations_.size() ==
                            sampling_params_.num_additional_samples_repos + 2) {
@@ -2432,16 +2430,18 @@ void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs) const {
     // index 1 is a new sample and should be added).
     num_to_add--;
   }
-  if (retained_count + num_to_add > sampling_params_.N_sample_buffer) {
-    int shift_by =
-        retained_count + num_to_add - sampling_params_.N_sample_buffer;
-    retained_count -= shift_by;
-    sample_buffer_.block(0, 0, retained_count, n_q_) =
-        sample_buffer_.block(shift_by, 0, retained_count, n_q_);
-    sample_costs_buffer_.segment(0, retained_count) =
-        sample_costs_buffer_.segment(shift_by, retained_count);
-    sample_jam_buffer_.block(0, 0, retained_count, kNumJamColumns) =
-        sample_jam_buffer_.block(shift_by, 0, retained_count, kNumJamColumns);
+  const int num_candidates = retained_count + num_to_add;
+  MatrixXd candidate_buffer = MatrixXd::Zero(num_candidates, n_q_);
+  VectorXd candidate_costs = -1 * VectorXd::Ones(num_candidates);
+  MatrixXd candidate_jam_buffer =
+      MatrixXd::Constant(num_candidates, kNumJamColumns, kUnlabelled);
+  if (retained_count > 0) {
+    candidate_buffer.block(0, 0, retained_count, n_q_) =
+        sample_buffer_.block(0, 0, retained_count, n_q_);
+    candidate_costs.head(retained_count) =
+        sample_costs_buffer_.head(retained_count);
+    candidate_jam_buffer.block(0, 0, retained_count, kNumJamColumns) =
+        sample_jam_buffer_.block(0, 0, retained_count, kNumJamColumns);
   }
 
   // Fourth, add the new samples stored in all_sample_locations_ and
@@ -2458,10 +2458,7 @@ void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs) const {
       // Skip the repositioning target if in repositioning mode and if it was
       // not rejected due to collision.
     } else {
-      // First ensure there is no attempt to write beyond the end of the buffer.
-      DRAKE_DEMAND(buffer_count < sampling_params_.N_sample_buffer);
-
-      // Add the new sample to the buffer.
+      // Add the new sample to the combined candidate buffer.
       VectorXd new_config = x_lcs.head(n_q_);
       new_config.head(3) = all_sample_locations_[i];
       double travel_cost = progress_params_.travel_cost_per_meter *
@@ -2471,20 +2468,68 @@ void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs) const {
         Vector4d object_quat = x_lcs.segment(3 + 7 * j, 4).normalized();
         new_config.segment(3 + 7 * j, 4) = object_quat;
       }
-      sample_buffer_.row(buffer_count) = new_config;
-      sample_costs_buffer_[buffer_count] = all_sample_costs_[i] - travel_cost;
+      candidate_buffer.row(buffer_count) = new_config;
+      candidate_costs[buffer_count] = all_sample_costs_[i] - travel_cost;
       // The jam label this tick computed for the same sample, so a sample
       // recalled from the buffer later comes back labelled.  This runs before
       // AugmentSamplesWithBuffer, so index i still means the same sample in
       // both all_sample_costs_ and the jam vectors.
-      sample_jam_buffer_(buffer_count, kJamLabel) = all_sample_jam_labels_[i];
-      sample_jam_buffer_(buffer_count, kJamTravel) = all_sample_jam_travel_[i];
-      sample_jam_buffer_(buffer_count, kPlanIsReal) =
+      candidate_jam_buffer(buffer_count, kJamLabel) = all_sample_jam_labels_[i];
+      candidate_jam_buffer(buffer_count, kJamTravel) =
+          all_sample_jam_travel_[i];
+      candidate_jam_buffer(buffer_count, kPlanIsReal) =
           all_sample_plan_is_real_[i];
       buffer_count++;
     }
   }
-  num_in_buffer_ = buffer_count;
+  DRAKE_DEMAND(buffer_count == num_candidates);
+
+  // Keep the lowest-cost candidates when the combined set overflows.
+  num_in_buffer_ = std::min(num_candidates, sampling_params_.N_sample_buffer);
+  if (num_candidates > sampling_params_.N_sample_buffer) {
+    // Convert travel_cost_per_meter to squared cost to maintain exact ordering.
+    double cost_per_meter_sq =
+        std::pow(progress_params_.travel_cost_per_meter, 2);
+
+    VectorXd candidate_eligible_costs =
+        candidate_costs +
+        cost_per_meter_sq *
+            (candidate_buffer.leftCols(2).rowwise() - x_lcs.head(2).transpose())
+                .rowwise()
+                .squaredNorm();
+
+    std::vector<int> candidate_indices(num_candidates);
+    std::iota(candidate_indices.begin(), candidate_indices.end(), 0);
+    auto middle = candidate_indices.begin() + num_in_buffer_;
+    // Only bother sorting the lowest cost candidates we can fit in the buffer.
+    std::nth_element(candidate_indices.begin(), middle, candidate_indices.end(),
+                     [&](int lhs, int rhs) {
+                       return candidate_eligible_costs[lhs] <
+                              candidate_eligible_costs[rhs];
+                     });
+    std::sort(candidate_indices.begin(), middle, [&](int lhs, int rhs) {
+      return candidate_eligible_costs[lhs] < candidate_eligible_costs[rhs];
+    });
+
+    // Grab the lowest cost candidates and store them in the sample buffer.
+    Eigen::VectorXi indices =
+        Eigen::Map<Eigen::VectorXi>(candidate_indices.data(), num_in_buffer_);
+
+    sample_buffer_.topRows(num_in_buffer_) =
+        candidate_buffer(indices, Eigen::placeholders::all);
+    sample_costs_buffer_.head(num_in_buffer_) = candidate_costs(indices);
+    sample_jam_buffer_.topRows(num_in_buffer_) =
+        candidate_jam_buffer(indices, Eigen::placeholders::all);
+
+  } else {
+    // If no overflow, direct copy.
+    sample_buffer_.topRows(num_in_buffer_) =
+        candidate_buffer.topRows(num_in_buffer_);
+    sample_costs_buffer_.head(num_in_buffer_) =
+        candidate_costs.head(num_in_buffer_);
+    sample_jam_buffer_.topRows(num_in_buffer_) =
+        candidate_jam_buffer.topRows(num_in_buffer_);
+  }
 
   // Lastly, ensure the lowest cost sample is at the end of the buffer.  This
   // cost factors in the travel cost.  Skip if the buffer is empty (e.g. no

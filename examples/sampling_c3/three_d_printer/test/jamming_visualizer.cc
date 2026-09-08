@@ -25,6 +25,18 @@
 //   green = low value      diagnostics.  The ramp still has to point somewhere,
 //                          and this says it encodes magnitude and nothing else.
 //
+// The fast approximate jam label is one of the toggle-able clouds whenever the
+// sweep carried it: fast_configured_jammed is the verdict the controller itself
+// would compute for each sample, in the configuration
+// cone/parameters/risk_params.yaml ships, and fast_configured_travel is how far
+// the object got in that rollout.  A sweep run with --label_variants carries
+// one such pair per knob setting, and they are drawn the same way.
+//
+// Three columns are computed here rather than read from the file:
+// ee_tracking_frac, log_u_per_point_travel, and the jam_risk_general score
+// built from them.  See AppendDerivedMetrics for what they mean and where their
+// weights came from.
+//
 // Both surfaces carry the label: a "green =" column in the printed scale table,
 // and the same tag in the meshcat path, since the Controls -> Scene tree is the
 // only text the 3D view has.
@@ -145,6 +157,15 @@ struct Sweep {
   vector<string> column_names;
   // data[column][sample]
   vector<vector<double>> data;
+  // What each labelling configuration cost and which knobs it ran with, keyed
+  // by the name its columns are prefixed with -- e.g. "configured" for the
+  // fast_configured_* pair.  Read off the file's "# label_cost" lines so the
+  // scale table can say what produced a label column rather than assuming.
+  struct LabelCost {
+    double seconds_per_sample = 0.0;
+    string config_slug;
+  };
+  std::map<string, LabelCost> label_costs;
 
   int num_samples() const { return data.empty() ? 0 : data.front().size(); }
 
@@ -192,7 +213,15 @@ Sweep ReadSweep(const string& path) {
       if (tokens.empty()) {
         continue;
       }
-      if (tokens.front() == "c3_state_actual") {
+      if (tokens.front() == "label_cost" && tokens.size() >= 4) {
+        // "# label_cost <name> seconds_per_sample <t> [config <slug>]"
+        Sweep::LabelCost cost;
+        cost.seconds_per_sample = std::stod(tokens[3]);
+        if (tokens.size() >= 6 && tokens[4] == "config") {
+          cost.config_slug = tokens[5];
+        }
+        sweep.label_costs[tokens[1]] = cost;
+      } else if (tokens.front() == "c3_state_actual") {
         sweep.x_actual = values_after_name();
       } else if (tokens.front() == "c3_state_target") {
         sweep.x_target = values_after_name();
@@ -245,6 +274,150 @@ Sweep ReadSweep(const string& path) {
     throw std::runtime_error(path + " contains no samples");
   }
   return sweep;
+}
+
+// The name a quantity goes by in this sweep: its own, or the "_retimed" spelling
+// older files used before the unretimed family was dropped.  Empty if neither.
+string ResolveColumn(const Sweep& sweep, const string& name) {
+  if (sweep.HasColumn(name)) {
+    return name;
+  }
+  const string legacy = name + "_retimed";
+  return sweep.HasColumn(legacy) ? legacy : string();
+}
+
+void AppendColumn(Sweep* sweep, const string& name, vector<double> values) {
+  sweep->column_names.push_back(name);
+  sweep->data.push_back(std::move(values));
+}
+
+// The distance from the cone's body origin to its outermost collision sphere,
+// read off cone.sdf (the apex, at 0.0494 m; the base spheres sit at 0.0254 m).
+// It is what lets rotation be counted as motion without inventing a constant:
+// the object's own geometry supplies the length that turns radians into meters.
+constexpr double kObjectRadius = 0.0494;
+
+// Guards for the two ratios.  A plan that asks for nothing, or an object that
+// goes nowhere, would otherwise divide by zero and paint an infinity.
+constexpr double kMinDisplacement = 1e-4;   // meters
+constexpr double kMinPointTravel = 1e-4;    // meters
+constexpr double kMinEffortRatio = 1e-9;    // newtons per meter, before log10
+
+// One term of the jamming score: a value, the standardization that puts it on a
+// common scale, and its weight.
+struct RiskTerm {
+  const char* name;
+  double mean;
+  double std_dev;
+  double coefficient;
+};
+
+// The three-term score, and the two ratios it is built from.
+//
+// Both ratios are frame-invariant by construction: neither names an axis, and
+// neither says which way the object ought to move.  That is the point of them.
+// The terms they replace -- the z component of the tracking error, and the
+// object's rotation read as a risk -- score better on the goal 1 -> 2 leg and
+// worse elsewhere on the shell, because they encode this cone tipping against
+// this ramp rather than a mechanism.  Split into blocks of the sampled shell,
+// rotation-as-risk keeps its sign in only 2 blocks of 6; every term below keeps
+// it in 5 or 6.
+//
+//   plan_ee_displacement    whether the retimed plan asks the end effector to
+//                           go anywhere at all.
+//   ee_tracking_frac        max_delta_x_ee_norm / plan_ee_displacement: how far
+//                           the PD rollout diverges from the plan, per meter of
+//                           plan.  The direction-free replacement for
+//                           max_delta_x_ee_z, and better than it on both counts.
+//   log_u_per_point_travel  log10 of the commanded effort per meter the object's
+//                           furthest material point moves.  Rotation enters the
+//                           denominator as motion rather than as risk.
+//
+// None of the three is worth thresholding alone -- the effort ratio is at chance
+// marginally, and the displacement's sign flips between the near and far faces.
+// They only separate jointly, which is why the score exists as a column instead
+// of as advice to look at three others.
+//
+// The weights are a logistic fit against the ground-truth jammed labels on
+// /tmp/jam/jamming_sweep_random.txt (1685 real plans, 57% jammed), and the
+// standardization is that file's own means and standard deviations.  Both are
+// frozen here rather than refit per file, so the score is one fixed function of
+// a sample: drawing it over a *different* sweep is an honest out-of-sample test.
+// Drawing it over the file it was fit on is not, and DoMain says so.
+void AppendDerivedMetrics(Sweep* sweep) {
+  const string displacement_name = ResolveColumn(*sweep, "plan_ee_displacement");
+  const string tracking_name = ResolveColumn(*sweep, "max_delta_x_ee_norm");
+  const string effort_name = ResolveColumn(*sweep, "max_u_norm_c3");
+  const string travel_name = ResolveColumn(*sweep, "object_travel_in_rollout");
+  const string rotation_name =
+      ResolveColumn(*sweep, "object_rotation_in_rollout");
+  vector<string> missing;
+  for (const auto& [label, resolved] :
+       {std::pair<const char*, const string&>{"plan_ee_displacement",
+                                              displacement_name},
+        {"max_delta_x_ee_norm", tracking_name},
+        {"max_u_norm_c3", effort_name},
+        {"object_travel_in_rollout", travel_name},
+        {"object_rotation_in_rollout", rotation_name}}) {
+    if (resolved.empty()) {
+      missing.push_back(label);
+    }
+  }
+  if (!missing.empty()) {
+    std::cout << "Not computing jam_risk_general: this sweep has no";
+    for (const string& name : missing) {
+      std::cout << " " << name;
+    }
+    std::cout << (missing.size() == 1 ? " column." : " columns.") << std::endl;
+    return;
+  }
+
+  static const RiskTerm kTerms[] = {
+      {"plan_ee_displacement", 0.031420013867011265, 0.02658335827932383,
+       3.1487515059470774},
+      {"ee_tracking_frac", 3.7510795656163043, 2.69499669197729,
+       2.9073338702683964},
+      {"log_u_per_point_travel", 2.617961796894917, 0.5372553147919489,
+       2.3565367547080616},
+  };
+  constexpr double kIntercept = 1.0153694534039608;
+
+  const vector<double>& displacement = sweep->Column(displacement_name);
+  const vector<double>& tracking = sweep->Column(tracking_name);
+  const vector<double>& effort = sweep->Column(effort_name);
+  const vector<double>& travel = sweep->Column(travel_name);
+  const vector<double>& rotation = sweep->Column(rotation_name);
+
+  const int num_samples = sweep->num_samples();
+  vector<double> tracking_frac(num_samples);
+  vector<double> effort_per_travel(num_samples);
+  vector<double> risk(num_samples);
+  for (int i = 0; i < num_samples; ++i) {
+    // Rotation counted as motion, scaled by the object's own radius: an upper
+    // bound on how far its furthest material point travels.
+    const double point_travel = travel[i] + kObjectRadius * rotation[i];
+    tracking_frac[i] =
+        tracking[i] / std::max(displacement[i], kMinDisplacement);
+    effort_per_travel[i] = std::log10(std::max(
+        effort[i] / std::max(point_travel, kMinPointTravel), kMinEffortRatio));
+    const double values[] = {displacement[i], tracking_frac[i],
+                             effort_per_travel[i]};
+    double score = kIntercept;
+    for (int t = 0; t < 3; ++t) {
+      score += kTerms[t].coefficient * (values[t] - kTerms[t].mean) /
+               kTerms[t].std_dev;
+    }
+    // A NaN in any input carries through, and the sample is drawn black --
+    // which is what an unmeasurable risk should look like.
+    risk[i] = score;
+  }
+  AppendColumn(sweep, "ee_tracking_frac", std::move(tracking_frac));
+  AppendColumn(sweep, "log_u_per_point_travel", std::move(effort_per_travel));
+  AppendColumn(sweep, "jam_risk_general", std::move(risk));
+  std::cout << "Computed jam_risk_general from " << displacement_name << ", "
+            << tracking_name << ", " << effort_name << ", " << travel_name
+            << " and " << rotation_name
+            << ", along with the two ratios it is built from." << std::endl;
 }
 
 // Parses "metric:value,metric:value" into a lookup.
@@ -351,6 +524,11 @@ enum class ColorMeaning {
   kUnrecognised,
 };
 
+bool EndsWith(const string& text, const string& suffix) {
+  return text.size() > suffix.size() &&
+         text.compare(text.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
+
 // What green means for every column a sweep can carry.
 ColorMeaning MeaningOf(const string& metric) {
   static const std::map<string, ColorMeaning>* const kMeanings =
@@ -403,19 +581,50 @@ ColorMeaning MeaningOf(const string& metric) {
           {"sim_max_contact_force", ColorMeaning::kMagnitude},
           {"object_rotation_in_rollout", ColorMeaning::kMagnitude},
           {"sim_object_rotation", ColorMeaning::kMagnitude},
+          // The two ratios the score is built from.  Each is direction-free,
+          // but neither holds its sign across the whole shell on its own -- the
+          // tracking fraction points one way on the far face and the other way
+          // marginally -- so neither carries a jamming claim by itself.  The
+          // score does; they are here to diagnose it, not to be thresholded.
+          {"ee_tracking_frac", ColorMeaning::kMagnitude},
+          {"log_u_per_point_travel", ColorMeaning::kMagnitude},
+
+          // The score itself, which is a jamming claim and nothing else.
+          {"jam_risk_general", ColorMeaning::kJamRiskLowGreen},
+
+          // The fast approximate label, in the configuration
+          // cone/parameters/risk_params.yaml ships -- the one the controller
+          // itself runs.  The verdict is a jamming claim by construction, and
+          // its travel is the same progress quantity as the sim's, so its
+          // green end is the high one.  See the note DoMain prints: with the
+          // early exit on, that travel is truncated at the threshold and is a
+          // lower bound rather than a measurement.
+          {"fast_configured_jammed", ColorMeaning::kJamRiskLowGreen},
+          {"fast_configured_travel", ColorMeaning::kJamRiskHighGreen},
       };
 
   if (auto it = kMeanings->find(metric); it != kMeanings->end()) {
     return it->second;
   }
+  // A sweep run with --label_variants carries a fast_<knob>_travel /
+  // fast_<knob>_jammed pair per configuration on the study ladder.  They are
+  // the same two quantities as the shipped configuration's, whatever knobs
+  // produced them, so they take the same meanings rather than each needing an
+  // entry above.
+  if (metric.rfind("fast_", 0) == 0) {
+    if (EndsWith(metric, "_jammed")) {
+      return ColorMeaning::kJamRiskLowGreen;
+    }
+    if (EndsWith(metric, "_travel")) {
+      return ColorMeaning::kJamRiskHighGreen;
+    }
+  }
   // Sweeps written before the unretimed family was dropped suffix their
   // columns; the quantity, and so its meaning, is unchanged.
   constexpr const char* kLegacySuffix = "_retimed";
-  const size_t suffix_length = std::strlen(kLegacySuffix);
-  if (metric.size() > suffix_length &&
-      metric.compare(metric.size() - suffix_length, suffix_length,
-                     kLegacySuffix) == 0) {
-    const string base = metric.substr(0, metric.size() - suffix_length);
+  if (EndsWith(metric, kLegacySuffix)) {
+    const string base =
+        metric.substr(0, metric.size() - std::strlen(kLegacySuffix));
     if (auto it = kMeanings->find(base); it != kMeanings->end()) {
       return it->second;
     }
@@ -552,9 +761,10 @@ int DoMain(int argc, char* argv[]) {
     throw std::runtime_error("Unknown --demo_name value: " + FLAGS_demo_name);
   }
 
-  const Sweep sweep = ReadSweep(FLAGS_sweep_file);
+  Sweep sweep = ReadSweep(FLAGS_sweep_file);
   std::cout << "Read " << sweep.num_samples() << " samples from "
             << FLAGS_sweep_file << std::endl;
+  AppendDerivedMetrics(&sweep);
 
   const string controller_params_path =
       "examples/sampling_c3/three_d_printer/" + FLAGS_demo_name +
@@ -798,12 +1008,15 @@ int DoMain(int argc, char* argv[]) {
   if (drawn_metrics.empty()) {
     throw std::runtime_error("No metric had any usable values to draw");
   }
-  // Start on a force metric rather than the cost, since forces are the point.
+  // Start on the fast label if the sweep carried it -- it is the only column
+  // that is a jam verdict rather than a predictor of one -- then the score, and
+  // otherwise a force metric rather than the cost, since forces are the point.
   // Sweeps written before the unretimed family was dropped name their retimed
-  // columns with a suffix, so fall through to that before giving up and
-  // showing whatever came first.
+  // columns with a suffix, so fall through to that before giving up and showing
+  // whatever came first.
   string shown_metric = drawn_metrics.front();
-  for (const char* preferred : {"max_u_norm_c3", "max_u_norm_c3_retimed"}) {
+  for (const char* preferred : {"fast_configured_jammed", "jam_risk_general",
+                                "max_u_norm_c3", "max_u_norm_c3_retimed"}) {
     if (std::find(drawn_metrics.begin(), drawn_metrics.end(), preferred) !=
         drawn_metrics.end()) {
       shown_metric = preferred;
@@ -870,6 +1083,111 @@ int DoMain(int argc, char* argv[]) {
            "tied to an outcome.  They are drawn low-to-green so they stay "
            "readable;\ndo not read their color as good or bad."
         << std::endl;
+  }
+  if (scales.count("fast_configured_jammed") > 0) {
+    std::cout << "\nfast_configured_jammed is the fast approximate jam label "
+                 "the controller itself\ncomputes per candidate sample, in the "
+                 "configuration cone/parameters/risk_params.yaml\nships";
+    if (auto it = sweep.label_costs.find("configured");
+        it != sweep.label_costs.end()) {
+      std::cout << " (" << it->second.config_slug << ", "
+                << 1e3 * it->second.seconds_per_sample << " ms/sample)";
+    }
+    std::cout << ".\nIt is a verdict from a real rollout, not a predictor fit "
+                 "to one, which is what\nmakes it worth toggling against "
+                 "jam_risk_general and the force columns.\n"
+                 "fast_configured_travel is how far the object got in that "
+                 "rollout; with the early\nexit on it is truncated at the "
+                 "threshold, so read it as 'moved enough' rather than\nas a "
+                 "distance."
+              << std::endl;
+    // Against the ground truth, when the sweep paid for it.  The fast label is
+    // an approximation, and this is the one place a file can say by how much.
+    if (sweep.HasColumn("jammed")) {
+      const vector<double>& fast = sweep.Column("fast_configured_jammed");
+      const vector<double>& truth = sweep.Column("jammed");
+      int num_compared = 0;
+      int num_false_jams = 0;
+      int num_missed_jams = 0;
+      for (size_t k = 0; k < drawn.indices.size(); ++k) {
+        const int i = drawn.indices[k];
+        if (!drawn.is_real[k] || !std::isfinite(fast[i]) ||
+            !std::isfinite(truth[i])) {
+          continue;
+        }
+        ++num_compared;
+        num_false_jams += (fast[i] > 0.5 && truth[i] <= 0.5) ? 1 : 0;
+        num_missed_jams += (fast[i] <= 0.5 && truth[i] > 0.5) ? 1 : 0;
+      }
+      if (num_compared > 0) {
+        std::cout << "Against the ground truth on the " << num_compared
+                  << " real plans drawn: " << num_false_jams << " false jams, "
+                  << num_missed_jams << " missed ("
+                  << std::setprecision(1)
+                  << 100.0 * (num_false_jams + num_missed_jams) / num_compared
+                  << std::setprecision(4)
+                  << "%).\nA false jam throws away a workable sample; a missed "
+                     "one walks into the wedge."
+                  << std::endl;
+      }
+    }
+  }
+  if (scales.count("jam_risk_general") > 0) {
+    std::cout << "\njam_risk_general is the three-term score: how far the plan "
+                 "asks the end effector to\ngo, how far the rollout diverges "
+                 "from it per meter asked, and the effort spent per\nmeter the "
+                 "object's furthest material point moves.  No term names an "
+                 "axis, and the\nlast one counts rotation as motion rather "
+                 "than as risk, so the score carries no\nassumption about "
+                 "which way the object should travel.  Toggle "
+                 "ee_tracking_frac and\nlog_u_per_point_travel to see where "
+                 "each term is doing the work; neither separates\njams on its "
+                 "own, which is why the score is a column and not advice."
+              << std::endl;
+    // How well it lines up with the labels, if this file carries any -- the
+    // number behind the picture the viewer is about to compare by eye.  The
+    // ground truth when the sweep paid for it, and otherwise the fast label,
+    // which every sweep now carries and which agrees with the ground truth on
+    // about 99% of real plans.
+    const string label_column = sweep.HasColumn("jammed")
+                                    ? "jammed"
+                                    : (sweep.HasColumn("fast_configured_jammed")
+                                           ? "fast_configured_jammed"
+                                           : string());
+    if (!label_column.empty()) {
+      const vector<double>& risk = sweep.Column("jam_risk_general");
+      const vector<double>& jammed = sweep.Column(label_column);
+      vector<std::pair<double, double>> pairs;
+      for (size_t k = 0; k < drawn.indices.size(); ++k) {
+        const int i = drawn.indices[k];
+        if (drawn.is_real[k] && std::isfinite(risk[i]) &&
+            std::isfinite(jammed[i])) {
+          pairs.emplace_back(risk[i], jammed[i]);
+        }
+      }
+      if (pairs.size() >= 10) {
+        std::sort(pairs.begin(), pairs.end());
+        std::cout << "Jam rate (" << label_column
+                  << ") by decile of the score, lowest risk first: ";
+        std::cout << std::setprecision(0);
+        for (int d = 0; d < 10; ++d) {
+          const size_t lo = d * pairs.size() / 10;
+          const size_t hi = (d + 1) * pairs.size() / 10;
+          double jam_rate = 0.0;
+          for (size_t k = lo; k < hi; ++k) {
+            jam_rate += pairs[k].second;
+          }
+          std::cout << std::setw(4) << 100.0 * jam_rate / (hi - lo) << "%";
+        }
+        std::cout << std::setprecision(4) << "\nCOMPARING THIS AGAINST THE "
+                  << label_column
+                  << " CLOUD IS ONLY PART OF A TEST: the score's weights\n"
+                     "were fit on one sweep's labels.  Draw it over a sweep it "
+                     "has not seen -- another\ngoal step, or another object "
+                     "pose -- for the honest version."
+                  << std::endl;
+      }
+    }
   }
   if (!undeclared_metrics.empty()) {
     std::cout << "\nNOTE: green has not been given a meaning for";

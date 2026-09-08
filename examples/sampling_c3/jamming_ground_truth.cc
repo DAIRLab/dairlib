@@ -118,7 +118,8 @@ void JammingGroundTruthSim::Rollout(
     const vector<Vector3d>& ee_plan, double knot_dt, double* travel,
     double* rotation, double* max_contact_force, double* max_ee_tracking_error,
     const RolloutInitialVelocities& initial_velocities,
-    vector<VectorXd>* knot_states) const {
+    vector<VectorXd>* knot_states, Eigen::Matrix<double, 7, 1>* final_pose,
+    Eigen::Matrix<double, 7, 3>* plan_poses) const {
   DRAKE_THROW_UNLESS(!ee_plan.empty());
   DRAKE_THROW_UNLESS(knot_dt > 0.0);
 
@@ -210,9 +211,25 @@ void JammingGroundTruthSim::Rollout(
     knot_states->push_back(state);
   };
 
+  // Reads the object's pose out of the plant as (qw, qx, qy, qz, x, y, z).
+  const auto read_pose = [&]() {
+    const auto& pose = plant_->EvalBodyPoseInWorld(
+        plant_context, plant_->get_body(object_body_index_));
+    const Eigen::Quaterniond quaternion = pose.rotation().ToQuaternion();
+    Eigen::Matrix<double, 7, 1> out;
+    out << quaternion.w(), quaternion.x(), quaternion.y(), quaternion.z(),
+        pose.translation();
+    return out;
+  };
+
   simulator.Initialize();
   record_state();
   const int num_knots = static_cast<int>(ee_plan.size());
+  // A quarter, half and all the way through the plan, in steps.  The plan runs
+  // for num_knots - 1 steps, so the last of these is its final step.
+  const int plan_steps = num_knots - 1;
+  const int checkpoints[3] = {(plan_steps + 3) / 4, (plan_steps + 1) / 2,
+                              plan_steps};
   for (int step = 0; step < num_knots - 1 + num_settle_steps; ++step) {
     // Step k drives to knot k+1, the position the plan wants reached by the end
     // of that step, and holds the last knot through the settle window.
@@ -255,6 +272,18 @@ void JammingGroundTruthSim::Rollout(
                    (ee_actual - (target + ee_to_joint_offset_)).norm());
     }
     record_state();
+
+    if (plan_poses != nullptr) {
+      for (int which = 0; which < 3; ++which) {
+        if (step + 1 == checkpoints[which]) {
+          plan_poses->col(which) = read_pose();
+        }
+      }
+    }
+  }
+
+  if (final_pose != nullptr) {
+    *final_pose = read_pose();
   }
 }
 
@@ -269,7 +298,9 @@ GroundTruthLabel JammingGroundTruthSim::Label(const Vector4d& object_quaternion,
   double max_force = 0.0;
   double tracking_error = 0.0;
   Rollout(object_quaternion, object_position, ee_plan, knot_dt,
-          &label.sim_object_travel, &rotation, &max_force, &tracking_error);
+          &label.sim_object_travel, &rotation, &max_force, &tracking_error,
+          /*initial_velocities=*/{}, /*knot_states=*/nullptr,
+          &label.sim_object_final_pose, &label.sim_object_plan_poses);
   label.sim_object_rotation = rotation;
   label.sim_max_contact_force = max_force;
   label.sim_ee_tracking_error = tracking_error;
@@ -303,15 +334,33 @@ vector<string> JammingGroundTruthSim::ColumnNames() {
   return {"sim_object_travel",         "sim_object_rotation",
           "sim_object_travel_passive", "sim_object_progress",
           "sim_ee_tracking_error",     "plan_ee_displacement",
-          "sim_max_contact_force",     "jammed"};
+          "sim_max_contact_force",     "jammed",
+          "sim_final_qw",              "sim_final_qx",
+          "sim_final_qy",              "sim_final_qz",
+          "sim_final_x",               "sim_final_y",
+          "sim_final_z",
+          "sim_p25_qw",                "sim_p25_qx",
+          "sim_p25_qy",                "sim_p25_qz",
+          "sim_p25_x",                 "sim_p25_y",
+          "sim_p25_z",
+          "sim_p50_qw",                "sim_p50_qx",
+          "sim_p50_qy",                "sim_p50_qz",
+          "sim_p50_x",                 "sim_p50_y",
+          "sim_p50_z",
+          "sim_endplan_qw",            "sim_endplan_qx",
+          "sim_endplan_qy",            "sim_endplan_qz",
+          "sim_endplan_x",             "sim_endplan_y",
+          "sim_endplan_z"};
 }
 
 VectorXd JammingGroundTruthSim::AsRow(const GroundTruthLabel& label) {
-  VectorXd row(8);
+  VectorXd row(36);
   row << label.sim_object_travel, label.sim_object_rotation,
       label.sim_object_travel_passive, label.sim_object_progress,
       label.sim_ee_tracking_error, label.plan_ee_displacement,
-      label.sim_max_contact_force, label.jammed;
+      label.sim_max_contact_force, label.jammed,
+      label.sim_object_final_pose, label.sim_object_plan_poses.col(0),
+      label.sim_object_plan_poses.col(1), label.sim_object_plan_poses.col(2);
   DRAKE_THROW_UNLESS(row.size() == static_cast<int>(ColumnNames().size()));
   return row;
 }

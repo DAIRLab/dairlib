@@ -56,6 +56,23 @@ struct GroundTruthLabel {
   /// 1.0 when the plan was a real one and still achieved nothing: the jam.
   /// NaN when the caller could not say whether the plan was real.
   double jammed = std::numeric_limits<double>::quiet_NaN();
+  /// Where the object ended up at the close of the tracked rollout, as
+  /// (qw, qx, qy, qz, x, y, z).  Travel and rotation above are unsigned peaks,
+  /// so they cannot say whether a push moved the object toward its goal or
+  /// away from it; this can, given the goal the caller was pursuing.  It
+  /// matters most in an endgame pose, where the useful pushes and the harmful
+  /// ones move the object by similar amounts.
+  Eigen::Matrix<double, 7, 1> sim_object_final_pose =
+      Eigen::Matrix<double, 7, 1>::Constant(
+          std::numeric_limits<double>::quiet_NaN());
+  /// The same pose read a quarter, half and all the way through the plan, one
+  /// per column, before the settle window starts.  A cost built on the sim has
+  /// to be told how long to watch: these say how much of the difference between
+  /// samples is already visible while the push is still being made, and how
+  /// much only appears once the object is left alone.
+  Eigen::Matrix<double, 7, 3> sim_object_plan_poses =
+      Eigen::Matrix<double, 7, 3>::Constant(
+          std::numeric_limits<double>::quiet_NaN());
 };
 
 /// The scene's velocities at the instant a rollout starts.  The offline sweep
@@ -112,6 +129,11 @@ class JammingGroundTruthSim {
   ///  ee_velocity(3), object_angular_velocity(3), object_linear_velocity(3)],
   /// so a caller can score it against the same Q the LCS-based cost types use.
   ///
+  /// @p final_pose and @p plan_poses, when given, receive the object's pose as
+  /// (qw, qx, qy, qz, x, y, z): the first at the close of the whole rollout,
+  /// the second a quarter, half and all the way through the plan, one per
+  /// column, before the settle window starts.
+  ///
   /// Holds no state of its own: every rollout builds its own context, and the
   /// only plant methods it calls are const ones writing into that context.  So
   /// concurrent rollouts on one instance are safe, and the controller's
@@ -122,7 +144,9 @@ class JammingGroundTruthSim {
                double* travel, double* rotation, double* max_contact_force,
                double* max_ee_tracking_error,
                const RolloutInitialVelocities& initial_velocities = {},
-               std::vector<Eigen::VectorXd>* knot_states = nullptr) const;
+               std::vector<Eigen::VectorXd>* knot_states = nullptr,
+               Eigen::Matrix<double, 7, 1>* final_pose = nullptr,
+               Eigen::Matrix<double, 7, 3>* plan_poses = nullptr) const;
 
   /// The offset between an end effector world position and the printer joint
   /// coordinates that put the tip there, resolved from the plant at

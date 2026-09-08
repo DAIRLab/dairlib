@@ -47,8 +47,15 @@ cc_binary(
         "//examples/sampling_c3/three_d_printer:printer_shared_params_yamls",
         "//examples/sampling_c3/three_d_printer/cone:parameters",
     ],
+    copts = [
+        "-fopenmp",
+    ],
+    linkopts = [
+        "-lgomp",
+    ],
     deps = [
         "//common:find_resource",
+        "//examples/sampling_c3:fast_jamming_label",
         "//examples/sampling_c3:generate_samples",
         "//examples/sampling_c3:jamming_ground_truth",
         "//examples/sampling_c3:jamming_metrics",
@@ -87,6 +94,44 @@ cc_test(
         "//examples/sampling_c3:urdfs",
     ],
     deps = [
+        "//examples/sampling_c3:jamming_ground_truth",
+        "@drake//:drake_shared_library",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "risk_params_test",
+    size = "small",
+    srcs = [
+        "risk_params_test.cc",
+    ],
+    data = [
+        "//examples/sampling_c3:all_example_params_yamls",
+        "//examples/sampling_c3:shared_params_yamls",
+        "//examples/sampling_c3/three_d_printer:printer_shared_params_yamls",
+        "//examples/sampling_c3/three_d_printer/cone:parameters",
+    ],
+    deps = [
+        "//examples/sampling_c3:fast_jamming_label",
+        "//examples/sampling_c3/parameter_headers:risk_params",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
+        "@drake//:drake_shared_library",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "fast_jamming_label_test",
+    size = "medium",
+    srcs = [
+        "fast_jamming_label_test.cc",
+    ],
+    data = [
+        "//examples/sampling_c3:urdfs",
+    ],
+    deps = [
+        "//examples/sampling_c3:fast_jamming_label",
         "//examples/sampling_c3:jamming_ground_truth",
         "@drake//:drake_shared_library",
         "@googletest//:gtest_main",

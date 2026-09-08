@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include <drake/common/drake_assert.h>
 #include <drake/common/yaml/yaml_io.h>
 #include <drake/geometry/geometry_set.h>
 #include <drake/geometry/proximity/obj_to_surface_mesh.h>
@@ -23,6 +24,7 @@
 #include "dairlib/lcmt_sampling_c3_debug.hpp"
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
+#include "examples/sampling_c3/fast_jamming_label.h"
 #include "examples/sampling_c3/jamming_ground_truth.h"
 #include "examples/sampling_c3/jamming_metrics.h"
 #include "examples/sampling_c3/parameter_headers/progress_params.h"
@@ -60,6 +62,14 @@ enum SampleIndex {
                        // reposition mode.
   // Could expand this enum if want to reference more samples.
 };
+
+/// Column layout of the jam data each sample buffer carries alongside its
+/// costs, so a sample recalled from a buffer brings its label with it instead
+/// of coming back unlabelled.  Buffered samples are pruned whenever the object
+/// moves past the retention thresholds, which is the same guarantee that makes
+/// the stored cost worth reusing -- the label is no more stale than the cost it
+/// sits beside.
+enum JamBufferColumn { kJamLabel = 0, kJamTravel, kPlanIsReal, kNumJamColumns };
 
 enum ModeSwitchReason {
   kNoSwitch,
@@ -231,6 +241,25 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void EnableGroundTruthCostSim(
       const std::vector<std::string>& object_models, double sim_dt);
 
+  /// True when this controller was configured with risk_params, which is the
+  /// same switch that turns jam labelling on.  The two jam data output ports
+  /// below exist only then, so a diagram must ask this before connecting them.
+  bool publishes_jam_data() const { return publishes_jam_data_; }
+
+  /// Per-sample jam data for the corresponding buffer, one row per buffer slot
+  /// with columns ordered as JamBufferColumn.  Only declared when
+  /// publishes_jam_data().
+  const drake::systems::OutputPort<double>&
+  get_output_port_sample_buffer_jam_data() const {
+    DRAKE_DEMAND(publishes_jam_data_);
+    return this->get_output_port(sample_buffer_jam_data_port_);
+  }
+  const drake::systems::OutputPort<double>&
+  get_output_port_unsuccessful_sample_buffer_jam_data() const {
+    DRAKE_DEMAND(publishes_jam_data_);
+    return this->get_output_port(unsuccessful_sample_buffer_jam_data_port_);
+  }
+
   /// Solves C3 for each of @p ee_samples -- candidate end effector positions,
   /// all evaluated against the same scene state @p x_lcs_curr -- and returns
   /// the jamming metrics and C3 cost of each.  Intended for offline analysis
@@ -314,6 +343,21 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const std::vector<Eigen::VectorXd>& x_desired,
       const C3Options& c3_options) const;
 
+  /// The end effector path one solved sample's plan describes, retimed exactly
+  /// as the retimed cost path retimes it: slowed to the configured EE velocity
+  /// limits, then sampled back onto the plan's own knot grid, so the label
+  /// describes the same trajectory the offline study labelled
+  /// (SampleJammingResult::retimed_ee_plan) rather than a push of its own
+  /// invention.  Deliberately independent of cost_type, so the label does not
+  /// silently change meaning when the cost type does.
+  ///
+  /// @p max_u_norm receives the largest Cartesian input the RETIMED plan
+  /// commands -- retimed, because ComputeJammingMetrics measures the plan after
+  /// retiming and a raw measurement would call a different set of plans no-ops.
+  std::vector<Eigen::Vector3d> BuildRetimedEEPlanForLabel(
+      const std::shared_ptr<c3::C3>& c3_object, const c3::LCS& lcs_for_plan,
+      double* max_u_norm) const;
+
   void UpdateC3ExecutionTrajectory(const Eigen::VectorXd& x_lcs,
                                    const double& t_context) const;
 
@@ -323,6 +367,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void PruneOutdatedSamplesFromBuffer(
       const Eigen::VectorXd& x_lcs, int* num_in_buffer,
       Eigen::MatrixXd* sample_buffer, Eigen::VectorXd* sample_costs_buffer,
+      Eigen::MatrixXd* sample_jam_buffer,
       const double& pos_error_sample_retention,
       const double& ang_error_sample_retention) const;
 
@@ -331,7 +376,11 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void AugmentSamplesWithBuffer(
       std::vector<std::shared_ptr<c3::C3>>& c3_objects) const;
 
-  void AddToUnsuccessfulBuffer(const Eigen::VectorXd& x_lcs) const;
+  /// Adds @p x_lcs to the unsuccessful buffer, storing the cost and jam label
+  /// of @p sample_index -- the index in all_sample_costs_ of the sample that
+  /// state came from, so the stored data describes the state being added.
+  void AddToUnsuccessfulBuffer(const Eigen::VectorXd& x_lcs,
+                               int sample_index) const;
 
   void KeepTrackOfC3ModeProgress(
       const drake::VectorX<double>& x_lcs_curr,
@@ -492,6 +541,12 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void OutputUnsuccessfulSampleBufferCosts(
       const drake::systems::Context<double>& context,
       Eigen::VectorXd* unsuccessful_sample_buffer_costs) const;
+  void OutputSampleBufferJamData(
+      const drake::systems::Context<double>& context,
+      Eigen::MatrixXd* sample_buffer_jam_data) const;
+  void OutputUnsuccessfulSampleBufferJamData(
+      const drake::systems::Context<double>& context,
+      Eigen::MatrixXd* unsuccessful_sample_buffer_jam_data) const;
 
   // Quantities computed once in the constructor for certain sampling
   // strategies.
@@ -557,6 +612,12 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   drake::systems::OutputPortIndex
       unsuccessful_sample_buffer_configurations_port_;
   drake::systems::OutputPortIndex unsuccessful_sample_buffer_costs_port_;
+  // Only declared when publishes_jam_data_; unset otherwise.
+  drake::systems::OutputPortIndex sample_buffer_jam_data_port_;
+  drake::systems::OutputPortIndex unsuccessful_sample_buffer_jam_data_port_;
+  // Whether risk_params configured a jam labeller, which is what decides
+  // whether the two ports above exist at all.
+  bool publishes_jam_data_ = false;
 
   // This plant_ has been made 'not const' so that the context can be updated.
   drake::multibody::MultibodyPlant<double>& plant_;
@@ -655,6 +716,41 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable Eigen::Vector3d prev_repositioning_target_ = Eigen::Vector3d::Zero();
   mutable std::vector<double> all_sample_costs_;
 
+  // The fast approximate jam label for each of those samples, computed in the
+  // same parallel loop as the costs.  All three are NaN-filled and stay NaN
+  // when no labeller is configured.  The one sample AugmentSamplesWithBuffer
+  // can append carries the label stored beside its cost in the sample buffer,
+  // from the tick that first solved it:  the buffer drops any sample whose
+  // object pose has drifted past the retention thresholds, so that label is no
+  // more stale than the cost it is recalled with.
+  //
+  // all_sample_jam_labels_:   1 = the plan pushed and the object did not move,
+  //                           0 = it moved, or the plan was a no-op.
+  // all_sample_jam_travel_:   how far the object's origin got from where it
+  //                           started, in meters; NaN for a no-op, which is
+  //                           never simulated.  A lower bound rather than a
+  //                           measurement when the rollout exited early.
+  // all_sample_plan_is_real_: 1 = the solve produced a plan that commanded
+  //                           real effort, 0 = it produced nothing to execute.
+  //                           A no-op is not a jam -- the end effector never
+  //                           tried -- but it made no progress either, so it
+  //                           is flagged here rather than folded into the jam
+  //                           label, which stays comparable with the ground
+  //                           truth's.
+  mutable std::vector<double> all_sample_jam_labels_;
+  mutable std::vector<double> all_sample_jam_travel_;
+  mutable std::vector<double> all_sample_plan_is_real_;
+
+  // Built in the constructor when the demo configured risk_params, and null
+  // otherwise -- which is what switches the labelling off entirely.  Holds no
+  // mutable state, so Label() is safe to call from every thread of the
+  // per-sample loop at once.
+  std::unique_ptr<const FastJammingLabelSim> fast_jamming_label_sim_;
+  // The input budget a plan is called a no-op against, resolved once from the
+  // same limits the C3 solves impose.  Only meaningful alongside a non-null
+  // fast_jamming_label_sim_.
+  double u_budget_for_label_ = 0.0;
+
   // For the published-trajectory sanity check in OutputTrajExecuteActor; see
   // the investigation notes in the repo history / plan doc for 2026-08-05.
   mutable Eigen::Vector3d last_published_ee_knot0_ = Eigen::Vector3d::Zero();
@@ -682,12 +778,17 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable int num_in_buffer_ = 0;
   mutable Eigen::MatrixXd sample_buffer_;  // (N_sample_buffer x n_q)
   mutable Eigen::VectorXd sample_costs_buffer_;
+  /// (N_sample_buffer x kNumJamColumns), row-aligned with the two above.
+  mutable Eigen::MatrixXd sample_jam_buffer_;
 
   // Unsuccessful sample buffer-related variables.
   mutable int num_in_unsuccessful_buffer_ = 0;
   mutable Eigen::MatrixXd
       unsuccessful_sample_buffer_;  // (num_in_unsuccessful_buffer_ x n_q)
   mutable Eigen::VectorXd unsuccessful_sample_costs_buffer_;
+  /// (N_unsuccessful_sample_buffer x kNumJamColumns), row-aligned with the two
+  /// above.
+  mutable Eigen::MatrixXd unsuccessful_sample_jam_buffer_;
 
   // Miscellaneous sample related variables.
   mutable bool is_doing_c3_ = true;

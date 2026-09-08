@@ -12,6 +12,7 @@
 #include "examples/sampling_c3/parameter_headers/goal_params.h"
 #include "examples/sampling_c3/parameter_headers/progress_params.h"
 #include "examples/sampling_c3/parameter_headers/reposition_params.h"
+#include "examples/sampling_c3/parameter_headers/risk_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "examples/sampling_c3/parameter_headers/sampling_params.h"
 
@@ -42,6 +43,14 @@ struct SamplingC3ControllerParams {
   /// samples must avoid while that goal is active.
   std::optional<std::vector<std::string>> keep_out_model_sequence;
 
+  /// Optional configuration for the fast approximate jam label the controller
+  /// computes per candidate sample (see examples/sampling_c3/
+  /// fast_jamming_label.h).  Unset -- the default, and what every demo but the
+  /// 3D printer's leaves it at -- means no labels are computed at all.  The
+  /// labeller builds a 3D printer plant, so it is printer-only by
+  /// construction.
+  std::optional<std::string> risk_params_file;
+
   bool include_end_effector_orientation;
   int control_loop_delay_ms;
 
@@ -53,6 +62,8 @@ struct SamplingC3ControllerParams {
   SamplingC3ProgressParams progress_params;
   SamplingParams sampling_params;
   SamplingC3GoalParams goal_params;
+  /// Loaded from risk_params_file when that is set, and left unset otherwise.
+  std::optional<SampleRiskParams> risk_params;
   c3::SolverOptionsFromYaml osqp_settings;
 
   template <typename Archive>
@@ -76,6 +87,7 @@ struct SamplingC3ControllerParams {
     a->Visit(DRAKE_NVP(base_names));
     a->Visit(DRAKE_NVP(object_models));
     a->Visit(DRAKE_NVP(keep_out_model_sequence));
+    a->Visit(DRAKE_NVP(risk_params_file));
 
     /// Store individual parameter classes internally.
     sampling_c3_options =
@@ -90,6 +102,10 @@ struct SamplingC3ControllerParams {
         drake::yaml::LoadYamlFile<SamplingC3GoalParams>(goal_params_file);
     osqp_settings = drake::yaml::LoadYamlFile<c3::SolverOptionsFromYaml>(
         osqp_settings_file);
+    if (risk_params_file.has_value()) {
+      risk_params =
+          drake::yaml::LoadYamlFile<SampleRiskParams>(*risk_params_file);
+    }
 
     num_objects = base_names.size();
 

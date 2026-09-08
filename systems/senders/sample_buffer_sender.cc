@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <limits>
 
 #include "common/eigen_utils.h"
 
@@ -11,6 +12,18 @@ namespace systems {
 using drake::systems::Context;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
+
+namespace {
+// Number of jam columns the jam data input port carries, matching
+// kNumJamColumns of JamBufferColumn in
+// systems/controllers/sampling_based_c3_controller.h.  Duplicated rather than
+// included because systems/senders does not depend on the controller.
+constexpr int kNumJamColumnsExpected = 3;
+constexpr int kJamLabelColumn = 0;
+constexpr int kJamTravelColumn = 1;
+constexpr int kPlanIsRealColumn = 2;
+constexpr float kUnlabelled = std::numeric_limits<float>::quiet_NaN();
+}  // namespace
 
 SampleBufferSender::SampleBufferSender(int buffer_size, int n_config,
                                        std::string name)
@@ -26,6 +39,12 @@ SampleBufferSender::SampleBufferSender(int buffer_size, int n_config,
   sample_costs_port_ =
       this->DeclareAbstractInputPort("sample_buffer_costs",
                                      drake::Value<VectorXd>{cost_buffer})
+          .get_index();
+  MatrixXd jam_buffer = MatrixXd::Constant(buffer_size_, kNumJamColumnsExpected,
+                                           kUnlabelled);
+  jam_data_port_ =
+      this->DeclareAbstractInputPort("sample_buffer_jam_data",
+                                     drake::Value<MatrixXd>{jam_buffer})
           .get_index();
 
   lcm_sample_buffer_output_port_ =
@@ -72,6 +91,24 @@ void SampleBufferSender::OutputSampleBufferLcm(
   output->costs.reserve(buffer_size_);
   output->costs = cost_data;
   output->configurations = config_data;
+
+  // The jam data is optional:  a controller with no jam labeller configured
+  // declares no jam output port to connect here, and publishes all NaN rather
+  // than claiming a verdict it never computed.
+  output->jam_labels = std::vector<float>(buffer_size_, kUnlabelled);
+  output->jam_travel = std::vector<float>(buffer_size_, kUnlabelled);
+  output->plan_is_real = std::vector<float>(buffer_size_, kUnlabelled);
+  if (get_input_port_jam_data().HasValue(context)) {
+    const auto& buffer_jam_data =
+        this->EvalInputValue<MatrixXd>(context, jam_data_port_);
+    DRAKE_ASSERT(buffer_jam_data->rows() == buffer_size_);
+    DRAKE_ASSERT(buffer_jam_data->cols() == kNumJamColumnsExpected);
+    for (int i = 0; i < buffer_size_; i++) {
+      output->jam_labels[i] = (*buffer_jam_data)(i, kJamLabelColumn);
+      output->jam_travel[i] = (*buffer_jam_data)(i, kJamTravelColumn);
+      output->plan_is_real[i] = (*buffer_jam_data)(i, kPlanIsRealColumn);
+    }
+  }
 }
 
 }  // namespace systems

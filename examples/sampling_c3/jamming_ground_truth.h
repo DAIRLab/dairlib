@@ -56,6 +56,23 @@ struct GroundTruthLabel {
   /// 1.0 when the plan was a real one and still achieved nothing: the jam.
   /// NaN when the caller could not say whether the plan was real.
   double jammed = std::numeric_limits<double>::quiet_NaN();
+  /// Where the object ended up at the close of the tracked rollout, as
+  /// (qw, qx, qy, qz, x, y, z).  Travel and rotation above are unsigned peaks,
+  /// so they cannot say whether a push moved the object toward its goal or
+  /// away from it; this can, given the goal the caller was pursuing.  It
+  /// matters most in an endgame pose, where the useful pushes and the harmful
+  /// ones move the object by similar amounts.
+  Eigen::Matrix<double, 7, 1> sim_object_final_pose =
+      Eigen::Matrix<double, 7, 1>::Constant(
+          std::numeric_limits<double>::quiet_NaN());
+  /// The same pose read a quarter, half and all the way through the plan, one
+  /// per column, before the settle window starts.  A cost built on the sim has
+  /// to be told how long to watch: these say how much of the difference between
+  /// samples is already visible while the push is still being made, and how
+  /// much only appears once the object is left alone.
+  Eigen::Matrix<double, 7, 3> sim_object_plan_poses =
+      Eigen::Matrix<double, 7, 3>::Constant(
+          std::numeric_limits<double>::quiet_NaN());
 };
 
 /// Progress below which a push counts as having achieved nothing, in meters.
@@ -105,7 +122,9 @@ class JammingGroundTruthSim {
                const Eigen::Vector3d& object_position,
                const std::vector<Eigen::Vector3d>& ee_plan, double knot_dt,
                double* travel, double* rotation, double* max_contact_force,
-               double* max_ee_tracking_error);
+               double* max_ee_tracking_error,
+               Eigen::Matrix<double, 7, 1>* final_pose = nullptr,
+               Eigen::Matrix<double, 7, 3>* plan_poses = nullptr);
 
   std::unique_ptr<drake::systems::Diagram<double>> diagram_;
   drake::multibody::MultibodyPlant<double>* plant_ = nullptr;

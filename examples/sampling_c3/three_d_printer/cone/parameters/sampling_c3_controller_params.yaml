@@ -25,7 +25,7 @@ base_names: [cone]
 # mismatch).  "" = no keep-out regions for that goal; otherwise a URDF path (see
 # examples/sampling_c3/urdf/cone/keep_out_example.urdf) whose obstacle geometry
 # samples must avoid for that goal.
-keep_out_model_sequence: ["", "", "examples/sampling_c3/urdf/cone/keep_out_goal_2.urdf"]
+keep_out_model_sequence: ["", "", ""] #"examples/sampling_c3/urdf/cone/keep_out_goal_2.urdf"]
 
 include_end_effector_orientation: false  # Unused for 3D printer
                                          # (orientation never included).

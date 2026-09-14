@@ -532,6 +532,30 @@ SamplingC3Controller::SamplingC3Controller(
     }
   }
 
+  // The live jam watchdog, off unless this demo configured thresholds for it.
+  if (progress_params_.jam_guard.has_value()) {
+    const JamGuardParams& jam_params = progress_params_.jam_guard.value();
+    // Arming above releasing in both guards, or the latch has no hysteresis at
+    // all and chatters on the loop-to-loop noise in C3's lambda.
+    DRAKE_DEMAND(jam_params.force_release < jam_params.force_trip);
+    DRAKE_DEMAND(jam_params.gap_release > jam_params.gap_trip);
+    DRAKE_DEMAND(jam_params.trip_hold_seconds >= 0.0);
+    DRAKE_DEMAND(jam_params.release_hold_seconds >= 0.0);
+    DRAKE_DEMAND(jam_params.retreat_knots >= 0);
+    // The retreat is prepended to an N-knot plan and the remainder is still
+    // repositioned, so it must leave at least two knots for that leg.
+    DRAKE_DEMAND(jam_params.retreat_knots <= sampling_c3_options_.N - 2);
+    jam_latch_ = std::make_unique<JamLatch>(JamLatchThresholds{
+        jam_params.force_trip, jam_params.force_release,
+        jam_params.force_gate_gap, jam_params.gap_trip, jam_params.gap_release,
+        jam_params.trip_hold_seconds, jam_params.release_hold_seconds});
+    std::cout << "Jam watchdog enabled: trips below " << jam_params.gap_trip
+              << " m gap, or above " << jam_params.force_trip
+              << " N while within " << jam_params.force_gate_gap
+              << " m of contact, held " << jam_params.trip_hold_seconds << " s."
+              << std::endl;
+  }
+
   // Below code loads in the mesh and enumerates triangular faces.
   if (sampling_params_.sampling_strategy == SamplingStrategy::kMeshNormal ||
       sampling_params_.sampling_strategy ==
@@ -607,6 +631,18 @@ SamplingC3Controller::SamplingC3Controller(
       object_geometry_ids_.push_back(object_geometry_id);
       object_enclosing_radius_.push_back(max_radius_from_origin);
     }
+  }
+
+  // The jam watchdog's interpenetration guard queries against the object
+  // geometries, which the mesh block above only collects for the sampling
+  // strategies that need a mesh.  Collect them here for any other strategy, or
+  // that guard would sit silently disabled while looking configured.
+  if (jam_latch_ != nullptr && object_geometry_ids_.empty()) {
+    for (const std::string& base_name : controller_params_.base_names) {
+      object_geometry_ids_.push_back(plant_.GetCollisionGeometriesForBody(
+          plant_.GetBodyByName(base_name))[0]);
+    }
+    DRAKE_DEMAND(!object_geometry_ids_.empty());
   }
 }
 
@@ -1279,6 +1315,16 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Augment the considered samples with the best from the buffer, if eligible.
   AugmentSamplesWithBuffer(c3_objects);
 
+  // Judge the current end effector location for a jam before deciding the
+  // mode, so both branches below see the same verdict.  Runs in either mode:
+  // the current location's C3 problem is solved every loop regardless, so its
+  // knot-0 contact force is available while repositioning too -- which is the
+  // point, since two of the three logged presses happened while executing a
+  // repositioning path toward a stale target.
+  const bool was_jam_tripped = jam_tripped_;
+  UpdateJamWatchdog(context.get_time(), x_lcs_curr,
+                    c3_objects.at(SampleIndex::kCurrentLocation));
+
   // Set up hysteresis values based on if the cost switching threshold has been
   // crossed.
   double hyst_c3_to_repos = progress_params_.hyst_c3_to_repos;
@@ -1350,6 +1396,20 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       std::cout << "All objects on target, switching to repositioning mode"
                 << std::endl;
     }
+    // Switch to repositioning if the jam watchdog has tripped.  Ahead of both
+    // cost-based cases below: a jam is not something to wait out, and the
+    // existing progress safeguards demonstrably miss it -- two of the three
+    // logged jams were shorter than progress_enforced_over_n_loops, and
+    // best_progress_steps_ago_ resets on the very mode switch a jam induces.
+    else if (jam_tripped_ && !force_c3_mode &&
+             (sampling_params_.num_additional_samples_c3 > 0)) {
+      is_doing_c3_ = false;
+      mode_switch_reason_ = ModeSwitchReason::kToReposJamDetected;
+      std::cout << "C3 -> Repos:  jam detected (EE<->object force "
+                << jam_ee_object_force_ << " N, gap " << jam_ee_object_gap_
+                << " m)" << std::endl;
+    }
+
     // Switch to repositioning if progress was insufficient.
     else if (!met_minimum_progress && !force_c3_mode &&
              (sampling_params_.num_additional_samples_c3 > 0)) {
@@ -1518,6 +1578,21 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       }
       pursued_target_source_ = PursuedTargetSource::kNoTarget;
     }
+  }
+
+  // Record the jam where the controller will actually act on it.  On the
+  // rising edge only -- every latched loop would fill the buffer with near
+  // duplicates of one spot -- and in both branches, since a jam that starts
+  // while repositioning is the case the buffer most needs to remember.
+  // hwlog-000005 jammed twice at the same object pose from the same approach,
+  // 21 s apart, with an empty buffer both times; nothing in the controller
+  // remembered the first one.  This is also what invalidates the current
+  // repositioning target: unsuccessful_radius then vetoes re-choosing that
+  // spot, and AddToUnsuccessfulBuffer prunes nearby entries out of the
+  // ordinary sample buffer on the way through.
+  if (jam_tripped_ && !was_jam_tripped) {
+    AddToUnsuccessfulBuffer(candidate_states[SampleIndex::kCurrentLocation],
+                            SampleIndex::kCurrentLocation);
   }
 
   if (verbose_) {
@@ -2106,11 +2181,20 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
             sampling_c3_options_.resolve_contacts_to,
             sampling_c3_options_.num_friction_directions_per_contact.value(),
             verbose_);
-    LCS lcs_object_sample =
-        LCSFactory(plant_, *context_, plant_ad_, *context_ad_,
-                   resolved_contact_pairs, lcs_factory_options)
-            .GenerateLCS();
+    LCSFactory lcs_factory_sample(plant_, *context_, plant_ad_, *context_ad_,
+                                  resolved_contact_pairs, lcs_factory_options);
+    LCS lcs_object_sample = lcs_factory_sample.GenerateLCS();
     lcs_candidates.push_back(lcs_object_sample);
+
+    // Capture the EE<->object contact block for the jam watchdog off the
+    // factory this loop builds anyway, so reading C3's own knot-0 contact
+    // force every control loop costs no extra LCS build.  The current location
+    // is the only sample the watchdog judges: it is where the end effector
+    // actually is.
+    if (i == SampleIndex::kCurrentLocation) {
+      curr_ee_object_force_basis_ = MakeEEObjectContactForceBasis(
+          lcs_factory_sample.GetContactDescriptions());
+    }
 
     // Create different LCS objects for cost calculation.
     vector<SortedPair<GeometryId>> resolved_contact_pairs_for_cost_simulation;
@@ -2281,10 +2365,32 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   const auto& query_object =
       plant_.get_geometry_query_input_port()
           .template Eval<drake::geometry::QueryObject<double>>(*context_);
-  MatrixXd knots = Reposition(
-      n_q_, n_x_, N_, x_lcs, best_sample_location, dt_, is_doing_c3_,
-      finished_reposition_flag_, reposition_params_, sampling_c3_options_,
-      &query_object, contact_pairs_.at(0).at(0).first(), ee_radius_);
+  // While the jam watchdog is latched, prepend a short retreat along the
+  // outward object normal to whatever the repositioning strategy would plan.
+  // The whole plan is rebuilt every loop, so a retreat that needs more than one
+  // tick is simply this happening on several loops in a row, tapering back into
+  // the plain repositioning path the moment the guard releases -- no committed
+  // escape trajectory to get stuck in.  The retreat knots pass through the same
+  // ProjectPlanAwayFromFixedGeometries / ClampPlanToWorkspaceLimits at publish
+  // time as everything else, so an escape normal pointing into the ramp is
+  // projected back out rather than driven into it.
+  MatrixXd knots;
+  if (jam_tripped_) {
+    const JamGuardParams& jam_params = progress_params_.jam_guard.value();
+    knots = RepositionWithRetreat(
+        n_q_, n_x_, N_, x_lcs, best_sample_location, dt_, is_doing_c3_,
+        jam_escape_direction_, jam_params.retreat_knots, reposition_params_,
+        sampling_c3_options_, &query_object, contact_pairs_.at(0).at(0).first(),
+        ee_radius_);
+    // A retreating plan has not reached its target, whatever the leg beyond the
+    // retreat thinks.
+    finished_reposition_flag_ = false;
+  } else {
+    knots = Reposition(n_q_, n_x_, N_, x_lcs, best_sample_location, dt_,
+                       is_doing_c3_, finished_reposition_flag_,
+                       reposition_params_, sampling_c3_options_, &query_object,
+                       contact_pairs_.at(0).at(0).first(), ee_radius_);
+  }
 
   // A freshly (this-loop) chosen target may already be within one step's
   // distance of the current EE position purely by chance, which would make
@@ -2897,6 +3003,118 @@ void SamplingC3Controller::RefreshPerGoalSettings(int goal_step) const {
 }
 
 // Reset the metrics used to track progress in C3 mode.
+ContactForceBasis SamplingC3Controller::MakeEEObjectContactForceBasis(
+    const vector<LCSContactDescription>& contact_descriptions) const {
+  // Same sizing recipe as EvaluateJammingMetricsForSamples, but pointed at the
+  // EE-object group alone rather than at all of the EE's contacts.
+  const vector<int>& resolve_contacts_to =
+      sampling_c3_options_.resolve_contacts_to;
+  DRAKE_DEMAND(resolve_contacts_to.size() >= 2);
+  const vector<int>& friction_dirs =
+      sampling_c3_options_.num_friction_directions_per_contact.value();
+  const auto contact_model = c3::multibody::GetContactModelMap().at(
+      controller_params_.sampling_c3_options.contact_model);
+  auto num_lambda_entries = [&](int first_contact, int num_contacts) {
+    return LCSFactory::GetNumContactVariables(
+        contact_model, num_contacts,
+        vector<int>(friction_dirs.begin() + first_contact,
+                    friction_dirs.begin() + first_contact + num_contacts));
+  };
+  // Group 0 is EE-ground and group 1 is EE-object, so skip the former's block.
+  const int num_ee_ground_lambda_entries =
+      num_lambda_entries(0, resolve_contacts_to[0]);
+  const int num_ee_object_lambda_entries =
+      num_lambda_entries(resolve_contacts_to[0], resolve_contacts_to[1]);
+  return MakeContactForceBasis(contact_descriptions,
+                               num_ee_ground_lambda_entries,
+                               num_ee_object_lambda_entries);
+}
+
+void SamplingC3Controller::UpdateJamWatchdog(
+    double now, const VectorXd& x_lcs_curr,
+    const std::shared_ptr<C3>& curr_location_plan) const {
+  if (jam_latch_ == nullptr) {
+    return;
+  }
+
+  // Guard 1: the magnitude of C3's own knot-0 EE<->object contact force.  This
+  // is force_basis * lambda over the EE-object block of the solution already in
+  // hand -- the same quantity C3_FORCES_CURR publishes -- so nothing is solved
+  // here.  It is what C3 *intended* to apply, not a measurement; there is no
+  // force sensing on this rig.
+  const vector<VectorXd> z_sol = curr_location_plan->GetFullSolution();
+  DRAKE_DEMAND(!z_sol.empty());
+  const VectorXd lambda_knot_0 = z_sol.at(0).segment(n_x_, n_lambda_);
+  jam_ee_object_force_ =
+      ContactForceMagnitude(lambda_knot_0, curr_ee_object_force_basis_);
+
+  // Guard 2: the apparent interpenetration.  Same query
+  // ProjectPlanAwayFromFixedGeometries runs, pointed at the object geometries
+  // instead of the fixed scene.  result.distance is measured from the EE
+  // *centre*, so subtracting ee_radius_ gives the gap from the EE sphere's
+  // surface to the object's surface; grad_W is the gradient of that signed
+  // distance, which points out of the object and is therefore the direction
+  // that most directly undoes the penetration.
+  //
+  // The context is already synced to x_lcs_curr -- CreateLCSObjectsForSamples
+  // restores it before returning -- so the object pose the query sees is the
+  // one this loop is planning against.
+  const auto& query_object =
+      plant_.get_geometry_query_input_port()
+          .template Eval<drake::geometry::QueryObject<double>>(*context_);
+  const auto& results = query_object.ComputeSignedDistanceGeometryToPoint(
+      x_lcs_curr.head(3), drake::geometry::GeometrySet(object_geometry_ids_));
+  double min_distance = std::numeric_limits<double>::infinity();
+  Vector3d escape_direction = Vector3d::Zero();
+  for (const auto& result : results) {
+    if (result.distance < min_distance) {
+      min_distance = result.distance;
+      escape_direction = result.grad_W;
+    }
+  }
+
+  // A reading this deep is not a real penetration: it means the
+  // signed-distance query is unreliable (a non-watertight or non-manifold
+  // collision mesh -- the same failure ProjectPlanAwayFromFixedGeometries
+  // refuses to correct for).  Unlike that projection, which throws, a watchdog
+  // must not turn a bad query into a phantom jam, so the penetration term is
+  // simply skipped for this loop and the force term decides alone.
+  constexpr double kMaxPlausiblePenetration = 0.05;  // meters
+  const double gap = min_distance - ee_radius_;
+  const bool gap_is_valid = std::isfinite(min_distance) &&
+                            gap > -kMaxPlausiblePenetration &&
+                            escape_direction.norm() > 1e-9;
+  if (gap_is_valid) {
+    jam_ee_object_gap_ = gap;
+    jam_escape_direction_ = escape_direction.normalized();
+  } else {
+    // No escape direction rather than a stale one: the retreat is only worth
+    // making along a normal this loop's query actually produced, and
+    // RepositionWithRetreat falls back to plain repositioning without one.
+    jam_ee_object_gap_ = std::numeric_limits<double>::quiet_NaN();
+    jam_escape_direction_ = Vector3d::Zero();
+  }
+
+  // The dwell counter and its hysteresis live in JamLatch; see its comment for
+  // why the arm and release conditions are asymmetric and why nothing here is
+  // reset by a mode switch.
+  const bool was_tripped = jam_latch_->tripped();
+  const bool rising_edge = jam_latch_->Update(
+      now, jam_ee_object_force_,
+      gap_is_valid ? std::optional<double>(jam_ee_object_gap_) : std::nullopt);
+  jam_trip_seconds_ = jam_latch_->trip_seconds();
+  jam_tripped_ = jam_latch_->tripped();
+
+  if (rising_edge) {
+    std::cout << "Jam detected: EE<->object force " << jam_ee_object_force_
+              << " N, gap " << jam_ee_object_gap_ << " m, held "
+              << jam_trip_seconds_ << " s." << std::endl;
+  } else if (was_tripped && !jam_tripped_) {
+    std::cout << "Jam cleared: EE<->object force " << jam_ee_object_force_
+              << " N, gap " << jam_ee_object_gap_ << " m." << std::endl;
+  }
+}
+
 void SamplingC3Controller::ResetProgressMetrics() const {
   lowest_cost_ = -1.0;
   lowest_pos_and_rot_current_cost_ = -1.0;
@@ -4076,6 +4294,9 @@ void SamplingC3Controller::OutputDebug(
   debug_msg->lowest_orientation_error = lowest_orientation_error_;
   debug_msg->current_pos_error = current_position_error_;
   debug_msg->current_rot_error = current_orientation_error_;
+  debug_msg->jam_ee_object_force = jam_ee_object_force_;
+  debug_msg->jam_ee_object_gap = jam_ee_object_gap_;
+  debug_msg->jam_tripped = jam_tripped_;
 }
 
 void SamplingC3Controller::OutputSampleBufferConfigurations(

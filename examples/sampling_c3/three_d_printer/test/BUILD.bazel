@@ -153,6 +153,28 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "jam_watchdog_test",
+    size = "small",
+    srcs = [
+        "jam_watchdog_test.cc",
+    ],
+    data = [
+        "//examples/sampling_c3:all_example_params_yamls",
+        "//examples/sampling_c3:shared_params_yamls",
+        "//examples/sampling_c3/three_d_printer:printer_shared_params_yamls",
+        "//examples/sampling_c3/three_d_printer/cone:parameters",
+    ],
+    deps = [
+        "//examples/sampling_c3:jamming_metrics",
+        "//examples/sampling_c3:reposition",
+        "//examples/sampling_c3/parameter_headers:progress_params",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
+        "@drake//:drake_shared_library",
+        "@googletest//:gtest_main",
+    ],
+)
+
 cc_binary(
     name = "jamming_visualizer",
     srcs = [
@@ -219,5 +241,34 @@ cc_test(
         "//examples/sampling_c3:sampling_c3_utils",
         "@drake//:drake_shared_library",
         "@googletest//:gtest_main",
+    ],
+)
+
+cc_binary(
+    name = "hybrid_jam_replay",
+    srcs = [
+        "hybrid_jam_replay.cc",
+    ],
+    data = [
+        "//examples/sampling_c3:all_example_params_yamls",
+        "//examples/sampling_c3:shared_params_yamls",
+        "//examples/sampling_c3:urdfs",
+        "//examples/sampling_c3/three_d_printer:printer_shared_params_yamls",
+        "//examples/sampling_c3/three_d_printer/cone:parameters",
+    ],
+    deps = [
+        "//examples/sampling_c3:sampling_c3_utils",
+        "//examples/sampling_c3/parameter_headers:lcm_channels",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
+        "//lcm:lcm_trajectory_saver",
+        "//lcmtypes:lcmt_robot",
+        "//systems:robot_lcm_systems",
+        "//systems:three_d_printer_kinematics",
+        "//systems/controllers:sampling_c3_controller",
+        "//systems/senders:c3_state_sender",
+        "//systems/senders:sample_buffer_sender",
+        "@c3//:libc3",
+        "@drake//:drake_shared_library",
+        "@gflags",
     ],
 )

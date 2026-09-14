@@ -76,3 +76,23 @@ hyst_repos_to_c3_frac: 0.3
 hyst_repos_to_c3_frac_position: 0.5
 hyst_repos_to_repos_frac: 0.3
 hyst_repos_to_repos_frac_position: 0.3
+
+# Live jam watchdog:  allow the controller to switch C3 -> Repos if it detects
+# the EE is jammed against the object.  This is a safety feature to get out of
+# dangerous situations faster than the other C3 -> Repos switching logic.  Omit
+# these parameters entirely to turn the watchdog off.
+jam_guard:
+  gap_trip: -0.010    # gate 1:  penetration [m] (negative = penetration)
+  gap_release: 0.002  # do "unjam" maneuver until signed distance >= this
+  force_trip: 9.0     # gate 2:  EE-object force [N] within force_gate_gap
+  force_release: 4.0  # do "unjam" maneuver until force <= this, or gate opens
+  force_gate_gap: 0.002   # enable gate 2 if signed distance <= this [m]
+  trip_hold_seconds: 0.3  # latch once either gate has been armed for this
+                          # long consecutively
+  release_hold_seconds: 0.5   # do "unjam" maneuver until release condition ran
+                              # for this long consecutively
+  retreat_knots: 2    # while latched, prepend this many "unjam" knots to
+                      # repositioning trajectory, each one knot period of
+                      # travel along the object surface normal at the fastest
+                      # speed reposition_params' speed_horizontal /
+                      # speed_vertical allow in that direction

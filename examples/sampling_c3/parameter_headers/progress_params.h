@@ -54,6 +54,53 @@ enum C3CostComputationType {
   kSimImpedanceRetimedObjectCostOnly,
 };
 
+/* Live jam watchdog thresholds:  gap < trip, or force > trip while in
+   contact detectors.  Both terms are read every control loop: the force is C3's
+   own knot-0 EE<->object contact solution (the same lambda that feeds
+   C3_FORCES_CURR), and the gap is a single EE-to-object signed-distance query.
+
+   Arming and releasing are deliberately asymmetric: the *_trip values are what
+   the report scored, and the *_release values sit well inside them so a jam
+   does not un-latch on a single loop where C3's lambda happens to dip.
+*/
+struct JamGuardParams {
+  /// Arm above this EE<->object contact force magnitude [N].
+  double force_trip;
+  /// Release below this force [N].  Must be under force_trip, and above the
+  /// several-newton floor this quantity carries whenever C3 is planning to
+  /// close on the object again.
+  double force_release;
+  /// The force term arms only while the gap is also below this [m].
+  double force_gate_gap;
+  /// Arm below this gap [m] -- the signed distance from the EE sphere's
+  /// surface to the object's surface, so negative means the logged EE position
+  /// is inside the measured object.
+  double gap_trip;
+  /// Release above this gap [m].  Must be above gap_trip.
+  double gap_release;
+  /// Seconds the arming condition must hold continuously before the latch sets.
+  double trip_hold_seconds;
+  /// Seconds both quantities must sit inside their *_release thresholds before
+  /// the latch clears.
+  double release_hold_seconds;
+  /// While latched, how many retreat knots are prepended to the front of each
+  /// repositioning plan, each one knot period of travel along the outward
+  /// object surface normal.
+  int retreat_knots;
+
+  template <typename Archive>
+  void Serialize(Archive* a) {
+    a->Visit(DRAKE_NVP(force_trip));
+    a->Visit(DRAKE_NVP(force_release));
+    a->Visit(DRAKE_NVP(force_gate_gap));
+    a->Visit(DRAKE_NVP(gap_trip));
+    a->Visit(DRAKE_NVP(gap_release));
+    a->Visit(DRAKE_NVP(trip_hold_seconds));
+    a->Visit(DRAKE_NVP(release_hold_seconds));
+    a->Visit(DRAKE_NVP(retreat_knots));
+  }
+};
+
 struct SamplingC3ProgressParams {
   C3CostComputationType cost_type;
   C3CostComputationType cost_type_position;
@@ -84,6 +131,8 @@ struct SamplingC3ProgressParams {
   double hyst_c3_to_repos_frac_position;
   double hyst_repos_to_c3_frac_position;
   double hyst_repos_to_repos_frac_position;
+  /// Live jam watchdog.  Unset => no watchdog.
+  std::optional<JamGuardParams> jam_guard;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -111,5 +160,6 @@ struct SamplingC3ProgressParams {
     a->Visit(DRAKE_NVP(hyst_c3_to_repos_frac_position));
     a->Visit(DRAKE_NVP(hyst_repos_to_c3_frac_position));
     a->Visit(DRAKE_NVP(hyst_repos_to_repos_frac_position));
+    a->Visit(DRAKE_NVP(jam_guard));
   }
 };

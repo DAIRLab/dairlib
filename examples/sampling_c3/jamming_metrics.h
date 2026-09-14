@@ -34,6 +34,7 @@
 #include <vector>
 
 #include <Eigen/Dense>
+#include <optional>
 
 #include "core/c3.h"
 #include "core/lcs.h"
@@ -188,6 +189,84 @@ struct UInputLimits {
 UInputLimits MakeUInputLimits(const std::vector<double>& u_horizontal_limits,
                               const std::vector<double>& u_vertical_limits);
 
+/// Thresholds for the live jam watchdog's latch.  A plain struct rather than
+/// the YAML-facing JamGuardParams (examples/sampling_c3/parameter_headers/
+/// progress_params.h, which documents what each number is and where it came
+/// from), for the same reason risk_params.h is kept separate from
+/// FastJammingLabelConfig: this header stays free of the parameter headers, and
+/// a caller with numbers from somewhere else -- a test, a sweep -- can use the
+/// latch without inventing a YAML file.
+struct JamLatchThresholds {
+  double force_trip = 0.0;
+  double force_release = 0.0;
+  /// The gap within which the force term is allowed to say anything at all,
+  /// on BOTH sides of the latch.  C3's knot-0 lambda is an ADMM iterate whose
+  /// complementarity is only relaxed, so it does not vanish at a positive gap
+  /// -- replayed over hwlog-000003 it reads 8-16 N with the end effector
+  /// 15-33 mm clear of the cone, and 18 N at 82 mm on hwlog-000005.  Ungated
+  /// on the arming side that latched the guard three times on no contact;
+  /// ungated on the releasing side it held the latch set while the end
+  /// effector retreated to 142 mm clear.  Set to infinity for the old ungated
+  /// behaviour.
+  double force_gate_gap = std::numeric_limits<double>::infinity();
+  double gap_trip = 0.0;
+  double gap_release = 0.0;
+  /// Seconds the arming condition must hold continuously before the latch
+  /// sets.  A duration rather than a loop count: the control loop is paced by
+  /// the solve, and measured spacing over these logs ranges 0.039-0.179 s, so
+  /// a fixed count means anywhere from 0.15 s to 0.71 s.
+  double trip_hold_seconds = 0.0;
+  /// Seconds both quantities must stay inside their *_release thresholds
+  /// before the latch clears.  Without this the guard disarms itself: the
+  /// retreat it commands moves the end effector far enough in one loop to
+  /// satisfy gap_release, so the latch drops before the escape is finished.
+  double release_hold_seconds = 0.0;
+};
+
+/// The live jam watchdog's decision, separated from the queries that feed it.
+///
+/// Arms when either quantity crosses its *_trip threshold and stays there for
+/// trip_hold_seconds; releases only once BOTH are back inside their *_release
+/// thresholds and have stayed there for release_hold_seconds.  The asymmetry
+/// is deliberate -- a latch that dropped on the single loop where C3's lambda
+/// dipped would send the end effector straight back into the object it is
+/// escaping.
+///
+/// Nothing here resets on a mode switch, which is the whole point: the jam is
+/// what causes the mode switch, and that is exactly how the controller's
+/// existing best_progress_steps_ago_ counter came to miss all three of the
+/// jams in hwlog-000003 / hwlog-000005.
+class JamLatch {
+ public:
+  explicit JamLatch(const JamLatchThresholds& thresholds)
+      : thresholds_(thresholds) {}
+
+  /// Folds one loop's readings into the latch.  @p now is the controller's
+  /// clock [s], used for both dwells.  @p ee_object_gap is nullopt when the
+  /// signed-distance query returned nothing trustworthy that loop; an
+  /// unreliable query must not manufacture a jam, nor hold one open, so the
+  /// gap term is skipped on the arming side and treated as satisfied on the
+  /// releasing side.  With the force term gated on the gap, a nullopt gap
+  /// means nothing can arm at all that loop -- which is the fail-safe
+  /// direction.
+  /// @return true iff this update was the rising edge (the latch just set).
+  bool Update(double now, double ee_object_force,
+              std::optional<double> ee_object_gap);
+
+  bool tripped() const { return tripped_; }
+  /// Seconds the arming condition has held continuously, 0 when not arming.
+  double trip_seconds() const { return trip_seconds_; }
+
+ private:
+  JamLatchThresholds thresholds_;
+  // NaN until the first update; the first armed (or released) loop has no
+  // elapsed time yet, so a dwell of 0 still needs two loops to be meaningful.
+  double arming_since_ = std::numeric_limits<double>::quiet_NaN();
+  double releasing_since_ = std::numeric_limits<double>::quiet_NaN();
+  double trip_seconds_ = 0.0;
+  bool tripped_ = false;
+};
+
 /// Indices of the lambda entries belonging to one group of contacts, together
 /// with the force basis that maps each to a Cartesian force.
 struct ContactForceBasis {
@@ -216,8 +295,14 @@ ContactForceBasis MakeEEContactForceBasis(
         contact_descriptions,
     int num_ee_lambda_entries);
 
+/// Net Cartesian force across one contact group at one knot point, from that
+/// knot's lambda.  Each lambda entry contributes force_basis * lambda along its
+/// own basis vector and the net force is their sum.
+Eigen::Vector3d ContactForceVector(const Eigen::VectorXd& lambda,
+                                   const ContactForceBasis& basis);
+
 /// Peak Cartesian force across one contact group at one knot point, from that
-/// knot's lambda.
+/// knot's lambda.  The magnitude of ContactForceVector above.
 double ContactForceMagnitude(const Eigen::VectorXd& lambda,
                              const ContactForceBasis& basis);
 

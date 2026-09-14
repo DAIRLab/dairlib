@@ -1,6 +1,7 @@
 #include "examples/sampling_c3/jamming_metrics.h"
 
 #include <algorithm>
+#include <cmath>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -111,8 +112,73 @@ ObjectStateLayout MakeObjectStateLayout(int object_index) {
   return ObjectStateLayout{base, base + 4};
 }
 
-double ContactForceMagnitude(const VectorXd& lambda,
-                             const ContactForceBasis& basis) {
+bool JamLatch::Update(double now, double ee_object_force,
+                      std::optional<double> ee_object_gap) {
+  constexpr double kNaN = std::numeric_limits<double>::quiet_NaN();
+
+  // The force term arms only near contact.  C3's knot-0 lambda is an ADMM
+  // iterate whose complementarity is only relaxed, so it does not vanish at a
+  // positive gap; ungated it latched this guard three times on hwlog-000003
+  // with the end effector 15-33 mm clear of the cone.
+  const bool force_arming = ee_object_force > thresholds_.force_trip &&
+                            ee_object_gap.has_value() &&
+                            *ee_object_gap < thresholds_.force_gate_gap;
+  const bool gap_arming =
+      ee_object_gap.has_value() && *ee_object_gap < thresholds_.gap_trip;
+  const bool arming = force_arming || gap_arming;
+
+  if (arming) {
+    if (std::isnan(arming_since_)) arming_since_ = now;
+    trip_seconds_ = now - arming_since_;
+  } else {
+    arming_since_ = kNaN;
+    trip_seconds_ = 0.0;
+  }
+
+  if (!tripped_) {
+    if (arming && trip_seconds_ >= thresholds_.trip_hold_seconds) {
+      tripped_ = true;
+      releasing_since_ = kNaN;
+      return true;
+    }
+    return false;
+  }
+
+  // Releasing needs both quantities back inside their thresholds, held.  A
+  // single loop of clearance is not enough: the retreat the trip commands moves
+  // the end effector far enough in one loop to satisfy gap_release on its own,
+  // which would disarm the guard before the escape had finished.
+  //
+  // The force gate applies on this side too, and symmetry is the whole point:
+  // lambda is meaningless away from contact, so once the end effector is
+  // demonstrably clear the force term must not get a vote.  Without this the
+  // latch cannot release at all -- replayed on hwlog-000005 the end effector
+  // retreated to 142 mm clear while lambda sat at ~5 N, holding the guard set
+  // for the entire window.  Raising force_release above that floor "fixes" it
+  // only by putting the release threshold inside the band a working push
+  // occupies.
+  const bool force_clear =
+      ee_object_force < thresholds_.force_release ||
+      (ee_object_gap.has_value() &&
+       *ee_object_gap >= thresholds_.force_gate_gap);
+  const bool releasing =
+      force_clear &&
+      (!ee_object_gap.has_value() || *ee_object_gap > thresholds_.gap_release);
+  if (releasing) {
+    if (std::isnan(releasing_since_)) releasing_since_ = now;
+    if (now - releasing_since_ >= thresholds_.release_hold_seconds) {
+      tripped_ = false;
+      arming_since_ = kNaN;
+      trip_seconds_ = 0.0;
+    }
+  } else {
+    releasing_since_ = kNaN;
+  }
+  return false;
+}
+
+Vector3d ContactForceVector(const VectorXd& lambda,
+                            const ContactForceBasis& basis) {
   // Each lambda entry contributes force_basis * lambda along its own basis
   // vector; the net Cartesian force is their sum.  Matches the idiom in c3's
   // systems/lcmt_generators/contact_force_generator.cc.
@@ -122,7 +188,12 @@ double ContactForceMagnitude(const VectorXd& lambda,
     DRAKE_THROW_UNLESS(index < lambda.size());
     force += basis.force_bases[i] * lambda(index);
   }
-  return force.norm();
+  return force;
+}
+
+double ContactForceMagnitude(const VectorXd& lambda,
+                             const ContactForceBasis& basis) {
+  return ContactForceVector(lambda, basis).norm();
 }
 
 void UnpackC3Plan(const vector<VectorXd>& z_plan, int n_x, int n_lambda,

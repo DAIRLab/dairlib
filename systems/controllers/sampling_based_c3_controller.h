@@ -1,5 +1,6 @@
 #pragma once
 
+#include <limits>
 #include <memory>
 #include <queue>
 #include <string>
@@ -76,7 +77,8 @@ enum ModeSwitchReason {
   kToC3ReachedReposTarget,
   kToReposCost,
   kToReposUnproductive,
-  kToC3Xbox
+  kToC3Xbox,
+  kToReposJamDetected
 };
 
 enum PursuedTargetSource { kNoTarget, kPrevious, kNewSample, kFromBuffer };
@@ -377,6 +379,33 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const bool& print_current_pos_and_rot_cost) const;
 
   void ResetProgressMetrics() const;
+
+  /// The lambda entries belonging to the EE<->object contact group, with the
+  /// force basis mapping each to a Cartesian force.  Contacts resolve in group
+  /// order (EE-ground, EE-object, object-ground, object-object, object-wall),
+  /// so this skips the leading EE-ground block rather than taking all of the
+  /// EE's contacts: the watchdog asks how hard the end effector is pressing the
+  /// *object*, and a push against the bed is not that.  Sized per group with
+  /// LCSFactory::GetNumContactVariables, since contacts flagged planar carry
+  /// fewer friction directions than the rest.
+  ContactForceBasis MakeEEObjectContactForceBasis(
+      const std::vector<c3::multibody::LCSContactDescription>&
+          contact_descriptions) const;
+
+  /// Evaluates the two jam guards against the current state and updates
+  /// jam_ee_object_force_ / jam_ee_object_gap_ / jam_escape_direction_ and the
+  /// dwell counter and latch behind them:
+  ///   1. the magnitude of C3's own knot-0 EE<->object contact force, read out
+  ///      of @p curr_location_plan -- the same lambda C3_FORCES_CURR carries,
+  ///      so nothing new is solved; and
+  ///   2. the apparent EE-to-object interpenetration, one signed-distance
+  ///      query against the object geometries.
+  /// The arming, dwell and release rules themselves live in JamLatch; a no-op
+  /// when progress_params_.jam_guard is unset, in which case jam_latch_ is
+  /// null and no demo pays for any of this.
+  void UpdateJamWatchdog(
+      double now, const Eigen::VectorXd& x_lcs_curr,
+      const std::shared_ptr<c3::C3>& curr_location_plan) const;
 
   void ResetSampleBuffers() const;
 
@@ -790,6 +819,33 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable SampleIndex best_sample_index_ = kCurrentLocation;
   mutable ModeSwitchReason mode_switch_reason_ = kNoSwitch;
   mutable PursuedTargetSource pursued_target_source_ = kNoTarget;
+
+  // Live jam watchdog state.  See UpdateJamWatchdog().  All of it is left at
+  // these defaults when progress_params_.jam_guard is unset.
+  //
+  // The lambda entries of the EE<->object contact group at the current EE
+  // location, with the force basis that maps each to a Cartesian force.
+  // Captured in CreateLCSObjectsForSamples() off the LCSFactory that call
+  // builds anyway, so the watchdog costs no extra LCS build.
+  mutable ContactForceBasis curr_ee_object_force_basis_;
+  // The arming/dwell/release rules.  Null when progress_params_.jam_guard is
+  // unset, which is what turns the whole watchdog off.
+  std::unique_ptr<JamLatch> jam_latch_;
+  // Magnitude of C3's knot-0 EE<->object contact force [N].
+  mutable double jam_ee_object_force_ = 0.0;
+  // Signed distance from the EE sphere's surface to the object's surface [m];
+  // negative means the commanded EE position is inside the measured object.
+  // NaN when the signed-distance query returned nothing trustworthy.
+  mutable double jam_ee_object_gap_ = std::numeric_limits<double>::quiet_NaN();
+  // Unit outward normal out of the object at the EE, i.e. the direction that
+  // most directly undoes the interpenetration.  Zero when unavailable.
+  mutable Eigen::Vector3d jam_escape_direction_ = Eigen::Vector3d::Zero();
+  // Seconds the arming condition has held continuously.
+  mutable double jam_trip_seconds_ = 0.0;
+  // The latch itself, with hysteresis: set after trip_hold_seconds of arming,
+  // cleared only once both quantities have been back inside their release
+  // thresholds for release_hold_seconds.
+  mutable bool jam_tripped_ = false;
 };
 
 }  // namespace systems

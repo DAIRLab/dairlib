@@ -1,6 +1,7 @@
 #include "reposition.h"
 
 #include <algorithm>
+#include <limits>
 
 #include "drake/common/drake_assert.h"
 
@@ -9,17 +10,14 @@ namespace systems {
 
 // TODO @bibit further cleanup could require +/- z workspace limits instead of
 // sampling_c3_options
-Eigen::MatrixXd Reposition(const int& n_q, const int& n_x, const int& N,
-                           const Eigen::VectorXd& x_lcs,
-                           const Eigen::Vector3d& repos_target,
-                           const double& dt, const bool& is_doing_c3,
-                           bool& finished_reposition_flag,
-                           const SamplingC3RepositionParams& reposition_params,
-                           const SamplingC3Options& sampling_c3_options,
-                           const drake::geometry::QueryObject<double>*
-                               query_object,
-                           drake::geometry::GeometryId ee_geometry_id,
-                           double ee_radius) {
+Eigen::MatrixXd Reposition(
+    const int& n_q, const int& n_x, const int& N, const Eigen::VectorXd& x_lcs,
+    const Eigen::Vector3d& repos_target, const double& dt,
+    const bool& is_doing_c3, bool& finished_reposition_flag,
+    const SamplingC3RepositionParams& reposition_params,
+    const SamplingC3Options& sampling_c3_options,
+    const drake::geometry::QueryObject<double>* query_object,
+    drake::geometry::GeometryId ee_geometry_id, double ee_radius) {
   Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x, N);
 
   Eigen::Vector3d current_ee_location = x_lcs.head(3);
@@ -104,6 +102,77 @@ Eigen::MatrixXd Reposition(const int& n_q, const int& n_x, const int& N,
                                    sampling_c3_options.workspace_margins);
   }
   return knots;
+}
+
+Eigen::MatrixXd RepositionWithRetreat(
+    const int& n_q, const int& n_x, const int& N, const Eigen::VectorXd& x_lcs,
+    const Eigen::Vector3d& repos_target, const double& dt,
+    const bool& is_doing_c3, const Eigen::Vector3d& retreat_direction,
+    const int& num_retreat_knots,
+    const SamplingC3RepositionParams& reposition_params,
+    const SamplingC3Options& sampling_c3_options,
+    const drake::geometry::QueryObject<double>* query_object,
+    drake::geometry::GeometryId ee_geometry_id, double ee_radius) {
+  DRAKE_DEMAND(N >= 2);
+  // Never spend the whole horizon retreating: the repositioning leg needs at
+  // least one knot to exist in.
+  const int retreat_knots = std::min(num_retreat_knots, N - 1);
+  // Nothing to retreat along, or no room to do it in.  Reposition() owns the
+  // finished-reposition verdict, but a retreating plan has not arrived
+  // anywhere, so the flag is discarded either way.
+  bool finished_reposition_flag = false;
+  if (retreat_knots <= 0 || retreat_direction.norm() < 1e-9) {
+    return Reposition(n_q, n_x, N, x_lcs, repos_target, dt, is_doing_c3,
+                      finished_reposition_flag, reposition_params,
+                      sampling_c3_options, query_object, ee_geometry_id,
+                      ee_radius);
+  }
+  // One knot period of travel, as fast as this direction allows.
+  const Eigen::Vector3d retreat_step_vector =
+      MaxSpeedAlongDirection(retreat_direction, reposition_params) * dt *
+      retreat_direction.normalized();
+
+  // Update only the EE position.
+  Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x, N);
+  const Eigen::Vector3d current_ee_location = x_lcs.head(3);
+  for (int i = 0; i < retreat_knots; i++) {
+    knots.col(i) = x_lcs;
+    knots.col(i).head(3) = current_ee_location + i * retreat_step_vector;
+  }
+
+  // Use the original repositioning strategy for the remaining knots.
+  Eigen::VectorXd x_lcs_after_retreat = x_lcs;
+  x_lcs_after_retreat.head(3) =
+      current_ee_location + retreat_knots * retreat_step_vector;
+  knots.rightCols(N - retreat_knots) =
+      Reposition(n_q, n_x, N - retreat_knots, x_lcs_after_retreat, repos_target,
+                 dt, is_doing_c3, finished_reposition_flag, reposition_params,
+                 sampling_c3_options, query_object, ee_geometry_id, ee_radius);
+  return knots;
+}
+
+double MaxSpeedAlongDirection(
+    const Eigen::Vector3d& direction,
+    const SamplingC3RepositionParams& reposition_params) {
+  const double norm = direction.norm();
+  if (norm < 1e-9) {
+    return 0.0;
+  }
+  const Eigen::Vector3d unit_direction = direction / norm;
+  const double horizontal_fraction = unit_direction.head(2).norm();
+  const double vertical_fraction = std::abs(unit_direction(2));
+  // A fraction of exactly zero means that axis never binds, so it contributes
+  // no cap at all.  The direction is a unit vector, so they cannot both be
+  // zero and the result is always finite.
+  double speed = std::numeric_limits<double>::infinity();
+  if (horizontal_fraction > 0.0) {
+    speed = reposition_params.speed_horizontal / horizontal_fraction;
+  }
+  if (vertical_fraction > 0.0) {
+    speed =
+        std::min(speed, reposition_params.speed_vertical / vertical_fraction);
+  }
+  return speed;
 }
 
 void RepositionStraightLine(
@@ -449,8 +518,7 @@ void RepositionPiecewiseLinear(
   // to get there (that would add a needless slow vertical leg).  When the EE is
   // already at or above the cruise height, dist_leg1 is 0 and the loop below
   // starts translating immediately.
-  double cruise_z =
-      std::max(current_ee_location(2), adaptive_waypoint_height);
+  double cruise_z = std::max(current_ee_location(2), adaptive_waypoint_height);
 
   // Define the waypoints for the three-leg repositioning.
   Eigen::Vector3d waypoint_above_ee = current_ee_location;
@@ -552,8 +620,7 @@ std::pair<bool, double> ComputeRepositionClearance(
 
   const double floor_z = sampling_c3_options.workspace_limits[2][3] +
                          sampling_c3_options.workspace_margins;
-  const double lo =
-      std::max({current_ee_location(2), target(2), floor_z});
+  const double lo = std::max({current_ee_location(2), target(2), floor_z});
   const double hi = std::max(reposition_params.pwl_waypoint_height, lo);
   const double step = std::max(1e-3, reposition_params.pwl_height_search_step);
   double min_cruise_height = hi;  // fallback if no lower height is clear

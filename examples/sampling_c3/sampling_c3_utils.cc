@@ -324,7 +324,8 @@ BuildConeContactPairs(const MultibodyPlant<double>& plant_lcs,
   using drake::geometry::GeometryId;
 
   vector<vector<SortedPair<GeometryId>>> contact_pairs;
-  vector<SortedPair<GeometryId>> ee_contact_pairs;
+  vector<SortedPair<GeometryId>> ee_ground_contact_pairs;
+  vector<SortedPair<GeometryId>> ee_object_contact_pairs;
   vector<SortedPair<GeometryId>> ground_object_contact_pairs;
   std::unordered_map<std::string, GeometryId> contact_geoms;
 
@@ -337,13 +338,14 @@ BuildConeContactPairs(const MultibodyPlant<double>& plant_lcs,
   contact_geoms["EE"] = ee_contact_points;
   contact_geoms["GROUND"] = ground_geoms;
 
-  vector<SortedPair<GeometryId>> ee_ground_contact{
-      SortedPair(contact_geoms["EE"], contact_geoms["GROUND"])};
-
   // For each pair of object-object or wall-object, we store the contact pairs
   // between their convex pieces
   vector<vector<SortedPair<GeometryId>>> object_object_contact_pairs;
   vector<vector<SortedPair<GeometryId>>> wall_object_contact_pairs;
+
+  // Add the EE-ground contact.  EE-ramp contact(s) also go here.
+  ee_ground_contact_pairs.push_back(
+      SortedPair(contact_geoms["EE"], contact_geoms["GROUND"]));
 
   // Build the demo-specific contact pairs: EE-object, object-ground,
   // ramp-object, EE-ramp, and object-object.
@@ -357,22 +359,17 @@ BuildConeContactPairs(const MultibodyPlant<double>& plant_lcs,
         plant_lcs.GetCollisionGeometriesForBody(
             plant_lcs.GetBodyByName("ramp_link"));
 
-    GeometryId corner_1_sphere_geoms = object_geoms[1];
-    GeometryId corner_2_sphere_geoms = object_geoms[2];
-    GeometryId corner_3_sphere_geoms = object_geoms[3];
-    GeometryId corner_4_sphere_geoms = object_geoms[4];
-    GeometryId corner_5_sphere_geoms = object_geoms[5];
-    GeometryId corner_6_sphere_geoms = object_geoms[6];
-    GeometryId corner_7_sphere_geoms = object_geoms[7];
+    contact_geoms["FULL_CONE"] = object_geoms[0];
+    contact_geoms["CORNER_1_SPHERE"] = object_geoms[1];
+    contact_geoms["CORNER_2_SPHERE"] = object_geoms[2];
+    contact_geoms["CORNER_3_SPHERE"] = object_geoms[3];
+    contact_geoms["CORNER_4_SPHERE"] = object_geoms[4];
+    contact_geoms["CORNER_5_SPHERE"] = object_geoms[5];
+    contact_geoms["CORNER_6_SPHERE"] = object_geoms[6];
+    contact_geoms["CORNER_7_SPHERE"] = object_geoms[7];
 
-    contact_geoms["CORNER_1_SPHERE"] = corner_1_sphere_geoms;
-    contact_geoms["CORNER_2_SPHERE"] = corner_2_sphere_geoms;
-    contact_geoms["CORNER_3_SPHERE"] = corner_3_sphere_geoms;
-    contact_geoms["CORNER_4_SPHERE"] = corner_4_sphere_geoms;
-    contact_geoms["CORNER_5_SPHERE"] = corner_5_sphere_geoms;
-    contact_geoms["CORNER_6_SPHERE"] = corner_6_sphere_geoms;
-    contact_geoms["CORNER_7_SPHERE"] = corner_7_sphere_geoms;
-
+    // Ground-object includes all corners with the ground, and all corners PLUS
+    // the full cone with every ramp piece.
     ground_object_contact_pairs.push_back(
         SortedPair(contact_geoms["CORNER_1_SPHERE"], contact_geoms["GROUND"]));
     ground_object_contact_pairs.push_back(
@@ -393,15 +390,18 @@ BuildConeContactPairs(const MultibodyPlant<double>& plant_lcs,
         ground_object_contact_pairs.push_back(
             SortedPair(ramp_geoms[j], object_geoms[k]));
       }
-      ee_contact_pairs.push_back(
+
+      // EE-ground contacts include EE-ground and EE-ramp contacts.
+      ee_ground_contact_pairs.push_back(
           SortedPair(contact_geoms["EE"], ramp_geoms[j]));
     }
 
+    // EE-object contact is just the EE with the full cone.
+    ee_object_contact_pairs.push_back(
+        SortedPair(contact_geoms["EE"], object_geoms[0]));
+
     const vector<GeometryId> object_geoms_without_spheres =
         vector<GeometryId>(object_geoms.begin(), object_geoms.end() - 7);
-
-    ee_contact_pairs.push_back(
-        SortedPair(contact_geoms["EE"], object_geoms[0]));
     all_object_geoms.push_back(object_geoms_without_spheres);
   }
 
@@ -422,8 +422,8 @@ BuildConeContactPairs(const MultibodyPlant<double>& plant_lcs,
     }
   }
   // Order:  EE-ground, EE-object, object-ground, object-object, object-wall
-  contact_pairs.push_back(ee_ground_contact);
-  contact_pairs.push_back(ee_contact_pairs);
+  contact_pairs.push_back(ee_ground_contact_pairs);
+  contact_pairs.push_back(ee_object_contact_pairs);
   contact_pairs.push_back(ground_object_contact_pairs);
   for (const auto& obj_obj_pair : object_object_contact_pairs) {
     contact_pairs.push_back(obj_obj_pair);

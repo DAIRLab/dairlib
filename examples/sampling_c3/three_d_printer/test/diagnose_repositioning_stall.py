@@ -39,6 +39,7 @@ MODE_SWITCH_REASON = {
     3: 'Repositioning because found good sample',
     4: 'Repositioning after not making progress in C3',
     5: 'Forcing into C3 mode (xbox)',
+    6: 'Repositioning because a jam was detected',
 }
 PURSUED_TARGET_SOURCE = {
     0: 'none (in C3 mode)',
@@ -60,7 +61,25 @@ CHANNEL_LCMT = {
     'SAMPLE_BUFFER': dairlib.lcmt_sample_buffer,
     'UNSUCCESSFUL_SAMPLE_BUFFER': dairlib.lcmt_sample_buffer,
     'TRACKING_TRAJECTORY_ACTOR': dairlib.lcmt_timestamped_saved_traj,
+    'DYNAMICALLY_FEASIBLE_CURR_PLAN': dairlib.lcmt_timestamped_saved_traj,
+    'C3_FORCES_CURR': dairlib.lcmt_c3_forces,
 }
+
+# The cone's collision mesh, examples/sampling_c3/urdf/cone/cone.obj, in the
+# object's body frame:  a hexagonal base in the x = 0 plane and an apex on
+# body +x.  Used to tell whether the contact C3 resolved into its one
+# EE-object slot actually landed on the cone -- if the closest EE pair was a
+# piece of the ramp instead, the end effector is decoupled from the object in
+# the model and no sample can score better than any other.
+CONE_BASE_VERTICES = np.array([
+    [0.0, 0.0254, 0.0],
+    [0.0, 0.0127, 0.022],
+    [0.0, -0.0127, 0.022],
+    [0.0, -0.0254, 0.0],
+    [0.0, -0.0127, -0.022],
+    [0.0, 0.0127, -0.022],
+])
+CONE_APEX = np.array([0.0494, 0.0, 0.0])
 
 
 # ----------------------------------------------------------------------------
@@ -137,6 +156,57 @@ def get_object_position(c3_state_msg, object_index: int = 0) -> np.ndarray:
                     c3_state_msg.state[idx[f'object_z_{object_index}']]])
 
 
+def get_object_quaternion(c3_state_msg, object_index: int = 0) -> np.ndarray:
+  idx = state_name_map(c3_state_msg)
+  return np.array([c3_state_msg.state[idx[f'object_q{c}_{object_index}']]
+                   for c in ('w', 'x', 'y', 'z')])
+
+
+def quaternion_to_rotation_matrix(q: np.ndarray) -> np.ndarray:
+  """Rotation matrix for the (w, x, y, z) quaternion q, which is normalized
+  first -- both the measured object pose and any LCS rollout state reach this
+  script with a norm that has drifted off 1."""
+  w, x, y, z = q / np.linalg.norm(q)
+  return np.array([
+      [1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+      [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+      [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)],
+  ])
+
+
+def cone_face_halfspaces() -> Tuple[np.ndarray, np.ndarray]:
+  """The cone hull as outward face normals and offsets, so that a body-frame
+  point p is on or outside face i exactly when normals[i] @ p - offsets[i] >= 0.
+  The hexagonal base plus one triangle per base edge."""
+  normals = [np.array([-1.0, 0.0, 0.0])]
+  offsets = [0.0]
+  n_base = len(CONE_BASE_VERTICES)
+  for i in range(n_base):
+    a = CONE_BASE_VERTICES[i]
+    b = CONE_BASE_VERTICES[(i + 1) % n_base]
+    normal = np.cross(b - a, CONE_APEX - a)
+    normal /= np.linalg.norm(normal)
+    # Orient outward:  the base centroid is at the origin, which is interior.
+    if normal @ a < 0:
+      normal = -normal
+    normals.append(normal)
+    offsets.append(float(normal @ a))
+  return np.array(normals), np.array(offsets)
+
+
+CONE_NORMALS, CONE_OFFSETS = cone_face_halfspaces()
+
+
+def distance_outside_cone(point_W: np.ndarray, object_quaternion: np.ndarray,
+                          object_position: np.ndarray) -> float:
+  """How far a world-frame point lies outside the cone hull.  Zero (or
+  negative) on the surface; the max-over-faces form under-reports near edges
+  and vertices, which is fine for asking "did this land on the cone at all"."""
+  rotation = quaternion_to_rotation_matrix(object_quaternion)
+  point_B = rotation.T @ (point_W - object_position)
+  return float(np.max(CONE_NORMALS @ point_B - CONE_OFFSETS))
+
+
 def point_segment_distance(p: np.ndarray, a: np.ndarray, b: np.ndarray) \
     -> float:
   """Distance from point p to the closest point on segment [a, b]."""
@@ -162,6 +232,8 @@ class LoopRecord:
       'sample_costs', 'sample_locations',
       'num_in_buffer', 'num_in_unsuccessful_buffer',
       'commanded_ee_position',
+      'object_quaternion', 'rollout_object_positions',
+      'rollout_object_quaternions', 'ee_object_contact_point', 'knot_dt',
   )
 
 
@@ -198,9 +270,11 @@ def build_loop_records(
     if 'C3_ACTUAL' in d:
       r.ee_position = get_ee_position(d['C3_ACTUAL'])
       r.object_position = get_object_position(d['C3_ACTUAL'], object_index)
+      r.object_quaternion = get_object_quaternion(d['C3_ACTUAL'], object_index)
     else:
       r.ee_position = None
       r.object_position = None
+      r.object_quaternion = None
 
     if 'C3_FINAL_TARGET' in d:
       r.goal_position = get_object_position(
@@ -229,20 +303,218 @@ def build_loop_records(
 
     if 'TRACKING_TRAJECTORY_ACTOR' in d:
       try:
-        pos, _ = get_traj_block(
+        pos, times = get_traj_block(
             d['TRACKING_TRAJECTORY_ACTOR'], 'end_effector_position_target')
         r.commanded_ee_position = pos[:, 0]  # first (nearest-time) knot
+        # This is the only channel carrying absolute knot times, so it is
+        # where the plan's knot spacing comes from.
+        r.knot_dt = float(np.median(np.diff(times))) if len(times) > 1 else None
       except KeyError:
         r.commanded_ee_position = None
+        r.knot_dt = None
     else:
       r.commanded_ee_position = None
+      r.knot_dt = None
       skipped += 1
+
+    # The cost rollout:  what the controller believes the object will do over
+    # the horizon, which is what every sample is scored on.
+    r.rollout_object_positions = None
+    r.rollout_object_quaternions = None
+    if 'DYNAMICALLY_FEASIBLE_CURR_PLAN' in d:
+      try:
+        r.rollout_object_positions, _ = get_traj_block(
+            d['DYNAMICALLY_FEASIBLE_CURR_PLAN'],
+            f'object_position_target_{object_index}')
+        r.rollout_object_quaternions, _ = get_traj_block(
+            d['DYNAMICALLY_FEASIBLE_CURR_PLAN'],
+            f'object_orientation_target_{object_index}')
+      except KeyError:
+        pass
+
+    # Force 0 is the first entry of the EE-object contact's friction-cone
+    # block, so its witness point says which geometry that contact resolved to.
+    r.ee_object_contact_point = None
+    if 'C3_FORCES_CURR' in d and d['C3_FORCES_CURR'].num_forces > 0:
+      r.ee_object_contact_point = np.array(
+          d['C3_FORCES_CURR'].forces[0].contact_point)
 
     records.append(r)
 
   if skipped:
     print(f'Note: {skipped} loops missing TRACKING_TRAJECTORY_ACTOR.')
   return records
+
+
+# ----------------------------------------------------------------------------
+# 0. Model fidelity:  does the controller's rollout match what the object did?
+# ----------------------------------------------------------------------------
+
+def measured_displacement_over(records: List[LoopRecord], i: int,
+                               horizon: float) -> Optional[float]:
+  """How far the object actually moved between records[i] and the first record
+  at least `horizon` seconds later.  None if the log ends first."""
+  t_end = records[i].t + horizon
+  for j in range(i, len(records)):
+    if records[j].t >= t_end:
+      if records[i].object_position is None \
+          or records[j].object_position is None:
+        return None
+      return float(np.linalg.norm(
+          records[j].object_position - records[i].object_position))
+  return None
+
+
+def print_model_fidelity(records: List[LoopRecord],
+                         contact_tolerance: float = 0.002) -> None:
+  """The rollout the samples are scored on, against reality.
+
+  Three things can make every sample score the same, or score backwards, and
+  none of them are visible in the mode timeline:
+
+    * the rollout predicts object motion that never happens, so a sample's
+      cost measures how much its contact disturbs a phantom trajectory rather
+      than how much it helps;
+    * the rollout's quaternion leaves the unit sphere, so the
+      quaternion-dependent cost is evaluated on a non-orientation;
+    * C3's single EE-object contact resolves onto some other geometry, so the
+      end effector cannot move the object in the model at all.
+  """
+  print('\n' + '=' * 78)
+  print('MODEL FIDELITY (rollout vs. reality)')
+  print('=' * 78)
+
+  knot_dts = [r.knot_dt for r in records if r.knot_dt]
+  if not knot_dts:
+    print('No TRACKING_TRAJECTORY_ACTOR knot times; cannot time the horizon.')
+    return
+  knot_dt = float(np.median(knot_dts))
+
+  predicted, measured, accel_spread = [], [], []
+  quaternion_norms = []
+  off_object, on_object = 0, 0
+  for i, r in enumerate(records):
+    if r.rollout_object_positions is not None:
+      positions = r.rollout_object_positions          # 3 x K
+      horizon = knot_dt * (positions.shape[1] - 1)
+      predicted.append(
+          float(np.linalg.norm(positions[:, -1] - positions[:, 0])))
+      actual = measured_displacement_over(records, i, horizon)
+      measured.append(np.nan if actual is None else actual)
+      # A rollout driven by contact curves; one driven by a constant
+      # unbalanced term in the linearization has a constant second difference.
+      # Knot 0 -> 1 carries the initial velocity, so it is skipped.
+      second_diff = np.diff(np.diff(positions, axis=1), axis=1)[:, 1:]
+      if second_diff.shape[1] >= 2:
+        magnitudes = np.linalg.norm(second_diff, axis=0)
+        if magnitudes.mean() > 1e-12:
+          accel_spread.append(float(magnitudes.std() / magnitudes.mean()))
+    if r.rollout_object_quaternions is not None:
+      quaternion_norms.append(
+          float(np.linalg.norm(r.rollout_object_quaternions[:, -1])))
+    if r.ee_object_contact_point is not None \
+        and r.object_quaternion is not None and r.object_position is not None:
+      outside = distance_outside_cone(
+          r.ee_object_contact_point, r.object_quaternion, r.object_position)
+      if outside > contact_tolerance:
+        off_object += 1
+      else:
+        on_object += 1
+
+  if predicted:
+    horizon = knot_dt * (records[0].rollout_object_positions.shape[1] - 1) \
+        if records[0].rollout_object_positions is not None else knot_dt
+    finite = ~np.isnan(measured)
+    print(f'Rollout horizon {horizon:.3f} s '
+          f'({knot_dt:.4f} s per knot), {len(predicted)} loops.')
+    print(f'  object displacement, PREDICTED : median '
+          f'{np.median(predicted) * 1e3:8.1f} mm   p90 '
+          f'{np.percentile(predicted, 90) * 1e3:8.1f} mm')
+    if finite.any():
+      measured_finite = np.array(measured)[finite]
+      print(f'  object displacement, MEASURED  : median '
+            f'{np.median(measured_finite) * 1e3:8.1f} mm   p90 '
+            f'{np.percentile(measured_finite, 90) * 1e3:8.1f} mm')
+      # Reported as an absolute discrepancy, not a ratio:  the object is
+      # stationary for most of a healthy log too, so a ratio just divides by
+      # something near zero and makes a sub-millimetre error look enormous.
+      error = np.abs(np.array(predicted)[finite] - measured_finite)
+      print(f'  |predicted - measured|         : median '
+            f'{np.median(error) * 1e3:8.1f} mm   p90 '
+            f'{np.percentile(error, 90) * 1e3:8.1f} mm')
+  if accel_spread:
+    print(f'  rollout 2nd-difference spread  : median '
+          f'{np.median(accel_spread):.3f}')
+    print('      near 0  = constant acceleration:  an unbalanced term in the '
+          'linearization,')
+    print('                not a contact interaction.  well above 0 = the '
+          'rollout curves,')
+    print('                which is what contact looks like.')
+  if quaternion_norms:
+    print(f'  ||q|| at the last rollout knot : median '
+          f'{np.median(quaternion_norms):.4f}   max '
+          f'{max(quaternion_norms):.4f}   (target 1.0)')
+  total_contacts = off_object + on_object
+  if total_contacts:
+    print(f'  EE-object contact resolved OFF the object: '
+          f'{100.0 * off_object / total_contacts:5.1f}% of '
+          f'{total_contacts} loops   (target 0%; anything else means C3 spent '
+          f'its one EE-object slot on other geometry)')
+
+
+def print_sample_direction_bias(records: List[LoopRecord]) -> None:
+  """Sample cost against where the sample sits relative to the push.
+
+  A healthy controller makes standing on the pushing side cheap.  If the
+  rollout already carries the object to the goal on its own, contact can only
+  disturb it, and the ordering inverts.
+  """
+  print('\n' + '=' * 78)
+  print('SAMPLE COST vs. WHERE THE SAMPLE SITS')
+  print('=' * 78)
+
+  cosines, costs = [], []
+  for r in records:
+    if r.sample_costs is None or r.sample_locations is None:
+      continue
+    if r.object_position is None or r.goal_position is None:
+      continue
+    to_goal = r.goal_position - r.object_position
+    if np.linalg.norm(to_goal) < 1e-9:
+      continue
+    to_goal = to_goal / np.linalg.norm(to_goal)
+    n = min(len(r.sample_costs), r.sample_locations.shape[1])
+    # Index 0 is the current EE location, not a candidate placement.
+    for i in range(CURRENT_LOCATION_INDEX + 1, n):
+      location = r.sample_locations[:, i]
+      if np.allclose(location, 0.0):      # zero-padded tail
+        continue
+      offset = location - r.object_position
+      if np.linalg.norm(offset) < 1e-9:
+        continue
+      # +1 means the sample sits on the far side from the goal, i.e. exactly
+      # where the end effector would stand to push the object toward it.
+      cosines.append(float(-(offset / np.linalg.norm(offset)) @ to_goal))
+      costs.append(float(r.sample_costs[i]))
+
+  if not cosines:
+    print('No sample costs with a known object and goal position.')
+    return
+  cosines, costs = np.array(cosines), np.array(costs)
+  print(f'{len(costs)} sample scores.')
+  print(f'{"cos(sample dir, push dir)":>28}   {"median cost":>12}   {"n":>6}')
+  for low, high in [(-1.01, -0.5), (-0.5, 0.0), (0.0, 0.5), (0.5, 1.01)]:
+    mask = (cosines >= low) & (cosines < high)
+    if not mask.any():
+      continue
+    label = f'[{low:+.1f}, {high:+.1f})'
+    print(f'{label:>28}   {np.median(costs[mask]):12.1f}   {mask.sum():6d}')
+  pushing, far = cosines >= 0.5, cosines <= -0.5
+  if pushing.any() and far.any():
+    ratio = np.median(costs[pushing]) / max(np.median(costs[far]), 1e-9)
+    verdict = 'INVERTED -- pushing side is penalized' if ratio > 1.0 \
+        else 'ok -- pushing side is cheaper'
+    print(f'  pushing-side / far-side median cost = {ratio:.2f}   {verdict}')
 
 
 # ----------------------------------------------------------------------------
@@ -270,7 +542,8 @@ def print_event_timeline(records: List[LoopRecord]) -> None:
   for r in records:
     if prev is not None:
       if r.mode_switch_reason != 0:
-        print(f'[t={r.t:7.3f}s] {MODE_SWITCH_REASON[r.mode_switch_reason]}'
+        print(f'[t={r.t:7.3f}s] '
+              f'{MODE_SWITCH_REASON.get(r.mode_switch_reason, f"unknown reason {r.mode_switch_reason}")}'
               f'  (source={PURSUED_TARGET_SOURCE[r.source]}'
               f'{cost_suffix(r.lowest_cost)})')
         n_printed += 1
@@ -469,7 +742,8 @@ def print_jumps(jumps: List[dict]) -> None:
           f'{actual}')
     print(f'    mode: {"C3" if j["prev_is_c3_mode"] else "repositioning"} -> '
           f'{"C3" if j["is_c3_mode"] else "repositioning"}, '
-          f'mode_switch_reason={MODE_SWITCH_REASON[j["mode_switch_reason"]]}, '
+          f'mode_switch_reason='
+          f'{MODE_SWITCH_REASON.get(j["mode_switch_reason"], "unknown")}, '
           f'source={PURSUED_TARGET_SOURCE[j["source"]]}')
     print(f'    Likely cause: {classify_jump(j)}')
 
@@ -590,12 +864,16 @@ def make_plots(records: List[LoopRecord], jumps: List[dict], output_dir: str) \
 @click.option('--jump-threshold', default=0.03, show_default=True,
               help='Minimum per-loop commanded EE displacement (m) to flag '
                    'as an abrupt jump.')
+@click.option('--contact-tolerance', default=0.002, show_default=True,
+              help='How far outside the object hull C3\'s EE-object contact '
+                   'point may land before it is counted as having resolved '
+                   'onto other geometry.')
 @click.option('--plot', is_flag=True, help='Save diagnostic plots.')
 @click.option('--plot-dir', default='/tmp', show_default=True,
               help='Directory to save plots to.')
 def main(log_folder_or_file, object_index, start_t, end_t, switch_window,
           min_switches, merge_gap, in_the_way_threshold, jump_threshold,
-          plot, plot_dir):
+          contact_tolerance, plot, plot_dir):
   """Diagnose stuck repositioning / abrupt EE jumps in a sampling-C3 log."""
   log_filepath = get_log_filepath(log_folder_or_file)
   loops = read_log(log_filepath)
@@ -607,7 +885,11 @@ def main(log_folder_or_file, object_index, start_t, end_t, switch_window,
   reason_counts = Counter(r.mode_switch_reason for r in records)
   print('\nMode-switch-reason counts over the whole (filtered) log:')
   for reason, count in sorted(reason_counts.items()):
-    print(f'  {MODE_SWITCH_REASON[reason]}: {count}')
+    label = MODE_SWITCH_REASON.get(reason, f'unknown reason {reason}')
+    print(f'  {label}: {count}')
+
+  print_model_fidelity(records, contact_tolerance=contact_tolerance)
+  print_sample_direction_bias(records)
 
   print_event_timeline(records)
 

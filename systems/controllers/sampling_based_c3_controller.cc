@@ -76,6 +76,21 @@ namespace {
 // never simulated.  NaN rather than a negative sentinel because 0 and 1 are
 // both meaningful jam labels.
 const double kUnlabelled = std::numeric_limits<double>::quiet_NaN();
+
+// Puts every object's quaternion block of an LCS state back on the unit
+// sphere.  A block that has collapsed toward zero has no direction left to
+// preserve, so it is left alone rather than amplified.
+void NormalizeObjectQuaternions(int num_objects, drake::VectorX<double>* x) {
+  constexpr double kMinQuaternionNorm = 1e-8;
+  for (int i = 0; i < num_objects; ++i) {
+    const int quat_start = systems::MakeObjectStateLayout(i).quaternion_offset;
+    DRAKE_DEMAND(quat_start + 4 <= x->size());
+    const double norm = x->segment<4>(quat_start).norm();
+    if (norm > kMinQuaternionNorm) {
+      x->segment<4>(quat_start) /= norm;
+    }
+  }
+}
 }  // namespace
 
 namespace systems {
@@ -685,6 +700,7 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
   VectorXd d_N = lcs_for_plan.d().back();
   x_plan.push_back(A_N * x_plan.back() + B_N * u_plan.back() +
                    D_N * lambda_plan.back() + d_N);
+  NormalizeObjectQuaternions(num_objects, &x_plan.back());
 
   // Initialize the cost-driving trajectories to match the C3 plan.
   vector<VectorXd> XX = x_plan;
@@ -921,6 +937,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                                                         lcs_state_input_port_);
   // Store the current LCS state.
   drake::VectorX<double> x_lcs_curr = lcs_x_curr->get_data();
+  // Ensure the quaternion is normalized.
+  NormalizeObjectQuaternions(controller_params_.num_objects, &x_lcs_curr);
 
   ee_position_curr_ = x_lcs_curr.segment(0, 3);
   if (verbose_) {

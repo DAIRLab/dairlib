@@ -63,6 +63,13 @@ use_predicted_x0_reset_mechanism: false  # Resets if prediction is too far.
 mu_per_pair_type: [0.823, 0.42, 0.46, 0.375]  # match URDFs with (2mu1*mu2)/(mu1+mu2)
 
 resolve_contacts_to_lists: [[0, 1, 4, 0], [0, 1, 6, 0]]
+# Per-group cap on how many of the above slots a single object-side geometry may
+# claim (same shape as resolve_contacts_to_lists; entries for zero-budget groups
+# are ignored).  Omit the key for the plain closest-N behavior every other demo
+# uses.  Setting these to 1 for object-ground means a single cone corner can't
+# rest on two of the ramp pieces and claim both contact pair slots.
+max_contacts_per_object_geometry_lists: [[0, 1, 1, 0], [0, 1, 1, 0]]
+
 # Per-group contact model flags (same length/order as resolve_contacts_to_lists):
 #   0 → keep original friction directions (use all num_friction_directions)
 #   1 → treat as planar contact (reduce to 2 friction directions per contact)

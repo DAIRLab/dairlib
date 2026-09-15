@@ -272,3 +272,28 @@ cc_binary(
         "@gflags",
     ],
 )
+
+cc_binary(
+    name = "lcs_probe",
+    srcs = [
+        "lcs_probe.cc",
+    ],
+    data = [
+        "//examples/sampling_c3:all_example_params_yamls",
+        "//examples/sampling_c3:urdfs",
+        "//examples/sampling_c3/three_d_printer:printer_shared_params_yamls",
+        "//examples/sampling_c3/three_d_printer/cone:parameters",
+    ],
+    deps = [
+        "//common:find_resource",
+        "//common:update_context",
+        "//examples/sampling_c3:sampling_c3_utils",
+        "//examples/sampling_c3/parameter_headers:goal_params",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_options",
+        "//systems/controllers:sampling_c3_controller",
+        "@c3//:libc3",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

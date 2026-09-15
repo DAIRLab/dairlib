@@ -286,6 +286,21 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const Eigen::VectorXd& x_lcs_curr, bool is_doing_c3,
       const std::vector<bool>& object_on_target) const;
 
+  /// The capped selection GetResolvedContactPairs uses when a group has a
+  /// max_contacts_per_object_geometry: closest-first, but no object-side
+  /// geometry claiming more than `max_per_object_geometry` slots, then topped
+  /// back up to `num_to_select` from the closest of whatever the cap displaced.
+  ///
+  /// Public and static so an offline probe can report exactly what the
+  /// controller would resolve to without standing up a controller, and without
+  /// a second copy of the policy drifting away from this one.
+  static std::vector<SortedPair<GeometryId>>
+  GetClosestContactPairsCappedPerObjectGeometry(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const drake::systems::Context<double>& context,
+      const std::vector<SortedPair<GeometryId>>& candidates, int num_to_select,
+      int max_per_object_geometry);
+
  private:
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
       C3CostComputationType cost_type, const c3::LCS& lcs_for_cost,
@@ -312,11 +327,19 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
                           const BasicVector<double>& x_lcs_des,
                           const C3Options& c3_options) const;
 
+  /// Collapses the per-group contact-pair candidates down to the flat list the
+  /// LCS is built from, taking resolve_contacts_to_list[i] pairs from group i.
+  ///
+  /// @param max_contacts_per_object_geometry Optional per-group cap on how many
+  /// contacts one object-side geometry may claim; see the field of the same
+  /// name on SamplingC3Options for why that matters.  Pass an empty vector for
+  /// the uncapped closest-N behavior.
   std::vector<SortedPair<GeometryId>> GetResolvedContactPairs(
       const drake::multibody::MultibodyPlant<double>& plant,
       const drake::systems::Context<double>& context,
       const std::vector<std::vector<SortedPair<GeometryId>>>& contact_geoms,
       const std::vector<int>& resolve_contacts_to_list,
+      const std::vector<int>& max_contacts_per_object_geometry,
       std::vector<int> num_friction_directions, bool verbose) const;
 
   std::pair<std::vector<c3::LCS>, std::vector<c3::LCS>>
@@ -558,9 +581,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void OutputUnsuccessfulSampleBufferCosts(
       const drake::systems::Context<double>& context,
       Eigen::VectorXd* unsuccessful_sample_buffer_costs) const;
-  void OutputSampleBufferJamData(
-      const drake::systems::Context<double>& context,
-      Eigen::MatrixXd* sample_buffer_jam_data) const;
+  void OutputSampleBufferJamData(const drake::systems::Context<double>& context,
+                                 Eigen::MatrixXd* sample_buffer_jam_data) const;
   void OutputUnsuccessfulSampleBufferJamData(
       const drake::systems::Context<double>& context,
       Eigen::MatrixXd* unsuccessful_sample_buffer_jam_data) const;

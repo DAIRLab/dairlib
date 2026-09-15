@@ -1863,10 +1863,42 @@ void SamplingC3Controller::UpdateCostMatrices(
   }
 }
 
+namespace {
+
+// The member of `pair` that can move, which is the one worth capping: for
+// object-ground and object-ramp that is the object's corner sphere, and for
+// EE-ground it is the end effector.
+//
+// The duplication worth removing is one physical contact split across the
+// convex pieces of a single surface -- a corner sphere resting on a seam is
+// equidistant from two pieces of the decomposed ramp and would otherwise claim
+// both slots with near-parallel normals, while the next corner along gets none.
+//
+// Returns nullopt when the pair does not have exactly one movable side -- an
+// object-object pair, where both move -- so the caller leaves that group's
+// selection unchanged.
+std::optional<GeometryId> MovableSideOfPair(
+    const MultibodyPlant<double>& plant,
+    const drake::geometry::SceneGraphInspector<double>& inspector,
+    const SortedPair<GeometryId>& pair) {
+  const auto* body_a =
+      plant.GetBodyFromFrameId(inspector.GetFrameId(pair.first()));
+  const auto* body_b =
+      plant.GetBodyFromFrameId(inspector.GetFrameId(pair.second()));
+  if (body_a == nullptr || body_b == nullptr) return std::nullopt;
+  const bool a_anchored = plant.IsAnchored(*body_a);
+  const bool b_anchored = plant.IsAnchored(*body_b);
+  if (a_anchored == b_anchored) return std::nullopt;
+  return a_anchored ? pair.second() : pair.first();
+}
+
+}  // namespace
+
 vector<SortedPair<GeometryId>> SamplingC3Controller::GetResolvedContactPairs(
     const MultibodyPlant<double>& plant, const Context<double>& context,
     const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
     const vector<int>& resolve_contacts_to_list,
+    const vector<int>& max_contacts_per_object_geometry,
     vector<int> num_friction_directions, bool verbose) const {
   int n_contacts = std::accumulate(resolve_contacts_to_list.begin(),
                                    resolve_contacts_to_list.end(), 0);
@@ -1887,8 +1919,15 @@ vector<SortedPair<GeometryId>> SamplingC3Controller::GetResolvedContactPairs(
     const auto& candidates = contact_geoms[i];
     const int num_to_select = resolve_contacts_to_list[i];
 
-    auto active_contacts = LCSFactory::GetNClosestContactPairs(
-        plant, context, candidates, num_to_select);
+    const bool capped = i < max_contacts_per_object_geometry.size() &&
+                        max_contacts_per_object_geometry[i] > 0 &&
+                        num_to_select > 0;
+    auto active_contacts =
+        capped ? GetClosestContactPairsCappedPerObjectGeometry(
+                     plant, context, candidates, num_to_select,
+                     max_contacts_per_object_geometry[i])
+               : LCSFactory::GetNClosestContactPairs(plant, context, candidates,
+                                                     num_to_select);
     if (!active_contacts.empty()) {
       resolved_contacts.insert(resolved_contacts.end(), active_contacts.begin(),
                                active_contacts.end());
@@ -1896,6 +1935,61 @@ vector<SortedPair<GeometryId>> SamplingC3Controller::GetResolvedContactPairs(
   }
   DRAKE_DEMAND(resolved_contacts.size() == n_contacts);
   return resolved_contacts;
+}
+
+vector<SortedPair<GeometryId>>
+SamplingC3Controller::GetClosestContactPairsCappedPerObjectGeometry(
+    const MultibodyPlant<double>& plant, const Context<double>& context,
+    const vector<SortedPair<GeometryId>>& candidates, int num_to_select,
+    int max_per_object_geometry) {
+  DRAKE_DEMAND(num_to_select <= static_cast<int>(candidates.size()));
+
+  const auto& query_object =
+      plant.get_geometry_query_input_port()
+          .template Eval<drake::geometry::QueryObject<double>>(context);
+  const auto& inspector = query_object.inspector();
+
+  vector<std::pair<double, SortedPair<GeometryId>>> sorted;
+  sorted.reserve(candidates.size());
+  for (const auto& pair : candidates) {
+    sorted.emplace_back(
+        query_object
+            .ComputeSignedDistancePairClosestPoints(pair.first(), pair.second())
+            .distance,
+        pair);
+  }
+  // A full sort rather than a partial one: the second pass walks the rejects in
+  // distance order to top the group back up to its budget.
+  std::sort(sorted.begin(), sorted.end(),
+            [](const auto& a, const auto& b) { return a.first < b.first; });
+
+  // Pass 1: closest first, but no object-side geometry more than the cap.  A
+  // pair with no single movable side (object-object) is never capped.
+  vector<SortedPair<GeometryId>> selected;
+  vector<SortedPair<GeometryId>> deferred;
+  selected.reserve(num_to_select);
+  std::map<GeometryId, int> claimed;
+  for (const auto& [distance, pair] : sorted) {
+    const std::optional<GeometryId> key =
+        MovableSideOfPair(plant, inspector, pair);
+    if (key.has_value() && ++claimed[key.value()] > max_per_object_geometry) {
+      deferred.push_back(pair);
+    } else {
+      selected.push_back(pair);
+    }
+  }
+
+  // Pass 2: the cap only ever removes candidates, so if it removed enough to
+  // leave the group short, put the closest of them back.  The LCS dimensions
+  // are fixed by the budget, so the group must be filled exactly.
+  selected.resize(std::min<int>(selected.size(), num_to_select));
+  for (size_t i = 0; i < deferred.size() &&
+                     static_cast<int>(selected.size()) < num_to_select;
+       ++i) {
+    selected.push_back(deferred[i]);
+  }
+  DRAKE_DEMAND(static_cast<int>(selected.size()) == num_to_select);
+  return selected;
 }
 
 vector<Vector3d> SamplingC3Controller::GenerateSampleEEPositionsIgnoringKeepOut(
@@ -2007,8 +2101,10 @@ SamplingC3Controller::EvaluateJammingMetricsForSamples(
     UpdateContext(n_q_, n_v_, n_u_, plant_, context_, plant_ad_, context_ad_,
                   candidate_states.at(i));
     vector<SortedPair<GeometryId>> resolved_contact_pairs =
-        GetResolvedContactPairs(plant_, *context_, contact_pairs_,
-                                resolve_contacts_to, friction_dirs, false);
+        GetResolvedContactPairs(
+            plant_, *context_, contact_pairs_, resolve_contacts_to,
+            sampling_c3_options_.max_contacts_per_object_geometry,
+            friction_dirs, false);
     const vector<LCSContactDescription> contact_descriptions =
         LCSFactory(plant_, *context_, plant_ad_, *context_ad_,
                    resolved_contact_pairs, lcs_factory_options)
@@ -2197,6 +2293,7 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
         GetResolvedContactPairs(
             plant_, *context_, contact_pairs_,
             sampling_c3_options_.resolve_contacts_to,
+            sampling_c3_options_.max_contacts_per_object_geometry,
             sampling_c3_options_.num_friction_directions_per_contact.value(),
             verbose_);
     LCSFactory lcs_factory_sample(plant_, *context_, plant_ad_, *context_ad_,
@@ -2219,6 +2316,7 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
     resolved_contact_pairs_for_cost_simulation = GetResolvedContactPairs(
         plant_, *context_, contact_pairs_,
         sampling_c3_options_.resolve_contacts_to_for_cost,
+        sampling_c3_options_.max_contacts_per_object_geometry_for_cost,
         sampling_c3_options_.num_friction_directions_per_contact_for_cost,
         verbose_);
     LCSFactoryOptions lcs_factory_options_for_cost = {
@@ -3591,6 +3689,7 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
   resolved_contact_pairs = GetResolvedContactPairs(
       plant_, *context_, contact_pairs_,
       sampling_c3_options_.resolve_contacts_to,
+      sampling_c3_options_.max_contacts_per_object_geometry,
       sampling_c3_options_.num_friction_directions_per_contact.value(),
       verbose_);
 
@@ -3777,6 +3876,7 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
   resolved_contact_pairs = GetResolvedContactPairs(
       plant_, *context_, contact_pairs_,
       sampling_c3_options_.resolve_contacts_to,
+      sampling_c3_options_.max_contacts_per_object_geometry,
       sampling_c3_options_.num_friction_directions_per_contact.value(),
       verbose_);
   *lcs_contact_descriptions =

@@ -33,9 +33,19 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
   /// Contact pair parameters.
   std::vector<double> mu_per_pair_type;
   std::vector<std::vector<int>> resolve_contacts_to_lists;
+  /// Optional per-group cap on how many contacts a single object-side geometry
+  /// may claim, same shape as resolve_contacts_to_lists.  Omit the key entirely
+  /// to keep the closest-N behavior (the default).  Entries for groups whose
+  /// budget is 0 are ignored; conventionally write them as 0.
+  std::optional<std::vector<std::vector<int>>>
+      max_contacts_per_object_geometry_lists;
   std::vector<int> resolve_as_planar_contacts_list;
   std::vector<int> resolve_contacts_to;
   std::vector<int> resolve_contacts_to_for_cost;
+  /// Resolved from the list above by num_contacts_index(_for_cost).  Empty
+  /// means "no cap", which is the default.
+  std::vector<int> max_contacts_per_object_geometry;
+  std::vector<int> max_contacts_per_object_geometry_for_cost;
   int num_contacts_index;
   int num_contacts_index_for_cost;
   std::vector<double> mu_for_cost;
@@ -122,14 +132,14 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
 
   /// Bounds on the C3 input u, in Newtons: the generalized force on the LCS end
   /// effector, which every demo models as a free point mass on three prismatic
-  /// joints (0.057 kg in both the Franka and 3D printer simple models).  Imposed
+  /// joints (0.057 kg in both the Franka and 3D printer simple models). Imposed
   /// as hard constraints at every knot i = 0 ... N-1, unlike the EE velocity
   /// limits below, which are state constraints and so skip i = 0 and i = N.
   ///
-  /// Whether that planned force is also *executed* is per demo -- the Franka OSC
-  /// consumes the controller's end_effector_force_target as a feedforward, while
-  /// the 3D printer path drops it and commands positions -- so what these bounds
-  /// physically mean is documented in each demo's own options yaml.
+  /// Whether that planned force is also *executed* is per demo -- the Franka
+  /// OSC consumes the controller's end_effector_force_target as a feedforward,
+  /// while the 3D printer path drops it and commands positions -- so what these
+  /// bounds physically mean is documented in each demo's own options yaml.
   std::vector<double> u_horizontal_limits;  ///< u bounds on the x and y axes.
   std::vector<double> u_vertical_limits;    ///< u bounds on the z axis.
   std::vector<Eigen::VectorXd>
@@ -162,6 +172,7 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
 
     a->Visit(DRAKE_NVP(mu_per_pair_type));
     a->Visit(DRAKE_NVP(resolve_contacts_to_lists));
+    a->Visit(DRAKE_NVP(max_contacts_per_object_geometry_lists));
     a->Visit(DRAKE_NVP(resolve_as_planar_contacts_list));
     a->Visit(DRAKE_NVP(num_contacts_index));
     a->Visit(DRAKE_NVP(num_contacts_index_for_cost));
@@ -245,6 +256,34 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     resolve_contacts_to = resolve_contacts_to_lists[num_contacts_index];
     resolve_contacts_to_for_cost =
         resolve_contacts_to_lists[num_contacts_index_for_cost];
+
+    if (max_contacts_per_object_geometry_lists.has_value()) {
+      const auto& caps = max_contacts_per_object_geometry_lists.value();
+      if (caps.size() != resolve_contacts_to_lists.size()) {
+        throw std::runtime_error(
+            "max_contacts_per_object_geometry_lists must have one entry per "
+            "entry of resolve_contacts_to_lists.");
+      }
+      for (size_t i = 0; i < caps.size(); ++i) {
+        if (caps[i].size() != resolve_contacts_to_lists[i].size()) {
+          throw std::runtime_error(
+              "Each max_contacts_per_object_geometry_lists entry must be the "
+              "same length as the matching resolve_contacts_to_lists entry.");
+        }
+        for (size_t g = 0; g < caps[i].size(); ++g) {
+          // A cap only means anything where contacts are actually resolved, so
+          // a zero there would silently ask for a group that cannot be filled.
+          if (resolve_contacts_to_lists[i][g] > 0 && caps[i][g] < 1) {
+            throw std::runtime_error(
+                "max_contacts_per_object_geometry_lists must be at least 1 "
+                "wherever resolve_contacts_to_lists is greater than 0.");
+          }
+        }
+      }
+      max_contacts_per_object_geometry = caps[num_contacts_index];
+      max_contacts_per_object_geometry_for_cost =
+          caps[num_contacts_index_for_cost];
+    }
 
     if (!include_walls) {
       if (resolve_contacts_to.back() != 0 ||

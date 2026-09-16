@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <Eigen/Dense>
@@ -207,5 +208,10 @@ std::vector<drake::multibody::ModelInstanceIndex> AddKeepOutModelsToPlant(
 std::vector<std::vector<drake::SortedPair<drake::geometry::GeometryId>>>
 BuildConeContactPairs(const drake::multibody::MultibodyPlant<double>& plant_lcs,
                       const std::vector<std::string>& base_names);
+
+/// Extracts the axis-aligned (lower, upper) end effector position box from
+/// SamplingC3Options::workspace_limits, shrunk by @p margin on every side.
+std::pair<Eigen::Vector3d, Eigen::Vector3d> GetWorkspaceBox(
+    const std::vector<Eigen::VectorXd>& workspace_limits, double margin = 0.0);
 
 }  // namespace dairlib

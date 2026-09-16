@@ -1,5 +1,6 @@
 #pragma once
 
+#include <limits>
 #include <map>
 #include <string>
 #include <vector>
@@ -248,9 +249,29 @@ class ThreeDPrinterCommandSender : public drake::systems::LeafSystem<double> {
   explicit ThreeDPrinterCommandSender(
       const drake::multibody::MultibodyPlant<double>& plant);
 
+  /// Clamps every published position into [@p lower, @p upper], and zeros any
+  /// velocity component that points out of that box.  This is the last
+  /// statement before the LCM message is built, so it bounds every upstream
+  /// path.  The bounds are in the same frame as the positions this system
+  /// publishes, i.e. printer joint (carriage) coordinates.
+  ///
+  /// Unset by default (unbounded), so callers that do not opt in are
+  /// unaffected.
+  void SetPositionLimits(const Eigen::Vector3d& lower,
+                         const Eigen::Vector3d& upper);
+
  private:
   void OutputCommand(const drake::systems::Context<double>& context,
                      dairlib::lcmt_robot_output* output) const;
+
+  Eigen::Vector3d lower_limits_ =
+      Eigen::Vector3d::Constant(-std::numeric_limits<double>::infinity());
+  Eigen::Vector3d upper_limits_ =
+      Eigen::Vector3d::Constant(std::numeric_limits<double>::infinity());
+  // Rate-limits the clamp warning; a silent clamp is exactly what makes this
+  // class of bug hard to diagnose, but one per tick would flood the console.
+  mutable double last_clamp_warning_time_ =
+      -std::numeric_limits<double>::infinity();
 };
 
 ///

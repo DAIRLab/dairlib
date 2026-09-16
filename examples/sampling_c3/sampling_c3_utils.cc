@@ -1,10 +1,13 @@
 #include "sampling_c3_utils.h"
 
 #include <iostream>
+#include <stdexcept>
+#include <string>
 
 #include "common/find_resource.h"
 
 #include "drake/common/drake_assert.h"
+#include "drake/common/drake_throw.h"
 #include "drake/multibody/parsing/parser.h"
 
 namespace dairlib {
@@ -432,6 +435,32 @@ BuildConeContactPairs(const MultibodyPlant<double>& plant_lcs,
     contact_pairs.push_back(wall_obj_pair);
   }
   return contact_pairs;
+}
+
+std::pair<Eigen::Vector3d, Eigen::Vector3d> GetWorkspaceBox(
+    const std::vector<Eigen::VectorXd>& workspace_limits, double margin) {
+  DRAKE_THROW_UNLESS(workspace_limits.size() == 3);
+  Eigen::Vector3d lower;
+  Eigen::Vector3d upper;
+  for (int i = 0; i < 3; ++i) {
+    DRAKE_THROW_UNLESS(workspace_limits[i].size() == 5);
+    // Assume axis-aligned:  row i must be the unit normal along axis i.
+    if (workspace_limits[i].segment(0, 3) != Eigen::Vector3d::Unit(i)) {
+      throw std::runtime_error(
+          "GetWorkspaceBox: workspace_limits row " + std::to_string(i) +
+          " has normal [" + std::to_string(workspace_limits[i][0]) + ", " +
+          std::to_string(workspace_limits[i][1]) + ", " +
+          std::to_string(workspace_limits[i][2]) +
+          "], but an axis-aligned box requires the unit normal along axis " +
+          std::to_string(i) +
+          ".  Non-axis-aligned workspace limits are honored by the C3 solve's "
+          "linear constraints but not by any of the clamps that read them.");
+    }
+    lower(i) = workspace_limits[i][3] + margin;
+    upper(i) = workspace_limits[i][4] - margin;
+    DRAKE_THROW_UNLESS(lower(i) <= upper(i));
+  }
+  return {lower, upper};
 }
 
 }  // namespace dairlib

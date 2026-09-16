@@ -9,6 +9,8 @@
 #include "dairlib/lcmt_radio_out.hpp"
 #include "multibody/multibody_utils.h"
 
+#include "drake/common/drake_throw.h"
+
 using Eigen::Map;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -72,6 +74,13 @@ void EndEffectorPositionTrajectoryGenerator::SetRemoteControlParameters(
   z_scale_ = z_scale;
 }
 
+void EndEffectorPositionTrajectoryGenerator::SetWorkspaceLimits(
+    const Eigen::Vector3d& lower, const Eigen::Vector3d& upper) {
+  DRAKE_THROW_UNLESS((lower.array() <= upper.array()).all());
+  lower_limits_ = lower;
+  upper_limits_ = upper;
+}
+
 void EndEffectorPositionTrajectoryGenerator::CalcNeutralPoseBasedTraj(
     const drake::systems::Context<double>& context,
     drake::trajectories::Trajectory<double>* traj) const {
@@ -87,10 +96,11 @@ void EndEffectorPositionTrajectoryGenerator::CalcNeutralPoseBasedTraj(
     PiecewisePolynomial<double> result;
 
     // Compute the target position based on an offset from neutral pose.
-    VectorXd y_0 = neutral_pose_;
+    Eigen::Vector3d y_0 = neutral_pose_;
     y_0(0) += radio_out->channel[0] * x_scale_;
     y_0(1) += radio_out->channel[1] * y_scale_;
     y_0(2) += radio_out->channel[2] * z_scale_;
+    y_0 = ClampToWorkspaceLimits(y_0);
 
     result = drake::trajectories::PiecewisePolynomial<double>(y_0);
     *casted_traj = result;
@@ -125,7 +135,9 @@ void EndEffectorPositionTrajectoryGenerator::CalcPoseShiftingTraj(
       multibody::SetPositionsIfNew<double>(plant_, q_franka, context_);
       auto end_effector_pose = plant_.EvalBodyPoseInWorld(
           *context_, plant_.GetBodyByName(end_effector_name_));
-      shifting_pose_ = end_effector_pose.translation();
+      // Clamped, so that a measured pose slightly outside the workspace (e.g.
+      // after a homing offset change) can't seed an out-of-bounds target.
+      shifting_pose_ = ClampToWorkspaceLimits(end_effector_pose.translation());
     }
     was_in_teleop_mode_ = true;
 
@@ -141,7 +153,10 @@ void EndEffectorPositionTrajectoryGenerator::CalcPoseShiftingTraj(
     if (std::abs(radio_out->channel[2]) > 0.01) {
       shifting_pose_(2) += radio_out->channel[2] * z_scale_;
     }
-    VectorXd y_0 = shifting_pose_;
+    // Clamp the held target itself, not just the emitted trajectory, so the
+    // target can't wind up past the boundary while the stick is held into it.
+    shifting_pose_ = ClampToWorkspaceLimits(shifting_pose_);
+    Eigen::Vector3d y_0 = shifting_pose_;
 
     result = drake::trajectories::PiecewisePolynomial<double>(y_0);
     *casted_traj = result;

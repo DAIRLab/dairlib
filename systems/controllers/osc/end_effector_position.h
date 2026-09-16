@@ -4,6 +4,9 @@
  * teleop_neutral_pose flag. */
 #pragma once
 
+#include <limits>
+#include <string>
+
 #include <drake/multibody/plant/multibody_plant.h>
 
 #include "systems/framework/output_vector.h"
@@ -36,7 +39,25 @@ class EndEffectorPositionTrajectoryGenerator
                                   double x_scale, double y_scale,
                                   double z_scale);
 
+  /// Bounds the teleop target position to [@p lower, @p upper], in world
+  /// frame.  Without this the teleop target integrates the joystick without
+  /// limit, so a downstream clamp alone would leave the target wound far past
+  /// the boundary and the operator would have to drive back for seconds before
+  /// the robot moved at all.
+  ///
+  /// Unset by default (unbounded), so callers that do not opt in are
+  /// unaffected.  Has no effect outside teleop mode; the passthrough of an
+  /// upstream planned trajectory is unchanged.
+  void SetWorkspaceLimits(const Eigen::Vector3d& lower,
+                          const Eigen::Vector3d& upper);
+
  private:
+  /// Returns @p position clamped into the configured workspace limits.
+  Eigen::Vector3d ClampToWorkspaceLimits(
+      const Eigen::Vector3d& position) const {
+    return position.cwiseMax(lower_limits_).cwiseMin(upper_limits_);
+  }
+
   drake::systems::EventStatus DiscreteVariableUpdate(
       const drake::systems::Context<double>& context,
       drake::systems::DiscreteValues<double>* discrete_state) const;
@@ -62,6 +83,10 @@ class EndEffectorPositionTrajectoryGenerator
   double x_scale_;
   double y_scale_;
   double z_scale_;
+  Eigen::Vector3d lower_limits_ =
+      Eigen::Vector3d::Constant(-std::numeric_limits<double>::infinity());
+  Eigen::Vector3d upper_limits_ =
+      Eigen::Vector3d::Constant(std::numeric_limits<double>::infinity());
 };
 
 }  // namespace dairlib

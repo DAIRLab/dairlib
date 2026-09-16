@@ -1,5 +1,7 @@
 #include <iostream>
 #include <limits>
+#include <string>
+#include <vector>
 
 #include <dairlib/lcmt_radio_out.hpp>
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
@@ -58,6 +60,53 @@ using systems::controllers::JointSpaceTrackingData;
 using systems::controllers::RelativeTranslationTrackingData;
 using systems::controllers::RotTaskSpaceTrackingData;
 using systems::controllers::TransTaskSpaceTrackingData;
+
+namespace {
+
+/// Reports whether @p end_effector_position is inside [@p lower, @p upper],
+/// printing a per-axis diagnosis to stderr when it is not.
+bool EndEffectorIsInWorkspace(const Vector3d& end_effector_position,
+                              const Vector3d& lower, const Vector3d& upper) {
+  const std::vector<std::string> axis_names = {"x", "y", "z"};
+  std::string violations;
+  for (int i = 0; i < 3; ++i) {
+    const double p = end_effector_position(i);
+    if (!(p >= lower(i))) {
+      violations += "  " + axis_names[i] + " = " + std::to_string(p) +
+                    " m is below the lower limit " + std::to_string(lower(i)) +
+                    " m (by " + std::to_string(lower(i) - p) + " m)\n";
+    } else if (p > upper(i)) {
+      violations += "  " + axis_names[i] + " = " + std::to_string(p) +
+                    " m is above the upper limit " + std::to_string(upper(i)) +
+                    " m (by " + std::to_string(p - upper(i)) + " m)\n";
+    }
+  }
+  if (violations.empty()) {
+    return true;
+  }
+  std::cerr
+      << "\n"
+      << "ERROR: the printer's end effector is outside the configured "
+         "workspace limits.\n"
+      << "The controller refuses to start, since its first command would "
+         "otherwise\n"
+      << "yank the end effector back into the workspace along a straight "
+         "line\n"
+      << "through whatever it is currently touching.\n\n"
+      << violations << "\n"
+      << "Measured end effector tip (world frame): ["
+      << end_effector_position.transpose() << "] m\n"
+      << "Workspace limits (from the demo's sampling C3 options yaml):\n"
+      << "  lower = [" << lower.transpose() << "] m\n"
+      << "  upper = [" << upper.transpose() << "] m\n\n"
+      << "To recover, jog the printer back inside these bounds (or re-run "
+         "homing.py\n"
+      << "on the printer driver host), then restart this controller.\n"
+      << std::endl;
+  return false;
+}
+
+}  // namespace
 
 DEFINE_bool(is_simulation, true, "True for simulation, false for hardware");
 DEFINE_string(lcm_url, "udpm://239.255.76.67:7667?ttl=0",
@@ -150,6 +199,27 @@ int DoMain(int argc, char* argv[]) {
           plant, plant_context.get(), k3dEndEffectorTipName);
 
   // ------------------------------------------------------------------------
+  // Workspace limits
+  // ------------------------------------------------------------------------
+  // The printer driver clamps too, but in printer joint (carriage) coordinates
+  // and with no knowledge of the end effector geometry, so it is not a
+  // backstop for these limits.  Enforce them here, in two places:
+  //   1. on the teleop target, so it can't wind up past the boundary; and
+  //   2. on the published command, as a hard backstop on every path.
+  // Both use the raw limits, with no workspace_margins applied.  That is
+  // strictly looser than the margined box SamplingC3Controller already clamps
+  // its published plan to, so a valid C3 trajectory passes through untouched
+  // and only teleop or a malformed plan can reach these bounds.
+  const auto [workspace_lower, workspace_upper] =
+      GetWorkspaceBox(controller_params.sampling_c3_options.workspace_limits);
+  end_effector_trajectory->SetWorkspaceLimits(workspace_lower, workspace_upper);
+  const Vector3d& end_effector_offset =
+      printer_inverse_kinematics->get_end_effector_offset();
+  three_d_printer_command_sender->SetPositionLimits(
+      workspace_lower - end_effector_offset,
+      workspace_upper - end_effector_offset);
+
+  // ------------------------------------------------------------------------
   // Connections
   // ------------------------------------------------------------------------
   builder.Connect(three_d_printer_command_sender->get_output_port(),
@@ -181,6 +251,46 @@ int DoMain(int argc, char* argv[]) {
   systems::LcmDrivenLoop<dairlib::lcmt_robot_output> loop(
       &lcm, shared_diagram, state_receiver,
       lcm_channel_params.robot_state_channel, true);
+
+  // ------------------------------------------------------------------------
+  // Refuse to start from a state outside the workspace limits
+  // ------------------------------------------------------------------------
+  {
+    systems::Subscriber<dairlib::lcmt_robot_output> state_sub(
+        &lcm, lcm_channel_params.robot_state_channel);
+    drake::log()->info(
+        "Waiting for the first state message to check the "
+        "workspace limits");
+    drake::lcm::LcmHandleSubscriptionsUntil(
+        &lcm, [&]() { return state_sub.count() > 0; });
+
+    // Decode through the diagram's own state receiver rather than duplicating
+    // its name-to-index mapping.  LcmDrivenLoop overwrites this fixed value on
+    // every iteration, so fixing it here does not disturb the loop.
+    auto& diagram_context = loop.get_diagram_mutable_context();
+    auto& state_receiver_context = shared_diagram->GetMutableSubsystemContext(
+        *state_receiver, &diagram_context);
+    state_receiver->get_input_port(0).FixValue(&state_receiver_context,
+                                               state_sub.message());
+    const auto& state_output =
+        state_receiver->get_output_port(0).Eval<systems::OutputVector<double>>(
+            state_receiver_context);
+
+    // Use a scratch context:  plant_context is shared with the trajectory
+    // generator and the inverse kinematics system, which relies on it.
+    auto check_context = plant.CreateDefaultContext();
+    plant.SetPositions(check_context.get(), state_output.GetPositions());
+    const Vector3d measured_end_effector_position =
+        plant
+            .EvalBodyPoseInWorld(*check_context,
+                                 plant.GetBodyByName(k3dEndEffectorTipName))
+            .translation();
+    if (!EndEffectorIsInWorkspace(measured_end_effector_position,
+                                  workspace_lower, workspace_upper)) {
+      return 1;
+    }
+  }
+
   loop.Simulate();
 
   return 0;

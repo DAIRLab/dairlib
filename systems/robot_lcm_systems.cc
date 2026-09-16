@@ -3,11 +3,14 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <string>
 
 #include "dairlib/lcmt_robot_input.hpp"
 #include "dairlib/lcmt_robot_output.hpp"
 #include "multibody/multibody_utils.h"
 
+#include "drake/common/drake_throw.h"
+#include "drake/common/text_logging.h"
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/trajectories/trajectory.h"
 #include "drake/multibody/plant/multibody_plant.h"
@@ -677,6 +680,13 @@ ThreeDPrinterCommandSender::ThreeDPrinterCommandSender(
                                   &ThreeDPrinterCommandSender::OutputCommand);
 }
 
+void ThreeDPrinterCommandSender::SetPositionLimits(
+    const Eigen::Vector3d& lower, const Eigen::Vector3d& upper) {
+  DRAKE_THROW_UNLESS((lower.array() <= upper.array()).all());
+  lower_limits_ = lower;
+  upper_limits_ = upper;
+}
+
 void ThreeDPrinterCommandSender::OutputCommand(
     const Context<double>& context,
     dairlib::lcmt_robot_output* output_msg) const {
@@ -693,6 +703,40 @@ void ThreeDPrinterCommandSender::OutputCommand(
 
   // Evaluate trajectory derivative at current time to get velocities
   VectorXd desired_velocity = trajectory.EvalDerivative(current_time, 1);
+
+  // Clamp into the configured position limits.  The velocity is clamped too,
+  // not just for consistency:  the printer driver extrapolates lookahead
+  // sub-waypoints from the commanded velocity, so an outward velocity at the
+  // wall would carry the head past the position clamp.
+  const int num_bounded_axes =
+      std::min<int>(3, static_cast<int>(desired_position.size()));
+  std::string violation_summary;
+  for (int i = 0; i < num_bounded_axes; ++i) {
+    // Written so that a NaN position falls into the lower-bound branch rather
+    // than passing through unclamped.
+    if (!(desired_position(i) >= lower_limits_(i))) {
+      violation_summary += " axis " + std::to_string(i) + ": " +
+                           std::to_string(desired_position(i)) + " < " +
+                           std::to_string(lower_limits_(i)) + ";";
+      desired_position(i) = lower_limits_(i);
+      desired_velocity(i) = std::max(desired_velocity(i), 0.0);
+    } else if (desired_position(i) > upper_limits_(i)) {
+      violation_summary += " axis " + std::to_string(i) + ": " +
+                           std::to_string(desired_position(i)) + " > " +
+                           std::to_string(upper_limits_(i)) + ";";
+      desired_position(i) = upper_limits_(i);
+      desired_velocity(i) = std::min(desired_velocity(i), 0.0);
+    }
+  }
+  // The elapsed-time test is written to also fire when time jumps backwards,
+  // which LcmDrivenLoop tolerates on a restart of the driving clock.
+  if (!violation_summary.empty() &&
+      !(current_time - last_clamp_warning_time_ <= 1.0)) {
+    last_clamp_warning_time_ = current_time;
+    drake::log()->warn(
+        "ThreeDPrinterCommandSender clamped the commanded position to the "
+        "workspace limits:{}", violation_summary);
+  }
 
   // Initialize the output message
   output_msg->utime = current_time * 1e6;

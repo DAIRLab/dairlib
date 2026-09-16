@@ -104,6 +104,13 @@ class ThreeDPrinterInverseKinematics
     return this->get_output_port(joint_trajectory_port_);
   }
 
+  /// The fixed offset this system uses to map a world-frame end effector tip
+  /// position to a printer joint (carriage) position.  Exposed so callers can
+  /// express world-frame limits in the joint frame this system outputs.
+  const Eigen::Vector3d& get_end_effector_offset() const {
+    return end_effector_offset_;
+  }
+
  private:
   void CalcJointTrajectory(const drake::systems::Context<double>& context,
                            drake::trajectories::Trajectory<double>* traj) const;

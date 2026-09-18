@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "common/file_utils.h"
 
 #include "drake/common/yaml/yaml_read_archive.h"
@@ -53,6 +55,10 @@ struct SamplingParams {
   double unsuccessful_pos_error_sample_retention;
   double unsuccessful_ang_error_sample_retention;
   double unsuccessful_radius;
+  /// Minimum seconds an unsuccessful-buffer entry is immune from pruning, to
+  /// add some robustness to object state estimation noise.  Optional; leaving
+  /// it unset means 0 = no floor.
+  std::optional<double> unsuccessful_min_retention_seconds;
 
   /// Shared across multiple sampling strategies.
   double sampling_radius;              // kRadiallySymmetric, kRandomOnCircle,
@@ -111,6 +117,7 @@ struct SamplingParams {
     a->Visit(DRAKE_NVP(unsuccessful_pos_error_sample_retention));
     a->Visit(DRAKE_NVP(unsuccessful_ang_error_sample_retention));
     a->Visit(DRAKE_NVP(unsuccessful_radius));
+    a->Visit(DRAKE_NVP(unsuccessful_min_retention_seconds));
     a->Visit(DRAKE_NVP(sample_projection_clearance));
     a->Visit(DRAKE_NVP(buffer_distance));
     a->Visit(DRAKE_NVP(max_attempts));
@@ -121,5 +128,7 @@ struct SamplingParams {
     a->Visit(DRAKE_NVP(gen_planar_samples));
     a->Visit(DRAKE_NVP(sample_on_wall));
     a->Visit(DRAKE_NVP(avoid_sampling_within_fixed_environment_geometries));
+
+    DRAKE_DEMAND(unsuccessful_min_retention_seconds >= 0.0);
   }
 };

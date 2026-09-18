@@ -65,10 +65,12 @@ enum SampleIndex {
 
 /// Column layout of the jam data each sample buffer carries alongside its
 /// costs, so a sample recalled from a buffer brings its label with it instead
-/// of coming back unlabelled.  Buffered samples are pruned whenever the object
-/// moves past the retention thresholds, which is the same guarantee that makes
-/// the stored cost worth reusing -- the label is no more stale than the cost it
-/// sits beside.
+/// of coming back unlabelled.  Unattempted samples are pruned whenever the
+/// object moves past the retention thresholds, which is the same guarantee that
+/// makes the stored cost worth reusing -- the label is no more stale than the
+/// cost it sits beside.  The unsuccessful buffer is pruned nearly the same way,
+/// but with a configurable minimum retention time to add some robustness to
+/// object state estimation noise.
 enum JamBufferColumn { kJamLabel = 0, kJamTravel, kPlanIsReal, kNumJamColumns };
 
 enum ModeSwitchReason {
@@ -377,6 +379,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void UpdateRepositioningExecutionTrajectory(const Eigen::VectorXd& x_lcs,
                                               const double& t_context) const;
 
+  /// Prunes samples whose stored object pose has gone stale.  Used for the
+  /// unattempted buffer.
   void PruneOutdatedSamplesFromBuffer(
       const Eigen::VectorXd& x_lcs, int* num_in_buffer,
       Eigen::MatrixXd* sample_buffer, Eigen::VectorXd* sample_costs_buffer,
@@ -384,16 +388,26 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const double& pos_error_sample_retention,
       const double& ang_error_sample_retention) const;
 
-  void MaintainSampleBuffers(const Eigen::VectorXd& x_lcs) const;
+  /// Prunes samples based on this rule:
+  ///   age < unsuccessful_min_retention_s_ -> kept, whatever the pose,
+  ///   otherwise                           -> the usual position/angle test.
+  /// Used for the unsuccessful buffer.  @p now is the controller clock,
+  /// context.get_time(), the same one UpdateJamWatchdog runs on.
+  void PruneUnsuccessfulBuffer(const Eigen::VectorXd& x_lcs, double now) const;
+
+  void MaintainSampleBuffers(const Eigen::VectorXd& x_lcs, double now) const;
 
   void AugmentSamplesWithBuffer(
       std::vector<std::shared_ptr<c3::C3>>& c3_objects) const;
 
   /// Adds @p x_lcs to the unsuccessful buffer, storing the cost and jam label
   /// of @p sample_index -- the index in all_sample_costs_ of the sample that
-  /// state came from, so the stored data describes the state being added.
-  void AddToUnsuccessfulBuffer(const Eigen::VectorXd& x_lcs,
-                               int sample_index) const;
+  /// state came from, so the stored data describes the state being added --
+  /// and stamping the entry with @p now, the controller clock, so
+  /// PruneUnsuccessfulBuffer can hold it for unsuccessful_min_retention_s_
+  /// regardless of what the object pose estimate does meanwhile.
+  void AddToUnsuccessfulBuffer(const Eigen::VectorXd& x_lcs, int sample_index,
+                               double now) const;
 
   void KeepTrackOfC3ModeProgress(
       const drake::VectorX<double>& x_lcs_curr,
@@ -828,6 +842,13 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   /// (N_unsuccessful_sample_buffer x kNumJamColumns), row-aligned with the two
   /// above.
   mutable Eigen::MatrixXd unsuccessful_sample_jam_buffer_;
+  /// (N_unsuccessful_sample_buffer x 1), row-aligned with the three above:  the
+  /// controller-clock time at which each entry was added, used by
+  /// PruneUnsuccessfulBuffer for the minimum-retention floor.
+  mutable Eigen::VectorXd unsuccessful_sample_entry_times_;
+  /// sampling_params_.unsuccessful_min_retention_seconds resolved once in the
+  /// constructor; 0 means the pose thresholds alone decide, as before.
+  double unsuccessful_min_retention_s_ = 0.0;
 
   // Miscellaneous sample related variables.
   mutable bool is_doing_c3_ = true;

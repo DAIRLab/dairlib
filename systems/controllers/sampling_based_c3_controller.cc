@@ -252,6 +252,9 @@ SamplingC3Controller::SamplingC3Controller(
   if (sampling_params_.consider_best_buffer_sample_when_leaving_c3) {
     from_buffer = 1;
   }
+
+  unsuccessful_min_retention_s_ =
+      sampling_params_.unsuccessful_min_retention_seconds.value_or(0.0);
   max_num_samples_ =
       std::max(sampling_params_.num_additional_samples_repos + 1,
                sampling_params_.num_additional_samples_c3 + from_buffer);
@@ -1328,7 +1331,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // repositioning mode, don't add the repositioning target over and over again,
   // and 2) since the best sample in the buffer may be the best sample overall
   // and could be considered as a repositioning target.
-  MaintainSampleBuffers(x_lcs_curr);
+  MaintainSampleBuffers(x_lcs_curr, context.get_time());
 
   // Augment the considered samples with the best from the buffer, if eligible.
   AugmentSamplesWithBuffer(c3_objects);
@@ -1550,11 +1553,12 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       is_doing_c3_ = true;
       mode_switch_reason_ = ModeSwitchReason::kToC3Xbox;
       pursued_target_source_ = PursuedTargetSource::kNoTarget;
-      // Add the current state to the unsuccessful sample buffer.  It gets
-      // automatically removed if the object moves beyond the buffer movement
-      // thresholds.
+      // Add the current state to the unsuccessful sample buffer.  It is held
+      // for unsuccessful_min_retention_seconds and then removed once the object
+      // moves beyond the buffer movement thresholds.
       AddToUnsuccessfulBuffer(candidate_states[SampleIndex::kCurrentLocation],
-                              SampleIndex::kCurrentLocation);
+                              SampleIndex::kCurrentLocation,
+                              context.get_time());
     }
     // Stay in repositioning if fixed goal is met.
     else if (achieved_fixed_goal_) {
@@ -1580,19 +1584,20 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         std::cout << "Switching to C3 because reached repositioning target"
                   << std::endl;
         // Add the repositioning target to the unsuccessful sample buffer.  It
-        // gets automatically removed if the object moves beyond the buffer
-        // movement thresholds.
+        // is held for unsuccessful_min_retention_seconds and then removed once
+        // the object moves beyond the buffer movement thresholds.
         AddToUnsuccessfulBuffer(
             candidate_states[SampleIndex::kCurrentReposTarget],
-            SampleIndex::kCurrentReposTarget);
+            SampleIndex::kCurrentReposTarget, context.get_time());
       } else {
         mode_switch_reason_ = ModeSwitchReason::kToC3Cost;
         std::cout << "Switching to C3 because lower in cost" << std::endl;
-        // Add the current state to the unsuccessful sample buffer.  It gets
-        // automatically removed if the object moves beyond the buffer movement
-        // thresholds.
+        // Add the current state to the unsuccessful sample buffer.  It is held
+        // for unsuccessful_min_retention_seconds and then removed once the
+        // object moves beyond the buffer movement thresholds.
         AddToUnsuccessfulBuffer(candidate_states[SampleIndex::kCurrentLocation],
-                                SampleIndex::kCurrentLocation);
+                                SampleIndex::kCurrentLocation,
+                                context.get_time());
       }
       pursued_target_source_ = PursuedTargetSource::kNoTarget;
     }
@@ -1610,7 +1615,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // ordinary sample buffer on the way through.
   if (jam_tripped_ && !was_jam_tripped) {
     AddToUnsuccessfulBuffer(candidate_states[SampleIndex::kCurrentLocation],
-                            SampleIndex::kCurrentLocation);
+                            SampleIndex::kCurrentLocation, context.get_time());
   }
 
   if (verbose_) {
@@ -1922,12 +1927,12 @@ vector<SortedPair<GeometryId>> SamplingC3Controller::GetResolvedContactPairs(
     const bool capped = i < max_contacts_per_object_geometry.size() &&
                         max_contacts_per_object_geometry[i] > 0 &&
                         num_to_select > 0;
-    auto active_contacts =
-        capped ? GetClosestContactPairsCappedPerObjectGeometry(
-                     plant, context, candidates, num_to_select,
-                     max_contacts_per_object_geometry[i])
-               : LCSFactory::GetNClosestContactPairs(plant, context, candidates,
-                                                     num_to_select);
+    auto active_contacts = capped
+                               ? GetClosestContactPairsCappedPerObjectGeometry(
+                                     plant, context, candidates, num_to_select,
+                                     max_contacts_per_object_geometry[i])
+                               : LCSFactory::GetNClosestContactPairs(
+                                     plant, context, candidates, num_to_select);
     if (!active_contacts.empty()) {
       resolved_contacts.insert(resolved_contacts.end(), active_contacts.begin(),
                                active_contacts.end());
@@ -1983,8 +1988,8 @@ SamplingC3Controller::GetClosestContactPairsCappedPerObjectGeometry(
   // leave the group short, put the closest of them back.  The LCS dimensions
   // are fixed by the budget, so the group must be filled exactly.
   selected.resize(std::min<int>(selected.size(), num_to_select));
-  for (size_t i = 0; i < deferred.size() &&
-                     static_cast<int>(selected.size()) < num_to_select;
+  for (size_t i = 0;
+       i < deferred.size() && static_cast<int>(selected.size()) < num_to_select;
        ++i) {
     selected.push_back(deferred[i]);
   }
@@ -2619,18 +2624,108 @@ void SamplingC3Controller::PruneOutdatedSamplesFromBuffer(
   *sample_jam_buffer = retained_jam_data;
 }
 
+// Prune the unsuccessful sample buffer.  Unlike the unattempted buffer, an
+// entry here is only a record that the end effector was at this spot and it did
+// not work, so it is judged on age first and object pose second.  See the
+// declaration for why the age floor exists.
+void SamplingC3Controller::PruneUnsuccessfulBuffer(const VectorXd& x_lcs,
+                                                   double now) const {
+  const int n_buffer_length = unsuccessful_sample_costs_buffer_.size();
+  MatrixXd retained_samples = MatrixXd::Zero(n_buffer_length, n_q_);
+  VectorXd retained_costs = -1 * VectorXd::Ones(n_buffer_length);
+  MatrixXd retained_jam_data =
+      MatrixXd::Constant(n_buffer_length, kNumJamColumns, kUnlabelled);
+  VectorXd retained_times = VectorXd::Constant(n_buffer_length, kUnlabelled);
+
+  int retained_count = 0;
+  int num_dropped = 0;
+  int num_dropped_on_position = 0;
+  int num_dropped_on_angle = 0;
+  double oldest_dropped_age = 0.0;
+  // No cost-sentinel early break here, unlike PruneOutdatedSamplesFromBuffer:
+  // num_in_unsuccessful_buffer_ is the authority on occupancy, and a break
+  // would silently truncate the buffer if the two ever disagreed.
+  for (int i = 0; i < num_in_unsuccessful_buffer_; i++) {
+    double age = now - unsuccessful_sample_entry_times_[i];
+    // LcmDrivenLoop resets context time backwards on a large clock jump, which
+    // would otherwise make an entry look arbitrarily old or young.  Treat a
+    // negative age as freshly born and re-stamp it.
+    if (!(age >= 0.0)) {
+      unsuccessful_sample_entry_times_[i] = now;
+      age = 0.0;
+    }
+
+    bool keep = true;
+    bool dropped_on_angle = false;
+    if (age < unsuccessful_min_retention_s_) {
+      // Inside the immunity window:  held regardless of the pose estimate.
+    } else {
+      for (int j = 0; j < controller_params_.num_objects; j++) {
+        const Vector3d object_pos = x_lcs.segment(7 + 7 * j, 3);
+        const Vector4d object_quat = x_lcs.segment(3 + 7 * j, 4).normalized();
+        const Vector3d buffer_pos =
+            unsuccessful_sample_buffer_.row(i).segment(7 + 7 * j, 3);
+        const Vector4d buffer_quat =
+            unsuccessful_sample_buffer_.row(i).segment(3 + 7 * j, 4);
+
+        if ((buffer_pos - object_pos).norm() >=
+            sampling_params_.unsuccessful_pos_error_sample_retention) {
+          keep = false;
+          break;
+        }
+        const double quat_dot =
+            std::clamp(std::abs(buffer_quat.dot(object_quat)), -1.0, 1.0);
+        if (2.0 * std::acos(quat_dot) >=
+            sampling_params_.unsuccessful_ang_error_sample_retention) {
+          keep = false;
+          dropped_on_angle = true;
+          break;
+        }
+      }
+    }
+
+    if (keep) {
+      retained_samples.row(retained_count) = unsuccessful_sample_buffer_.row(i);
+      retained_costs[retained_count] = unsuccessful_sample_costs_buffer_[i];
+      retained_jam_data.row(retained_count) =
+          unsuccessful_sample_jam_buffer_.row(i);
+      retained_times[retained_count] = unsuccessful_sample_entry_times_[i];
+      retained_count++;
+    } else {
+      num_dropped++;
+      dropped_on_angle ? num_dropped_on_angle++ : num_dropped_on_position++;
+      oldest_dropped_age = std::max(oldest_dropped_age, age);
+    }
+  }
+
+  // One bounded line per prune that actually dropped something.  Which
+  // criterion is killing entries and how old they got is exactly what has to be
+  // watched when retuning these thresholds against a noisy state estimate on
+  // hardware, and it is not recoverable from the published buffer alone.
+  if (num_dropped > 0) {
+    std::cout << "Unsuccessful buffer: dropped " << num_dropped << " of "
+              << num_in_unsuccessful_buffer_ << " (" << num_dropped_on_position
+              << " on position, " << num_dropped_on_angle
+              << " on angle), oldest dropped age " << oldest_dropped_age << " s"
+              << std::endl;
+  }
+
+  num_in_unsuccessful_buffer_ = retained_count;
+  unsuccessful_sample_buffer_ = retained_samples;
+  unsuccessful_sample_costs_buffer_ = retained_costs;
+  unsuccessful_sample_jam_buffer_ = retained_jam_data;
+  unsuccessful_sample_entry_times_ = retained_times;
+}
+
 // Maintain the sample buffers (both for keeping track of unattempted samples
 // and their costs, and of attempted unsuccessful samples):  prune outdated
 // samples and add new.
-void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs) const {
+void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs,
+                                                 double now) const {
   // First, handle the unsuccessful sample buffer.  This buffer just needs to
   // prune outdated samples; new samples get added one at a time when the
   // controller goes from repositioning to C3 mode.
-  PruneOutdatedSamplesFromBuffer(
-      x_lcs, &num_in_unsuccessful_buffer_, &unsuccessful_sample_buffer_,
-      &unsuccessful_sample_costs_buffer_, &unsuccessful_sample_jam_buffer_,
-      sampling_params_.unsuccessful_pos_error_sample_retention,
-      sampling_params_.unsuccessful_ang_error_sample_retention);
+  PruneUnsuccessfulBuffer(x_lcs, now);
 
   // Second, handle the unattempted sample buffer.  First, prune outdated
   // samples.
@@ -2858,7 +2953,8 @@ void SamplingC3Controller::AugmentSamplesWithBuffer(
 
 // Add the given state to the unsuccessful buffer.
 void SamplingC3Controller::AddToUnsuccessfulBuffer(const VectorXd& x_lcs,
-                                                   int sample_index) const {
+                                                   int sample_index,
+                                                   double now) const {
   DRAKE_DEMAND(sample_index >= 0 &&
                sample_index < static_cast<int>(all_sample_costs_.size()));
   // Check if the unsuccessful buffer is going to overflow.
@@ -2873,6 +2969,8 @@ void SamplingC3Controller::AddToUnsuccessfulBuffer(const VectorXd& x_lcs,
           unsuccessful_sample_costs_buffer_[i + 1];
       unsuccessful_sample_jam_buffer_.row(i) =
           unsuccessful_sample_jam_buffer_.row(i + 1);
+      unsuccessful_sample_entry_times_[i] =
+          unsuccessful_sample_entry_times_[i + 1];
     }
     num_in_unsuccessful_buffer_--;
   }
@@ -2888,6 +2986,7 @@ void SamplingC3Controller::AddToUnsuccessfulBuffer(const VectorXd& x_lcs,
       all_sample_jam_travel_[sample_index];
   unsuccessful_sample_jam_buffer_(num_in_unsuccessful_buffer_, kPlanIsReal) =
       all_sample_plan_is_real_[sample_index];
+  unsuccessful_sample_entry_times_[num_in_unsuccessful_buffer_] = now;
   num_in_unsuccessful_buffer_++;
 
   // If desired, remove nearby samples from the unattempted sample buffer.
@@ -3259,6 +3358,11 @@ void SamplingC3Controller::ResetSampleBuffers() const {
   unsuccessful_sample_jam_buffer_ =
       MatrixXd::Constant(sampling_params_.N_unsuccessful_sample_buffer,
                          kNumJamColumns, kUnlabelled);
+  // Row-aligned with the three buffers above; must be resized here too, since
+  // this runs mid-run on every goal change and on crossing the cost switching
+  // threshold.
+  unsuccessful_sample_entry_times_ = VectorXd::Constant(
+      sampling_params_.N_unsuccessful_sample_buffer, kUnlabelled);
   num_in_unsuccessful_buffer_ = 0;
 }
 

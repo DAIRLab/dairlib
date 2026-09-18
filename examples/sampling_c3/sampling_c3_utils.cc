@@ -330,37 +330,31 @@ BuildConeContactPairs(const MultibodyPlant<double>& plant_lcs,
   vector<SortedPair<GeometryId>> ee_ground_contact_pairs;
   vector<SortedPair<GeometryId>> ee_object_contact_pairs;
   vector<SortedPair<GeometryId>> ground_object_contact_pairs;
+  vector<SortedPair<GeometryId>> ramp_object_contact_pairs;
   std::unordered_map<std::string, GeometryId> contact_geoms;
 
-  // All demos include the end effector and ground.
   GeometryId ee_contact_points = plant_lcs.GetCollisionGeometriesForBody(
       plant_lcs.GetBodyByName("end_effector_simple"))[0];
-  GeometryId ground_geoms = plant_lcs.GetCollisionGeometriesForBody(
+  GeometryId ground_geom = plant_lcs.GetCollisionGeometriesForBody(
       plant_lcs.GetBodyByName("ground"))[0];
+  const vector<GeometryId>& ramp_geoms =
+      plant_lcs.GetCollisionGeometriesForBody(
+          plant_lcs.GetBodyByName("ramp_link"));
 
   contact_geoms["EE"] = ee_contact_points;
-  contact_geoms["GROUND"] = ground_geoms;
-
-  // For each pair of object-object or wall-object, we store the contact pairs
-  // between their convex pieces
-  vector<vector<SortedPair<GeometryId>>> object_object_contact_pairs;
-  vector<vector<SortedPair<GeometryId>>> wall_object_contact_pairs;
+  contact_geoms["GROUND"] = ground_geom;
 
   // Add the EE-ground contact.  EE-ramp contact(s) also go here.
   ee_ground_contact_pairs.push_back(
       SortedPair(contact_geoms["EE"], contact_geoms["GROUND"]));
 
   // Build the demo-specific contact pairs: EE-object, object-ground,
-  // ramp-object, EE-ramp, and object-object.
-  vector<vector<GeometryId>> all_object_geoms;
+  // object-ramp, and EE-ramp.
   for (int i = 0; i < base_names.size(); i++) {
     std::string body_name = base_names.at(i);
     const vector<GeometryId>& object_geoms =
         plant_lcs.GetCollisionGeometriesForBody(
             plant_lcs.GetBodyByName(body_name));
-    const vector<GeometryId>& ramp_geoms =
-        plant_lcs.GetCollisionGeometriesForBody(
-            plant_lcs.GetBodyByName("ramp_link"));
 
     contact_geoms["FULL_CONE"] = object_geoms[0];
     contact_geoms["CORNER_1_SPHERE"] = object_geoms[1];
@@ -371,8 +365,7 @@ BuildConeContactPairs(const MultibodyPlant<double>& plant_lcs,
     contact_geoms["CORNER_6_SPHERE"] = object_geoms[6];
     contact_geoms["CORNER_7_SPHERE"] = object_geoms[7];
 
-    // Ground-object includes all corners with the ground, and all corners PLUS
-    // the full cone with every ramp piece.
+    // Ground-object includes all corners with the ground.
     ground_object_contact_pairs.push_back(
         SortedPair(contact_geoms["CORNER_1_SPHERE"], contact_geoms["GROUND"]));
     ground_object_contact_pairs.push_back(
@@ -388,9 +381,10 @@ BuildConeContactPairs(const MultibodyPlant<double>& plant_lcs,
     ground_object_contact_pairs.push_back(
         SortedPair(contact_geoms["CORNER_7_SPHERE"], contact_geoms["GROUND"]));
 
+    // Ramp-object pairs every corner PLUS the full cone with every ramp piece.
     for (int j = 0; j < ramp_geoms.size(); j++) {
-      for (int k = 1; k < object_geoms.size(); k++) {
-        ground_object_contact_pairs.push_back(
+      for (int k = 0; k < object_geoms.size(); k++) {
+        ramp_object_contact_pairs.push_back(
             SortedPair(ramp_geoms[j], object_geoms[k]));
       }
 
@@ -402,38 +396,13 @@ BuildConeContactPairs(const MultibodyPlant<double>& plant_lcs,
     // EE-object contact is just the EE with the full cone.
     ee_object_contact_pairs.push_back(
         SortedPair(contact_geoms["EE"], object_geoms[0]));
-
-    const vector<GeometryId> object_geoms_without_spheres =
-        vector<GeometryId>(object_geoms.begin(), object_geoms.end() - 7);
-    all_object_geoms.push_back(object_geoms_without_spheres);
   }
 
-  // Object-object contact pairs (excluding end effector), each pair of
-  // convex pieces for each pair of objects
-  for (int i = 0; i + 1 < base_names.size(); i++) {
-    for (int j = i + 1; j < base_names.size(); j++) {
-      vector<SortedPair<GeometryId>> convex_piece_pairs;
-      const vector<GeometryId>& object_1_geoms = all_object_geoms.at(i);
-      const vector<GeometryId>& object_2_geoms = all_object_geoms.at(j);
-
-      for (const auto& g1 : object_1_geoms) {
-        for (const auto& g2 : object_2_geoms) {
-          convex_piece_pairs.emplace_back(g1, g2);
-        }
-      }
-      object_object_contact_pairs.push_back(std::move(convex_piece_pairs));
-    }
-  }
-  // Order:  EE-ground, EE-object, object-ground, object-object, object-wall
+  // Order:  EE-ground, EE-object, object-ground, object-ramp.
   contact_pairs.push_back(ee_ground_contact_pairs);
   contact_pairs.push_back(ee_object_contact_pairs);
   contact_pairs.push_back(ground_object_contact_pairs);
-  for (const auto& obj_obj_pair : object_object_contact_pairs) {
-    contact_pairs.push_back(obj_obj_pair);
-  }
-  for (const auto& wall_obj_pair : wall_object_contact_pairs) {
-    contact_pairs.push_back(wall_obj_pair);
-  }
+  contact_pairs.push_back(ramp_object_contact_pairs);
   return contact_pairs;
 }
 

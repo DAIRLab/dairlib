@@ -199,8 +199,7 @@ std::vector<drake::multibody::ModelInstanceIndex> AddKeepOutModelsToPlant(
 /// Build the contact pair groups for the 3D printer cone demo, from a finalized
 /// LCS plant built by AddLCSModelsTo3DPrinterPlant.  The groups come back in
 /// the order the LCS factory's resolve_contacts_to list expects: EE-ground,
-/// EE-{object, ramp}, object-{ground, ramp}, then one group per pair of
-/// objects.  (The demo includes no walls.)
+/// EE-object, object-ground, object-ramp.
 ///
 /// @param plant_lcs a finalized LCS plant containing the simple end effector,
 ///   the ground, the ramp, and one body per entry in @p base_names

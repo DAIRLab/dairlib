@@ -3,6 +3,9 @@
 #   1. kOrientationSequence:  keep position goal the same, and cycle through a
 #                             sequence of orientations.
 #   2. kFixedGoal:            keep the same goal.
+#   3. kFixedGoalSequence:    step through a sequence of fixed (position,
+#                             orientation) goals, advancing once the current
+#                             one is reached, and holding at the last goal.
 goal_mode: 0  
 
 ### Parameters used for multiple goal modes.
@@ -35,6 +38,13 @@ angle_err_to_vel_factor: 0
 fixed_target_positions: [[0.45, 0.2, 0.031971466]]
 fixed_target_orientations: [[0.8804762392171493, 0.27984814233312133,
                            -0.3647051996310009, -0.11591689595929514]]
+
+# kFixedGoalSequence:  Sequence of (position, orientation) goals to step
+# through.  Read only when goal_mode is 3, but the keys are required either way,
+# like every other mode-specific key in this file.  Empty because this demo
+# generates random goals instead.
+fixed_target_position_sequence: []
+fixed_target_orientation_sequence: []
 
 # Random-specific parameters.
 random_goal_x_limits: [0.42, 0.5]

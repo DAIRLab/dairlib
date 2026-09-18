@@ -123,8 +123,8 @@ SamplingC3Controller::SamplingC3Controller(
       osqp_settings.GetAsSolverOptions(drake::solvers::OsqpSolver::id());
 
   // Build C3Options from SamplingC3Options.
-  C3Options c3_options =
-      sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_);
+  C3Options c3_options = sampling_c3_options_.GetC3Options(
+      crossed_cost_switching_threshold_, active_goal_step_);
 
   DRAKE_DEMAND(sampling_c3_options_.lcs_dt_resolution > 0);
   dt_ =
@@ -1080,9 +1080,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   }
 
   // Build C3Options from SamplingC3Options based on the
-  // crossed_cost_switching_threshold_ flag.
-  C3Options c3_options =
-      sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_);
+  // crossed_cost_switching_threshold_ flag and the active goal step.
+  C3Options c3_options = sampling_c3_options_.GetC3Options(
+      crossed_cost_switching_threshold_, active_goal_step_);
   LCSFactoryOptions lcs_factory_options =
       sampling_c3_options_.GetLCSFactoryOptions(
           crossed_cost_switching_threshold_);
@@ -1897,6 +1897,44 @@ std::optional<GeometryId> MovableSideOfPair(
   return a_anchored ? pair.second() : pair.first();
 }
 
+// Whether Drake can report a contact normal for `pair` when the two geometries
+// are exactly touching -- |phi| < 1e-14, where Drake stops deriving the normal
+// from the witness points (which coincide there) and falls back to
+// CalcGradientWhenTouching instead.  That fallback only covers sphere-vs-shape
+// and box-vs-box; every other combination comes back as a NaN normal, which the
+// LCS factory hands straight to RotationMatrix::MakeFromOneVector, which throws
+// and takes the controller down.  See
+// drake/geometry/proximity/distance_to_shape_touching.h for the support table.
+//
+// Static in the geometry, so this costs an inspector lookup rather than a
+// signed-distance query: a scene whose object-side contacts are all spheres
+// (every demo but the 3D printer's cone-vs-ramp pairs) can never reach the
+// NaN case and never pays for the screening below.
+bool CanReportNormalWhileTouching(
+    const drake::geometry::SceneGraphInspector<double>& inspector,
+    const SortedPair<GeometryId>& pair) {
+  const std::string_view type_a = inspector.GetShape(pair.first()).type_name();
+  const std::string_view type_b = inspector.GetShape(pair.second()).type_name();
+  if (type_a == "Sphere" || type_b == "Sphere") return true;
+  return type_a == "Box" && type_b == "Box";
+}
+
+// True when `pair` is one of the shape combinations Drake cannot orient AND it
+// happens to be sitting exactly on contact right now -- that is, when using it
+// would poison this linearization.  The capped selection below tests the normal
+// directly instead, since it already has the query result in hand.
+bool NormalIsUndefinedNow(
+    const drake::geometry::QueryObject<double>& query_object,
+    const drake::geometry::SceneGraphInspector<double>& inspector,
+    const SortedPair<GeometryId>& pair) {
+  if (CanReportNormalWhileTouching(inspector, pair)) return false;
+  return query_object
+      .ComputeSignedDistancePairClosestPoints(pair.first(), pair.second())
+      .nhat_BA_W.array()
+      .isNaN()
+      .any();
+}
+
 }  // namespace
 
 vector<SortedPair<GeometryId>> SamplingC3Controller::GetResolvedContactPairs(
@@ -1904,7 +1942,7 @@ vector<SortedPair<GeometryId>> SamplingC3Controller::GetResolvedContactPairs(
     const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
     const vector<int>& resolve_contacts_to_list,
     const vector<int>& max_contacts_per_object_geometry,
-    vector<int> num_friction_directions, bool verbose) const {
+    vector<int> num_friction_directions, bool verbose) {
   int n_contacts = std::accumulate(resolve_contacts_to_list.begin(),
                                    resolve_contacts_to_list.end(), 0);
   vector<SortedPair<GeometryId>> resolved_contacts;
@@ -1927,12 +1965,35 @@ vector<SortedPair<GeometryId>> SamplingC3Controller::GetResolvedContactPairs(
     const bool capped = i < max_contacts_per_object_geometry.size() &&
                         max_contacts_per_object_geometry[i] > 0 &&
                         num_to_select > 0;
+    // The capped selection screens out exactly-touching pairs whose shapes
+    // Drake cannot orient as part of the pass it already makes; the uncapped
+    // one lives in c3 and only ever sees distances, so screen for it here.
+    vector<SortedPair<GeometryId>> screened;
+    if (!capped && num_to_select > 0) {
+      const auto& query_object =
+          plant.get_geometry_query_input_port()
+              .template Eval<drake::geometry::QueryObject<double>>(context);
+      const auto& inspector = query_object.inspector();
+      screened.reserve(candidates.size());
+      for (const auto& pair : candidates) {
+        if (!NormalIsUndefinedNow(query_object, inspector, pair)) {
+          screened.push_back(pair);
+        }
+      }
+      // As above: a group that cannot fill its slots without a degenerate pair
+      // is better off reporting that from the factory than silently resizing.
+      if (static_cast<int>(screened.size()) < num_to_select) {
+        screened = candidates;
+      }
+    }
+    const auto& usable = capped ? candidates : screened;
+
     auto active_contacts = capped
                                ? GetClosestContactPairsCappedPerObjectGeometry(
                                      plant, context, candidates, num_to_select,
                                      max_contacts_per_object_geometry[i])
                                : LCSFactory::GetNClosestContactPairs(
-                                     plant, context, candidates, num_to_select);
+                                     plant, context, usable, num_to_select);
     if (!active_contacts.empty()) {
       resolved_contacts.insert(resolved_contacts.end(), active_contacts.begin(),
                                active_contacts.end());
@@ -1955,13 +2016,27 @@ SamplingC3Controller::GetClosestContactPairsCappedPerObjectGeometry(
   const auto& inspector = query_object.inspector();
 
   vector<std::pair<double, SortedPair<GeometryId>>> sorted;
+  vector<std::pair<double, SortedPair<GeometryId>>> undefined_normal;
   sorted.reserve(candidates.size());
   for (const auto& pair : candidates) {
-    sorted.emplace_back(
-        query_object
-            .ComputeSignedDistancePairClosestPoints(pair.first(), pair.second())
-            .distance,
-        pair);
+    const auto result = query_object.ComputeSignedDistancePairClosestPoints(
+        pair.first(), pair.second());
+    // A pair sitting exactly on contact whose shapes Drake cannot orient (see
+    // CanReportNormalWhileTouching) carries a NaN normal that would abort the
+    // process inside the LCS factory, so hold it aside and let the group fill
+    // from the next-closest candidate instead.
+    if (result.nhat_BA_W.array().isNaN().any()) {
+      undefined_normal.emplace_back(result.distance, pair);
+    } else {
+      sorted.emplace_back(result.distance, pair);
+    }
+  }
+  // Nothing is gained by hiding a degenerate pair if that leaves the group
+  // unable to fill its slots -- the LCS dimensions are fixed by the budget --
+  // so put them back and let the factory report the failure itself.
+  if (static_cast<int>(sorted.size()) < num_to_select) {
+    sorted.insert(sorted.end(), undefined_normal.begin(),
+                  undefined_normal.end());
   }
   // A full sort rather than a partial one: the second pass walks the rejects in
   // distance order to top the group back up to its budget.
@@ -2049,8 +2124,8 @@ SamplingC3Controller::EvaluateJammingMetricsForSamples(
             ? sampling_c3_options_.planning_dt_pose
             : sampling_c3_options_.planning_dt_position;
 
-  C3Options c3_options =
-      sampling_c3_options_.GetC3Options(crossed_cost_switching_threshold_);
+  C3Options c3_options = sampling_c3_options_.GetC3Options(
+      crossed_cost_switching_threshold_, active_goal_step_);
   LCSFactoryOptions lcs_factory_options =
       sampling_c3_options_.GetLCSFactoryOptions(
           crossed_cost_switching_threshold_);
@@ -3189,6 +3264,10 @@ bool SamplingC3Controller::IsFinalTargetTerminalGoal(
 }
 
 void SamplingC3Controller::RefreshPerGoalSettings(int goal_step) const {
+  // Before the first goal change is detected, detected_goal_changes_ is -1;
+  // treat that as step 0, matching the clamps below.
+  active_goal_step_ = std::max(goal_step, 0);
+
   const auto& threshold_sequence =
       progress_params_.cost_switching_threshold_distance_sequence;
   if (threshold_sequence.has_value() && !threshold_sequence->empty()) {
@@ -3214,6 +3293,9 @@ void SamplingC3Controller::RefreshPerGoalSettings(int goal_step) const {
             << active_cost_switching_threshold_distance_
             << ", keep-out regions active: "
             << (active_keep_out_geometries_ != nullptr ? "yes" : "no")
+            << ", per-goal q_vector_position: "
+            << (sampling_c3_options_.has_per_goal_position_cost() ? "yes"
+                                                                  : "no")
             << std::endl;
 }
 

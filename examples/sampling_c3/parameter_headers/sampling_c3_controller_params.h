@@ -148,5 +148,9 @@ struct SamplingC3ControllerParams {
     if (keep_out_model_sequence.has_value()) {
       check("keep_out_model_sequence", keep_out_model_sequence->size());
     }
+    if (sampling_c3_options.q_vector_position_sequence.has_value()) {
+      check("q_vector_position_sequence",
+            sampling_c3_options.q_vector_position_sequence->size());
+    }
   }
 };

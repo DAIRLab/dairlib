@@ -129,6 +129,11 @@ struct SamplingParams {
     a->Visit(DRAKE_NVP(sample_on_wall));
     a->Visit(DRAKE_NVP(avoid_sampling_within_fixed_environment_geometries));
 
-    DRAKE_DEMAND(unsuccessful_min_retention_seconds >= 0.0);
+    // Compare the value, not the optional:  an empty std::optional orders
+    // below every double, so demanding `>= 0.0` on the optional itself would
+    // reject leaving the key out -- which is exactly what every demo but the
+    // 3D printer's does, and what the field is documented to allow.
+    DRAKE_DEMAND(!unsuccessful_min_retention_seconds.has_value() ||
+                 *unsuccessful_min_retention_seconds >= 0.0);
   }
 };

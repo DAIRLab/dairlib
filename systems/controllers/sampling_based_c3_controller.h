@@ -303,6 +303,30 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const std::vector<SortedPair<GeometryId>>& candidates, int num_to_select,
       int max_per_object_geometry);
 
+  /// Collapses the per-group contact-pair candidates down to the flat list the
+  /// LCS is built from, taking resolve_contacts_to_list[i] pairs from group i.
+  ///
+  /// A pair that is exactly touching and whose shapes Drake cannot orient there
+  /// (see CanReportNormalWhileTouching in the .cc) is passed over in favor of
+  /// the next-closest candidate, because its NaN normal would otherwise abort
+  /// the process inside the LCS factory.
+  ///
+  /// @param max_contacts_per_object_geometry Optional per-group cap on how many
+  /// contacts one object-side geometry may claim; see the field of the same
+  /// name on SamplingC3Options for why that matters.  Pass an empty vector for
+  /// the uncapped closest-N behavior.
+  ///
+  /// Public and static for the same reason as the selection above: an offline
+  /// probe or a test can ask what the controller would resolve to without
+  /// standing up a controller.
+  static std::vector<SortedPair<GeometryId>> GetResolvedContactPairs(
+      const drake::multibody::MultibodyPlant<double>& plant,
+      const drake::systems::Context<double>& context,
+      const std::vector<std::vector<SortedPair<GeometryId>>>& contact_geoms,
+      const std::vector<int>& resolve_contacts_to_list,
+      const std::vector<int>& max_contacts_per_object_geometry,
+      std::vector<int> num_friction_directions = {}, bool verbose = false);
+
  private:
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
       C3CostComputationType cost_type, const c3::LCS& lcs_for_cost,
@@ -328,21 +352,6 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void UpdateCostMatrices(const drake::VectorX<double>& x_lcs_curr,
                           const BasicVector<double>& x_lcs_des,
                           const C3Options& c3_options) const;
-
-  /// Collapses the per-group contact-pair candidates down to the flat list the
-  /// LCS is built from, taking resolve_contacts_to_list[i] pairs from group i.
-  ///
-  /// @param max_contacts_per_object_geometry Optional per-group cap on how many
-  /// contacts one object-side geometry may claim; see the field of the same
-  /// name on SamplingC3Options for why that matters.  Pass an empty vector for
-  /// the uncapped closest-N behavior.
-  std::vector<SortedPair<GeometryId>> GetResolvedContactPairs(
-      const drake::multibody::MultibodyPlant<double>& plant,
-      const drake::systems::Context<double>& context,
-      const std::vector<std::vector<SortedPair<GeometryId>>>& contact_geoms,
-      const std::vector<int>& resolve_contacts_to_list,
-      const std::vector<int>& max_contacts_per_object_geometry,
-      std::vector<int> num_friction_directions, bool verbose) const;
 
   std::pair<std::vector<c3::LCS>, std::vector<c3::LCS>>
   CreateLCSObjectsForSamples(
@@ -814,6 +823,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable double active_cost_switching_threshold_distance_ = 0.0;
   mutable const drake::geometry::GeometrySet* active_keep_out_geometries_ =
       nullptr;
+  // The goal step the settings above were selected for, and which
+  // SamplingC3Options::GetC3Options() indexes for a per-goal q_vector_position.
+  mutable int active_goal_step_ = 0;
 
   // To detect if the final goal has been updated.
   mutable Eigen::VectorXd x_final_target_;

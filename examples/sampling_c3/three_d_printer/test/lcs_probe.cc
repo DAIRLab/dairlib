@@ -148,16 +148,18 @@ string DescribeGeometry(const MultibodyPlant<double>& plant,
   return body_name + "::" + geometry_name;
 }
 
-const char* GroupName(int index, int num_groups) {
+const char* GroupName(int index) {
   switch (index) {
     case 0:
       return "EE-ground (incl. EE-ramp)";
     case 1:
       return "EE-object";
     case 2:
-      return "object-ground (incl. object-ramp)";
+      return "object-ground";
+    case 3:
+      return "object-ramp";
     default:
-      return index < num_groups ? "object-object" : "?";
+      return "?";
   }
 }
 
@@ -170,11 +172,10 @@ void ReportGroup(const MultibodyPlant<double>& plant,
                  const drake::geometry::SceneGraphInspector<double>& inspector,
                  const QueryObject<double>& query_object,
                  const vector<drake::SortedPair<GeometryId>>& candidates,
-                 int budget, int cap, int group_index, int num_groups) {
-  std::cout << "\n  group " << group_index << " ("
-            << GroupName(group_index, num_groups) << "): " << candidates.size()
-            << " candidate pairs, budget " << budget
-            << ", per-object-geometry cap "
+                 int budget, int cap, int group_index) {
+  std::cout << "\n  group " << group_index << " (" << GroupName(group_index)
+            << "): " << candidates.size() << " candidate pairs, budget "
+            << budget << ", per-object-geometry cap "
             << (cap > 0 ? std::to_string(cap) : string("none")) << std::endl;
   if (budget == 0) {
     std::cout << "    budget is 0 -- this group contributes no contacts to the "
@@ -427,8 +428,7 @@ int DoMain(int argc, char* argv[]) {
             : sampling_c3_options.max_contacts_per_object_geometry_for_cost;
     for (size_t g = 0; g < contact_pairs.size(); ++g) {
       ReportGroup(plant_lcs, plant_lcs_context, inspector, query_object,
-                  contact_pairs[g], budget[g], effective_cap(caps, g), g,
-                  contact_pairs.size());
+                  contact_pairs[g], budget[g], effective_cap(caps, g), g);
     }
   }
 

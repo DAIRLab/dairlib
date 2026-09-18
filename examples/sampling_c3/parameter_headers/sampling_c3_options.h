@@ -1,7 +1,11 @@
 #pragma once
+#include <algorithm>
 #include <iostream>
 #include <numeric>
+#include <optional>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 #include "c3/core/c3_options.h"
 #include "c3/multibody/lcs_factory_options.h"
@@ -104,6 +108,15 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
   double w_G_position;
   double w_U_position;
   std::vector<double> q_vector_position;
+  /// Optional per-goal-step override of q_vector_position, indexed by the
+  /// controller's goal-sequence step.  When set, its length must equal the
+  /// number of goal-sequence steps (validated in
+  /// SamplingC3ControllerParams::Serialize); an empty entry means "use
+  /// q_vector_position above for that goal", and a non-empty entry must be the
+  /// same length as q_vector_position.  Unset => every goal uses
+  /// q_vector_position.  Note this overrides only the position-tracking cost;
+  /// pose tracking always uses q_vector.
+  std::optional<std::vector<std::vector<double>>> q_vector_position_sequence;
   std::vector<double> r_vector_position;
 
   std::vector<double> g_x_position;
@@ -155,6 +168,9 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
   LCSFactoryOptions lcs_factory_options_pose;
   C3Options c3_options_position;
   LCSFactoryOptions lcs_factory_options_position;
+  /// Position-tracking options per goal-sequence step, built from
+  /// q_vector_position_sequence.  Empty when that is unset.
+  std::vector<C3Options> c3_options_position_per_goal;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -208,6 +224,7 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     a->Visit(DRAKE_NVP(w_G_position));
     a->Visit(DRAKE_NVP(w_U_position));
     a->Visit(DRAKE_NVP(q_vector_position));
+    a->Visit(DRAKE_NVP(q_vector_position_sequence));
     a->Visit(DRAKE_NVP(r_vector_position));
 
     a->Visit(DRAKE_NVP(g_x_position));
@@ -353,11 +370,43 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     SetCommonOptions(&c3_options_position, &lcs_factory_options_position);
     SetPositionTrackingOptions(&c3_options_position,
                                &lcs_factory_options_position);
+
+    // One position-tracking option set per goal-sequence step, for the goals
+    // that override q_vector_position.  Left empty when no override is
+    // configured, in which case every goal uses c3_options_position.
+    if (q_vector_position_sequence.has_value()) {
+      for (const auto& q_override : q_vector_position_sequence.value()) {
+        C3Options per_goal_options = c3_options_position;
+        if (!q_override.empty()) {
+          if (q_override.size() != q_vector_position.size()) {
+            throw std::runtime_error(
+                "Each non-empty q_vector_position_sequence entry must have " +
+                std::to_string(q_vector_position.size()) +
+                " entries, to match q_vector_position, but one has " +
+                std::to_string(q_override.size()) + ".");
+          }
+          per_goal_options.q_vector = q_override;
+          PopulateCostMatricesFromVectors(&per_goal_options);
+        }
+        c3_options_position_per_goal.push_back(per_goal_options);
+      }
+    }
   }
 
-  C3Options GetC3Options(const bool& is_pose_tracking) const {
+  /// Whether any goal-sequence step overrides q_vector_position.
+  bool has_per_goal_position_cost() const {
+    return !c3_options_position_per_goal.empty();
+  }
+
+  C3Options GetC3Options(const bool& is_pose_tracking, int goal_step) const {
     if (is_pose_tracking) {
       return c3_options_pose;
+    }
+    if (!c3_options_position_per_goal.empty()) {
+      const int num_goal_steps =
+          static_cast<int>(c3_options_position_per_goal.size());
+      int i = std::clamp(goal_step, 0, num_goal_steps - 1);
+      return c3_options_position_per_goal.at(i);
     }
     return c3_options_position;
   }

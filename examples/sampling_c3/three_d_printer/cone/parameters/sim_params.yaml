@@ -1,6 +1,6 @@
 object_models: [examples/sampling_c3/urdf/cone/cone.sdf]
 robot_publish_rate: 1000
-object_publish_rate: 10
+object_publish_rate: 20   # Hardware measures ~19.5 Hz.
 actuator_delay: 0.000
 
 visualize_drake_sim: true
@@ -12,3 +12,47 @@ realtime_rate: 1.0
 q_init_robot: [0.175, 0.175, 0.175]
 
 q_init_objects: [[0.707, 0.0, -0.707, 0, 0.280, 0.224, 0.05]]
+
+# Inject hardware-like object state estimation errors.  When true, the clean
+# object state is published on the lcm channels' clean_object_state_channels
+# and a corrupted copy replaces it on object_state_channels, so the controller
+# sees a hardware-like pose estimate with no change on its side.
+#
+# object_state_error_params is required when this is true.  The values below
+# are fitted to the per-tick noise floor measured in the 2026-09-17 hardware
+# logs (~/3d_printer/logs/2026/09_17_26/00000{0,1}): [0.25, 0.45, 0.50] mm and
+# [0.674, 0.493, 0.541] deg per axis, as the std of the second difference
+# divided by sqrt(6).  Each axis' floor is a budget shared by the white noise
+# and the drift's per-step innovation:
+#
+#   floor = sqrt(white^2 + innovation^2 / 3),
+#   innovation = drift_std * sqrt(1 - exp(-2 * dt / drift_time_constant))
+#
+# Note that matching the floor necessarily gives up the 5 s excursion: for an
+# OU process the innovation needed to travel a given distance in a window T is
+# independent of the time constant (innovation = distance * sqrt(dt / T)), so
+# once the floor is pinned the 5 s max deviation sits at ~4-7 mm no matter how
+# these are set, against the measured hardware p90 of [11.5, 20.6, 11.6] mm.
+# Hardware reaches that far with a 0.45 mm floor because its errors jump
+# between dwell states rather than diffusing; reproducing that would need a
+# jump term this injector does not have.  What drift_time_constant does buy is
+# the amplitude of the slow wander, here ~[7, 12, 10] mm and ~23 deg peak.
+inject_object_state_errors: true
+object_state_error_params:
+  # Omit for a nondeterministic run.
+  seed: 0
+
+  enable_bias: true
+  bias_position_std: [0.001, 0.001, 0.001]
+  bias_orientation_std_deg: [2.0, 2.0, 2.0]
+
+  enable_white_noise: true
+  white_noise_position_std: [0.00018, 0.00032, 0.00043]
+  white_noise_orientation_std_deg: [0.55, 0.31, 0.38]
+
+  # The z drift std is capped below what the budget split alone would allow
+  # (5.5 mm), since hardware shows less wander on z than on x and y.
+  enable_drift: true
+  drift_position_std: [0.0027, 0.0049, 0.0040]
+  drift_orientation_std_deg: [6.0, 6.0, 6.0]
+  drift_time_constant: 8.0

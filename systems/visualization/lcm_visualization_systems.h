@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -7,6 +8,7 @@
 #include <drake/systems/framework/context.h>
 #include <drake/systems/framework/discrete_values.h>
 
+#include "dairlib/lcmt_object_state.hpp"
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "lcm/lcm_trajectory.h"
 #include "multibody/multipose_visualizer.h"
@@ -270,6 +272,46 @@ class LcmSampleBufferSphereDrawer : public drake::systems::LeafSystem<double> {
   std::string path_;
   int max_num_samples_;
   drake::systems::InputPortIndex lcmt_sample_buffer_input_port_;
+  drake::systems::DiscreteStateIndex last_update_time_index_;
+};
+
+/// Draws the object poses carried by lcmt_object_state messages -- one input
+/// port per object -- as a fixed-color, translucent ghost.  This is intended
+/// for showing the simulator's uncorrupted object state alongside the
+/// error-corrupted estimate the controller actually consumes, so the two are
+/// visibly distinguishable.  Unlike LcmPoseDrawer this reads an
+/// lcmt_object_state directly rather than an lcmt_timestamped_saved_traj
+/// trajectory, and draws exactly one pose per object.
+class LcmObjectStateDrawer : public drake::systems::LeafSystem<double> {
+ public:
+  /// @param meshcat The shared meshcat instance to draw into.
+  /// @param object_models One model file per object, in the same order as the
+  ///                      input ports.
+  /// @param path The meshcat prefix to draw under, so the ghost can be toggled
+  ///             independently of the rest of the scene.
+  /// @param rgb The color to draw with, or an empty vector to use the colors
+  ///            defined in the model files.
+  /// @param alpha Transparency scale applied to the models' own alphas.
+  LcmObjectStateDrawer(const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
+                       const std::vector<std::string>& object_models,
+                       const std::string& path, const Eigen::VectorXd& rgb,
+                       double alpha = 0.3);
+
+  const drake::systems::InputPort<double>& get_input_port_object_state(
+      int index) const {
+    return this->get_input_port(object_state_input_ports_.at(index));
+  }
+
+ private:
+  drake::systems::EventStatus DrawObjectStates(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+
+  std::shared_ptr<drake::geometry::Meshcat> meshcat_;
+  std::vector<std::unique_ptr<multibody::MultiposeVisualizer>>
+      multipose_visualizers_;
+  std::vector<drake::systems::InputPortIndex> object_state_input_ports_;
+  /// One entry per object, holding the utime of the message last drawn.
   drake::systems::DiscreteStateIndex last_update_time_index_;
 };
 

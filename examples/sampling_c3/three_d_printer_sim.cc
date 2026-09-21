@@ -22,6 +22,7 @@
 
 #include "common/eigen_utils.h"
 #include "common/find_resource.h"
+#include "examples/sampling_c3/object_state_error_injector.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
 #include "examples/sampling_c3/parameter_headers/robot_sim_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
@@ -132,6 +133,27 @@ int DoMain(int argc, char* argv[]) {
   // Object publishers
   // --------------------------------------------------------------------------
 
+  // When injecting object state estimation errors, the clean object state goes
+  // out on clean_object_state_channels and a corrupted copy takes its place on
+  // object_state_channels, so the controller needs no change to see
+  // hardware-like pose estimates.
+  if (sim_params.inject_object_state_errors) {
+    if (!lcm_channel_params.clean_object_state_channels.has_value()) {
+      throw std::runtime_error(
+          "inject_object_state_errors is true but the lcm channels file " +
+          lcm_channels_file + " does not set clean_object_state_channels.");
+    }
+    if (static_cast<int>(
+            lcm_channel_params.clean_object_state_channels->size()) !=
+        num_objects) {
+      throw std::runtime_error(
+          "clean_object_state_channels has " +
+          std::to_string(lcm_channel_params.clean_object_state_channels->size()) +
+          " entries but there are " + std::to_string(num_objects) +
+          " objects.");
+    }
+  }
+
   std::vector<systems::ObjectStateSender*> object_state_senders;
   std::vector<LcmPublisherSystem*> object_state_pubs;
 
@@ -147,8 +169,44 @@ int DoMain(int argc, char* argv[]) {
   }
 
   for (int i = 0; i < num_objects; i++) {
-    builder.Connect(plant.get_state_output_port(object_indices[i]),
-                    object_state_senders.at(i)->get_input_port_state());
+    if (sim_params.inject_object_state_errors) {
+      // The clean state goes out on its own sender and publisher, untouched.
+      auto clean_object_state_sender =
+          builder.AddSystem<systems::ObjectStateSender>(plant, false,
+                                                        object_indices.at(i));
+      auto clean_object_state_pub =
+          builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_object_state>(
+              lcm_channel_params.clean_object_state_channels->at(i), lcm,
+              1.0 / sim_params.object_publish_rate));
+
+      builder.Connect(plant.get_state_output_port(object_indices[i]),
+                      clean_object_state_sender->get_input_port_state());
+      builder.Connect(clean_object_state_sender->get_output_port(),
+                      clean_object_state_pub->get_input_port());
+
+      // The error injector sits in front of the sender that feeds the channel
+      // the controller listens to.  Redraw the error once per publish.  Offset
+      // the seed per object so that objects do not share an error stream while
+      // a run still reproduces exactly for a given seed.
+      ObjectStateErrorParams error_params =
+          *sim_params.object_state_error_params;
+      if (error_params.seed.has_value()) {
+        error_params.seed = *error_params.seed + i;
+      }
+      auto error_injector =
+          builder.AddSystem<systems::ObjectStateErrorInjector>(
+              plant.num_positions(object_indices.at(i)),
+              plant.num_velocities(object_indices.at(i)), error_params,
+              1.0 / sim_params.object_publish_rate);
+
+      builder.Connect(plant.get_state_output_port(object_indices[i]),
+                      error_injector->get_input_port_state());
+      builder.Connect(error_injector->get_output_port_noisy_state(),
+                      object_state_senders.at(i)->get_input_port_state());
+    } else {
+      builder.Connect(plant.get_state_output_port(object_indices[i]),
+                      object_state_senders.at(i)->get_input_port_state());
+    }
 
     builder.Connect(object_state_senders.at(i)->get_output_port(),
                     object_state_pubs.at(i)->get_input_port());

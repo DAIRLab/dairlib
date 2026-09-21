@@ -1,10 +1,15 @@
 #pragma once
 
+#include <optional>
+
 #include "drake/common/yaml/yaml_read_archive.h"
 
 struct SamplingC3LcmChannels {
   std::string robot_state_channel;
   std::vector<std::string> object_state_channels;
+  /// Optional channels carrying the uncorrupted object state, when enabling
+  /// simulating object state estimation errors.
+  std::optional<std::vector<std::string>> clean_object_state_channels;
   std::string robot_input_channel;
   std::string osc_channel;
   std::string osc_debug_channel;
@@ -46,6 +51,7 @@ struct SamplingC3LcmChannels {
   void Serialize(Archive* a) {
     a->Visit(DRAKE_NVP(robot_state_channel));
     a->Visit(DRAKE_NVP(object_state_channels));
+    a->Visit(DRAKE_NVP(clean_object_state_channels));
     a->Visit(DRAKE_NVP(robot_input_channel));
     a->Visit(DRAKE_NVP(osc_channel));
     a->Visit(DRAKE_NVP(osc_debug_channel));

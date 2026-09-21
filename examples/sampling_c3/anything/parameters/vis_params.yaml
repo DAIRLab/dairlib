@@ -43,3 +43,7 @@ c3_best_object_color: [1.0, 0.64, 0.0]
 c3_best_ee_color: [1.0, 0.64, 0.0]
 df_best_object_color: [1.0, 0.64, 0.0]
 df_best_ee_color: [1.0, 0.64, 0.0]
+
+visualize_clean_object_state: false
+clean_object_state_color: []
+clean_object_state_alpha: 0.4

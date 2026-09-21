@@ -2,12 +2,14 @@
 
 #include <c3/lcmt_contact_forces.hpp>
 #include <dairlib/lcmt_c3_state.hpp>
+#include <dairlib/lcmt_object_state.hpp>
 #include <dairlib/lcmt_sample_buffer.hpp>
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
 
 #include "common/eigen_utils.h"
 
 #include "drake/common/schema/rotation.h"
+#include "drake/geometry/meshcat_visualizer_params.h"
 #include "drake/geometry/rgba.h"
 
 namespace dairlib {
@@ -935,6 +937,67 @@ drake::systems::EventStatus LcmSampleBufferSphereDrawer::DrawSampleBuffer(
       meshcat_->SetProperty(SpherePath(i), "visible", false,
                             context.get_time());
     }
+  }
+  return drake::systems::EventStatus::Succeeded();
+}
+
+LcmObjectStateDrawer::LcmObjectStateDrawer(
+    const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
+    const std::vector<std::string>& object_models, const std::string& path,
+    const VectorXd& rgb, double alpha)
+    : meshcat_(meshcat) {
+  this->set_name("LcmObjectStateDrawer: " + path);
+
+  // Draw under our own meshcat prefix so the ghost is independently
+  // toggleable and cannot collide with the other drawers' geometry.
+  drake::geometry::MeshcatVisualizerParams meshcat_params;
+  meshcat_params.prefix = path;
+
+  for (int i = 0; i < static_cast<int>(object_models.size()); ++i) {
+    multipose_visualizers_.push_back(
+        std::make_unique<multibody::MultiposeVisualizer>(
+            object_models.at(i), 1, alpha * VectorXd::Ones(1), "", meshcat_,
+            path + "_" + std::to_string(i), rgb, meshcat_params));
+
+    object_state_input_ports_.push_back(
+        this->DeclareAbstractInputPort(
+                "lcmt_object_state_" + std::to_string(i),
+                drake::Value<dairlib::lcmt_object_state>{})
+            .get_index());
+  }
+
+  last_update_time_index_ =
+      this->DeclareDiscreteState(object_models.size());
+
+  DeclarePerStepDiscreteUpdateEvent(&LcmObjectStateDrawer::DrawObjectStates);
+}
+
+drake::systems::EventStatus LcmObjectStateDrawer::DrawObjectStates(
+    const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+  for (int i = 0; i < static_cast<int>(multipose_visualizers_.size()); ++i) {
+    const auto& object_state = this->EvalInputValue<dairlib::lcmt_object_state>(
+        context, object_state_input_ports_.at(i));
+
+    // Nothing has been published on this channel yet.  This is the steady
+    // state on hardware and whenever the simulator is not injecting object
+    // state errors, so it is not an error.
+    if (object_state->utime < 1e-3 || object_state->num_positions < 7) {
+      continue;
+    }
+    // Don't needlessly redraw.
+    if (discrete_state->get_value(last_update_time_index_)[i] ==
+        object_state->utime * 1e-6) {
+      continue;
+    }
+    discrete_state->get_mutable_value(last_update_time_index_)[i] =
+        object_state->utime * 1e-6;
+
+    MatrixXd pose(object_state->num_positions, 1);
+    for (int j = 0; j < object_state->num_positions; ++j) {
+      pose(j, 0) = object_state->position[j];
+    }
+    multipose_visualizers_.at(i)->DrawPoses(pose, context.get_time());
   }
   return drake::systems::EventStatus::Succeeded();
 }

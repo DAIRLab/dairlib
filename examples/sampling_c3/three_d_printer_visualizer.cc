@@ -503,6 +503,32 @@ int do_main(int argc, char* argv[]) {
         unsuccessful_sample_buffer_drawer->get_input_port_lcmt_sample_buffer());
   }
 
+  // Draw the simulator's uncorrupted object state as a translucent ghost.
+  // Note that the opaque object stays driven by object_state_channels, i.e.
+  // it shows the (possibly error-corrupted) estimate the controller consumes,
+  // matching what the hardware view shows.
+  if (vis_params.visualize_clean_object_state &&
+      lcm_channel_params.clean_object_state_channels.has_value()) {
+    const auto& clean_channels =
+        *lcm_channel_params.clean_object_state_channels;
+    DRAKE_DEMAND(clean_channels.size() == vis_params.object_vis_models.size());
+
+    auto clean_object_state_drawer =
+        builder.AddSystem<systems::LcmObjectStateDrawer>(
+            meshcat, vis_params.object_vis_models, "clean_object_state",
+            vis_params.clean_object_state_color,
+            vis_params.clean_object_state_alpha);
+
+    for (int i = 0; i < static_cast<int>(clean_channels.size()); i++) {
+      auto clean_object_state_sub = builder.AddSystem(
+          LcmSubscriberSystem::Make<dairlib::lcmt_object_state>(
+              clean_channels.at(i), lcm));
+      builder.Connect(
+          clean_object_state_sub->get_output_port(),
+          clean_object_state_drawer->get_input_port_object_state(i));
+    }
+  }
+
   if (vis_params.visualize_c3_state) {
     if (vis_params.object_vis_models.size() == 1) {
       auto c3_target_drawer =

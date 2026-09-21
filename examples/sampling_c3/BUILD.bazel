@@ -243,6 +243,16 @@ cc_library(
 )
 
 cc_library(
+    name = "object_state_error_injector",
+    srcs = ["object_state_error_injector.cc"],
+    hdrs = ["object_state_error_injector.h"],
+    deps = [
+        "//examples/sampling_c3/parameter_headers:object_state_error_params",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
     name = "goal_generator",
     srcs = ["goal_generator.cc"],
     hdrs = ["goal_generator.h"],
@@ -418,6 +428,7 @@ cc_binary(
         "@drake_models//:franka_description",
     ],
     deps = [
+        "//examples/sampling_c3:object_state_error_injector",
         "//examples/sampling_c3:sampling_c3_utils",
         "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
         "//examples/sampling_c3/parameter_headers:lcm_channels",

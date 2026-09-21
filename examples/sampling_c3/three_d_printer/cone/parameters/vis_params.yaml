@@ -53,3 +53,18 @@ c3_best_object_color: [1.0, 0.64, 0.0]
 c3_best_ee_color: [1.0, 0.64, 0.0]
 df_best_object_color: [1.0, 0.64, 0.0]
 df_best_ee_color: [1.0, 0.64, 0.0]
+
+# Meshcat tree paths that, if present, are initially unchecked to hide the
+# visual.  This can be helpful to keep the visualizer clean but still leave
+# available the option to view more debugging tools.
+initially_hidden_meshcat_paths:
+  - c3_state/c3_actual_ee
+  - c3_state/c3_target_ee
+  - visualizer/plans
+  - visualizer/samples_pose_trace/end_effector_simple
+  # intentionally leave samples_pose_trace/end_effector_simple_1 visible
+  - visualizer/samples_pose_trace/end_effector_simple_2
+  - visualizer/samples_pose_trace/end_effector_simple_3
+  - visualizer/samples_pose_trace/end_effector_simple_4
+  - visualizer/samples_pose_trace/end_effector_simple_5
+  - visualizer/samples_pose_trace/end_effector_simple_6

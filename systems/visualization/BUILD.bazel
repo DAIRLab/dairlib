@@ -42,3 +42,12 @@ cc_library(
         "@drake//:drake_shared_library",
     ],
 )
+
+cc_library(
+    name = "meshcat_visibility_initializer",
+    srcs = ["meshcat_visibility_initializer.cc"],
+    hdrs = ["meshcat_visibility_initializer.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)

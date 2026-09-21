@@ -1,5 +1,9 @@
 #pragma once
 
+#include <optional>
+#include <string>
+#include <vector>
+
 #include <Eigen/Dense>
 
 #include "drake/common/yaml/yaml_read_archive.h"
@@ -11,6 +15,16 @@ struct SamplingC3VisualizerParams {
 
   Eigen::VectorXd camera_pose;
   Eigen::VectorXd camera_target;
+
+  /// Meshcat tree paths to toggle off, e.g. "visualizer/plans".  Each stays in
+  /// the scene tree, so its Controls -> Scene checkbox brings it back.  Spell
+  /// the paths the way C++ does, i.e. without the "Scene/drake/" prefix the
+  /// browser shows.  A path is hidden as soon as whatever draws it creates it,
+  /// which may be well after startup;  a path nothing ever creates -- a typo,
+  /// or a drawer whose visualize_* param is off -- is ignored rather than
+  /// added to the tree as an empty line item.  See
+  /// systems/visualization/meshcat_visibility_initializer.h.
+  std::optional<std::vector<std::string>> initially_hidden_meshcat_paths;
 
   bool visualize_c3_workspace;
   bool visualize_c3_state;
@@ -58,6 +72,7 @@ struct SamplingC3VisualizerParams {
     a->Visit(DRAKE_NVP(visualizer_publish_rate));
     a->Visit(DRAKE_NVP(camera_pose));
     a->Visit(DRAKE_NVP(camera_target));
+    a->Visit(DRAKE_NVP(initially_hidden_meshcat_paths));
     a->Visit(DRAKE_NVP(visualize_c3_workspace));
     a->Visit(DRAKE_NVP(visualize_c3_state));
     a->Visit(DRAKE_NVP(visualize_keep_out_regions));

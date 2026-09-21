@@ -26,6 +26,7 @@
 #include "systems/three_d_printer_kinematics.h"
 #include "systems/trajectory_optimization/lcm_trajectory_systems.h"
 #include "systems/visualization/lcm_visualization_systems.h"
+#include "systems/visualization/meshcat_visibility_initializer.h"
 #include "systems/visualization/static_visualization_systems.h"
 
 #include "drake/common/find_resource.h"
@@ -266,6 +267,17 @@ int do_main(int argc, char* argv[]) {
   params.publish_period = 1.0 / vis_params.visualizer_publish_rate;
   auto meshcat = std::make_shared<drake::geometry::Meshcat>();
   meshcat->SetCameraPose(vis_params.camera_pose, vis_params.camera_target);
+
+  // Toggle off the nodes listed in vis_params, each once something draws it.
+  // Hiding a path up front would *create* it, leaving an empty line item in the
+  // meshcat scene tree for a path nothing ever draws to;  waiting means a
+  // listed path that never appears -- a typo, or a drawer whose visualize_*
+  // param is off -- contributes nothing to the tree.
+  if (vis_params.initially_hidden_meshcat_paths.has_value()) {
+    builder.AddSystem<systems::MeshcatVisibilityInitializer>(
+        meshcat, *vis_params.initially_hidden_meshcat_paths,
+        1.0 / vis_params.visualizer_publish_rate);
+  }
 
   // Render the per-goal keep-out regions, nested under keep_out/goal_{i} so
   // they can be toggled per goal in meshcat).

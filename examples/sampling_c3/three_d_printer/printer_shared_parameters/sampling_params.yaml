@@ -27,14 +27,14 @@ num_additional_samples_c3: 5
 # Sample buffer parameters.
 consider_best_buffer_sample_when_leaving_c3: true
 N_sample_buffer: 200
-pos_error_sample_retention: 0.004
-ang_error_sample_retention: 0.05  # 0.0349 rad = 2 deg
+pos_error_sample_retention: 0.008
+ang_error_sample_retention: 0.12  # 0.0349 rad = 2 deg
 
 # Unsuccessful sample buffer parameters.
 avoid_choosing_unsuccessful_samples: true
 N_unsuccessful_sample_buffer: 40
-unsuccessful_pos_error_sample_retention: 0.015
-unsuccessful_ang_error_sample_retention: 0.26   # 0.26 rad = 15 deg
+unsuccessful_pos_error_sample_retention: 0.02
+unsuccessful_ang_error_sample_retention: 0.35   # 0.26 rad = 15 deg
 unsuccessful_min_retention_seconds: 6.0   # optional; don't prune for this min
                                           # time (for some noise robustness)
 unsuccessful_radius: 0.01

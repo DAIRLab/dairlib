@@ -61,13 +61,13 @@ use_predicted_x0_reset_mechanism: false  # Resets if prediction is too far.
 #   4. object-ramp
 mu_per_pair_type: [0.823, 0.42, 0.46, 0.375]  # match URDFs with (2mu1*mu2)/(mu1+mu2)
 
-resolve_contacts_to_lists: [[0, 1, 4, 0], [0, 1, 6, 0], [0, 1, 4, 4]]
+resolve_contacts_to_lists: [[0, 1, 4, 0], [0, 1, 6, 0], [0, 1, 4, 4], [2, 1, 4, 4]]
 # Per-group cap on how many of the above slots a single object-side geometry may
 # claim (same shape as resolve_contacts_to_lists; entries for zero-budget groups
 # are ignored).  Omit the key for the plain closest-N behavior every other demo
 # uses.  Setting these to 1 for object-ground means a single cone corner can't
 # rest on two of the ramp pieces and claim both contact pair slots.
-max_contacts_per_object_geometry_lists: [[0, 1, 1, 0], [0, 1, 1, 0], [0, 1, 1, 1]]
+max_contacts_per_object_geometry_lists: [[0, 1, 1, 0], [0, 1, 1, 0], [0, 1, 1, 1], [1, 1, 1, 1]]
 
 # Per-group contact model flags (same length/order as resolve_contacts_to_lists):
 #   0 → keep original friction directions (use all num_friction_directions)
@@ -76,7 +76,7 @@ resolve_as_planar_contacts_list: [0, 0, 0, 0]
 
 # Index into this list to choose number of contacts for C3 solve and cost.
 num_contacts_index: 2
-num_contacts_index_for_cost: 2
+num_contacts_index_for_cost: 3
 
 planning_dt_position: 0.075
 planning_dt_pose: 0.075
@@ -206,7 +206,7 @@ q_vector_position_sequence:
   # error 4x harder than Y/Z so C3 won't push the cone off the plate.
   - [0.01, 0.01, 0.01,       # EE position
      0.1, 0.1, 0.1, 0.1,     # object orientation
-     40000, 1500, 1500,       # object position
+     80000, 1500, 1500,       # object position
      5, 5, 5,                # EE linear velocity
      0.01, 0.01, 0.01,       # object angular velocity
      1, 1, 1]                # object linear velocity

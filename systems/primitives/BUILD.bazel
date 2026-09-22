@@ -93,3 +93,27 @@ cc_test(
         "@drake//systems/framework/test_utilities",
     ],
 )
+
+cc_library(
+    name = "transport_lag",
+    srcs = ["transport_lag.cc"],
+    hdrs = [
+        "transport_lag.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_test(
+    name = "transport_lag_test",
+    size = "small",
+    srcs = [
+        "test/transport_lag_test.cc",
+    ],
+    deps = [
+        ":transport_lag",
+        "@drake//:drake_shared_library",
+        "@googletest//:gtest_main",
+    ],
+)

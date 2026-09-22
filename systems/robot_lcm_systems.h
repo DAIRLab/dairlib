@@ -14,6 +14,7 @@
 #include "systems/framework/state_vector.h"
 #include "systems/framework/timestamped_vector.h"
 #include "systems/primitives/subvector_pass_through.h"
+#include "systems/primitives/transport_lag.h"
 
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/basic_vector.h"
@@ -24,6 +25,12 @@ namespace dairlib {
 namespace systems {
 
 constexpr int DEFAULT_MODEL_INSTANCE_INDEX = 88888888;
+
+/// Per-axis speed limits of the real 3D printer, in m/s
+/// (github.com/DAIRLab/printer_robot_driver, `motion.max_xy_speed` and
+/// `motion.max_z_speed`), mirrored in simulation.
+constexpr double k3dPrinterMaxHorizontalVelocity = 0.12;
+constexpr double k3dPrinterMaxVerticalVelocity = 0.015;
 
 /// @file This file contains classes dealing with sending/receiving
 /// LCM messages related to a robot.
@@ -205,8 +212,9 @@ class ThreeDPrinterInputReceiver : public drake::systems::LeafSystem<double> {
   // travel is preserved (see CopyInputOut).
   ThreeDPrinterInputReceiver(
       const drake::multibody::MultibodyPlant<double>& plant,
-      const Eigen::VectorXd& q_init, double max_horizontal_velocity = 0.12,
-      double max_vertical_velocity = 0.015);
+      const Eigen::VectorXd& q_init,
+      double max_horizontal_velocity = k3dPrinterMaxHorizontalVelocity,
+      double max_vertical_velocity = k3dPrinterMaxVerticalVelocity);
 
  private:
   void CopyInputOut(const drake::systems::Context<double>& context,
@@ -304,7 +312,22 @@ SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
     drake::multibody::ModelInstanceIndex model_instance_index,
     bool publish_efforts = true, double actuator_delay = 0);
 
-drake::systems::LeafSystem<double>* Add3dPrinterStateReceiverAndStateSenderLcm(
+/// Wires up the printer simulation's command path: an lcmt_robot_output
+/// subscriber on `state_input_channel` feeding the plant's desired-state port,
+/// and a publisher of the plant's own state on `state_output_channel`.
+///
+/// `command_delay` and `command_time_constant` (both seconds) model the real
+/// printer driver's latency, which is substantial: the driver keeps a quarter
+/// second of motion queued ahead in Klipper, and the head then eases into each
+/// command rather than snapping to it.  When either is positive a TransportLag
+/// is inserted between the received command and the plant, and a pointer to it
+/// is returned so the caller can seed it with the robot's initial state --
+/// otherwise the delay buffer starts at zero and drags the end effector toward
+/// the origin on startup.  Returns nullptr when both are zero.
+///
+/// The lag sits downstream of the velocity clamp, so the clamp still sees the
+/// raw command, as on hardware.
+const TransportLag* Add3dPrinterStateReceiverAndStateSenderLcm(
     drake::systems::DiagramBuilder<double>* builder,
     const drake::multibody::MultibodyPlant<double>& plant,
     drake::systems::lcm::LcmInterfaceSystem* lcm,
@@ -312,8 +335,10 @@ drake::systems::LeafSystem<double>* Add3dPrinterStateReceiverAndStateSenderLcm(
     double publish_rate,
     drake::multibody::ModelInstanceIndex model_instance_index,
     bool publish_efforts, const Eigen::VectorXd& q_init,
-    double max_horizontal_velocity = 0.12,
-    double max_vertical_velocity = 0.015);
+    double max_horizontal_velocity = k3dPrinterMaxHorizontalVelocity,
+    double max_vertical_velocity = k3dPrinterMaxVerticalVelocity,
+    double command_delay = 0,
+    double command_time_constant = 0, double command_update_period = 0.001);
 
 }  // namespace systems
 }  // namespace dairlib

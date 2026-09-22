@@ -124,10 +124,16 @@ int DoMain(int argc, char* argv[]) {
   auto lcm =
       builder.AddSystem<drake::systems::lcm::LcmInterfaceSystem>(&drake_lcm);
 
-  dairlib::systems::Add3dPrinterStateReceiverAndStateSenderLcm(
-      &builder, plant, lcm, lcm_channel_params.robot_input_channel,
-      lcm_channel_params.robot_state_channel, sim_params.robot_publish_rate,
-      robot_index, sim_params.publish_efforts, sim_params.q_init_robot);
+  const dairlib::systems::TransportLag* command_lag =
+      dairlib::systems::Add3dPrinterStateReceiverAndStateSenderLcm(
+          &builder, plant, lcm, lcm_channel_params.robot_input_channel,
+          lcm_channel_params.robot_state_channel,
+          sim_params.robot_publish_rate, robot_index,
+          sim_params.publish_efforts, sim_params.q_init_robot,
+          dairlib::systems::k3dPrinterMaxHorizontalVelocity,
+          dairlib::systems::k3dPrinterMaxVerticalVelocity,
+          sim_params.actuator_delay,
+          sim_params.command_time_constant.value_or(0.0), sim_dt);
 
   // --------------------------------------------------------------------------
   // Object publishers
@@ -256,6 +262,18 @@ int DoMain(int argc, char* argv[]) {
   VectorXd v = VectorXd::Zero(nv);
 
   plant.SetVelocities(&plant_context, v);
+
+  // Hold the printer's starting pose in the command lag as well, so the
+  // end effector does not get dragged toward the origin while the delay
+  // buffer fills.
+  if (command_lag != nullptr) {
+    VectorXd x_init = VectorXd::Zero(command_lag->size());
+    x_init.head(sim_params.q_init_robot.size()) = sim_params.q_init_robot;
+    command_lag->SetInitialValue(
+        &diagram->GetMutableSubsystemContext(*command_lag,
+                                             &simulator.get_mutable_context()),
+        x_init);
+  }
 
   // --------------------------------------------------------------------------
   // Run

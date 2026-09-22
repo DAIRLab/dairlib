@@ -13,7 +13,13 @@ struct RobotSimParams {
   std::vector<std::string> object_models;
   double dt;
   double realtime_rate;
+  /// Dead time, in seconds, between a command being received and the robot
+  /// beginning to respond to it.
   double actuator_delay;
+  /// Optional first-order time constant, in seconds, with which the robot eases
+  /// into a command once actuator_delay has elapsed.  Only the 3D printer sim
+  /// reads this; omit it to model the command path as a pure delay.
+  std::optional<double> command_time_constant;
   double robot_publish_rate;
   double object_publish_rate;
   bool visualize_drake_sim;
@@ -35,6 +41,7 @@ struct RobotSimParams {
     a->Visit(DRAKE_NVP(dt));
     a->Visit(DRAKE_NVP(realtime_rate));
     a->Visit(DRAKE_NVP(actuator_delay));
+    a->Visit(DRAKE_NVP(command_time_constant));
     a->Visit(DRAKE_NVP(robot_publish_rate));
     a->Visit(DRAKE_NVP(object_publish_rate));
     a->Visit(DRAKE_NVP(visualize_drake_sim));

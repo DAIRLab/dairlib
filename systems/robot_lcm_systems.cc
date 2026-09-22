@@ -840,7 +840,7 @@ SubvectorPassThrough<double>* AddActuationRecieverAndStateSenderLcm(
   return passthrough;
 }
 
-drake::systems::LeafSystem<double>* Add3dPrinterStateReceiverAndStateSenderLcm(
+const TransportLag* Add3dPrinterStateReceiverAndStateSenderLcm(
     drake::systems::DiagramBuilder<double>* builder,
     const MultibodyPlant<double>& plant,
     drake::systems::lcm::LcmInterfaceSystem* lcm,
@@ -848,7 +848,9 @@ drake::systems::LeafSystem<double>* Add3dPrinterStateReceiverAndStateSenderLcm(
     double publish_rate,
     drake::multibody::ModelInstanceIndex model_instance_index,
     bool publish_efforts, const Eigen::VectorXd& q_init,
-    double max_horizontal_velocity, double max_vertical_velocity) {
+    double max_horizontal_velocity, double max_vertical_velocity,
+    double command_delay, double command_time_constant,
+    double command_update_period) {
   // Subscribe to the printer state.
   auto input_sub =
       builder->AddSystem(LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
@@ -893,8 +895,22 @@ drake::systems::LeafSystem<double>* Add3dPrinterStateReceiverAndStateSenderLcm(
               << std::endl;
   }
 
-  builder->Connect(state_receiver->get_output_port(),
-                   plant.get_desired_state_input_port(ee_model_instance));
+  // Model the printer driver's command latency, if configured.  The lag goes
+  // after the receiver so the receiver's velocity clamp still sees the raw
+  // command, matching the order the real driver applies them in.
+  const TransportLag* command_lag = nullptr;
+  if (command_delay > 0 || command_time_constant > 0) {
+    auto* lag = builder->AddSystem<TransportLag>(
+        state_receiver->get_output_port().size(), command_update_period,
+        command_delay, command_time_constant);
+    builder->Connect(state_receiver->get_output_port(), lag->get_input_port());
+    builder->Connect(lag->get_output_port(),
+                     plant.get_desired_state_input_port(ee_model_instance));
+    command_lag = lag;
+  } else {
+    builder->Connect(state_receiver->get_output_port(),
+                     plant.get_desired_state_input_port(ee_model_instance));
+  }
 
   // Publish the simulated state.
   auto state_pub =
@@ -917,7 +933,7 @@ drake::systems::LeafSystem<double>* Add3dPrinterStateReceiverAndStateSenderLcm(
 
   builder->Connect(*state_sender, *state_pub);
 
-  return state_receiver;
+  return command_lag;
 }
 
 }  // namespace systems

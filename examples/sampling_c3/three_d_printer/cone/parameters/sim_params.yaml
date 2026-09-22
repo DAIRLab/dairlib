@@ -1,7 +1,15 @@
 object_models: [examples/sampling_c3/urdf/cone/cone.sdf]
 robot_publish_rate: 1000
 object_publish_rate: 20   # Hardware measures ~19.5 Hz.
-actuator_delay: 0.000
+# Model the printer driver's command latency, measured by fitting
+#
+#   q_measured(t) = firstorder(command_time_constant)[q_commanded(t - delay)]
+#
+# to PRINTER_INPUT vs PRINTER_STATE in the 2026-09-17 hardware logs
+# (~/3d_printer/logs/2026/09_17_26/00000{0,1}): a dead time of 330-350 ms
+# followed by a 140-210 ms first-order lag, ~470 ms of effective lag in total.
+actuator_delay: 0.340
+command_time_constant: 0.175
 
 visualize_drake_sim: true
 publish_efforts: true

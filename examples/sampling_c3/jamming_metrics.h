@@ -211,6 +211,15 @@ struct JamLatchThresholds {
   double force_gate_gap = std::numeric_limits<double>::infinity();
   double gap_trip = 0.0;
   double gap_release = 0.0;
+  /// The gap term arms only while the object has also stayed within this much
+  /// travel [m] over the recent window -- an object that is moving is being
+  /// pushed, not jammed.  Set to infinity for the old gap-only behavior.
+  double object_travel_trip = std::numeric_limits<double>::infinity();
+  /// Release above this travel [m]: once the object is moving again the jam is
+  /// over whatever the gap says, so this is an alternative route out of the
+  /// latch rather than a second condition on top of the gap.  Must be above
+  /// object_travel_trip.  Only consulted while object_travel_trip is finite.
+  double object_travel_release = std::numeric_limits<double>::infinity();
   /// Seconds the arming condition must hold continuously before the latch
   /// sets.  A duration rather than a loop count: the control loop is paced by
   /// the solve, and measured spacing over these logs ranges 0.039-0.179 s, so
@@ -233,9 +242,7 @@ struct JamLatchThresholds {
 /// escaping.
 ///
 /// Nothing here resets on a mode switch, which is the whole point: the jam is
-/// what causes the mode switch, and that is exactly how the controller's
-/// existing best_progress_steps_ago_ counter came to miss all three of the
-/// jams in hwlog-000003 / hwlog-000005.
+/// what causes the mode switch.
 class JamLatch {
  public:
   explicit JamLatch(const JamLatchThresholds& thresholds)
@@ -248,10 +255,14 @@ class JamLatch {
   /// gap term is skipped on the arming side and treated as satisfied on the
   /// releasing side.  With the force term gated on the gap, a nullopt gap
   /// means nothing can arm at all that loop -- which is the fail-safe
-  /// direction.
+  /// direction.  @p object_travel is the largest distance the object estimate
+  /// has moved across the recent window [m], nullopt until the window has
+  /// filled; like the gap it cannot arm the latch while missing, and cannot
+  /// hold it open either.
   /// @return true iff this update was the rising edge (the latch just set).
   bool Update(double now, double ee_object_force,
-              std::optional<double> ee_object_gap);
+              std::optional<double> ee_object_gap,
+              std::optional<double> object_travel);
 
   bool tripped() const { return tripped_; }
   /// Seconds the arming condition has held continuously, 0 when not arming.

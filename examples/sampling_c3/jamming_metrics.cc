@@ -113,7 +113,8 @@ ObjectStateLayout MakeObjectStateLayout(int object_index) {
 }
 
 bool JamLatch::Update(double now, double ee_object_force,
-                      std::optional<double> ee_object_gap) {
+                      std::optional<double> ee_object_gap,
+                      std::optional<double> object_travel) {
   constexpr double kNaN = std::numeric_limits<double>::quiet_NaN();
 
   // The force term arms only near contact.  C3's knot-0 lambda is an ADMM
@@ -123,8 +124,27 @@ bool JamLatch::Update(double now, double ee_object_force,
   const bool force_arming = ee_object_force > thresholds_.force_trip &&
                             ee_object_gap.has_value() &&
                             *ee_object_gap < thresholds_.force_gate_gap;
-  const bool gap_arming =
-      ee_object_gap.has_value() && *ee_object_gap < thresholds_.gap_trip;
+  // The gap term needs the object to be holding still as well.  A gap deep
+  // enough to mean a jam is also a gap the object pose estimate reaches on its
+  // own -- the 2026-09-17 hardware logs show apparent penetration to -22 mm
+  // from estimation error alone, deeper than any of the real jams in the
+  // 2026-09-21 sim logs -- so penetration on its own cannot separate the two.
+  // What does separate them is whether the object is going anywhere.  This is
+  // also what stops the guard aborting a push that has already broken free.
+  //
+  // An infinite object_travel_trip turns the term off, and off means a no-op on
+  // both sides: a caller that supplies no travel then behaves exactly as this
+  // latch did before the term existed.  With the term ON a missing reading
+  // blocks arming, which is the fail-safe direction and matches the gap.
+  const bool travel_term_enabled =
+      std::isfinite(thresholds_.object_travel_trip);
+  const bool object_stalled =
+      !travel_term_enabled ||
+      (object_travel.has_value() &&
+       *object_travel <= thresholds_.object_travel_trip);
+  const bool gap_arming = ee_object_gap.has_value() &&
+                          *ee_object_gap < thresholds_.gap_trip &&
+                          object_stalled;
   const bool arming = force_arming || gap_arming;
 
   if (arming) {
@@ -157,13 +177,19 @@ bool JamLatch::Update(double now, double ee_object_force,
   // for the entire window.  Raising force_release above that floor "fixes" it
   // only by putting the release threshold inside the band a working push
   // occupies.
-  const bool force_clear =
-      ee_object_force < thresholds_.force_release ||
-      (ee_object_gap.has_value() &&
-       *ee_object_gap >= thresholds_.force_gate_gap);
-  const bool releasing =
-      force_clear &&
-      (!ee_object_gap.has_value() || *ee_object_gap > thresholds_.gap_release);
+  const bool force_clear = ee_object_force < thresholds_.force_release ||
+                           (ee_object_gap.has_value() &&
+                            *ee_object_gap >= thresholds_.force_gate_gap);
+  // The object moving again ends the jam whatever the gap says -- that is the
+  // whole point of the travel term -- so it is an alternative to the gap
+  // clearing, not a second condition on top of it.  Being ORed in, a missing
+  // reading simply does not vote and so can never hold the latch set.
+  const bool gap_clear =
+      !ee_object_gap.has_value() || *ee_object_gap > thresholds_.gap_release;
+  const bool object_moving_again =
+      travel_term_enabled && object_travel.has_value() &&
+      *object_travel > thresholds_.object_travel_release;
+  const bool releasing = force_clear && (gap_clear || object_moving_again);
   if (releasing) {
     if (std::isnan(releasing_since_)) releasing_since_ = now;
     if (now - releasing_since_ >= thresholds_.release_hold_seconds) {

@@ -1,9 +1,11 @@
 #pragma once
 
+#include <deque>
 #include <limits>
 #include <memory>
 #include <queue>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <drake/common/drake_assert.h>
@@ -445,7 +447,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   ///      of @p curr_location_plan -- the same lambda C3_FORCES_CURR carries,
   ///      so nothing new is solved; and
   ///   2. the apparent EE-to-object interpenetration, one signed-distance
-  ///      query against the object geometries.
+  ///      query against the object geometries; and
+  ///   3. how far the object estimate has travelled over the last
+  ///      object_travel_window_seconds, from a short history this keeps.
   /// The arming, dwell and release rules themselves live in JamLatch; a no-op
   /// when progress_params_.jam_guard is unset, in which case jam_latch_ is
   /// null and no demo pays for any of this.
@@ -895,6 +899,14 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // Unit outward normal out of the object at the EE, i.e. the direction that
   // most directly undoes the interpenetration.  Zero when unavailable.
   mutable Eigen::Vector3d jam_escape_direction_ = Eigen::Vector3d::Zero();
+  // (time [s], object position [m]) over the trailing travel window, oldest
+  // first.  Entries older than the window are dropped each loop, so this holds
+  // a handful of samples at the control rate and never grows.
+  mutable std::deque<std::pair<double, Eigen::Vector3d>> jam_object_history_;
+  // Farthest the object estimate has moved from its newest sample across that
+  // history [m].  NaN until the history spans the whole window, which is the
+  // same "no trustworthy reading" signal the gap uses.
+  mutable double jam_object_travel_ = std::numeric_limits<double>::quiet_NaN();
   // Seconds the arming condition has held continuously.
   mutable double jam_trip_seconds_ = 0.0;
   // The latch itself, with hysteresis: set after trip_hold_seconds of arming,

@@ -54,10 +54,12 @@ enum C3CostComputationType {
   kSimImpedanceRetimedObjectCostOnly,
 };
 
-/* Live jam watchdog thresholds:  gap < trip, or force > trip while in
-   contact detectors.  Both terms are read every control loop: the force is C3's
-   own knot-0 EE<->object contact solution (the same lambda that feeds
-   C3_FORCES_CURR), and the gap is a single EE-to-object signed-distance query.
+/* Live jam watchdog thresholds:  gap < trip while the object is not moving, or
+   force > trip while in contact.  Three terms are read every control loop: the
+   force is C3's own knot-0 EE<->object contact solution (the same lambda that
+   feeds C3_FORCES_CURR), the gap is a single EE-to-object signed-distance
+   query, and the travel is how far the object estimate has moved over a short
+   window.
 
    Arming and releasing are deliberately asymmetric: the *_trip values are what
    the report scored, and the *_release values sit well inside them so a jam
@@ -78,6 +80,19 @@ struct JamGuardParams {
   double gap_trip;
   /// Release above this gap [m].  Must be above gap_trip.
   double gap_release;
+  /// The gap term arms only while the object estimate has also moved no more
+  /// than this [m] across object_travel_window_seconds.  A jam is contact with
+  /// no object progress; penetration alone cannot say which, because the pose
+  /// estimate manufactures deeper apparent penetration than the real jams
+  /// reach.
+  double object_travel_trip;
+  /// Release once the object has travelled more than this [m] -- an
+  /// alternative to the gap clearing, since a moving object means the jam is
+  /// over.  Must be above object_travel_trip.
+  double object_travel_release;
+  /// Window [s] the travel above is measured over.  The term cannot arm until
+  /// the history spans it, so this sets the floor on detection latency.
+  double object_travel_window_seconds;
   /// Seconds the arming condition must hold continuously before the latch sets.
   double trip_hold_seconds;
   /// Seconds both quantities must sit inside their *_release thresholds before
@@ -95,6 +110,9 @@ struct JamGuardParams {
     a->Visit(DRAKE_NVP(force_gate_gap));
     a->Visit(DRAKE_NVP(gap_trip));
     a->Visit(DRAKE_NVP(gap_release));
+    a->Visit(DRAKE_NVP(object_travel_trip));
+    a->Visit(DRAKE_NVP(object_travel_release));
+    a->Visit(DRAKE_NVP(object_travel_window_seconds));
     a->Visit(DRAKE_NVP(trip_hold_seconds));
     a->Visit(DRAKE_NVP(release_hold_seconds));
     a->Visit(DRAKE_NVP(retreat_knots));

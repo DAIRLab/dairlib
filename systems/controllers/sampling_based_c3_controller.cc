@@ -557,21 +557,36 @@ SamplingC3Controller::SamplingC3Controller(
     // all and chatters on the loop-to-loop noise in C3's lambda.
     DRAKE_DEMAND(jam_params.force_release < jam_params.force_trip);
     DRAKE_DEMAND(jam_params.gap_release > jam_params.gap_trip);
+    DRAKE_DEMAND(jam_params.object_travel_release >
+                 jam_params.object_travel_trip);
+    DRAKE_DEMAND(jam_params.object_travel_trip > 0.0);
+    DRAKE_DEMAND(jam_params.object_travel_window_seconds > 0.0);
     DRAKE_DEMAND(jam_params.trip_hold_seconds >= 0.0);
     DRAKE_DEMAND(jam_params.release_hold_seconds >= 0.0);
     DRAKE_DEMAND(jam_params.retreat_knots >= 0);
     // The retreat is prepended to an N-knot plan and the remainder is still
     // repositioned, so it must leave at least two knots for that leg.
     DRAKE_DEMAND(jam_params.retreat_knots <= sampling_c3_options_.N - 2);
+    // Designated initialisers, not positional:  JamLatchThresholds has grown
+    // members in the middle before, and positionally that rebinds neighbouring
+    // doubles silently and still compiles.
     jam_latch_ = std::make_unique<JamLatch>(JamLatchThresholds{
-        jam_params.force_trip, jam_params.force_release,
-        jam_params.force_gate_gap, jam_params.gap_trip, jam_params.gap_release,
-        jam_params.trip_hold_seconds, jam_params.release_hold_seconds});
+        .force_trip = jam_params.force_trip,
+        .force_release = jam_params.force_release,
+        .force_gate_gap = jam_params.force_gate_gap,
+        .gap_trip = jam_params.gap_trip,
+        .gap_release = jam_params.gap_release,
+        .object_travel_trip = jam_params.object_travel_trip,
+        .object_travel_release = jam_params.object_travel_release,
+        .trip_hold_seconds = jam_params.trip_hold_seconds,
+        .release_hold_seconds = jam_params.release_hold_seconds});
     std::cout << "Jam watchdog enabled: trips below " << jam_params.gap_trip
-              << " m gap, or above " << jam_params.force_trip
-              << " N while within " << jam_params.force_gate_gap
-              << " m of contact, held " << jam_params.trip_hold_seconds << " s."
-              << std::endl;
+              << " m gap while the object moves under "
+              << jam_params.object_travel_trip << " m per "
+              << jam_params.object_travel_window_seconds << " s, or above "
+              << jam_params.force_trip << " N while within "
+              << jam_params.force_gate_gap << " m of contact, held "
+              << jam_params.trip_hold_seconds << " s." << std::endl;
   }
 
   // Below code loads in the mesh and enumerates triangular faces.
@@ -3392,23 +3407,63 @@ void SamplingC3Controller::UpdateJamWatchdog(
     jam_escape_direction_ = Vector3d::Zero();
   }
 
+  // Guard 3: is the object actually going anywhere?  A jam is contact with no
+  // object progress, and the gap cannot tell those apart on its own -- the
+  // object pose estimate manufactures apparent penetration deeper than the
+  // real jams reach, so every gap threshold is either under the jams or over
+  // the noise.  This is the term that separates them, and equally the term
+  // that stops the guard aborting a push that has already broken free.
+  //
+  // Measured against the object estimate the controller is planning against,
+  // not a filtered or ground-truth pose: the point is to describe the same
+  // object this loop's gap query saw.
+  const JamGuardParams& jam_params = progress_params_.jam_guard.value();
+  const Vector3d object_position =
+      x_lcs_curr.segment<3>(MakeObjectStateLayout(0).position_offset);
+  jam_object_history_.emplace_back(now, object_position);
+  // Keep one sample older than the window so the history spans it rather than
+  // stopping just inside, then the front is the oldest pose still in scope.
+  while (jam_object_history_.size() > 1 &&
+         now - jam_object_history_[1].first >=
+             jam_params.object_travel_window_seconds) {
+    jam_object_history_.pop_front();
+  }
+  // A partial window under-reports travel, which would arm the latch on a
+  // stillness that has not been observed yet.  Same fail-safe direction as an
+  // untrustworthy gap: no reading rather than an optimistic one.
+  const bool travel_is_valid = now - jam_object_history_.front().first >=
+                               jam_params.object_travel_window_seconds;
+  if (travel_is_valid) {
+    double travel = 0.0;
+    for (const auto& sample : jam_object_history_) {
+      travel = std::max(travel, (sample.second - object_position).norm());
+    }
+    jam_object_travel_ = travel;
+  } else {
+    jam_object_travel_ = std::numeric_limits<double>::quiet_NaN();
+  }
+
   // The dwell counter and its hysteresis live in JamLatch; see its comment for
   // why the arm and release conditions are asymmetric and why nothing here is
   // reset by a mode switch.
   const bool was_tripped = jam_latch_->tripped();
   const bool rising_edge = jam_latch_->Update(
       now, jam_ee_object_force_,
-      gap_is_valid ? std::optional<double>(jam_ee_object_gap_) : std::nullopt);
+      gap_is_valid ? std::optional<double>(jam_ee_object_gap_) : std::nullopt,
+      travel_is_valid ? std::optional<double>(jam_object_travel_)
+                      : std::nullopt);
   jam_trip_seconds_ = jam_latch_->trip_seconds();
   jam_tripped_ = jam_latch_->tripped();
 
   if (rising_edge) {
     std::cout << "Jam detected: EE<->object force " << jam_ee_object_force_
-              << " N, gap " << jam_ee_object_gap_ << " m, held "
-              << jam_trip_seconds_ << " s." << std::endl;
+              << " N, gap " << jam_ee_object_gap_ << " m, object travel "
+              << jam_object_travel_ << " m, held " << jam_trip_seconds_ << " s."
+              << std::endl;
   } else if (was_tripped && !jam_tripped_) {
     std::cout << "Jam cleared: EE<->object force " << jam_ee_object_force_
-              << " N, gap " << jam_ee_object_gap_ << " m." << std::endl;
+              << " N, gap " << jam_ee_object_gap_ << " m, object travel "
+              << jam_object_travel_ << " m." << std::endl;
   }
 }
 
@@ -4600,6 +4655,7 @@ void SamplingC3Controller::OutputDebug(
   debug_msg->current_rot_error = current_orientation_error_;
   debug_msg->jam_ee_object_force = jam_ee_object_force_;
   debug_msg->jam_ee_object_gap = jam_ee_object_gap_;
+  debug_msg->jam_object_travel = jam_object_travel_;
   debug_msg->jam_tripped = jam_tripped_;
 }
 

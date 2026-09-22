@@ -9,6 +9,7 @@
 // where the subtlety lives.
 
 #include <cmath>
+#include <limits>
 
 #include <gtest/gtest.h>
 #include <optional>
@@ -32,28 +33,44 @@ constexpr char kConeControllerParams[] =
 // from yaml so these stay fixed if the yaml is retuned; the yaml itself is
 // pinned separately below.
 JamLatchThresholds MakeThresholds() {
-  return JamLatchThresholds{/*force_trip=*/6.0,
-                            /*force_release=*/4.0,
-                            /*force_gate_gap=*/0.002,
-                            /*gap_trip=*/-0.010,
-                            /*gap_release=*/-0.004,
-                            /*trip_hold_seconds=*/0.25,
-                            /*release_hold_seconds=*/0.25};
+  return JamLatchThresholds{
+      .force_trip = 6.0,
+      .force_release = 4.0,
+      .force_gate_gap = 0.002,
+      .gap_trip = -0.010,
+      .gap_release = -0.004,
+      // The travel term off, so every rule below is exercised on its own.  Its
+      // own tests use MakeThresholdsWithTravel().
+      .object_travel_trip = std::numeric_limits<double>::infinity(),
+      .object_travel_release = std::numeric_limits<double>::infinity(),
+      .trip_hold_seconds = 0.25,
+      .release_hold_seconds = 0.25};
+}
+
+// The same rules with the object-travel term on.  A jam is contact with no
+// object progress; penetration on its own cannot say which, because the object
+// pose estimate reaches deeper apparent penetration than the real jams do.
+JamLatchThresholds MakeThresholdsWithTravel() {
+  JamLatchThresholds thresholds = MakeThresholds();
+  thresholds.object_travel_trip = 0.004;
+  thresholds.object_travel_release = 0.008;
+  return thresholds;
 }
 
 // Deliberately not a whole number of kLoop:  a dwell that lands exactly on a
 // loop boundary makes every test a coin flip on whether the accumulated clock
 // rounds just under it.  0.25 s is crossed on the 4th loop with room to spare.
-constexpr double kLoop = 0.1;     // a plausible control period [s].
+constexpr double kLoop = 0.1;        // a plausible control period [s].
 constexpr double kContact = -0.001;  // touching, but nowhere near gap_trip.
 constexpr double kClear = 0.020;     // well outside the force gate.
 
 // Walks the latch forward at kLoop, returning the rising edge of the last call.
 bool Step(JamLatch* latch, double* now, int loops, double force,
-          std::optional<double> gap) {
+          std::optional<double> gap,
+          std::optional<double> travel = std::nullopt) {
   bool edge = false;
   for (int i = 0; i < loops; i++) {
-    edge = latch->Update(*now, force, gap);
+    edge = latch->Update(*now, force, gap, travel);
     *now += kLoop;
   }
   return edge;
@@ -65,11 +82,12 @@ TEST(JamLatchTest, ArmingMustHoldForTheFullDwell) {
   JamLatch latch(MakeThresholds());
   double now = 0.0;
   for (int i = 0; i < 3; i++) {
-    EXPECT_FALSE(latch.Update(now, 8.0, kContact)) << "loop " << i;
+    EXPECT_FALSE(latch.Update(now, 8.0, kContact, std::nullopt))
+        << "loop " << i;
     EXPECT_FALSE(latch.tripped()) << "loop " << i;
     now += kLoop;
   }
-  EXPECT_TRUE(latch.Update(now, 8.0, kContact));
+  EXPECT_TRUE(latch.Update(now, 8.0, kContact, std::nullopt));
   EXPECT_TRUE(latch.tripped());
 }
 
@@ -78,8 +96,8 @@ TEST(JamLatchTest, ArmingMustHoldForTheFullDwell) {
 // 0.039-0.179 s, so a fixed loop count meant anywhere from 0.15 s to 0.71 s.
 TEST(JamLatchTest, TheDwellIsATimeNotALoopCount) {
   JamLatch latch(MakeThresholds());
-  EXPECT_FALSE(latch.Update(0.0, 8.0, kContact));
-  EXPECT_TRUE(latch.Update(0.3, 8.0, kContact));
+  EXPECT_FALSE(latch.Update(0.0, 8.0, kContact, std::nullopt));
+  EXPECT_TRUE(latch.Update(0.3, 8.0, kContact, std::nullopt));
   EXPECT_TRUE(latch.tripped());
 }
 
@@ -92,7 +110,7 @@ TEST(JamLatchTest, TheDwellResetsOnAnyQuietLoop) {
   EXPECT_EQ(latch.trip_seconds(), 0.0);
   EXPECT_FALSE(Step(&latch, &now, 3, 8.0, kContact));
   EXPECT_FALSE(latch.tripped());
-  EXPECT_TRUE(latch.Update(now, 8.0, kContact));
+  EXPECT_TRUE(latch.Update(now, 8.0, kContact, std::nullopt));
 }
 
 // The regression this gate exists for.  C3's knot-0 lambda is an ADMM iterate
@@ -104,7 +122,7 @@ TEST(JamLatchTest, AHugeForceAwayFromTheObjectCannotArmTheLatch) {
   JamLatch latch(MakeThresholds());
   double now = 0.0;
   for (int i = 0; i < 40; i++) {
-    EXPECT_FALSE(latch.Update(now, 16.0, kClear)) << "loop " << i;
+    EXPECT_FALSE(latch.Update(now, 16.0, kClear, std::nullopt)) << "loop " << i;
     now += kLoop;
   }
   EXPECT_FALSE(latch.tripped());
@@ -121,7 +139,8 @@ TEST(JamLatchTest, TheRisingEdgeFiresOnce) {
   double now = 0.0;
   ASSERT_TRUE(Step(&latch, &now, 4, 8.0, kContact));
   for (int i = 0; i < 10; i++) {
-    EXPECT_FALSE(latch.Update(now, 8.0, kContact)) << "loop " << i;
+    EXPECT_FALSE(latch.Update(now, 8.0, kContact, std::nullopt))
+        << "loop " << i;
     EXPECT_TRUE(latch.tripped()) << "loop " << i;
     now += kLoop;
   }
@@ -136,7 +155,7 @@ TEST(JamLatchTest, ReleaseNeedsTheLowerThresholdNotJustTheTripOne) {
   ASSERT_TRUE(Step(&latch, &now, 4, 8.0, kContact));
 
   for (int i = 0; i < 10; i++) {
-    latch.Update(now, 5.0, kContact);
+    latch.Update(now, 5.0, kContact, std::nullopt);
     EXPECT_TRUE(latch.tripped()) << "loop " << i;
     now += kLoop;
   }
@@ -154,11 +173,11 @@ TEST(JamLatchTest, ReleaseMustAlsoHold) {
   ASSERT_TRUE(Step(&latch, &now, 4, 8.0, kContact));
 
   // One clear loop is not a release.
-  latch.Update(now, 1.0, kClear);
+  latch.Update(now, 1.0, kClear, std::nullopt);
   now += kLoop;
   EXPECT_TRUE(latch.tripped());
   // Nor is falling back into contact partway through one.
-  latch.Update(now, 8.0, -0.020);
+  latch.Update(now, 8.0, -0.020, std::nullopt);
   now += kLoop;
   EXPECT_TRUE(latch.tripped());
   // Held for the full release dwell, it clears.
@@ -188,7 +207,7 @@ TEST(JamLatchTest, ThePenetrationGuardArmsOnItsOwn) {
   JamLatch latch(MakeThresholds());
   double now = 0.0;
   EXPECT_FALSE(Step(&latch, &now, 3, 0.5, -0.022));
-  EXPECT_TRUE(latch.Update(now, 0.5, -0.022));
+  EXPECT_TRUE(latch.Update(now, 0.5, -0.022, std::nullopt));
   now += kLoop;
   EXPECT_TRUE(latch.tripped());
 
@@ -207,10 +226,96 @@ TEST(JamLatchTest, AMissingGapReadingCannotArmTheLatch) {
   JamLatch latch(MakeThresholds());
   double now = 0.0;
   for (int i = 0; i < 20; i++) {
-    EXPECT_FALSE(latch.Update(now, 16.0, std::nullopt)) << "loop " << i;
+    EXPECT_FALSE(latch.Update(now, 16.0, std::nullopt, std::nullopt))
+        << "loop " << i;
     now += kLoop;
   }
   EXPECT_FALSE(latch.tripped());
+}
+
+// The reason the travel term exists.  Penetration deep enough to trip is
+// something the object pose estimate reaches on its own -- the 2026-09-17
+// hardware logs show -22 mm from estimation error alone -- so a deep gap while
+// the object is visibly moving is a push being made, not a jam.  Before this
+// term, nine of the 26 hardware trips fired exactly here and the retreat
+// aborted a push that had already broken free.
+TEST(JamLatchTest, AMovingObjectBlocksTheGapGuard) {
+  JamLatch latch(MakeThresholdsWithTravel());
+  double now = 0.0;
+  // 12 mm of travel per window, against a 4 mm trip.
+  EXPECT_FALSE(Step(&latch, &now, 20, 0.5, -0.022, 0.012));
+  EXPECT_FALSE(latch.tripped());
+}
+
+// The same penetration with the object held still is the jam, and still arms.
+TEST(JamLatchTest, TheGapGuardStillArmsWhenTheObjectIsStalled) {
+  JamLatch latch(MakeThresholdsWithTravel());
+  double now = 0.0;
+  EXPECT_FALSE(Step(&latch, &now, 3, 0.5, -0.022, 0.001));
+  EXPECT_TRUE(latch.Update(now, 0.5, -0.022, 0.001));
+  EXPECT_TRUE(latch.tripped());
+}
+
+// The object moving again ends the jam even while the gap still reads as deep
+// penetration -- which it will, since the retreat has barely started and the
+// pose estimate is what made it look deep in the first place.  This is an
+// alternative to the gap clearing, not a second condition on top of it.
+TEST(JamLatchTest, TheObjectMovingAgainReleasesTheLatch) {
+  JamLatch latch(MakeThresholdsWithTravel());
+  double now = 0.0;
+  ASSERT_TRUE(Step(&latch, &now, 4, 0.5, -0.022, 0.001));
+
+  // Still wedged: neither the gap nor the travel says otherwise.
+  Step(&latch, &now, 10, 0.5, -0.022, 0.001);
+  EXPECT_TRUE(latch.tripped());
+  // Moving again, with the gap unchanged.
+  Step(&latch, &now, 4, 0.5, -0.022, 0.012);
+  EXPECT_FALSE(latch.tripped());
+}
+
+// A partial travel window under-reports how far the object has gone, which
+// would arm the latch on a stillness nobody has observed yet.  The controller
+// passes nullopt until the history spans the window; that must fail safe the
+// same way a missing gap does.
+TEST(JamLatchTest, AMissingTravelReadingCannotArmTheGapGuard) {
+  JamLatch latch(MakeThresholdsWithTravel());
+  double now = 0.0;
+  for (int i = 0; i < 20; i++) {
+    EXPECT_FALSE(latch.Update(now, 0.5, -0.022, std::nullopt)) << "loop " << i;
+    now += kLoop;
+  }
+  EXPECT_FALSE(latch.tripped());
+}
+
+// ...but a missing reading must not hold a latch open either, so on the
+// release side it simply does not vote and the gap decides alone.
+TEST(JamLatchTest, AMissingTravelReadingDoesNotHoldTheLatchOpen) {
+  JamLatch latch(MakeThresholdsWithTravel());
+  double now = 0.0;
+  ASSERT_TRUE(Step(&latch, &now, 4, 0.5, -0.022, 0.001));
+  Step(&latch, &now, 4, 0.5, -0.002, std::nullopt);
+  EXPECT_FALSE(latch.tripped());
+}
+
+// The force term is dormant but still wired, and it is deliberately NOT gated
+// on travel:  it is the backstop for the case where the travel history is
+// unavailable entirely.
+TEST(JamLatchTest, TheForceGuardIsNotGatedOnTravel) {
+  JamLatch latch(MakeThresholdsWithTravel());
+  double now = 0.0;
+  // 12 mm of travel would block the gap guard; the force guard arms anyway.
+  EXPECT_TRUE(Step(&latch, &now, 4, 8.0, kContact, 0.012));
+  EXPECT_TRUE(latch.tripped());
+}
+
+// Leaving object_travel_trip at its infinite default must reproduce the
+// gap-only latch exactly, including for a caller that passes no travel at all.
+TEST(JamLatchTest, AnUnsetTravelThresholdIsANoOp) {
+  JamLatch latch(MakeThresholds());
+  double now = 0.0;
+  EXPECT_FALSE(Step(&latch, &now, 3, 0.5, -0.022, std::nullopt));
+  EXPECT_TRUE(latch.Update(now, 0.5, -0.022, std::nullopt));
+  EXPECT_TRUE(latch.tripped());
 }
 
 // Nor hold an existing jam open: with no gap reading, the force term decides
@@ -300,9 +405,9 @@ TEST(RepositionWithRetreatTest, TheRetreatLeavesKnotZeroWhereTheEEIs) {
 }
 
 // The retreat is a commanded motion like any other, so it must be one the
-// machine can actually execute.  A straight-up escape is capped by the printer's
-// much slower vertical axis, and a diagonal by whichever axis saturates first --
-// not by the horizontal limit applied to the 3D distance.
+// machine can actually execute.  A straight-up escape is capped by the
+// printer's much slower vertical axis, and a diagonal by whichever axis
+// saturates first -- not by the horizontal limit applied to the 3D distance.
 TEST(RepositionWithRetreatTest, TheRetreatRespectsBothPrinterSpeedLimits) {
   const SamplingC3RepositionParams params = MakeRepositionParams();
   const Eigen::Vector3d ee(0.10, 0.10, 0.05);
@@ -335,10 +440,9 @@ TEST(RepositionWithRetreatTest, TheRetreatRespectsBothPrinterSpeedLimits) {
     EXPECT_LE(std::abs(step(2)), params.speed_vertical * kDt + 1e-12)
         << "escape " << escape.transpose();
     // Saturated, not merely legal: one of the two limits is met exactly.
-    EXPECT_TRUE(std::abs(step.head(2).norm() -
-                         params.speed_horizontal * kDt) < 1e-12 ||
-                std::abs(std::abs(step(2)) - params.speed_vertical * kDt) <
-                    1e-12)
+    EXPECT_TRUE(
+        std::abs(step.head(2).norm() - params.speed_horizontal * kDt) < 1e-12 ||
+        std::abs(std::abs(step(2)) - params.speed_vertical * kDt) < 1e-12)
         << "escape " << escape.transpose();
   }
 }
@@ -451,10 +555,16 @@ TEST(JamGuardParamsTest, TheConeYamlShipsTheDetectorTheReportScored) {
 
   // These pin what the cone demo ships so a retune is a deliberate edit rather
   // than a silent one.  They are NOT a validation that the values are right --
-  // that comes from the observe-only traces in
-  // log_outputs/hybrid_jam_replay/, re-derived with
-  // hybrid_jam_replay --observe_only.
+  // that comes from scoring the logged SAMPLING_C3_DEBUG signal against the
+  // simulator's contact forces, as the yaml's own comment block records.
+  //
+  // gap_trip staying at -0.010 is the load-bearing one:  loosening it scored
+  // worse on BOTH the 2026-09-22 sim logs and the 2026-09-17 hardware logs, and
+  // this file is shared by the cone demo's sim and hardware launches.
   EXPECT_EQ(jam_guard.gap_trip, -0.010);
+  EXPECT_EQ(jam_guard.object_travel_trip, 0.003);
+  EXPECT_EQ(jam_guard.object_travel_release, 0.006);
+  EXPECT_EQ(jam_guard.object_travel_window_seconds, 0.3);
   EXPECT_EQ(jam_guard.force_trip, 9.0);
   EXPECT_EQ(jam_guard.force_gate_gap, 0.002);
   EXPECT_EQ(jam_guard.force_release, 4.0);
@@ -466,6 +576,9 @@ TEST(JamGuardParamsTest, TheConeYamlShipsTheDetectorTheReportScored) {
   // fails the test rather than the demo.
   EXPECT_LT(jam_guard.force_release, jam_guard.force_trip);
   EXPECT_GT(jam_guard.gap_release, jam_guard.gap_trip);
+  EXPECT_GT(jam_guard.object_travel_release, jam_guard.object_travel_trip);
+  EXPECT_GT(jam_guard.object_travel_trip, 0.0);
+  EXPECT_GT(jam_guard.object_travel_window_seconds, 0.0);
   EXPECT_GE(jam_guard.trip_hold_seconds, 0.0);
   EXPECT_GE(jam_guard.release_hold_seconds, 0.0);
   EXPECT_GT(jam_guard.retreat_knots, 0);

@@ -34,10 +34,44 @@ from pydrake.visualization import VideoWriter
 DAIRLIB_DIR = op.abspath(op.dirname(op.dirname(op.dirname(__file__))))
 sys.path.append(op.join(DAIRLIB_DIR, 'bazel-bin', 'lcmtypes'))
 import dairlib
+from archive import dairlib as archive_dairlib
+
+
+class _SamplingC3Debug:
+  """Decodes SAMPLING_C3_DEBUG from any generation of the type.
+
+  jam_object_travel was appended on 2026-09-22 and LCM verifies the fingerprint
+  on decode, so the current type cannot read a log recorded before that -- which
+  is every log on disk up to and including the 2026-09-17 hardware runs and the
+  2026-09-22 realistic-sim runs.  Fall back to the archived layout and report
+  the field this generation does not carry as NaN, which is the same sentinel
+  the live controller publishes before its travel window has filled.
+  """
+
+  class _WithoutTravel:
+    """The archived message, reading jam_object_travel as NaN."""
+
+    __slots__ = ('_msg',)
+
+    def __init__(self, msg):
+      self._msg = msg
+
+    jam_object_travel = float('nan')
+
+    def __getattr__(self, name):
+      return getattr(self._msg, name)
+
+  @staticmethod
+  def decode(data):
+    try:
+      return dairlib.lcmt_sampling_c3_debug.decode(data)
+    except ValueError:
+      return _SamplingC3Debug._WithoutTravel(
+          archive_dairlib.lcmt_sampling_c3_debug.decode(data))
 
 
 CHANNEL_LCMT = {
-  'SAMPLING_C3_DEBUG': dairlib.lcmt_sampling_c3_debug,
+  'SAMPLING_C3_DEBUG': _SamplingC3Debug,
   'C3_FINAL_TARGET': dairlib.lcmt_c3_state,
   'C3_ACTUAL': dairlib.lcmt_c3_state,
 }

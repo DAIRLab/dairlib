@@ -156,7 +156,15 @@ DEFINE_bool(observe_only, false,
             "since it teleports the end effector onto its own plan and keeps "
             "replaying the jammed run's object estimates.  Unlike "
             "--jam_guard=false, which disables the guard and therefore leaves "
-            "the signals unpopulated, this keeps computing them.");
+            "the signals unpopulated, this keeps computing them.  CAVEAT for "
+            "the gap term:  the replayed gap runs 5-15 mm shallower than the "
+            "live signal precisely while in contact -- over hwlog-000000 it "
+            "reproduces 63 of the 479 loops the live run spent at a gap <= "
+            "-1 mm and 0 of the 127 at <= -10 mm, the predicted-x0 path being "
+            "the likely cause since it diverges exactly during a press.  The "
+            "object-travel term does not have this problem (it matches a hand "
+            "reconstruction to 0.0000 mm).  So derive gap thresholds from the "
+            "logged SAMPLING_C3_DEBUG signal, not from this trace.");
 DEFINE_double(baseline_switch_time, -1.0,
               "With --jam_guard=false, the log-relative second at which to "
               "switch to closed loop anyway, so the baseline covers the same "
@@ -183,6 +191,20 @@ DEFINE_double(force_gate_gap, 99.0,
               "Override jam_guard.force_gate_gap [m] -- the gap within which "
               "the force term is allowed to arm at all.  99 keeps the yaml "
               "value; pass a huge value for the old ungated behaviour.");
+DEFINE_double(object_travel_trip, -1.0,
+              "Override jam_guard.object_travel_trip [m] -- how far the object "
+              "estimate may move over the window and still let the gap term "
+              "arm.  Negative keeps the yaml value.  To disable the term "
+              "and recover the old gap-only guard, raise BOTH this and "
+              "--object_travel_release out of reach -- the controller demands "
+              "release above trip and will abort if only one moves.");
+DEFINE_double(object_travel_release, -1.0,
+              "Override jam_guard.object_travel_release [m].  Negative keeps "
+              "the yaml value.");
+DEFINE_double(object_travel_window_seconds, -1.0,
+              "Override jam_guard.object_travel_window_seconds.  Negative "
+              "keeps the yaml value.  The term cannot arm until this has "
+              "filled, so it is the floor on detection latency.");
 DEFINE_double(trip_hold_seconds, -1.0,
               "Override jam_guard.trip_hold_seconds.  Negative keeps the yaml "
               "value.");
@@ -240,12 +262,30 @@ std::vector<uint8_t> UpgradeIfNeeded(const std::string& channel,
 
   if (channel == kTickChannel) {
     const int current_size = dairlib::lcmt_sampling_c3_debug().getEncodedSize();
-    // jam_ee_object_force, jam_ee_object_gap, jam_tripped.
-    if (size + 9 != current_size) return out;
-    overwrite_hash(dairlib::lcmt_sampling_c3_debug::getHash());
-    append_float(kNoReading);
-    append_float(kNoReading);
-    out.push_back(0);
+    // Two generations of older log to upgrade, distinguished by how short they
+    // are.  Both are pure appends: every jam field this type has gained was
+    // added at the end, jam_object_travel included, so nothing has to be
+    // reinserted under a trailing byte.
+    constexpr int kJamFieldsBytes = 4 + 4 + 1;  // force, gap, tripped
+    constexpr int kTravelBytes = 4;             // jam_object_travel
+    if (size + kJamFieldsBytes + kTravelBytes == current_size) {
+      // Predates the watchdog entirely: none of the four fields is present.
+      overwrite_hash(dairlib::lcmt_sampling_c3_debug::getHash());
+      append_float(kNoReading);  // jam_ee_object_force
+      append_float(kNoReading);  // jam_ee_object_gap
+      out.push_back(0);          // jam_tripped
+      append_float(kNoReading);  // jam_object_travel
+      return out;
+    }
+    if (size + kTravelBytes == current_size) {
+      // Has the original three jam fields but not the travel term -- which is
+      // every log recorded between the watchdog landing and this change,
+      // including the 2026-09-17 hardware logs and the 2026-09-22 sim logs the
+      // thresholds were scored on.
+      overwrite_hash(dairlib::lcmt_sampling_c3_debug::getHash());
+      append_float(kNoReading);  // jam_object_travel
+      return out;
+    }
     return out;
   }
   if (channel == "SAMPLE_BUFFER" || channel == "UNSUCCESSFUL_SAMPLE_BUFFER") {
@@ -349,13 +389,25 @@ int DoMain(int argc, char* argv[]) {
     if (FLAGS_force_gate_gap < 90.0) {
       guard.force_gate_gap = FLAGS_force_gate_gap;
     }
+    if (FLAGS_object_travel_trip >= 0.0) {
+      guard.object_travel_trip = FLAGS_object_travel_trip;
+    }
+    if (FLAGS_object_travel_release >= 0.0) {
+      guard.object_travel_release = FLAGS_object_travel_release;
+    }
+    if (FLAGS_object_travel_window_seconds >= 0.0) {
+      guard.object_travel_window_seconds = FLAGS_object_travel_window_seconds;
+    }
     if (FLAGS_trip_hold_seconds >= 0.0) {
       guard.trip_hold_seconds = FLAGS_trip_hold_seconds;
     }
     if (FLAGS_release_hold_seconds >= 0.0) {
       guard.release_hold_seconds = FLAGS_release_hold_seconds;
     }
-    std::cout << "Jam guard: trip below " << guard.gap_trip << " m gap, or "
+    std::cout << "Jam guard: trip below " << guard.gap_trip
+              << " m gap while the object moves under "
+              << guard.object_travel_trip << " m per "
+              << guard.object_travel_window_seconds << " s, or "
               << "above " << guard.force_trip << " N within "
               << guard.force_gate_gap << " m of contact, held "
               << guard.trip_hold_seconds << " s; release under "
@@ -692,7 +744,8 @@ int DoMain(int argc, char* argv[]) {
 
   std::ofstream csv(FLAGS_out + ".csv");
   csv << "t_log,phase,is_c3_mode,mode_switch_reason,jam_force_N,jam_gap_m,"
-         "jam_tripped,ee_x,ee_y,ee_z,object_x,object_y,object_z\n";
+         "jam_object_travel_m,jam_tripped,ee_x,ee_y,ee_z,object_x,object_y,"
+         "object_z\n";
   csv << std::setprecision(9);
 
   auto decode_c3_state = [n_x](const void* data, int size, VectorXd* out) {
@@ -881,7 +934,8 @@ int DoMain(int argc, char* argv[]) {
         << (phase == Phase::kClosedLoop ? "closed_loop" : "open_loop") << ','
         << static_cast<int>(debug.is_c3_mode) << ',' << debug.mode_switch_reason
         << ',' << debug.jam_ee_object_force << ',' << debug.jam_ee_object_gap
-        << ',' << static_cast<int>(debug.jam_tripped) << ',' << x_lcs(0) << ','
+        << ',' << debug.jam_object_travel << ','
+        << static_cast<int>(debug.jam_tripped) << ',' << x_lcs(0) << ','
         << x_lcs(1) << ',' << x_lcs(2) << ',' << x_lcs(7) << ',' << x_lcs(8)
         << ',' << x_lcs(9) << '\n';
 

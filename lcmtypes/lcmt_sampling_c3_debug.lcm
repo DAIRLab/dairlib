@@ -48,4 +48,5 @@ struct lcmt_sampling_c3_debug
   float jam_ee_object_force;
   float jam_ee_object_gap;
   boolean jam_tripped;
+  float jam_object_travel;
 }

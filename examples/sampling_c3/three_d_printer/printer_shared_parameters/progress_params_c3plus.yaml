@@ -82,8 +82,16 @@ hyst_repos_to_repos_frac_position: 0.4
 # dangerous situations faster than the other C3 -> Repos switching logic.  Omit
 # these parameters entirely to turn the watchdog off.
 jam_guard:
-  gap_trip: -0.010    # gate 1:  penetration [m] (negative = penetration)
+  gap_trip: -0.010    # gate 1a:  penetration [m] (negative = penetration)
   gap_release: 0.002  # do "unjam" maneuver until signed distance >= this
+  object_travel_trip: 0.003       # gate 1b:  object estimate must have moved no
+                                  # more than this [m] over the window below.
+                                  # The signal is max_i ||p_i - p_now|| over the
+                                  # window, not endpoint displacement.
+  object_travel_release: 0.006    # a moving object means the jam is over, so
+                                  # this releases on its own
+  object_travel_window_seconds: 0.3 # gate 1b cannot arm until this has filled,
+                                    # which sets the floor on detection latency
   force_trip: 9.0     # gate 2:  EE-object force [N] within force_gate_gap
   force_release: 4.0  # do "unjam" maneuver until force <= this, or gate opens
   force_gate_gap: 0.002   # enable gate 2 if signed distance <= this [m]

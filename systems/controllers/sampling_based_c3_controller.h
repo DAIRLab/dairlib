@@ -3,6 +3,7 @@
 #include <deque>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <queue>
 #include <string>
 #include <utility>
@@ -60,8 +61,12 @@ namespace systems {
 
 enum SampleIndex {
   kCurrentLocation,
-  kCurrentReposTarget  // Only represents current reposition target when in
-                       // reposition mode.
+  kCurrentReposTarget,  // Only represents current reposition target when in
+                        // reposition mode.
+  kPendingNominee  // Only present while repositioning with a nominated
+                   // challenger awaiting confirmation; see
+                   // pending_repos_nominee_.  Check
+                   // pending_nominee_sample_index_ >= 0 before using it.
   // Could expand this enum if want to reference more samples.
 };
 
@@ -86,6 +91,18 @@ enum ModeSwitchReason {
 };
 
 enum PursuedTargetSource { kNoTarget, kPrevious, kNewSample, kFromBuffer };
+
+/// What happened to the repositioning target this control loop.  Most values
+/// are deliberately *not* retargets:  nominating a challenger leaves the target
+/// untouched, which is the entire point of the confirm gate.  An actual
+/// repos -> repos switch is exactly {kRetargetConfirmed, kRetargetCollision}.
+enum ReposTargetDecision {
+  kKeptNoNominee = 0,    // kept incumbent, nothing nominated
+  kKeptNominated,        // kept incumbent, challenger nominated this loop
+  kKeptNomineeRejected,  // kept incumbent, nominee lost its re-score
+  kRetargetConfirmed,    // switched to the nominee after it confirmed
+  kRetargetCollision     // switched because the incumbent is in penetration
+};
 
 /// One sample's worth of offline jamming analysis: the predicted peak EE effort
 /// alongside the C3 cost the controller would have scored that sample with, so
@@ -782,6 +799,19 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable Eigen::Vector3d prev_repositioning_target_ = Eigen::Vector3d::Zero();
   mutable std::vector<double> all_sample_costs_;
 
+  // A challenger that won the repos -> repos comparison on a previous loop and
+  // is waiting to be re-scored before it is allowed to steal the target.  Unset
+  // when nothing is pending.  See the repositioning branch of ComputePlan().
+  mutable std::optional<Eigen::Vector3d> pending_repos_nominee_;
+
+  // Where the two persistent candidates ended up in this loop's sample list,
+  // or -1 when that candidate is absent.  These record the layout explicitly so
+  // consumers (notably MaintainSampleBuffers) don't have to infer it from the
+  // candidate count, which only ever worked while there was exactly one
+  // optional candidate.
+  mutable int repos_target_sample_index_ = -1;
+  mutable int pending_nominee_sample_index_ = -1;
+
   // The fast approximate jam label for each of those samples, computed in the
   // same parallel loop as the costs.  All three are NaN-filled and stay NaN
   // when no labeller is configured.  The one sample AugmentSamplesWithBuffer
@@ -878,6 +908,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable SampleIndex best_sample_index_ = kCurrentLocation;
   mutable ModeSwitchReason mode_switch_reason_ = kNoSwitch;
   mutable PursuedTargetSource pursued_target_source_ = kNoTarget;
+  mutable ReposTargetDecision repos_target_decision_ = kKeptNoNominee;
 
   // Live jam watchdog state.  See UpdateJamWatchdog().  All of it is left at
   // these defaults when progress_params_.jam_guard is unset.

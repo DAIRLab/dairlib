@@ -74,8 +74,17 @@ hyst_c3_to_repos_frac: 0.9
 hyst_c3_to_repos_frac_position: 0.6
 hyst_repos_to_c3_frac: 0.4
 hyst_repos_to_c3_frac_position: 0.5
-hyst_repos_to_repos_frac: 0.3
+hyst_repos_to_repos_frac: 0.45
 hyst_repos_to_repos_frac_position: 0.4
+
+# Nominate-then-confirm gate on repositioning-target switches.  A challenger
+# that wins the hyst_repos_to_repos_frac comparison is held as a nominee rather
+# than adopted, re-scored as a real candidate on the next control loop, and
+# adopted only if it still beats the incumbent by this fraction of the
+# incumbent's raw cost.  0.0 means "must merely not have gotten worse".  Omit
+# both to switch immediately instead of nominating.
+repos_target_confirm_frac: 0.2
+repos_target_confirm_frac_position: 0.0
 
 # Live jam watchdog:  allow the controller to switch C3 -> Repos if it detects
 # the EE is jammed against the object.  This is a safety feature to get out of

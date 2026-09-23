@@ -149,6 +149,11 @@ struct SamplingC3ProgressParams {
   double hyst_c3_to_repos_frac_position;
   double hyst_repos_to_c3_frac_position;
   double hyst_repos_to_repos_frac_position;
+  /// Optionally nominate then confirm a new repositioning target, instead of
+  /// immediately adopting it.  Can help reduce repos -> repos churn.  Unset =>
+  /// no gate (adopt immediately).
+  std::optional<double> repos_target_confirm_frac;
+  std::optional<double> repos_target_confirm_frac_position;
   /// Live jam watchdog.  Unset => no watchdog.
   std::optional<JamGuardParams> jam_guard;
 
@@ -178,6 +183,8 @@ struct SamplingC3ProgressParams {
     a->Visit(DRAKE_NVP(hyst_c3_to_repos_frac_position));
     a->Visit(DRAKE_NVP(hyst_repos_to_c3_frac_position));
     a->Visit(DRAKE_NVP(hyst_repos_to_repos_frac_position));
+    a->Visit(DRAKE_NVP(repos_target_confirm_frac));
+    a->Visit(DRAKE_NVP(repos_target_confirm_frac_position));
     a->Visit(DRAKE_NVP(jam_guard));
   }
 };

@@ -55,34 +55,56 @@ CURRENT_REPOS_TARGET_INDEX = 1
 class _SamplingC3Debug:
   """Decodes SAMPLING_C3_DEBUG from any generation of the type.
 
-  jam_object_travel was appended on 2026-09-22 and LCM verifies the fingerprint
-  on decode, so the current type cannot read a log recorded before that -- which
-  is every log on disk up to and including the 2026-09-17 hardware runs and the
-  2026-09-22 realistic-sim runs.  Fall back to the archived layout and report
-  the field this generation does not carry as NaN, which is the same sentinel
-  the live controller publishes before its travel window has filled.
+  LCM verifies the fingerprint on decode, so the current type cannot read a log
+  recorded before a field was appended.  Two fields have been appended so far,
+  giving three generations:
+
+    v1  the original layout -- every log up to and including the 2026-09-17
+        hardware runs.
+    v2  + jam_object_travel (2026-09-22) -- the 2026-09-22 realistic-sim runs,
+        which are the baseline the repos -> repos confirm gate is measured
+        against, so they have to stay readable.
+    v3  + repos_target_decision (2026-09-23) -- current.
+
+  Fall back to the newest archived layout that decodes, and report each field
+  that generation does not carry as a sentinel.  NaN for jam_object_travel is
+  the same sentinel the live controller publishes before its travel window has
+  filled.  repos_target_decision reports as None rather than 0, because 0 is a
+  real value ("kept the incumbent, nothing nominated") and a log that predates
+  the gate must not be counted as evidence that the gate kept anything.
   """
 
-  class _WithoutTravel:
-    """The archived message, reading jam_object_travel as NaN."""
+  class _Older:
+    """An archived message, reporting the fields it lacks as sentinels."""
 
-    __slots__ = ('_msg',)
+    __slots__ = ('_msg', '_missing')
 
-    def __init__(self, msg):
+    def __init__(self, msg, **missing):
       self._msg = msg
-
-    jam_object_travel = float('nan')
+      self._missing = missing
 
     def __getattr__(self, name):
-      return getattr(self._msg, name)
+      # Only reached for names not in __slots__, so the two real attributes
+      # above never come through here.
+      missing = object.__getattribute__(self, '_missing')
+      if name in missing:
+        return missing[name]
+      return getattr(object.__getattribute__(self, '_msg'), name)
 
   @staticmethod
   def decode(data):
     try:
       return dairlib.lcmt_sampling_c3_debug.decode(data)
     except ValueError:
-      return _SamplingC3Debug._WithoutTravel(
-          archive_dairlib.lcmt_sampling_c3_debug.decode(data))
+      pass
+    try:
+      return _SamplingC3Debug._Older(
+          archive_dairlib.lcmt_sampling_c3_debug_v2.decode(data),
+          repos_target_decision=None)
+    except ValueError:
+      return _SamplingC3Debug._Older(
+          archive_dairlib.lcmt_sampling_c3_debug.decode(data),
+          jam_object_travel=float('nan'), repos_target_decision=None)
 
 
 CHANNEL_LCMT = {

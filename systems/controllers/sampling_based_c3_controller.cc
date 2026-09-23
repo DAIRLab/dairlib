@@ -1054,6 +1054,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                 << std::endl;
     }
     crossed_cost_switching_threshold_ = false;
+    // A nominee was scored against the old goal, and the confirm margin it will
+    // be judged by is mode-dependent, so it carries no information now.
+    pending_repos_nominee_.reset();
     dt_ =
         sampling_c3_options_.planning_dt_position;  // Always set dt_ according
                                                     // to pose or position mode.
@@ -1190,6 +1193,23 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
   }
 
+  // Add the pending repositioning nominee -- a challenger that won the
+  // repos -> repos comparison on a previous loop and has to prove it again from
+  // a freshly scored plan before it becomes the target.  It takes the place of
+  // one freshly generated sample rather than adding a candidate, so the
+  // candidate count and therefore the thread layout are unchanged. Inserted
+  // before the repositioning target so that the two insert()s below leave the
+  // order [0] = current, [1] = repos target, [2] = nominee.
+  repos_target_sample_index_ = -1;
+  pending_nominee_sample_index_ = -1;
+  if (!is_doing_c3_ && !in_collision && pending_repos_nominee_.has_value() &&
+      !candidate_states.empty()) {
+    candidate_states.pop_back();
+    VectorXd nominee_state = x_lcs_curr;
+    nominee_state.head(3) = *pending_repos_nominee_;
+    candidate_states.insert(candidate_states.begin(), nominee_state);
+    pending_nominee_sample_index_ = SampleIndex::kPendingNominee;
+  }
   // Add the previous best repositioning target to the candidate states at index
   // 1 if in C3 mode and if the previous target is not in collision. (Index 0
   // will become the current state.)
@@ -1198,6 +1218,13 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     repositioning_target_state.head(3) = prev_repositioning_target_;
     candidate_states.insert(candidate_states.begin(),
                             repositioning_target_state);
+    repos_target_sample_index_ = SampleIndex::kCurrentReposTarget;
+  } else {
+    // No incumbent to defend (C3 mode, or the incumbent is in penetration and
+    // is being abandoned unconditionally), so there is nothing for a nominee to
+    // beat.  The nominee insert above is gated on the same condition, so none
+    // was added; just drop it so the gate starts over.
+    pending_repos_nominee_.reset();
   }
   // Insert the current location at the beginning of the candidate states.
   candidate_states.insert(candidate_states.begin(), x_lcs_curr);
@@ -1378,6 +1405,10 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     hyst_repos_to_repos_frac =
         progress_params_.hyst_repos_to_repos_frac_position;
   }
+  const std::optional<double>& repos_target_confirm_frac =
+      crossed_cost_switching_threshold_
+          ? progress_params_.repos_target_confirm_frac
+          : progress_params_.repos_target_confirm_frac_position;
 
   // Review the cost results to determine the best sample.
   bool force_c3_mode = radio_out->channel[12];
@@ -1409,6 +1440,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
 
   // Determine whether to do C3 or reposition.
   mode_switch_reason_ = ModeSwitchReason::kNoSwitch;
+  // Only meaningful while repositioning; left at kKeptNoNominee in C3 mode.
+  repos_target_decision_ = ReposTargetDecision::kKeptNoNominee;
   double curr_cost = all_sample_costs_[SampleIndex::kCurrentLocation];
   double repos_target_cost =
       num_total_samples > SampleIndex::kCurrentReposTarget
@@ -1486,18 +1519,70 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       }
     }
   } else {  // Currently repositioning.
-    // First, apply hysteresis between repositioning targets.
-    if (best_sample_index_ == SampleIndex::kCurrentReposTarget &&
-        !in_collision) {
+    // Keeping the incumbent target is expressed in one place, since the confirm
+    // gate below reaches it from three different verdicts.
+    auto keep_incumbent = [&](ReposTargetDecision decision) {
+      best_sample_index_ = SampleIndex::kCurrentReposTarget;
+      best_other_cost = repos_target_cost;
+      finished_reposition_flag_ = false;
       pursued_target_source_ = PursuedTargetSource::kPrevious;
-    } else if (in_collision) {
+      repos_target_decision_ = decision;
+    };
+    // Switching away from the incumbent has to leave best_other_cost carrying
+    // the repos_to_repos hysteresis, because the controller only takes the new
+    // sample if it also beats switching to C3 from the current location (with
+    // repos_to_c3 hysteresis) in the comparison further below.
+    auto take_new_sample = [&](ReposTargetDecision decision) {
+      pursued_target_source_ = PursuedTargetSource::kNewSample;
+      repos_target_decision_ = decision;
+      if (!progress_params_.use_relative_hysteresis) {
+        best_other_cost += hyst_repos_to_repos;
+      } else {
+        best_other_cost += hyst_repos_to_repos_frac * repos_target_cost;
+      }
+    };
+
+    // First, apply hysteresis between repositioning targets.
+    if (in_collision) {
       // This means the previous repositioning target is now in penetration with
       // the object and has been rejected.  Switch to the new lowest cost
-      // sample.
+      // sample.  Checked before the "incumbent already won" case because with
+      // no incumbent in the candidate list, index 1 is an ordinary new sample
+      // and winning it means nothing about the target being kept.
       std::cout << "Repos -> Repos:  Previous repositioning target in "
                    "collision; switching to new sample"
                 << std::endl;
       pursued_target_source_ = PursuedTargetSource::kNewSample;
+      repos_target_decision_ = ReposTargetDecision::kRetargetCollision;
+      pending_repos_nominee_.reset();
+    } else if (pending_nominee_sample_index_ >= 0 &&
+               repos_target_confirm_frac.has_value()) {
+      // A challenger nominated on an earlier loop is in the candidate list and
+      // has just been re-scored against a freshly solved plan.  Adopt it only
+      // if it still beats the incumbent by the confirm margin.  Judged on the
+      // raw (un-penalized) incumbent cost, for the same reason as the
+      // nomination test below.
+      //
+      // Either way the nomination is spent, and no fresh challenger is
+      // nominated on this loop -- that gives a rejected nominee a one-loop
+      // refractory rather than letting the next noisy draw take its place
+      // immediately.
+      const double nominee_cost =
+          all_sample_costs_[pending_nominee_sample_index_];
+      const bool confirmed = nominee_cost < (1.0 - *repos_target_confirm_frac) *
+                                                repos_target_raw_cost;
+      pending_repos_nominee_.reset();
+      if (confirmed) {
+        std::cout << "Repos -> Repos:  Nominee confirmed; switching to it"
+                  << std::endl;
+        best_sample_index_ = (SampleIndex)pending_nominee_sample_index_;
+        best_other_cost = nominee_cost;
+        take_new_sample(ReposTargetDecision::kRetargetConfirmed);
+      } else {
+        keep_incumbent(ReposTargetDecision::kKeptNomineeRejected);
+      }
+    } else if (best_sample_index_ == SampleIndex::kCurrentReposTarget) {
+      keep_incumbent(ReposTargetDecision::kKeptNoNominee);
     } else {
       // This means there is a lower cost sample other than the current
       // repositioning target. If the lowest cost sample is not at least the
@@ -1506,31 +1591,26 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       // the raw (un-penalized) cost so a just-reached target (which gets a
       // large finished_reposition_cost bonus, see above) isn't forced to lose
       // this comparison regardless of how good its real cost is.
+      const int challenger_index = best_sample_index_;
       if ((repos_target_raw_cost < best_other_cost + hyst_repos_to_repos &&
            !progress_params_.use_relative_hysteresis) ||
           (repos_target_raw_cost <
                best_other_cost +
                    hyst_repos_to_repos_frac * repos_target_raw_cost &&
            progress_params_.use_relative_hysteresis)) {
-        best_sample_index_ = SampleIndex::kCurrentReposTarget;
-        best_other_cost = repos_target_cost;
-        finished_reposition_flag_ = false;
-        pursued_target_source_ = PursuedTargetSource::kPrevious;
-      }
-      // Controller will switch to pursuing a new sample from its previous
-      // repositioning target only if the cost of switching to that new sample
-      // (with repos_to_repos hysteresis) is less than switching to C3 from
-      // current location (with repos_to_c3 hysteresis), so add the
-      // repos_to_repos hysteresis value here before the comparison to the
-      // current location C3 cost with repos_to_c3 hysteresis afterwards.
-      else {
+        keep_incumbent(ReposTargetDecision::kKeptNoNominee);
+      } else if (repos_target_confirm_frac.has_value()) {
+        // The challenger won, but one control loop's verdict is not evidence:
+        // re-scoring an unchanged target moves its cost by more than the
+        // hysteresis band on roughly a fifth of pose-mode loops.  Hold the
+        // challenger as a nominee and keep the incumbent; it gets re-scored as
+        // a real candidate next loop and only then may steal the target.
+        pending_repos_nominee_ = all_sample_locations_[challenger_index];
+        keep_incumbent(ReposTargetDecision::kKeptNominated);
+      } else {
+        // Gate disabled:  switch immediately, as before.
         std::cout << "Repos -> Repos:  Switching to new sample" << std::endl;
-        pursued_target_source_ = PursuedTargetSource::kNewSample;
-        if (!progress_params_.use_relative_hysteresis) {
-          best_other_cost += hyst_repos_to_repos;
-        } else {
-          best_other_cost += hyst_repos_to_repos_frac * repos_target_cost;
-        }
+        take_new_sample(ReposTargetDecision::kRetargetConfirmed);
       }
     }
 
@@ -1631,6 +1711,9 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   if (jam_tripped_ && !was_jam_tripped) {
     AddToUnsuccessfulBuffer(candidate_states[SampleIndex::kCurrentLocation],
                             SampleIndex::kCurrentLocation, context.get_time());
+    // Getting out of the jam takes priority over confirming a challenger that
+    // was scored before the jam was known about.
+    pending_repos_nominee_.reset();
   }
 
   if (verbose_) {
@@ -2828,14 +2911,22 @@ void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs,
   // Third, combine retained and new samples in a temporary buffer.  If the
   // buffer is going to overflow, the highest-cost candidates will be removed
   // after both sources have been considered.
-  int num_to_add = all_sample_locations_.size() - 1;
-  if (!is_doing_c3_ && all_sample_locations_.size() ==
-                           sampling_params_.num_additional_samples_repos + 2) {
-    // Don't add the repositioning target since it was a past sample and should
-    // already be in the buffer.  The size check determines if the previous
-    // repositioning target was rejected due to collision (in which case sample
-    // index 1 is a new sample and should be added).
-    num_to_add--;
+  // Skip the current location, plus whichever of the two persistent candidates
+  // are present this loop -- the repositioning target and the pending nominee.
+  // Neither is a new sample:  both were added to the buffer on the loop they
+  // were first drawn, with that loop's cost, object configuration and jam
+  // columns, and re-adding them every loop they stay in the candidate list
+  // would fill the buffer with duplicates of one spot.  The indices are
+  // recorded where the candidate list is assembled rather than inferred from
+  // its length, which only worked while the target was the sole optional
+  // candidate.
+  auto is_persistent_candidate = [&](int i) {
+    return i == repos_target_sample_index_ ||
+           i == pending_nominee_sample_index_;
+  };
+  int num_to_add = 0;
+  for (int i = 1; i < static_cast<int>(all_sample_locations_.size()); i++) {
+    if (!is_persistent_candidate(i)) num_to_add++;
   }
   const int num_candidates = retained_count + num_to_add;
   MatrixXd candidate_buffer = MatrixXd::Zero(num_candidates, n_q_);
@@ -2858,12 +2949,9 @@ void SamplingC3Controller::MaintainSampleBuffers(const VectorXd& x_lcs,
   // to the buffer.
   int buffer_count = retained_count;
   for (int i = 0; i < all_sample_locations_.size(); i++) {
-    if ((i == 0) || (!is_doing_c3_ && i == 1 &&
-                     all_sample_locations_.size() ==
-                         sampling_params_.num_additional_samples_repos + 2)) {
-      // Skip the current location.
-      // Skip the repositioning target if in repositioning mode and if it was
-      // not rejected due to collision.
+    if (i == 0 || is_persistent_candidate(i)) {
+      // Skip the current location, the repositioning target and the pending
+      // nominee; see the comment on num_to_add above.
     } else {
       // Add the new sample to the combined candidate buffer.
       VectorXd new_config = x_lcs.head(n_q_);
@@ -4656,6 +4744,7 @@ void SamplingC3Controller::OutputDebug(
   debug_msg->jam_ee_object_force = jam_ee_object_force_;
   debug_msg->jam_ee_object_gap = jam_ee_object_gap_;
   debug_msg->jam_object_travel = jam_object_travel_;
+  debug_msg->repos_target_decision = repos_target_decision_;
   debug_msg->jam_tripped = jam_tripped_;
 }
 

@@ -1,6 +1,10 @@
-package dairlib;
+package archive.dairlib;
 
-/* lcmtype with debug information for the sampling controller.
+/* Archived generation of lcmt_sampling_c3_debug:  carries
+   jam_object_travel (added 2026-09-22) but not repos_target_decision
+   (added 2026-09-23).  Reads the 2026-09-22 realistic-sim logs.
+
+   lcmtype with debug information for the sampling controller.
 
     mode_switch_reason key:
         0: No mode switch
@@ -16,18 +20,9 @@ package dairlib;
         1: Previous repositioning target
         2: New sample
         3: Sample from buffer
-
-    repos_target_decision key (only meaningful while repositioning; an actual
-    repos -> repos switch is exactly 3 or 4, since nominating a challenger
-    deliberately leaves the target alone):
-        0: Kept incumbent target, nothing nominated
-        1: Kept incumbent target, challenger nominated this loop
-        2: Kept incumbent target, pending nominee lost its re-score
-        3: Retargeted to the nominee after it confirmed
-        4: Retargeted because the incumbent is in penetration
 */
 
-struct lcmt_sampling_c3_debug
+struct lcmt_sampling_c3_debug_v2
 {
   int64_t utime;
 
@@ -58,6 +53,4 @@ struct lcmt_sampling_c3_debug
   float jam_ee_object_gap;
   boolean jam_tripped;
   float jam_object_travel;
-
-  int32_t repos_target_decision;
 }

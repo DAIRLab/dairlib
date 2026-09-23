@@ -206,7 +206,7 @@ q_vector_position_sequence:
   # error 4x harder than Y/Z so C3 won't push the cone off the plate.
   - [0.01, 0.01, 0.01,       # EE position
      0.1, 0.1, 0.1, 0.1,     # object orientation
-     80000, 1500, 1500,       # object position
+     100000, 1500, 1500,       # object position
      5, 5, 5,                # EE linear velocity
      0.01, 0.01, 0.01,       # object angular velocity
      1, 1, 1]                # object linear velocity

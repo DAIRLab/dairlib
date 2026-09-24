@@ -56,6 +56,7 @@
 #include "drake/common/yaml/yaml_io.h"
 #include "drake/geometry/query_object.h"
 #include "drake/geometry/scene_graph.h"
+#include "drake/solvers/moby_lcp_solver.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/diagram_builder.h"
 
@@ -101,6 +102,31 @@ DEFINE_int32(max_per_object_geometry, -1,
              "group: 0 for the uncapped closest-N selection, >0 for that cap.  "
              "-1 (the default) uses whatever the yaml configures, so an A/B is "
              "--max_per_object_geometry=0 against =1.");
+// Overrides of the COST LCS's contact model, for attributing a phantom
+// rollout to one modelling choice.  None of these touch the yaml or the
+// controller; they only rebuild the probe's own LCSFactoryOptions.
+DEFINE_string(contact_model, "",
+              "Override the yaml's contact_model for the cost LCS: "
+              "\"anitescu\" or \"stewart_and_trinkle\".  Empty keeps the yaml.");
+DEFINE_int32(num_friction_directions, -1,
+             "Override every cost contact's friction-direction count.  -1 "
+             "keeps the yaml's per-contact values.");
+DEFINE_double(mu_scale, 1.0,
+              "Multiply every cost contact's friction coefficient by this.");
+DEFINE_string(cost_budget, "",
+              "Comma-separated per-group override of the cost LCS's "
+              "resolve_contacts_to_for_cost, e.g. \"2,1,4,6\".  Empty keeps "
+              "the yaml.  Every contact then gets num_friction_directions and "
+              "its group's mu_per_pair_type.");
+DEFINE_double(witness_dedup_mm, -1.0,
+              "Override the yaml's contact_dedup_witness_radius, in mm: 0 keys "
+              "the per-object-geometry cap on geometry, > 0 on the object-side "
+              "witness point.  -1 (the default) uses the yaml.");
+DEFINE_string(drop_pairs, "",
+              "Comma-separated substrings; a resolved cost contact whose "
+              "\"body::geometry <-> body::geometry\" description contains any "
+              "of them is removed from the cost LCS (after resolution, so the "
+              "remaining slots are what the controller would have kept).");
 
 // Parses exactly `expected` comma-separated doubles out of `text`.  Returns
 // false on an empty string so an unset flag reads as "no override", and throws
@@ -119,6 +145,17 @@ bool ParseDoubles(const string& text, int expected, VectorXd* out) {
   }
   *out = Eigen::Map<VectorXd>(values.data(), values.size());
   return true;
+}
+
+vector<string> ParseStrings(const string& text) {
+  vector<string> values;
+  if (text.empty()) return values;
+  std::stringstream stream(text);
+  string token;
+  while (std::getline(stream, token, ',')) {
+    if (!token.empty()) values.push_back(token);
+  }
+  return values;
 }
 
 vector<int> ParseInts(const string& text) {
@@ -172,7 +209,8 @@ void ReportGroup(const MultibodyPlant<double>& plant,
                  const drake::geometry::SceneGraphInspector<double>& inspector,
                  const QueryObject<double>& query_object,
                  const vector<drake::SortedPair<GeometryId>>& candidates,
-                 int budget, int cap, int group_index) {
+                 int budget, int cap, double witness_dedup_radius,
+                 int group_index) {
   std::cout << "\n  group " << group_index << " (" << GroupName(group_index)
             << "): " << candidates.size() << " candidate pairs, budget "
             << budget << ", per-object-geometry cap "
@@ -209,7 +247,8 @@ void ReportGroup(const MultibodyPlant<double>& plant,
   const vector<drake::SortedPair<GeometryId>> kept =
       cap > 0 ? SamplingC3Controller::
                     GetClosestContactPairsCappedPerObjectGeometry(
-                        plant, context, candidates, budget, cap)
+                        plant, context, candidates, budget, cap,
+                        witness_dedup_radius)
               : LCSFactory::GetNClosestContactPairs(plant, context, candidates,
                                                     budget);
   std::set<drake::SortedPair<GeometryId>> kept_set(kept.begin(), kept.end());
@@ -298,6 +337,163 @@ void ReportResolvedSlots(const MultibodyPlant<double>& plant,
               << DescribeGeometry(plant, in, resolved[i].first()) << "  <->  "
               << DescribeGeometry(plant, in, resolved[i].second()) << std::endl;
   }
+}
+
+// Splits a u = 0 rollout's net object displacement into what each contact's
+// lambda rows contributed and what the free dynamics (A, d) did on their own.
+//
+// Every step is x+ = A x + D lambda + d, so an impulse at knot k reaches the
+// final knot through A^(N-1-k): counting D lambda alone would drop the velocity
+// an early push leaves behind.  Simulate()'s quaternion renormalization is the
+// one nonlinearity, and it shows up as the printed residual.
+//
+// Each contact's share is also split into the component along its own normal
+// (pointing into the object) and the remainder.  Normals cannot pull, so a
+// share with a large tangential part is friction doing the pushing.
+void ReportAttribution(const MultibodyPlant<double>& plant,
+                       const QueryObject<double>& query_object,
+                       const drake::geometry::SceneGraphInspector<double>& in,
+                       const vector<drake::SortedPair<GeometryId>>& resolved,
+                       const vector<int>& friction_directions,
+                       const string& contact_model, const LCS& lcs,
+                       const VectorXd& x0, const VectorXd& u) {
+  const int n_contacts = resolved.size();
+  const int n_x = lcs.num_states();
+  const int n_lambda = lcs.num_lambdas();
+  const int N = lcs.N();
+  constexpr int kObjectPosition = 7;
+
+  // lambda row -> (contact, label), following the stacking convention in
+  // LCSFactory::GetContactDescriptions.
+  vector<int> row_contact(n_lambda, -1);
+  vector<string> row_label(n_lambda);
+  if (contact_model == "stewart_and_trinkle") {
+    int row = 2 * n_contacts;
+    for (int i = 0; i < n_contacts; ++i) {
+      row_contact[i] = i;
+      row_label[i] = "slack";
+      row_contact[n_contacts + i] = i;
+      row_label[n_contacts + i] = "normal";
+      for (int j = 0; j < 2 * friction_directions[i]; ++j, ++row) {
+        row_contact[row] = i;
+        row_label[row] = "t" + std::to_string(j);
+      }
+    }
+  } else {
+    int row = 0;
+    for (int i = 0; i < n_contacts; ++i) {
+      for (int j = 0; j < 2 * friction_directions[i]; ++j, ++row) {
+        row_contact[row] = i;
+        row_label[row] = "n+mu*t" + std::to_string(j);
+      }
+    }
+  }
+
+  // The same Lemke solve Simulate() does, kept so it can be attributed.
+  const c3::LCSSimulateConfig config;
+  drake::solvers::MobyLcpSolver solver;
+  vector<VectorXd> lambdas;
+  VectorXd x = x0;
+  for (int k = 0; k < N; ++k) {
+    VectorXd lambda;
+    solver.SolveLcpLemke(lcs.F()[0],
+                         lcs.E()[0] * x + lcs.c()[0] + lcs.H()[0] * u, &lambda,
+                         config.piv_tol, config.zero_tol);
+    lambdas.push_back(lambda);
+    x = lcs.Simulate(x, u);
+  }
+  const Vector3d actual = x.segment<3>(kObjectPosition) -
+                          x0.segment<3>(kObjectPosition);
+
+  // A^p restricted to the object-position rows, for p = 0 .. N-1.
+  const Eigen::MatrixXd& A = lcs.A()[0];
+  vector<Eigen::MatrixXd> A_power_rows(N);
+  Eigen::MatrixXd power = Eigen::MatrixXd::Identity(n_x, n_x);
+  for (int p = 0; p < N; ++p) {
+    A_power_rows[p] = power.middleRows<3>(kObjectPosition);
+    power = A * power;
+  }
+  const Vector3d free =
+      (power * x0).segment<3>(kObjectPosition) -
+      x0.segment<3>(kObjectPosition) + [&] {
+        Vector3d sum = Vector3d::Zero();
+        for (int k = 0; k < N; ++k) {
+          sum += A_power_rows[N - 1 - k] *
+                 (lcs.B()[0] * u + lcs.d()[0]);
+        }
+        return sum;
+      }();
+
+  vector<Vector3d> row_share(n_lambda, Vector3d::Zero());
+  vector<double> row_impulse(n_lambda, 0.0);
+  vector<int> contact_active_knots(n_contacts, 0);
+  for (int k = 0; k < N; ++k) {
+    const Eigen::MatrixXd reach = A_power_rows[N - 1 - k] * lcs.D()[0];
+    vector<bool> active(n_contacts, false);
+    for (int r = 0; r < n_lambda; ++r) {
+      row_share[r] += reach.col(r) * lambdas[k](r);
+      row_impulse[r] += lambdas[k](r);
+      if (row_contact[r] >= 0 && lambdas[k](r) > 1e-9) {
+        active[row_contact[r]] = true;
+      }
+    }
+    for (int i = 0; i < n_contacts; ++i) contact_active_knots[i] += active[i];
+  }
+
+  std::cout << "\n  ATTRIBUTION of the net object displacement [mm], contact "
+               "model "
+            << contact_model << std::endl;
+  auto print_vector = [](const Vector3d& v) {
+    std::ostringstream out;
+    out << std::fixed << std::setprecision(2) << "(" << std::setw(7)
+        << v(0) * 1000.0 << ", " << std::setw(7) << v(1) * 1000.0 << ", "
+        << std::setw(7) << v(2) * 1000.0 << ")";
+    return out.str();
+  };
+  std::cout << "    actual (Simulate)      " << print_vector(actual)
+            << std::endl;
+  std::cout << "    free dynamics (A, d)   " << print_vector(free) << std::endl;
+
+  Vector3d contact_total = Vector3d::Zero();
+  for (int i = 0; i < n_contacts; ++i) {
+    // Normal pointing into the object: nhat_BA_W points from B into A, so
+    // flip it when the object is B.
+    const auto result = query_object.ComputeSignedDistancePairClosestPoints(
+        resolved[i].first(), resolved[i].second());
+    const auto* body_a =
+        plant.GetBodyFromFrameId(in.GetFrameId(result.id_A));
+    const bool object_is_a =
+        body_a != nullptr && body_a->is_floating_base_body();
+    const Vector3d normal =
+        object_is_a ? Vector3d(result.nhat_BA_W) : Vector3d(-result.nhat_BA_W);
+
+    Vector3d share = Vector3d::Zero();
+    for (int r = 0; r < n_lambda; ++r) {
+      if (row_contact[r] == i) share += row_share[r];
+    }
+    contact_total += share;
+    const double along_normal = share.dot(normal);
+    std::cout << "    slot " << std::setw(2) << i << "  " << print_vector(share)
+              << "  |along n| " << std::fixed << std::setprecision(2)
+              << std::setw(6) << along_normal * 1000.0 << "  |perp n| "
+              << std::setw(6)
+              << (share - along_normal * normal).norm() * 1000.0
+              << "  active " << std::setw(2) << contact_active_knots[i] << "/"
+              << N << "  n " << std::setprecision(2) << normal.transpose()
+              << "  " << DescribeGeometry(plant, in, resolved[i].first())
+              << " <-> " << DescribeGeometry(plant, in, resolved[i].second())
+              << std::endl;
+    for (int r = 0; r < n_lambda; ++r) {
+      if (row_contact[r] != i || row_impulse[r] < 1e-9) continue;
+      std::cout << "            row " << std::setw(3) << r << " "
+                << std::setw(8) << row_label[r] << "  "
+                << print_vector(row_share[r]) << "  sum lambda "
+                << std::setprecision(4) << row_impulse[r] << std::endl;
+    }
+  }
+  std::cout << "    all contacts           " << print_vector(contact_total)
+            << "\n    residual (renormalize) "
+            << print_vector(actual - free - contact_total) << std::endl;
 }
 
 int DoMain(int argc, char* argv[]) {
@@ -399,10 +595,20 @@ int DoMain(int argc, char* argv[]) {
           plant_lcs_context);
   const auto& inspector = query_object.inspector();
 
+  const double witness_dedup_radius =
+      FLAGS_witness_dedup_mm >= 0
+          ? FLAGS_witness_dedup_mm / 1000.0
+          : sampling_c3_options.contact_dedup_witness_radius.value_or(0.0);
+
   // ================= 1. What each group resolves to =================
   const vector<int>& plan_budget = sampling_c3_options.resolve_contacts_to;
-  const vector<int>& cost_budget =
-      sampling_c3_options.resolve_contacts_to_for_cost;
+  vector<int> cost_budget = sampling_c3_options.resolve_contacts_to_for_cost;
+  if (!FLAGS_cost_budget.empty()) {
+    cost_budget = ParseInts(FLAGS_cost_budget);
+    if (cost_budget.size() != contact_pairs.size()) {
+      throw std::runtime_error("--cost_budget needs one entry per group.");
+    }
+  }
 
   // The cap actually in force, so the probe reports what the controller would
   // resolve to rather than a second opinion.
@@ -428,12 +634,14 @@ int DoMain(int argc, char* argv[]) {
             : sampling_c3_options.max_contacts_per_object_geometry_for_cost;
     for (size_t g = 0; g < contact_pairs.size(); ++g) {
       ReportGroup(plant_lcs, plant_lcs_context, inspector, query_object,
-                  contact_pairs[g], budget[g], effective_cap(caps, g), g);
+                  contact_pairs[g], budget[g], effective_cap(caps, g),
+                  witness_dedup_radius, g);
     }
   }
 
   // ================= 2. phi at the resolved slots =================
-  auto resolve = [&](const vector<int>& budget, const vector<int>& caps) {
+  auto resolve = [&](const vector<int>& budget, const vector<int>& caps,
+                     vector<int>* groups = nullptr) {
     vector<drake::SortedPair<GeometryId>> resolved;
     for (size_t g = 0; g < contact_pairs.size(); ++g) {
       if (budget[g] == 0) continue;
@@ -442,11 +650,12 @@ int DoMain(int argc, char* argv[]) {
           cap > 0 ? SamplingC3Controller::
                         GetClosestContactPairsCappedPerObjectGeometry(
                             plant_lcs, plant_lcs_context, contact_pairs[g],
-                            budget[g], cap)
+                            budget[g], cap, witness_dedup_radius)
                   : LCSFactory::GetNClosestContactPairs(
                         plant_lcs, plant_lcs_context, contact_pairs[g],
                         budget[g]);
       resolved.insert(resolved.end(), kept.begin(), kept.end());
+      if (groups != nullptr) groups->insert(groups->end(), kept.size(), g);
     }
     return resolved;
   };
@@ -459,9 +668,47 @@ int DoMain(int argc, char* argv[]) {
   ReportResolvedSlots(plant_lcs, query_object, inspector, resolved_plan,
                       plan_options.dt, plan_options.N, "PLANNING LCS");
 
-  const vector<drake::SortedPair<GeometryId>> resolved_cost =
+  vector<int> resolved_cost_groups;
+  const vector<drake::SortedPair<GeometryId>> resolved_cost_all =
       resolve(cost_budget,
-              sampling_c3_options.max_contacts_per_object_geometry_for_cost);
+              sampling_c3_options.max_contacts_per_object_geometry_for_cost,
+              &resolved_cost_groups);
+
+  // --drop_pairs, --mu_scale, --num_friction_directions: the per-contact
+  // lists are group-major in the same order as the resolved pairs, so a
+  // dropped pair drops the same index from each.
+  const vector<string> drop_patterns = ParseStrings(FLAGS_drop_pairs);
+  vector<drake::SortedPair<GeometryId>> resolved_cost;
+  vector<double> cost_mu;
+  vector<int> cost_friction_directions;
+  for (size_t i = 0; i < resolved_cost_all.size(); ++i) {
+    const string description =
+        DescribeGeometry(plant_lcs, inspector, resolved_cost_all[i].first()) +
+        " <-> " +
+        DescribeGeometry(plant_lcs, inspector, resolved_cost_all[i].second());
+    const bool drop = std::any_of(
+        drop_patterns.begin(), drop_patterns.end(), [&](const string& p) {
+          return description.find(p) != string::npos;
+        });
+    if (drop) {
+      std::cout << "\n  --drop_pairs removes cost slot " << i << ": "
+                << description << std::endl;
+      continue;
+    }
+    resolved_cost.push_back(resolved_cost_all[i]);
+    cost_mu.push_back(
+        sampling_c3_options.mu_per_pair_type.at(resolved_cost_groups[i]) *
+        FLAGS_mu_scale);
+    // The cone resolves no contact as planar, so every contact carries the
+    // global friction-direction count.
+    cost_friction_directions.push_back(
+        FLAGS_num_friction_directions > 0
+            ? FLAGS_num_friction_directions
+            : sampling_c3_options.num_friction_directions.value());
+  }
+  const string cost_contact_model = FLAGS_contact_model.empty()
+                                        ? sampling_c3_options.contact_model
+                                        : FLAGS_contact_model;
 
   // ================= 3. The u = 0 rollout =================
   vector<int> resolutions = ParseInts(FLAGS_dt_resolutions);
@@ -477,14 +724,13 @@ int DoMain(int argc, char* argv[]) {
 
   for (int resolution : resolutions) {
     LCSFactoryOptions cost_options = {
-        .contact_model = sampling_c3_options.contact_model,
+        .contact_model = cost_contact_model,
         .N = sampling_c3_options.N * resolution,
         .dt = sampling_c3_options.planning_dt_pose / resolution,
         .num_contacts = static_cast<int>(resolved_cost.size()),
         .spring_stiffness = 0.0,
-        .num_friction_directions_per_contact =
-            sampling_c3_options.num_friction_directions_per_contact_for_cost,
-        .mu_per_contact = sampling_c3_options.mu_for_cost,
+        .num_friction_directions_per_contact = cost_friction_directions,
+        .mu_per_contact = cost_mu,
         .planar_normal_direction = sampling_c3_options.planar_normal_direction};
 
     if (resolution == resolutions.front()) {
@@ -503,7 +749,7 @@ int DoMain(int argc, char* argv[]) {
     std::cout << "    " << std::left << std::setw(8) << "knot"
               << std::setw(11) << "obj x" << std::setw(11) << "obj y"
               << std::setw(11) << "obj z" << std::setw(11) << "|dx| mm"
-              << "||q||" << std::endl;
+              << std::setw(11) << "rot deg" << "||q||" << std::endl;
 
     const VectorXd u_zero = VectorXd::Zero(plant_lcs.num_actuators());
     VectorXd x = x_lcs;
@@ -518,6 +764,11 @@ int DoMain(int argc, char* argv[]) {
                   << std::setw(11) << x(8) << std::setw(11) << x(9)
                   << std::setw(11) << std::setprecision(2)
                   << (x.segment(7, 3) - start).norm() * 1000.0
+                  << std::setw(11)
+                  << 2.0 * std::acos(std::min(
+                               1.0, std::abs(x.segment(3, 4).normalized().dot(
+                                        x_lcs.segment(3, 4))))) *
+                         180.0 / M_PI
                   << std::setprecision(6) << x.segment(3, 4).norm()
                   << std::endl;
       }
@@ -529,6 +780,10 @@ int DoMain(int argc, char* argv[]) {
               << " mm  (|dz| is " << std::setprecision(0)
               << 100.0 * std::abs(total(2)) / std::max(total.norm(), 1e-12)
               << "% of the total)" << std::setprecision(6) << std::endl;
+
+    ReportAttribution(plant_lcs, query_object, inspector, resolved_cost,
+                      cost_friction_directions, cost_contact_model, lcs, x_lcs,
+                      u_zero);
   }
 
   return 0;

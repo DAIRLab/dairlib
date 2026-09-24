@@ -312,6 +312,11 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   /// geometry claiming more than `max_per_object_geometry` slots, then topped
   /// back up to `num_to_select` from the closest of whatever the cap displaced.
   ///
+  /// With `witness_dedup_radius` > 0 the cap counts slots per contact location
+  /// instead: a pair is over the cap when `max_per_object_geometry` already
+  /// selected pairs have their object-side witness points within that radius
+  /// of its own.  See contact_dedup_witness_radius on SamplingC3Options.
+  ///
   /// Public and static so an offline probe can report exactly what the
   /// controller would resolve to without standing up a controller, and without
   /// a second copy of the policy drifting away from this one.
@@ -320,7 +325,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const drake::multibody::MultibodyPlant<double>& plant,
       const drake::systems::Context<double>& context,
       const std::vector<SortedPair<GeometryId>>& candidates, int num_to_select,
-      int max_per_object_geometry);
+      int max_per_object_geometry, double witness_dedup_radius = 0.0);
 
   /// Collapses the per-group contact-pair candidates down to the flat list the
   /// LCS is built from, taking resolve_contacts_to_list[i] pairs from group i.
@@ -335,6 +340,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   /// name on SamplingC3Options for why that matters.  Pass an empty vector for
   /// the uncapped closest-N behavior.
   ///
+  /// @param witness_dedup_radius Passed through to the capped selection above;
+  /// 0 keys the cap on object-side geometry.
+  ///
   /// Public and static for the same reason as the selection above: an offline
   /// probe or a test can ask what the controller would resolve to without
   /// standing up a controller.
@@ -344,6 +352,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const std::vector<std::vector<SortedPair<GeometryId>>>& contact_geoms,
       const std::vector<int>& resolve_contacts_to_list,
       const std::vector<int>& max_contacts_per_object_geometry,
+      double witness_dedup_radius,
       std::vector<int> num_friction_directions = {}, bool verbose = false);
 
  private:

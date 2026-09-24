@@ -2040,7 +2040,8 @@ vector<SortedPair<GeometryId>> SamplingC3Controller::GetResolvedContactPairs(
     const vector<vector<SortedPair<GeometryId>>>& contact_geoms,
     const vector<int>& resolve_contacts_to_list,
     const vector<int>& max_contacts_per_object_geometry,
-    vector<int> num_friction_directions, bool verbose) {
+    double witness_dedup_radius, vector<int> num_friction_directions,
+    bool verbose) {
   int n_contacts = std::accumulate(resolve_contacts_to_list.begin(),
                                    resolve_contacts_to_list.end(), 0);
   vector<SortedPair<GeometryId>> resolved_contacts;
@@ -2089,7 +2090,8 @@ vector<SortedPair<GeometryId>> SamplingC3Controller::GetResolvedContactPairs(
     auto active_contacts = capped
                                ? GetClosestContactPairsCappedPerObjectGeometry(
                                      plant, context, candidates, num_to_select,
-                                     max_contacts_per_object_geometry[i])
+                                     max_contacts_per_object_geometry[i],
+                                     witness_dedup_radius)
                                : LCSFactory::GetNClosestContactPairs(
                                      plant, context, usable, num_to_select);
     if (!active_contacts.empty()) {
@@ -2105,7 +2107,7 @@ vector<SortedPair<GeometryId>>
 SamplingC3Controller::GetClosestContactPairsCappedPerObjectGeometry(
     const MultibodyPlant<double>& plant, const Context<double>& context,
     const vector<SortedPair<GeometryId>>& candidates, int num_to_select,
-    int max_per_object_geometry) {
+    int max_per_object_geometry, double witness_dedup_radius) {
   DRAKE_DEMAND(num_to_select <= static_cast<int>(candidates.size()));
 
   const auto& query_object =
@@ -2113,20 +2115,38 @@ SamplingC3Controller::GetClosestContactPairsCappedPerObjectGeometry(
           .template Eval<drake::geometry::QueryObject<double>>(context);
   const auto& inspector = query_object.inspector();
 
-  vector<std::pair<double, SortedPair<GeometryId>>> sorted;
-  vector<std::pair<double, SortedPair<GeometryId>>> undefined_normal;
+  // The movable-side geometry and its world-frame witness point, when the pair
+  // has a single movable side.  An object-object pair has neither and is
+  // never capped.
+  struct Candidate {
+    double distance;
+    SortedPair<GeometryId> pair;
+    std::optional<GeometryId> movable_geometry;
+    Vector3d movable_witness_point;
+  };
+  vector<Candidate> sorted;
+  vector<Candidate> undefined_normal;
   sorted.reserve(candidates.size());
   for (const auto& pair : candidates) {
     const auto result = query_object.ComputeSignedDistancePairClosestPoints(
         pair.first(), pair.second());
+    Candidate candidate{result.distance, pair,
+                        MovableSideOfPair(plant, inspector, pair),
+                        Vector3d::Zero()};
+    if (candidate.movable_geometry.has_value()) {
+      candidate.movable_witness_point =
+          candidate.movable_geometry.value() == result.id_A
+              ? query_object.GetPoseInWorld(result.id_A) * result.p_ACa
+              : query_object.GetPoseInWorld(result.id_B) * result.p_BCb;
+    }
     // A pair sitting exactly on contact whose shapes Drake cannot orient (see
     // CanReportNormalWhileTouching) carries a NaN normal that would abort the
     // process inside the LCS factory, so hold it aside and let the group fill
     // from the next-closest candidate instead.
     if (result.nhat_BA_W.array().isNaN().any()) {
-      undefined_normal.emplace_back(result.distance, pair);
+      undefined_normal.push_back(candidate);
     } else {
-      sorted.emplace_back(result.distance, pair);
+      sorted.push_back(candidate);
     }
   }
   // Nothing is gained by hiding a degenerate pair if that leaves the group
@@ -2139,21 +2159,41 @@ SamplingC3Controller::GetClosestContactPairsCappedPerObjectGeometry(
   // A full sort rather than a partial one: the second pass walks the rejects in
   // distance order to top the group back up to its budget.
   std::sort(sorted.begin(), sorted.end(),
-            [](const auto& a, const auto& b) { return a.first < b.first; });
+            [](const auto& a, const auto& b) { return a.distance < b.distance; });
 
-  // Pass 1: closest first, but no object-side geometry more than the cap.  A
-  // pair with no single movable side (object-object) is never capped.
+  // Pass 1: closest first, but no single contact location claiming more than
+  // the cap.  A location is either the object-side geometry, or -- with a
+  // witness radius -- a neighborhood of the object-side witness point, which
+  // collapses a corner resting on a seam between two ramp pieces while still
+  // letting one large mesh touch the ramp at several distinct places.
   vector<SortedPair<GeometryId>> selected;
+  vector<Vector3d> selected_points;
   vector<SortedPair<GeometryId>> deferred;
   selected.reserve(num_to_select);
   std::map<GeometryId, int> claimed;
-  for (const auto& [distance, pair] : sorted) {
-    const std::optional<GeometryId> key =
-        MovableSideOfPair(plant, inspector, pair);
-    if (key.has_value() && ++claimed[key.value()] > max_per_object_geometry) {
-      deferred.push_back(pair);
+  for (const auto& candidate : sorted) {
+    bool over_cap = false;
+    if (candidate.movable_geometry.has_value()) {
+      if (witness_dedup_radius > 0) {
+        const int nearby = std::count_if(
+            selected_points.begin(), selected_points.end(),
+            [&](const Vector3d& point) {
+              return (point - candidate.movable_witness_point).norm() <
+                     witness_dedup_radius;
+            });
+        over_cap = nearby >= max_per_object_geometry;
+      } else {
+        over_cap = ++claimed[candidate.movable_geometry.value()] >
+                   max_per_object_geometry;
+      }
+    }
+    if (over_cap) {
+      deferred.push_back(candidate.pair);
     } else {
-      selected.push_back(pair);
+      selected.push_back(candidate.pair);
+      if (candidate.movable_geometry.has_value()) {
+        selected_points.push_back(candidate.movable_witness_point);
+      }
     }
   }
 
@@ -2282,6 +2322,7 @@ SamplingC3Controller::EvaluateJammingMetricsForSamples(
         GetResolvedContactPairs(
             plant_, *context_, contact_pairs_, resolve_contacts_to,
             sampling_c3_options_.max_contacts_per_object_geometry,
+            sampling_c3_options_.contact_dedup_witness_radius.value_or(0.0),
             friction_dirs, false);
     const vector<LCSContactDescription> contact_descriptions =
         LCSFactory(plant_, *context_, plant_ad_, *context_ad_,
@@ -2472,6 +2513,7 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
             plant_, *context_, contact_pairs_,
             sampling_c3_options_.resolve_contacts_to,
             sampling_c3_options_.max_contacts_per_object_geometry,
+            sampling_c3_options_.contact_dedup_witness_radius.value_or(0.0),
             sampling_c3_options_.num_friction_directions_per_contact.value(),
             verbose_);
     LCSFactory lcs_factory_sample(plant_, *context_, plant_ad_, *context_ad_,
@@ -2495,6 +2537,7 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
         plant_, *context_, contact_pairs_,
         sampling_c3_options_.resolve_contacts_to_for_cost,
         sampling_c3_options_.max_contacts_per_object_geometry_for_cost,
+        sampling_c3_options_.contact_dedup_witness_radius.value_or(0.0),
         sampling_c3_options_.num_friction_directions_per_contact_for_cost,
         verbose_);
     LCSFactoryOptions lcs_factory_options_for_cost = {
@@ -4019,6 +4062,7 @@ void SamplingC3Controller::OutputLCSContactJacobianCurrPlan(
       plant_, *context_, contact_pairs_,
       sampling_c3_options_.resolve_contacts_to,
       sampling_c3_options_.max_contacts_per_object_geometry,
+      sampling_c3_options_.contact_dedup_witness_radius.value_or(0.0),
       sampling_c3_options_.num_friction_directions_per_contact.value(),
       verbose_);
 
@@ -4206,6 +4250,7 @@ void SamplingC3Controller::OutputLCSContactJacobianBestPlan(
       plant_, *context_, contact_pairs_,
       sampling_c3_options_.resolve_contacts_to,
       sampling_c3_options_.max_contacts_per_object_geometry,
+      sampling_c3_options_.contact_dedup_witness_radius.value_or(0.0),
       sampling_c3_options_.num_friction_directions_per_contact.value(),
       verbose_);
   *lcs_contact_descriptions =

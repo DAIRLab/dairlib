@@ -2,10 +2,11 @@
 #include <algorithm>
 #include <iostream>
 #include <numeric>
-#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+#include <optional>
 
 #include "c3/core/c3_options.h"
 #include "c3/multibody/lcs_factory_options.h"
@@ -43,6 +44,11 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
   /// budget is 0 are ignored; conventionally write them as 0.
   std::optional<std::vector<std::vector<int>>>
       max_contacts_per_object_geometry_lists;
+  /// Optional radius [m] that changes what the cap above counts: instead of
+  /// slots per object-side geometry, slots per neighborhood of the object-side
+  /// witness point.  Omit, or 0, for the geometry key.  Only read where the cap
+  /// is in force.
+  std::optional<double> contact_dedup_witness_radius;
   std::vector<int> resolve_as_planar_contacts_list;
   std::vector<int> resolve_contacts_to;
   std::vector<int> resolve_contacts_to_for_cost;
@@ -189,6 +195,7 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     a->Visit(DRAKE_NVP(mu_per_pair_type));
     a->Visit(DRAKE_NVP(resolve_contacts_to_lists));
     a->Visit(DRAKE_NVP(max_contacts_per_object_geometry_lists));
+    a->Visit(DRAKE_NVP(contact_dedup_witness_radius));
     a->Visit(DRAKE_NVP(resolve_as_planar_contacts_list));
     a->Visit(DRAKE_NVP(num_contacts_index));
     a->Visit(DRAKE_NVP(num_contacts_index_for_cost));

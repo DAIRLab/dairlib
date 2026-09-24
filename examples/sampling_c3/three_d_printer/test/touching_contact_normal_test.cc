@@ -188,7 +188,8 @@ TEST(TouchingContactNormalTest, ResolvedContactsNeverCarryANaNNormal) {
           resolved = SamplingC3Controller::GetResolvedContactPairs(
               scene.plant(), scene.context(), scene.contact_pairs(),
               options.resolve_contacts_to,
-              options.max_contacts_per_object_geometry));
+              options.max_contacts_per_object_geometry,
+              options.contact_dedup_witness_radius.value_or(0.0)));
       EXPECT_EQ(static_cast<int>(resolved.size()), lcs_options.num_contacts);
       for (const auto& resolved_pair : resolved) {
         const auto result =

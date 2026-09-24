@@ -61,13 +61,22 @@ use_predicted_x0_reset_mechanism: false  # Resets if prediction is too far.
 #   4. object-ramp
 mu_per_pair_type: [0.823, 0.42, 0.46, 0.375]  # match URDFs with (2mu1*mu2)/(mu1+mu2)
 
-resolve_contacts_to_lists: [[0, 1, 4, 0], [0, 1, 6, 0], [0, 1, 4, 4], [2, 1, 4, 4]]
+# Entry 4 gives the cost LCS 6 object-ramp slots: with 4, the four base-rim
+# corners of a cone lying in the ramp trough fill the group (they sink ~1 mm,
+# the apex floats ~1 mm), and the model lets the cone pivot about the rim --
+# a u = 0 rollout spins it 60-170 deg in 0.75 s while the real sim holds still.
+resolve_contacts_to_lists: [[0, 1, 4, 0], [0, 1, 6, 0], [0, 1, 4, 4], [2, 1, 4, 4], [2, 1, 4, 6]]
 # Per-group cap on how many of the above slots a single object-side geometry may
 # claim (same shape as resolve_contacts_to_lists; entries for zero-budget groups
 # are ignored).  Omit the key for the plain closest-N behavior every other demo
 # uses.  Setting these to 1 for object-ground means a single cone corner can't
 # rest on two of the ramp pieces and claim both contact pair slots.
-max_contacts_per_object_geometry_lists: [[0, 1, 1, 0], [0, 1, 1, 0], [0, 1, 1, 1], [1, 1, 1, 1]]
+max_contacts_per_object_geometry_lists: [[0, 1, 1, 0], [0, 1, 1, 0], [0, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1]]
+# Key the cap above on where the object is touched rather than which object
+# geometry touches: a corner on a seam still claims one slot, but the cone's
+# own hull resting along the ramp gets one per distinct contact location (5 mm
+# apart) instead of a single pivot point.
+contact_dedup_witness_radius: 0.005
 
 # Per-group contact model flags (same length/order as resolve_contacts_to_lists):
 #   0 → keep original friction directions (use all num_friction_directions)
@@ -76,7 +85,7 @@ resolve_as_planar_contacts_list: [0, 0, 0, 0]
 
 # Index into this list to choose number of contacts for C3 solve and cost.
 num_contacts_index: 2
-num_contacts_index_for_cost: 3
+num_contacts_index_for_cost: 4
 
 planning_dt_position: 0.075
 planning_dt_pose: 0.075

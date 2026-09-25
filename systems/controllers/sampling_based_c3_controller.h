@@ -37,6 +37,7 @@
 #include "examples/sampling_c3/parameter_headers/sampling_params.h"
 #include "lcm/lcm_trajectory.h"
 #include "systems/controllers/face.h"
+#include "systems/controllers/pose_latch_release.h"
 #include "systems/framework/timestamped_vector.h"
 
 #include "drake/systems/framework/diagram.h"
@@ -958,6 +959,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // controller goes from caring only about object position to caring about full
   // pose.
   mutable bool crossed_cost_switching_threshold_ = false;
+  // Releases the latch above after a sustained slide-back; only used when
+  // progress_params_.cost_switching_unlatch_margin is set.
+  mutable PoseLatchReleaseTimer pose_latch_release_timer_;
   mutable int num_threads_to_use_;
 
   mutable SampleIndex best_sample_index_ = kCurrentLocation;

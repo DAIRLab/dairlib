@@ -1085,6 +1085,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
                 << std::endl;
     }
     crossed_cost_switching_threshold_ = false;
+    pose_latch_release_timer_.Reset();
     // A nominee was scored against the old goal, and the confirm margin it will
     // be judged by is mode-dependent, so it carries no information now.
     pending_repos_nominee_.reset();
@@ -1107,16 +1108,44 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   }
 
   // If the object is close to desired XY location, track its full pose.
-  if (!crossed_cost_switching_threshold_) {
-    double pose_diff = 0;
-    for (int i = 0; i < controller_params_.num_objects; i++) {
-      pose_diff += (x_lcs_curr.segment(7 + 7 * i, 2) -
-                    x_lcs_final_des.value().segment(7 + 7 * i, 2))
-                       .norm();
+  double pose_diff = 0;
+  for (int i = 0; i < controller_params_.num_objects; i++) {
+    pose_diff += (x_lcs_curr.segment(7 + 7 * i, 2) -
+                  x_lcs_final_des.value().segment(7 + 7 * i, 2))
+                     .norm();
+  }
+  if (crossed_cost_switching_threshold_ &&
+      progress_params_.cost_switching_unlatch_margin.has_value()) {
+    // Release pose tracking if the object has slid back out past the threshold
+    // and stayed there, so position tracking can push it back up.
+    const double release_distance =
+        (active_cost_switching_threshold_distance_ +
+         progress_params_.cost_switching_unlatch_margin.value()) *
+        controller_params_.num_objects;
+    if (pose_latch_release_timer_.Update(
+            pose_diff, release_distance,
+            progress_params_.cost_switching_unlatch_seconds.value(),
+            context.get_time())) {
+      crossed_cost_switching_threshold_ = false;
+      pose_latch_release_timer_.Reset();
+      dt_ = sampling_c3_options_.planning_dt_position;
+      std::cout << "Released cost switching threshold after object slid back."
+                << std::endl;
+      // The nominee's confirm margin is mode-dependent, and the buffered costs
+      // were scored with the pose-tracking cost.
+      pending_repos_nominee_.reset();
+      pending_repos_to_c3_ = false;
+      ResetSampleBuffers();
+      if (is_doing_c3_) {
+        ResetProgressMetrics();
+      }
     }
+  }
+  if (!crossed_cost_switching_threshold_) {
     if (pose_diff < active_cost_switching_threshold_distance_ *
                         controller_params_.num_objects) {
       crossed_cost_switching_threshold_ = true;
+      pose_latch_release_timer_.Reset();
       dt_ = sampling_c3_options_.planning_dt_pose;  // Always set dt_ according
                                                     // to pose or position mode.
       std::cout << "Crossed cost switching threshold." << std::endl;

@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <optional>
+#include <stdexcept>
 
 #include "common/file_utils.h"
 
@@ -161,6 +162,13 @@ struct SamplingC3ProgressParams {
   std::optional<double> repos_to_c3_confirm_frac_position;
   /// Live jam watchdog.  Unset => no watchdog.
   std::optional<JamGuardParams> jam_guard;
+  /// Release the pose-tracking cost once it is latched, if the object's XY
+  /// distance to the goal stays above the active cost switching threshold plus
+  /// this margin (m) for cost_switching_unlatch_seconds.  It re-latches as
+  /// usual once back inside the threshold.  Recovers from the object sliding
+  /// back down after the latch.  Unset => latched until the goal changes.
+  std::optional<double> cost_switching_unlatch_margin;
+  std::optional<double> cost_switching_unlatch_seconds;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -195,5 +203,13 @@ struct SamplingC3ProgressParams {
     a->Visit(DRAKE_NVP(repos_to_c3_confirm_frac));
     a->Visit(DRAKE_NVP(repos_to_c3_confirm_frac_position));
     a->Visit(DRAKE_NVP(jam_guard));
+    a->Visit(DRAKE_NVP(cost_switching_unlatch_margin));
+    a->Visit(DRAKE_NVP(cost_switching_unlatch_seconds));
+    if (cost_switching_unlatch_margin.has_value() !=
+        cost_switching_unlatch_seconds.has_value()) {
+      throw std::runtime_error(
+          "Set both cost_switching_unlatch_margin and "
+          "cost_switching_unlatch_seconds, or neither.");
+    }
   }
 };

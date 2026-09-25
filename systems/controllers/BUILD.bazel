@@ -61,6 +61,7 @@ cc_library(
         "//multibody:utils",
         "//solvers:solver_options_io",
         ":face",
+        ":pose_latch_release",
         "//systems/framework:vector",
         "//examples/sampling_c3:ee_plan_retiming",
         "//examples/sampling_c3:fast_jamming_label",
@@ -160,6 +161,21 @@ cc_library(
         ":constrained_lqr_controller",
         ":gravity_compensator",
         ":linear_controller",
+    ],
+)
+
+cc_library(
+    name = "pose_latch_release",
+    hdrs = ["pose_latch_release.h"],
+)
+
+cc_test(
+    name = "pose_latch_release_test",
+    size = "small",
+    srcs = ["test/pose_latch_release_test.cc"],
+    deps = [
+        ":pose_latch_release",
+        "@googletest//:gtest_main",
     ],
 )
 

@@ -46,6 +46,13 @@ cost_switching_threshold_distance: 0.05
 # every goal.
 cost_switching_threshold_distance_sequence: [0.0, 0.0, 0.08]
 
+# Release the pose-tracking cost once the object has stayed this far (m) beyond
+# the active threshold for this long (s), e.g. after sliding back down the ramp.
+# It re-latches normally once back inside.  Comment out both to latch until the
+# goal changes.
+cost_switching_unlatch_margin: 0.01
+cost_switching_unlatch_seconds: 2.0
+
 # Penalize repositioning distance.
 travel_cost_per_meter: 0
 

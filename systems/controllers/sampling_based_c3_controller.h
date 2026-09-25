@@ -376,6 +376,24 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       double witness_dedup_radius,
       std::vector<int> num_friction_directions = {}, bool verbose = false);
 
+  /// What the last ComputePlan scored, for offline tools:  each candidate's
+  /// EE location, its cost, the rollout that cost was computed on, and the
+  /// per-knot state cost weights it was computed with.
+  const std::vector<Eigen::Vector3d>& sample_locations_for_testing() const {
+    return all_sample_locations_;
+  }
+  const std::vector<double>& sample_costs_for_testing() const {
+    return all_sample_costs_;
+  }
+  const std::vector<std::vector<Eigen::VectorXd>>&
+  sample_cost_rollouts_for_testing() const {
+    return all_sample_dynamically_feasible_plans_;
+  }
+  const std::vector<Eigen::MatrixXd>& state_cost_weights_for_testing() const {
+    return Q_;
+  }
+  bool is_doing_c3_for_testing() const { return is_doing_c3_; }
+
  private:
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
       C3CostComputationType cost_type, const c3::LCS& lcs_for_cost,

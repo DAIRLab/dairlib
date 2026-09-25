@@ -825,6 +825,37 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
     }
   }
 
+  // Score each knot against the goal re-twisted to that knot, so roll about a
+  // tracked axis is free.  See cost_ignores_tracked_axis_twist.
+  if (sampling_c3_options_.cost_ignores_tracked_axis_twist.value_or(false)) {
+    for (int obj_idx = 0; obj_idx < num_objects; obj_idx++) {
+      if (!goal_params_.HasTrackedAxis(obj_idx)) continue;
+      const int q_index = 3 + 7 * obj_idx;
+      // Local to this sample:  the antipodal hysteresis only has to be
+      // consistent along one rollout.
+      Eigen::Vector3d hysteresis_axis_state = Eigen::Vector3d::Zero();
+      for (int i = 0; i < N_ + 1; i++) {
+        const Quaterniond knot_quat(XX[i](q_index), XX[i](q_index + 1),
+                                    XX[i](q_index + 2), XX[i](q_index + 3));
+        const Quaterniond goal_quat(
+            x_desired[i](q_index), x_desired[i](q_index + 1),
+            x_desired[i](q_index + 2), x_desired[i](q_index + 3));
+        const Quaterniond knot_goal = ComputeAxisAlignedGoalQuaternion(
+            knot_quat, goal_quat,
+            goal_params_.tracked_orientation_axis.at(obj_idx),
+            goal_params_.angle_hysteresis, &hysteresis_axis_state);
+        Eigen::Vector4d knot_goal_wxyz(knot_goal.w(), knot_goal.x(),
+                                       knot_goal.y(), knot_goal.z());
+        // Same hemisphere as the knot, so the quaternion difference measures
+        // the rotation rather than the double cover.
+        if (knot_goal_wxyz.dot(XX[i].segment(q_index, 4)) < 0) {
+          knot_goal_wxyz *= -1;
+        }
+        x_desired[i].segment(q_index, 4) = knot_goal_wxyz;
+      }
+    }
+  }
+
   // Compute the cost.
   double cost = TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
       XX, x_desired, Q_cost, UU, R_cost);

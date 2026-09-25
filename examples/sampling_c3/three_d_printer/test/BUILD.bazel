@@ -417,6 +417,7 @@ cc_binary(
         "//examples/sampling_c3/three_d_printer/cone:parameters",
     ],
     deps = [
+        "//common:quaternion_axis_alignment",
         "//examples/sampling_c3:sampling_c3_utils",
         "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
         "//lcmtypes:lcmt_robot",

@@ -110,6 +110,10 @@ include_back_wall: false  # if include_walls is true, then include_back_wall is 
 use_quaternion_dependent_cost: true
 q_quaternion_dependent_weight: 1000
 q_quaternion_dependent_regularizer_fraction: 0
+# Score each rollout knot against the goal re-twisted to that knot, so roll
+# about the cone's symmetry axis (tracked_orientation_axis) is free and only
+# axis misalignment costs.  Scoring only; the C3 solve keeps its fixed target.
+cost_ignores_tracked_axis_twist: true
 
 Kp_for_ee_pd_rollout: [100, 100, 50]
 Kd_for_ee_pd_rollout: [0.5, 0.5, 0.5]

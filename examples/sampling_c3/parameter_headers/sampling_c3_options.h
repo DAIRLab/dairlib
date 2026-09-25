@@ -80,6 +80,15 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
   bool use_quaternion_dependent_cost;
   double q_quaternion_dependent_weight;
   double q_quaternion_dependent_regularizer_fraction;
+  /// Optional.  When true, a sample's post-solve cost scores each rollout
+  /// knot's orientation against the goal re-twisted to that knot (the
+  /// axis-aligned goal nearest the knot's own orientation), for objects with a
+  /// tracked_orientation_axis:  rotation about the tracked axis is then free,
+  /// and the scored error is the axis misalignment itself.  The published goal
+  /// is only re-twisted to the current orientation, so without this any roll
+  /// about the axis during the rollout is charged as orientation error.
+  /// Scoring only -- the C3 solve keeps the fixed target.  Absent = false.
+  std::optional<bool> cost_ignores_tracked_axis_twist;
 
   std::vector<double> Kp_for_ee_pd_rollout;
   std::vector<double> Kd_for_ee_pd_rollout;
@@ -209,6 +218,7 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     a->Visit(DRAKE_NVP(use_quaternion_dependent_cost));
     a->Visit(DRAKE_NVP(q_quaternion_dependent_weight));
     a->Visit(DRAKE_NVP(q_quaternion_dependent_regularizer_fraction));
+    a->Visit(DRAKE_NVP(cost_ignores_tracked_axis_twist));
 
     a->Visit(DRAKE_NVP(Kp_for_ee_pd_rollout));
     a->Visit(DRAKE_NVP(Kd_for_ee_pd_rollout));

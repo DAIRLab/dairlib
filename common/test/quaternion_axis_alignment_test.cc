@@ -217,5 +217,37 @@ TEST(QuaternionAxisAlignmentTest, SwingOutputsSurviveAntipodalJitter) {
   }
 }
 
+// What SamplingC3Controller::CalcCost relies on when
+// cost_ignores_tracked_axis_twist is set:  scoring a rollout knot against the
+// goal re-twisted to that knot measures exactly the axis misalignment, so
+// twisting the knot about its tracked axis leaves the score unchanged.
+TEST(QuaternionAxisAlignmentTest, RetwistedGoalScoresOnlyMisalignment) {
+  const Vector3d axis(1, 0, 0);
+  std::srand(3);
+  for (int trial = 0; trial < 200; ++trial) {
+    const Quaterniond knot = Quaterniond::UnitRandom();
+    const Quaterniond reference = Quaterniond::UnitRandom();
+    const double misalignment =
+        ComputeAxisMisalignmentAngle(knot, reference, axis);
+    // Stay clear of the antipodal case, where the hysteresis may pick a
+    // reflex swing on purpose.
+    if (misalignment > 170 * M_PI / 180) continue;
+
+    Vector3d state = Vector3d::Zero();
+    const Quaterniond goal =
+        ComputeAxisAlignedGoalQuaternion(knot, reference, axis, 0.4, &state);
+    EXPECT_NEAR(goal.angularDistance(knot), misalignment, 1e-7);
+
+    for (double twist_deg : {-45.0, -10.0, 10.0, 45.0}) {
+      const Quaterniond twisted =
+          knot * Quaterniond(AngleAxisd(twist_deg * M_PI / 180, axis));
+      Vector3d twisted_state = Vector3d::Zero();
+      const Quaterniond twisted_goal = ComputeAxisAlignedGoalQuaternion(
+          twisted, reference, axis, 0.4, &twisted_state);
+      EXPECT_NEAR(twisted_goal.angularDistance(twisted), misalignment, 1e-7);
+    }
+  }
+}
+
 }  // namespace
 }  // namespace dairlib

@@ -37,11 +37,13 @@
 
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <random>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -56,6 +58,9 @@
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/sampling_c3_utils.h"
 #include "systems/controllers/sampling_based_c3_controller.h"
+
+#include "c3/core/traj_eval.h"
+#include "common/quaternion_axis_alignment.h"
 #include "systems/framework/timestamped_vector.h"
 
 #include "drake/common/yaml/yaml_io.h"
@@ -76,6 +81,20 @@ DEFINE_double(window_seconds, 3.0,
               "How much logged history the window replay feeds before the "
               "fixture.");
 DEFINE_int32(seed, 0, "Seed for the noise experiment.");
+DEFINE_string(census_times, "",
+              "Comma-separated fixture times.  When set, run only the sample "
+              "census:  at each fixture, ComputePlan is called "
+              "--census_repeats times on the frozen logged state with the "
+              "shipped sampler, and every candidate it scores is written to "
+              "--census_csv with its cost split by state block.");
+DEFINE_int32(census_repeats, 40, "ComputePlan calls per census fixture.");
+DEFINE_string(census_csv, "/tmp/sample_census.csv", "Census output path.");
+DEFINE_bool(ignore_twist, false,
+            "Turn on sampling_c3_options.cost_ignores_tracked_axis_twist.");
+DEFINE_double(census_warmup_t, -1,
+              "If >= 0, also feed the logged loop nearest this time after the "
+              "goal warm-up, e.g. the loop where the live controller latched "
+              "pose tracking, so the census inherits that latch.");
 
 namespace dairlib {
 namespace {
@@ -257,6 +276,8 @@ class Stepper {
     return CostOfSample0(
         value->get_value<dairlib::lcmt_timestamped_saved_traj>());
   }
+
+  const SamplingC3Controller& controller() const { return controller_; }
   double Step(const LoggedLoop& loop) { return Step(loop, loop.x_actual); }
 
   // Brings a fresh controller to the fixture's goal step:  the controller
@@ -326,17 +347,188 @@ VectorXd PerturbObjectPose(const VectorXd& x, std::mt19937& rng) {
   return out;
 }
 
+// The sample census:  are samples on one side of the object scored worse, and
+// by which term?  The candidates are the shipped sampler's own draws (redrawn
+// on every call), so their distances to the object surface are the ones the
+// live controller sees.  Each row is one candidate of one call.  The cost is
+// split by state block using the weights ComputePlan used, with the EE blocks
+// zeroed as the object-only cost types do; obj_* summing to the cost confirms
+// the split.
+void RunCensus(Plants& plants, const SamplingC3ControllerParams& params,
+               const std::vector<LoggedLoop>& loops) {
+  const MultibodyPlant<double>& plant = *plants.plant_lcs;
+  const int n_q = plant.num_positions();
+  const GeometryId cone_hull = plant.GetCollisionGeometriesForBody(
+      plant.GetBodyByName(params.base_names.at(0)))[0];
+
+  std::vector<double> times;
+  std::stringstream stream(FLAGS_census_times);
+  for (std::string item; std::getline(stream, item, ',');) {
+    times.push_back(std::stod(item));
+  }
+
+  std::ofstream csv(FLAGS_census_csv);
+  csv << "t,repeat,is_c3,index,x,y,z,dx,dy,dz,center_to_hull,cost,cost0,"
+         "obj_quat,obj_pos,obj_w,obj_v,final_dx,final_dy,final_dz,"
+         "final_rot_deg,final_pos_err,start_pos_err,final_quat_err,"
+         "twist_deg,swing_deg,mis_start_deg,mis_end_deg,swing_sq_sum,"
+         "obj_quat_retwist,obj_quat_project\n";
+
+  SamplingC3ControllerParams p = params;
+  p.sampling_c3_options.use_predicted_x0_c3 = false;
+  p.sampling_c3_options.use_predicted_x0_repos = false;
+  for (double t : times) {
+    const LoggedLoop& fixture = loops[NearestLoop(loops, t)];
+    Stepper stepper(plants, p);
+    stepper.WarmUpToGoal(loops, fixture.goal);
+    if (FLAGS_census_warmup_t >= 0) {
+      stepper.Step(loops[NearestLoop(loops, FLAGS_census_warmup_t)]);
+    }
+    const VectorXd& x = fixture.x_actual;
+    const Vector3d object_position = x.segment(7, 3);
+    const Eigen::Quaterniond object_quat(x(3), x(4), x(5), x(6));
+    const Vector3d target_position = fixture.x_target.segment(7, 3);
+    const Eigen::Quaterniond target_quat(fixture.x_target(3),
+                                         fixture.x_target(4),
+                                         fixture.x_target(5),
+                                         fixture.x_target(6));
+
+    plant.SetPositions(plants.plant_lcs_context, x.head(n_q));
+    const auto& query_object =
+        plant.get_geometry_query_input_port()
+            .Eval<drake::geometry::QueryObject<double>>(
+                *plants.plant_lcs_context);
+    auto center_to_hull = [&](const Vector3d& point) {
+      const auto results = query_object.ComputeSignedDistanceGeometryToPoint(
+          point, drake::geometry::GeometrySet(cone_hull));
+      return results.empty() ? NAN : results[0].distance;
+    };
+
+    // The tracked axis, and the unit twist tangent about it at the fixture's
+    // orientation:  d/d(delta) of q (x) [cos(delta/2), sin(delta/2) a].
+    const Vector3d axis = params.goal_params.tracked_orientation_axis.at(0);
+    const Eigen::Quaterniond twist_tangent =
+        object_quat * Eigen::Quaterniond(0, axis.x(), axis.y(), axis.z());
+    const Eigen::Vector4d twist_dir(twist_tangent.w(), twist_tangent.x(),
+                            twist_tangent.y(), twist_tangent.z());
+    const Eigen::Matrix4d P =
+        Eigen::Matrix4d::Identity() -
+        twist_dir.normalized() * twist_dir.normalized().transpose();
+
+    int n_rows = 0;
+    for (int r = 0; r < FLAGS_census_repeats; ++r) {
+      stepper.Step(fixture, x);
+      const SamplingC3Controller& c = stepper.controller();
+      const auto& locations = c.sample_locations_for_testing();
+      const auto& costs = c.sample_costs_for_testing();
+      const auto& rollouts = c.sample_cost_rollouts_for_testing();
+      std::vector<Eigen::MatrixXd> Q = c.state_cost_weights_for_testing();
+      for (auto& Qi : Q) {
+        Qi.block(0, 0, 3, 3).setZero();
+        Qi.block(n_q, n_q, 3, 3).setZero();
+      }
+      const std::vector<VectorXd> x_des(Q.size(), fixture.x_target);
+      for (size_t i = 0; i < locations.size() && i < rollouts.size(); ++i) {
+        const auto& XX = rollouts[i];
+        if (XX.size() != Q.size()) continue;
+        auto term = [&](int start, int size) {
+          return c3::traj_eval::TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
+              start, start + size, XX, x_des, Q);
+        };
+        const VectorXd& x_end = XX.back();
+        const Eigen::Quaterniond end_quat(x_end(3), x_end(4), x_end(5),
+                                          x_end(6));
+        // Twist about the tracked axis and swing of the axis, end vs start.
+        const Eigen::Quaterniond start_quat(XX.front()(3), XX.front()(4),
+                                            XX.front()(5), XX.front()(6));
+        Eigen::Quaterniond relative = start_quat.inverse() * end_quat;
+        if (relative.w() < 0) relative.coeffs() *= -1;
+        const double twist_deg =
+            180.0 / M_PI * 2 *
+            std::atan2(Vector3d(relative.x(), relative.y(), relative.z())
+                           .dot(axis),
+                       relative.w());
+        const double swing_deg =
+            180.0 / M_PI * ComputeAxisMisalignmentAngle(end_quat, start_quat,
+                                                        axis);
+        // Orientation term re-priced three ways:  the exact swing-only
+        // metric (unweighted), the target re-twisted to each knot (R), and
+        // the block with the twist tangent projected out (P).
+        double swing_sq_sum = 0, retwist = 0, project = 0;
+        Vector3d hysteresis_state = Vector3d::Zero();
+        for (size_t k = 0; k < XX.size(); ++k) {
+          const Eigen::Quaterniond qk(XX[k](3), XX[k](4), XX[k](5), XX[k](6));
+          const double mis =
+              ComputeAxisMisalignmentAngle(qk, target_quat, axis);
+          swing_sq_sum += mis * mis;
+          const Eigen::Quaterniond qdk = ComputeAxisAlignedGoalQuaternion(
+              qk, target_quat, axis, params.goal_params.angle_hysteresis,
+              &hysteresis_state);
+          Eigen::Vector4d qk_v(qk.w(), qk.x(), qk.y(), qk.z());
+          Eigen::Vector4d qdk_v(qdk.w(), qdk.x(), qdk.y(), qdk.z());
+          if (qk_v.dot(qdk_v) < 0) qdk_v *= -1;
+          const Eigen::Vector4d e_old = XX[k].segment(3, 4) -
+                                        fixture.x_target.segment(3, 4);
+          const Eigen::Matrix4d Qk = Q[k].block(3, 3, 4, 4);
+          retwist += (qk_v - qdk_v).dot(Qk * (qk_v - qdk_v));
+          project += e_old.dot(P * Qk * P * e_old);
+        }
+        const Vector3d d = locations[i] - object_position;
+        const Vector3d travel = x_end.segment(7, 3) - XX.front().segment(7, 3);
+        csv << fixture.t << "," << r << "," << c.is_doing_c3_for_testing()
+            << "," << i << "," << locations[i].x() << "," << locations[i].y()
+            << "," << locations[i].z() << "," << d.x() << "," << d.y() << ","
+            << d.z() << "," << center_to_hull(locations[i]) << "," << costs[i]
+            << "," << costs[0] << "," << term(3, 4) << "," << term(7, 3)
+            << "," << term(n_q + 3, 3) << "," << term(n_q + 6, 3) << ","
+            << travel.x() << "," << travel.y() << "," << travel.z() << ","
+            << 180.0 / M_PI *
+                   end_quat.angularDistance(Eigen::Quaterniond(
+                       XX.front()(3), XX.front()(4), XX.front()(5),
+                       XX.front()(6)))
+            << "," << (x_end.segment(7, 3) - target_position).norm() << ","
+            << (object_position - target_position).norm() << ","
+            << 180.0 / M_PI * end_quat.angularDistance(target_quat) << ","
+            << twist_deg << "," << swing_deg << ","
+            << 180.0 / M_PI *
+                   ComputeAxisMisalignmentAngle(start_quat, target_quat, axis)
+            << ","
+            << 180.0 / M_PI *
+                   ComputeAxisMisalignmentAngle(end_quat, target_quat, axis)
+            << "," << swing_sq_sum << "," << retwist << "," << project
+            << "\n";
+        ++n_rows;
+      }
+    }
+    std::cout << "census t=" << fixture.t
+              << (fixture.is_c3 ? " (C3)" : " (repos)") << ": " << n_rows
+              << " rows; object at " << 1e3 * object_position.transpose()
+              << " mm, target at " << 1e3 * target_position.transpose()
+              << " mm, " << 180.0 / M_PI * object_quat.angularDistance(target_quat)
+              << " deg off target orientation; logged cost[0] "
+              << fixture.logged_cost0 << std::endl;
+  }
+  std::cout << "wrote " << FLAGS_census_csv << std::endl;
+}
+
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   auto params = drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
       "examples/sampling_c3/three_d_printer/" + FLAGS_demo_name +
       "/parameters/sampling_c3_controller_params.yaml");
+  if (FLAGS_ignore_twist) {
+    params.sampling_c3_options.cost_ignores_tracked_axis_twist = true;
+  }
   Plants plants(params);
   const int n_x =
       plants.plant_lcs->num_positions() + plants.plant_lcs->num_velocities();
   const int n_q = plants.plant_lcs->num_positions();
 
   const std::vector<LoggedLoop> loops = ReadLog(FLAGS_log, n_x);
+  if (!FLAGS_census_times.empty()) {
+    RunCensus(plants, params, loops);
+    return 0;
+  }
   const int k = NearestLoop(loops, FLAGS_t);
   const int k_other = NearestLoop(loops, FLAGS_t_other);
   const LoggedLoop& fixture = loops[k];

@@ -11,6 +11,7 @@
 #include "dairlib/lcmt_robot_output.hpp"
 #include "examples/sampling_c3/c3_mode_visualizer.h"
 #include "examples/sampling_c3/parameter_headers/lcm_channels.h"
+#include "examples/sampling_c3/parameter_headers/robot_sim_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "examples/sampling_c3/parameter_headers/sampling_params.h"
@@ -41,7 +42,6 @@
 #include "drake/systems/framework/diagram_builder.h"
 #include "drake/systems/lcm/lcm_interface_system.h"
 #include "drake/systems/lcm/lcm_subscriber_system.h"
-#include "drake/systems/primitives/multiplexer.h"
 #include "drake/systems/rendering/multibody_position_to_geometry_pose.h"
 
 namespace dairlib {
@@ -71,6 +71,43 @@ using drake::math::RigidTransform;
 using drake::multibody::AddMultibodyPlantSceneGraph;
 using drake::multibody::Parser;
 using drake::systems::DiagramBuilder;
+
+namespace {
+
+/// Assembles the full plant positions from one input per model instance.  By
+/// instance rather than by concatenation, since the order Drake gives the
+/// instances in the full vector is not something to hard-code.
+class ModelInstancePositionsAssembler
+    : public drake::systems::LeafSystem<double> {
+ public:
+  ModelInstancePositionsAssembler(
+      const MultibodyPlant<double>& plant,
+      const std::vector<ModelInstanceIndex>& instances)
+      : plant_(plant), instances_(instances) {
+    for (ModelInstanceIndex instance : instances_) {
+      this->DeclareVectorInputPort(plant.GetModelInstanceName(instance),
+                                   plant.num_positions(instance));
+    }
+    this->DeclareVectorOutputPort("q", plant.num_positions(),
+                                  &ModelInstancePositionsAssembler::CalcOutput);
+  }
+
+ private:
+  void CalcOutput(const drake::systems::Context<double>& context,
+                  drake::systems::BasicVector<double>* output) const {
+    VectorXd q = VectorXd::Zero(plant_.num_positions());
+    for (int i = 0; i < static_cast<int>(instances_.size()); i++) {
+      plant_.SetPositionsInArray(instances_.at(i),
+                                 this->get_input_port(i).Eval(context), &q);
+    }
+    output->SetFromVector(q);
+  }
+
+  const MultibodyPlant<double>& plant_;
+  const std::vector<ModelInstanceIndex> instances_;
+};
+
+}  // namespace
 
 DEFINE_bool(is_simulation, true, "True for simulation, false for hardware");
 DEFINE_string(demo_name, "cone",
@@ -106,6 +143,25 @@ int do_main(int argc, char* argv[]) {
   auto lcm_channel_params =
       drake::yaml::LoadYamlFile<SamplingC3LcmChannels>(lcm_channels_file);
 
+  // With a compliant finger in simulation, the end effector can trail the
+  // carriage that the printer state (and so the controller) reports.  Draw the
+  // true end effector opaque and the controller's belief as a ghost.  Hardware
+  // has no deflection signal, so none of this is added there.
+  bool show_finger_deflection = false;
+  std::optional<FingerCompliance> finger_compliance;
+  if (FLAGS_is_simulation && vis_params.visualize_controller_ee_ghost) {
+    RobotSimParams sim_params = drake::yaml::LoadYamlFile<RobotSimParams>(
+        controller_params.sim_params_file);
+    show_finger_deflection =
+        sim_params.compliant_finger.value_or(false) &&
+        lcm_channel_params.finger_deflection_channel.has_value();
+    if (show_finger_deflection) {
+      finger_compliance =
+          FingerCompliance{.stiffness = sim_params.finger_stiffness.value(),
+                           .damping = sim_params.finger_damping.value()};
+    }
+  }
+
   drake::systems::DiagramBuilder<double> builder;
 
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
@@ -114,7 +170,7 @@ int do_main(int argc, char* argv[]) {
   // Build the visualizer plant.
   MultibodyPlant<double> plant(0.0);
   ModelInstanceIndex printer_index =
-      Add3DPrinterToPlant(&plant, &scene_graph, true);
+      Add3DPrinterToPlant(&plant, &scene_graph, true, finger_compliance);
 
   // Getting vector of object indices for all objects
   std::vector<ModelInstanceIndex> object_indices_plant =
@@ -160,13 +216,17 @@ int do_main(int argc, char* argv[]) {
         plant.num_positions(object_indices_plant.at(i))));
   }
 
-  std::vector<int> input_sizes = {plant.num_positions(printer_index)};
-  for (ModelInstanceIndex obj_index : object_indices_plant) {
-    input_sizes.push_back(plant.num_positions(obj_index));
+  std::vector<ModelInstanceIndex> assembled_instances = {printer_index};
+  assembled_instances.insert(assembled_instances.end(),
+                             object_indices_plant.begin(),
+                             object_indices_plant.end());
+  if (show_finger_deflection) {
+    assembled_instances.push_back(
+        plant.GetBodyByName("end_effector_flange").model_instance());
   }
-
-  auto mux =
-      builder.AddSystem<drake::systems::Multiplexer<double>>(input_sizes);
+  auto positions_assembler =
+      builder.AddSystem<ModelInstancePositionsAssembler>(plant,
+                                                         assembled_instances);
   auto reduced_order_model_receiver =
       builder.AddSystem<systems::ThreeDPrinterKinematics>(
           plant_printer, printer_context.get(), plant_object,
@@ -541,6 +601,42 @@ int do_main(int argc, char* argv[]) {
     }
   }
 
+  // The end effector where rigid carriage kinematics put it, i.e. where the
+  // controller thinks it is.  The opaque end effector is the true one.
+  auto printer_ghost_context = plant_printer.CreateDefaultContext();
+  RobotOutputReceiver* finger_deflection_receiver = nullptr;
+  LcmSubscriberSystem* finger_deflection_sub = nullptr;
+  if (show_finger_deflection) {
+    DRAKE_DEMAND(plant_printer.num_positions() ==
+                 plant.num_positions(printer_index));
+    auto controller_ee_ghost_drawer =
+        builder.AddSystem<systems::EndEffectorGhostDrawer>(
+            meshcat, plant_printer, printer_ghost_context.get(),
+            "end_effector_flange",
+            FindResourceOrThrow(k3dEndEffectorGhostModel),
+            "controller_ee_ghost", vis_params.controller_ee_ghost_color,
+            vis_params.controller_ee_ghost_alpha);
+    builder.Connect(three_d_printer_passthrough->get_output_port(),
+                    controller_ee_ghost_drawer->get_input_port_positions());
+
+    ModelInstanceIndex ee_index = assembled_instances.back();
+    finger_deflection_sub = builder.AddSystem(
+        LcmSubscriberSystem::Make<dairlib::lcmt_robot_output>(
+            *lcm_channel_params.finger_deflection_channel, lcm));
+    finger_deflection_receiver =
+        builder.AddSystem<RobotOutputReceiver>(plant, ee_index);
+    auto finger_deflection_passthrough =
+        builder.AddSystem<SubvectorPassThrough>(
+            finger_deflection_receiver->get_output_port(0).size(), 0,
+            plant.num_positions(ee_index));
+    builder.Connect(*finger_deflection_sub, *finger_deflection_receiver);
+    builder.Connect(*finger_deflection_receiver,
+                    *finger_deflection_passthrough);
+    builder.Connect(finger_deflection_passthrough->get_output_port(),
+                    positions_assembler->get_input_port(
+                        assembled_instances.size() - 1));
+  }
+
   if (vis_params.visualize_c3_state) {
     if (vis_params.object_vis_models.size() == 1) {
       auto c3_target_drawer =
@@ -612,13 +708,13 @@ int do_main(int argc, char* argv[]) {
   }
 
   builder.Connect(three_d_printer_passthrough->get_output_port(),
-                  mux->get_input_port(0));
+                  positions_assembler->get_input_port(0));
   for (int i = 1; i <= tray_passthroughs.size(); i++) {
     builder.Connect(tray_passthroughs.at(i - 1)->get_output_port(),
-                    mux->get_input_port(i));
+                    positions_assembler->get_input_port(i));
   }
 
-  builder.Connect(*mux, *to_pose);
+  builder.Connect(*positions_assembler, *to_pose);
   builder.Connect(
       to_pose->get_output_port(),
       scene_graph.get_source_pose_port(plant.get_source_id().value()));
@@ -656,6 +752,12 @@ int do_main(int argc, char* argv[]) {
   for (int i = 0; i < object_state_receivers.size(); i++) {
     object_state_receivers.at(i)->InitializeSubscriberPositions(
         plant, *object_state_sub_contexts.at(i));
+  }
+  if (finger_deflection_receiver != nullptr) {
+    finger_deflection_receiver->InitializeSubscriberPositions(
+        plant,
+        diagram->GetMutableSubsystemContext(*finger_deflection_sub,
+                                            context.get()));
   }
   /// Use the simulator to drive at a fixed rate
   /// If set_publish_every_time_step is true, this publishes twice

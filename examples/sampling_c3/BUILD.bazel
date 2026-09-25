@@ -398,6 +398,7 @@ cc_binary(
         "//examples/sampling_c3/parameter_headers:visualizer_params",
         "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
         "//examples/sampling_c3/parameter_headers:sampling_params",
+        "//examples/sampling_c3/parameter_headers:robot_sim_params",
         "//common",
         "//multibody:utils",
         "//multibody:visualization_utils",

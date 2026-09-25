@@ -15,6 +15,7 @@
 
 #include "drake/common/trajectories/piecewise_polynomial.h"
 #include "drake/common/trajectories/piecewise_quaternion.h"
+#include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/leaf_system.h"
 
 namespace dairlib {
@@ -313,6 +314,47 @@ class LcmObjectStateDrawer : public drake::systems::LeafSystem<double> {
   std::vector<drake::systems::InputPortIndex> object_state_input_ports_;
   /// One entry per object, holding the utime of the message last drawn.
   drake::systems::DiscreteStateIndex last_update_time_index_;
+};
+
+/// Draws a model as a translucent ghost at the pose that a body of a plant
+/// takes for the plant positions on the input port.  For example, the 3D
+/// printer's end effector where rigid carriage kinematics put it, i.e. where
+/// the controller thinks it is.
+class EndEffectorGhostDrawer : public drake::systems::LeafSystem<double> {
+ public:
+  /// @param meshcat The shared meshcat instance to draw into.
+  /// @param plant The plant whose kinematics place the ghost.
+  /// @param context A context for plant, used as scratch space.
+  /// @param body_name The body of plant whose pose the ghost takes.
+  /// @param model_file The model to draw, whose root body corresponds to
+  ///                   body_name.
+  /// @param path The meshcat prefix to draw under.
+  /// @param rgb The color to draw with, or an empty vector to use the colors
+  ///            defined in the model file.
+  /// @param alpha Transparency scale applied to the model's own alphas.
+  EndEffectorGhostDrawer(
+      const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
+      const drake::multibody::MultibodyPlant<double>& plant,
+      drake::systems::Context<double>* context, const std::string& body_name,
+      const std::string& model_file, const std::string& path,
+      const Eigen::VectorXd& rgb, double alpha = 0.3);
+
+  const drake::systems::InputPort<double>& get_input_port_positions() const {
+    return this->get_input_port(positions_input_port_);
+  }
+
+ private:
+  drake::systems::EventStatus DrawGhost(
+      const drake::systems::Context<double>& context,
+      drake::systems::DiscreteValues<double>* discrete_state) const;
+
+  const drake::multibody::MultibodyPlant<double>& plant_;
+  drake::systems::Context<double>* plant_context_;
+  const drake::multibody::RigidBody<double>& body_;
+  std::unique_ptr<multibody::MultiposeVisualizer> multipose_visualizer_;
+  drake::systems::InputPortIndex positions_input_port_;
+  /// The positions last drawn, to avoid needless redraws.
+  drake::systems::DiscreteStateIndex last_positions_index_;
 };
 
 }  // namespace systems

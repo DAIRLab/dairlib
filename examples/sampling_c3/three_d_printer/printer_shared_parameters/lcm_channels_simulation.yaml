@@ -4,6 +4,8 @@ robot_state_channel: PRINTER_STATE_SIMULATION   # lcmt_robot_output
 object_state_channels: [OBJECT_STATE_SIMULATION] # lcmt_object_state
 clean_object_state_channels: [OBJECT_STATE_SIMULATION_CLEAN]
                                                 # lcmt_object_state
+finger_deflection_channel: FINGER_DEFLECTION_SIMULATION
+                                                # lcmt_robot_output
 robot_input_channel: PRINTER_INPUT_SIMULATION   # lcmt_robot_output
 
 osc_channel: OSC_PRINTER                        # lcmt_robot_output

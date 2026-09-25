@@ -34,6 +34,37 @@ using Eigen::VectorXd;
 using std::string;
 using systems::OutputVector;
 
+namespace {
+
+// Where a model instance's positions start in the full plant vector.  Not the
+// first joint's position_start(): a weld listed first has no positions, and
+// its start need not be the instance's.
+int PositionStart(const MultibodyPlant<double>& plant,
+                  drake::multibody::ModelInstanceIndex model_instance) {
+  int start = plant.num_positions();
+  for (JointIndex i : plant.GetJointIndices(model_instance)) {
+    const auto& joint = plant.get_joint(i);
+    if (joint.num_positions() > 0) {
+      start = std::min(start, joint.position_start());
+    }
+  }
+  return start;
+}
+
+int VelocityStart(const MultibodyPlant<double>& plant,
+                  drake::multibody::ModelInstanceIndex model_instance) {
+  int start = plant.num_velocities();
+  for (JointIndex i : plant.GetJointIndices(model_instance)) {
+    const auto& joint = plant.get_joint(i);
+    if (joint.num_velocities() > 0) {
+      start = std::min(start, joint.velocity_start());
+    }
+  }
+  return start;
+}
+
+}  // namespace
+
 /*--------------------------------------------------------------------------*/
 // methods implementation for RobotOutputReceiver.
 
@@ -70,12 +101,8 @@ RobotOutputReceiver::RobotOutputReceiver(
       multibody::MakeNameToPositionsMap(plant, model_instance);
   velocity_index_map_ =
       multibody::MakeNameToVelocitiesMap(plant, model_instance);
-  positions_start_idx_ =
-      plant.get_joint(plant.GetJointIndices(model_instance).front())
-          .position_start();
-  velocities_start_idx_ =
-      plant.get_joint(plant.GetJointIndices(model_instance).front())
-          .velocity_start();
+  positions_start_idx_ = PositionStart(plant, model_instance);
+  velocities_start_idx_ = VelocityStart(plant, model_instance);
   effort_index_map_ = multibody::MakeNameToActuatorsMap(plant);
   this->DeclareAbstractInputPort("lcmt_robot_output",
                                  drake::Value<dairlib::lcmt_robot_output>{});
@@ -244,12 +271,8 @@ RobotOutputSender::RobotOutputSender(
       multibody::MakeNameToVelocitiesMap(plant, model_instance);
   effort_index_map_ = multibody::MakeNameToActuatorsMap(plant);
 
-  positions_start_idx_ =
-      plant.get_joint(plant.GetJointIndices(model_instance).front())
-          .position_start();
-  velocities_start_idx_ =
-      plant.get_joint(plant.GetJointIndices(model_instance).front())
-          .velocity_start();
+  positions_start_idx_ = PositionStart(plant, model_instance);
+  velocities_start_idx_ = VelocityStart(plant, model_instance);
 
   ordered_position_names_ = multibody::ExtractOrderedNamesFromMap(
       position_index_map_, positions_start_idx_);

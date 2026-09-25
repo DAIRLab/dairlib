@@ -35,6 +35,8 @@ static constexpr const char* k3DPrinterRampModel =
     "examples/sampling_c3/urdf/three_d_printer/ramp/new_ramp.urdf";
 static constexpr const char* k3dEndEffectorModel =
     "examples/sampling_c3/urdf/three_d_printer/EE.urdf";
+static constexpr const char* k3dEndEffectorGhostModel =
+    "examples/sampling_c3/urdf/three_d_printer/EE_ghost.urdf";
 static constexpr const char* k3dEndEffectorSimpleModel =
     "examples/sampling_c3/urdf/three_d_printer/"
     "three_d_printer_end_effector_simple_model.urdf";

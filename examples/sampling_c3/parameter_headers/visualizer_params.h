@@ -36,6 +36,10 @@ struct SamplingC3VisualizerParams {
   Eigen::VectorXd clean_object_state_color;
   double clean_object_state_alpha;
 
+  bool visualize_controller_ee_ghost;
+  Eigen::VectorXd controller_ee_ghost_color;
+  double controller_ee_ghost_alpha;
+
   bool visualize_center_of_mass_plan_curr;
   bool visualize_c3_forces_curr;
   bool visualize_center_of_mass_plan_best;
@@ -80,6 +84,9 @@ struct SamplingC3VisualizerParams {
     a->Visit(DRAKE_NVP(visualize_clean_object_state));
     a->Visit(DRAKE_NVP(clean_object_state_color));
     a->Visit(DRAKE_NVP(clean_object_state_alpha));
+    a->Visit(DRAKE_NVP(visualize_controller_ee_ghost));
+    a->Visit(DRAKE_NVP(controller_ee_ghost_color));
+    a->Visit(DRAKE_NVP(controller_ee_ghost_alpha));
     a->Visit(DRAKE_NVP(visualize_center_of_mass_plan_curr));
     a->Visit(DRAKE_NVP(visualize_c3_forces_curr));
     a->Visit(DRAKE_NVP(visualize_center_of_mass_plan_best));

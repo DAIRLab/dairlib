@@ -1,5 +1,7 @@
 #include "lcm_visualization_systems.h"
 
+#include <limits>
+
 #include <c3/lcmt_contact_forces.hpp>
 #include <dairlib/lcmt_c3_state.hpp>
 #include <dairlib/lcmt_object_state.hpp>
@@ -999,6 +1001,55 @@ drake::systems::EventStatus LcmObjectStateDrawer::DrawObjectStates(
     }
     multipose_visualizers_.at(i)->DrawPoses(pose, context.get_time());
   }
+  return drake::systems::EventStatus::Succeeded();
+}
+
+EndEffectorGhostDrawer::EndEffectorGhostDrawer(
+    const std::shared_ptr<drake::geometry::Meshcat>& meshcat,
+    const drake::multibody::MultibodyPlant<double>& plant,
+    Context<double>* context, const std::string& body_name,
+    const std::string& model_file, const std::string& path,
+    const VectorXd& rgb, double alpha)
+    : plant_(plant),
+      plant_context_(context),
+      body_(plant.GetBodyByName(body_name)) {
+  this->set_name("EndEffectorGhostDrawer: " + path);
+
+  drake::geometry::MeshcatVisualizerParams meshcat_params;
+  meshcat_params.prefix = path;
+  multipose_visualizer_ = std::make_unique<multibody::MultiposeVisualizer>(
+      model_file, 1, alpha * VectorXd::Ones(1), "", meshcat, path, rgb,
+      meshcat_params);
+
+  positions_input_port_ =
+      this->DeclareVectorInputPort("q", plant.num_positions()).get_index();
+
+  // NaN so that the first positions received always draw.
+  last_positions_index_ = this->DeclareDiscreteState(
+      VectorXd::Constant(plant.num_positions(),
+                         std::numeric_limits<double>::quiet_NaN()));
+
+  DeclarePerStepDiscreteUpdateEvent(&EndEffectorGhostDrawer::DrawGhost);
+}
+
+drake::systems::EventStatus EndEffectorGhostDrawer::DrawGhost(
+    const Context<double>& context,
+    DiscreteValues<double>* discrete_state) const {
+  const VectorXd& q = this->EvalVectorInput(context, positions_input_port_)
+                          ->get_value();
+  // Don't needlessly redraw.
+  if (discrete_state->get_value(last_positions_index_) == q) {
+    return drake::systems::EventStatus::Succeeded();
+  }
+  discrete_state->get_mutable_value(last_positions_index_) = q;
+
+  plant_.SetPositions(plant_context_, q);
+  const RigidTransformd& X_WB = plant_.EvalBodyPoseInWorld(*plant_context_,
+                                                           body_);
+  const Quaterniond quat = X_WB.rotation().ToQuaternion();
+  MatrixXd pose(7, 1);
+  pose << quat.w(), quat.x(), quat.y(), quat.z(), X_WB.translation();
+  multipose_visualizer_->DrawPoses(pose, context.get_time());
   return drake::systems::EventStatus::Succeeded();
 }
 

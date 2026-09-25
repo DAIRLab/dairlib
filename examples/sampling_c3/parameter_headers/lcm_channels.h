@@ -10,6 +10,9 @@ struct SamplingC3LcmChannels {
   /// Optional channels carrying the uncorrupted object state, when enabling
   /// simulating object state estimation errors.
   std::optional<std::vector<std::string>> clean_object_state_channels;
+  /// Optional channel carrying the simulated end effector's deflection from
+  /// the carriage, when simulating a compliant finger.
+  std::optional<std::string> finger_deflection_channel;
   std::string robot_input_channel;
   std::string osc_channel;
   std::string osc_debug_channel;
@@ -52,6 +55,7 @@ struct SamplingC3LcmChannels {
     a->Visit(DRAKE_NVP(robot_state_channel));
     a->Visit(DRAKE_NVP(object_state_channels));
     a->Visit(DRAKE_NVP(clean_object_state_channels));
+    a->Visit(DRAKE_NVP(finger_deflection_channel));
     a->Visit(DRAKE_NVP(robot_input_channel));
     a->Visit(DRAKE_NVP(osc_channel));
     a->Visit(DRAKE_NVP(osc_debug_channel));

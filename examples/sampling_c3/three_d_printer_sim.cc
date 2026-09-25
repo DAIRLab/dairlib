@@ -145,6 +145,28 @@ int DoMain(int argc, char* argv[]) {
           sim_params.actuator_delay,
           sim_params.command_time_constant.value_or(0.0), sim_dt);
 
+  // The printer state above is the carriage's, which is all the controller
+  // (and hardware) sees.  With a compliant finger, also publish how far the
+  // end effector has deflected from it so the visualizer can show the truth.
+  if (finger_compliance.has_value()) {
+    if (!lcm_channel_params.finger_deflection_channel.has_value()) {
+      throw std::runtime_error(
+          "compliant_finger is true but the lcm channels file " +
+          lcm_channels_file + " does not set finger_deflection_channel.");
+    }
+    ModelInstanceIndex ee_index =
+        plant.GetBodyByName("end_effector_flange").model_instance();
+    auto finger_deflection_sender =
+        builder.AddSystem<systems::RobotOutputSender>(plant, ee_index, false);
+    auto finger_deflection_pub =
+        builder.AddSystem(LcmPublisherSystem::Make<dairlib::lcmt_robot_output>(
+            *lcm_channel_params.finger_deflection_channel, lcm,
+            1.0 / sim_params.robot_publish_rate));
+    builder.Connect(plant.get_state_output_port(ee_index),
+                    finger_deflection_sender->get_input_port_state());
+    builder.Connect(*finger_deflection_sender, *finger_deflection_pub);
+  }
+
   // --------------------------------------------------------------------------
   // Object publishers
   // --------------------------------------------------------------------------

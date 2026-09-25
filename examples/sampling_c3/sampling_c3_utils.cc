@@ -269,7 +269,7 @@ ModelInstanceIndex Add3DPrinterToPlant(
       const RigidBody<double>& deflection_x_body = plant->AddRigidBody(
           "finger_deflection_x", ee_index,
           drake::multibody::SpatialInertia<double>::SolidSphereWithMass(
-              0.01, 0.005));
+              0.001, 0.005));
       const auto& x_joint =
           plant->AddJoint<drake::multibody::PrismaticJoint>(
               "finger_deflection_x_joint",

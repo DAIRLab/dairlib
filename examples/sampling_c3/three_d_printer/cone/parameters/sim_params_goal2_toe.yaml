@@ -79,7 +79,10 @@ object_state_error_params:
 # as the reported EE driving into the object.  The rigid mount cannot produce
 # that.  The stiffness is a placeholder until measured on the bench (N per mm
 # of tip deflection); the carriage's 100 N effort limit caps deflection at
-# 100 N / finger_stiffness.  The two numbers are only read when enabled.
+# 100 N / finger_stiffness.  The damping is ~0.2 of critical for the ~10 g
+# that rides the springs (EE.urdf plus the deflection body), so a bent finger
+# rings out over a few cycles instead of stopping dead.  The two numbers are
+# only read when enabled.
 compliant_finger: true
 finger_stiffness: 1000.0    # [N/m] per axis
-finger_damping: 20.0        # [N s/m] per axis
+finger_damping: 1.2         # [N s/m] per axis

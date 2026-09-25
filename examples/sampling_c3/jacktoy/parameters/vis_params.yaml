@@ -47,3 +47,7 @@ df_best_ee_color: [1.0, 0.64, 0.0]
 visualize_clean_object_state: false
 clean_object_state_color: []
 clean_object_state_alpha: 0.4
+
+visualize_controller_ee_ghost: false
+controller_ee_ghost_color: []
+controller_ee_ghost_alpha: 0.4

@@ -72,10 +72,11 @@ MultiposeVisualizer::MultiposeVisualizer(string model_file, int num_poses,
           plant_->GetVisualGeometriesForBody(plant_->get_body(body_index));
       for (const auto& geometry_id : geometry_ids) {
         const auto& prop = inspector.GetIllustrationProperties(geometry_id);
-        if (prop && prop->HasProperty("phong", "diffuse")) {
+        if (prop) {
           drake::geometry::IllustrationProperties new_props(*prop);
-          auto phong =
-              prop->GetProperty<drake::geometry::Rgba>("phong", "diffuse");
+          // Visuals without a material use Drake's default diffuse color.
+          auto phong = prop->GetPropertyOrDefault<drake::geometry::Rgba>(
+              "phong", "diffuse", drake::geometry::Rgba(0.9, 0.9, 0.9, 1.0));
 
           // Scale alpha value, threshold to [0,1]
           double new_alpha = alpha_scale(i - 2) * phong.a();

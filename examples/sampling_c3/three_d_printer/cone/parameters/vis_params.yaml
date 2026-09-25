@@ -23,6 +23,15 @@ visualize_clean_object_state: true
 clean_object_state_color: [0.2, 0.8, 0.2]
 clean_object_state_alpha: 0.4
 
+# With sim_params' compliant_finger true, the opaque end effector is drawn at
+# its true, deflected pose (published on the lcm channels'
+# finger_deflection_channel) and this translucent ghost at the rigid carriage
+# pose, i.e. where the controller thinks the end effector is.  Ignored on
+# hardware and when compliant_finger is false.
+visualize_controller_ee_ghost: true
+controller_ee_ghost_color: [1.0, 0.5, 0.0]
+controller_ee_ghost_alpha: 0.4
+
 visualize_center_of_mass_plan_curr: false
 visualize_c3_forces_curr: false
 visualize_center_of_mass_plan_best: false

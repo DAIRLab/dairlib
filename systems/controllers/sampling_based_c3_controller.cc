@@ -1144,7 +1144,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       crossed_cost_switching_threshold_ = false;
       pose_latch_release_timer_.Reset();
       dt_ = sampling_c3_options_.planning_dt_position;
-      std::cout << "Released cost switching threshold after object slid back."
+      std::cout << "Pose -> Position mode after position regressed."
                 << std::endl;
       // The nominee's confirm margin is mode-dependent, and the buffered costs
       // were scored with the pose-tracking cost.
@@ -3762,8 +3762,8 @@ void SamplingC3Controller::UpdateJamWatchdog(
   const auto query_objects = [&](const Vector3d& point) {
     const auto& results = query_object.ComputeSignedDistanceGeometryToPoint(
         point, drake::geometry::GeometrySet(object_geometry_ids_));
-    std::pair<double, Vector3d> nearest{
-        std::numeric_limits<double>::infinity(), Vector3d::Zero()};
+    std::pair<double, Vector3d> nearest{std::numeric_limits<double>::infinity(),
+                                        Vector3d::Zero()};
     for (const auto& result : results) {
       if (result.distance < nearest.first) {
         nearest = {result.distance, result.grad_W};
@@ -3810,9 +3810,9 @@ void SamplingC3Controller::UpdateJamWatchdog(
   const auto [measured_distance, measured_gradient] =
       query_objects(measured_ee);
   const bool measured_gap_is_valid = std::isfinite(measured_distance);
-  jam_ee_object_gap_measured_ =
-      measured_gap_is_valid ? measured_distance - ee_radius_
-                            : std::numeric_limits<double>::quiet_NaN();
+  jam_ee_object_gap_measured_ = measured_gap_is_valid
+                                    ? measured_distance - ee_radius_
+                                    : std::numeric_limits<double>::quiet_NaN();
   // The last outward normal read while the reported EE was still shallow, so
   // still on the side it came in from.
   if (measured_gap_is_valid && measured_gradient.norm() > 1e-9 &&
@@ -3839,9 +3839,8 @@ void SamplingC3Controller::UpdateJamWatchdog(
   // Keep one sample older than the window so the history spans it rather than
   // stopping just inside, then the front is the oldest pose still in scope.
   for (auto* history : {&jam_object_history_, &jam_ee_history_}) {
-    while (history->size() > 1 &&
-           now - (*history)[1].first >=
-               jam_params.object_travel_window_seconds) {
+    while (history->size() > 1 && now - (*history)[1].first >=
+                                      jam_params.object_travel_window_seconds) {
       history->pop_front();
     }
   }
@@ -3869,9 +3868,8 @@ void SamplingC3Controller::UpdateJamWatchdog(
       gap_is_valid ? std::optional<double>(jam_ee_object_gap_) : std::nullopt,
       travel_is_valid ? std::optional<double>(jam_object_travel_)
                       : std::nullopt,
-      measured_gap_is_valid
-          ? std::optional<double>(jam_ee_object_gap_measured_)
-          : std::nullopt);
+      measured_gap_is_valid ? std::optional<double>(jam_ee_object_gap_measured_)
+                            : std::nullopt);
   jam_trip_seconds_ = jam_latch_->trip_seconds();
   jam_tripped_ = jam_latch_->tripped();
   jam_deep_armed_ = jam_latch_->deep_arming();
@@ -3900,8 +3898,8 @@ void SamplingC3Controller::UpdateJamWatchdog(
   if (rising_edge) {
     std::cout << "Jam detected"
               << (jam_latch_->tripped_by_deep() ? " (deep tier)" : "")
-              << ": EE<->object force " << jam_ee_object_force_
-              << " N, gap " << jam_ee_object_gap_ << " m, reported-EE gap "
+              << ": EE<->object force " << jam_ee_object_force_ << " N, gap "
+              << jam_ee_object_gap_ << " m, reported-EE gap "
               << jam_ee_object_gap_measured_ << " m, object travel "
               << jam_object_travel_ << " m, held "
               << (jam_latch_->tripped_by_deep()

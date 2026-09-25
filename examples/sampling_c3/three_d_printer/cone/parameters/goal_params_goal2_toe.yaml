@@ -1,0 +1,75 @@
+# Goal-2 ramp-toe jam scenario (2026-09-24).  Same as goal_params.yaml except
+# the goal sequence, which starts the run where the 2026-09-23 hardware runs
+# came to grief:  the cone is pushed into goal 1 by an EE low behind it, goal 1
+# is met mid-push, and goal 2 begins from that low pose at the ramp toe (hw0 at
+# t = 148.6 s:  EE (0.283, 0.046, 0.029), cone (0.257, 0.057)).  Pair it with
+# sim_params_goal2_toe.yaml.  To run it, point goal_params_file and
+# sim_params_file in sampling_c3_controller_params.yaml at the two, and set
+# control_loop_delay_ms there to 35 to match hardware's ~10 Hz loop.
+
+# Goal mode options (defined as GoalMode enum in goal_params.h):
+#   0. kRandom:               randomly generate a new goal.
+#   1. kOrientationSequence:  keep position goal the same, and cycle through a
+#                             sequence of orientations.
+#   2. kFixedGoal:            keep the same goal.
+#   3. kFixedGoalSequence:    step through a sequence of fixed (position,
+#                             orientation) goals, advancing once the current
+#                             one is reached, and holding at the last goal.
+goal_mode: 3  # This 3D printer demo steps through a fixed goal sequence.
+
+### Parameters used for multiple goal modes.
+# Success thresholds for position and orientation.
+position_success_threshold: 0.02
+orientation_success_threshold: 0.1  # 0.1 rad = 5.7 degrees
+only_use_xy_position: true
+tracked_orientation_axis: [[1.0, 0.0, 0.0]]  # cone's symmetry axis is body +x
+
+#resting_object_height: -0.004                # in world frame
+resting_object_heights: [0.0254]              # in world frame
+ee_target_z_offset_above_object: 0.06   # defines EE goal w.r.t. object position
+
+# Where the EE parks (and holds) once all fixed goals are reached, to get out of
+# the way.
+ee_parked_position: [0.15, 0.15, 0.15]
+
+# Lookahead parameters to define a sub-goal for C3.
+lookahead_step_size: 0.1    # meters
+lookahead_angle: 2          # rad
+
+# Apply hysteresis on the lookahead angle so the sub-goal orientation doesn't
+# flip back and forth near the 180 degree error singularity.  A lower number
+# means the sub-goal orientation can switch more often; a higher number means
+# the sub-goal orientation is more stable but possibly less optimal.
+angle_hysteresis: 0.4
+
+# Factor to convert an angular error to angular velocity command (0=disabled).
+angle_err_to_vel_factor: 0
+
+# Initial goal (and only goal for fixed goal mode) DEPRECATED.
+#fixed_target_position: [0.65, 0.18745379, -0.004]
+#fixed_target_orientation: [-0.9327733, 0, 0, 0.36046353]
+
+fixed_target_positions: [[0.069, 0.07, 0.05]]
+fixed_target_orientations: [[0.707, 0, 0.707, 0]]
+
+# kFixedGoalSequence:  Sequence of (position, orientation) goals to step
+# through.  Outer index = step, inner index = object.
+fixed_target_position_sequence:
+  # Goal 0 is where the cone starts, so it is met on the first loop and its
+  # per-goal settings (q_vector_position_sequence[0]) never get a say.
+  - [[0.257, 0.057, 0.0]]
+  - [[0.234, 0.07, 0.0]]      # the real goal 1
+  - [[0.069, 0.07, 0.05]]     # the real goal 2
+fixed_target_orientation_sequence:
+  - [[0.707, 0, -0.707, 0]]
+  - [[0.707, 0, -0.707, 0]]
+  - [[0.707, 0, 0.707, 0]]
+
+
+# Random-specific parameters.
+random_goal_x_limits: [0.1, 0.25]  # for small object use [0.45, 0.55], big object [0.5, 0.51]
+random_goal_y_limits: [0.1, 0.25]   # for small object use [-0.25, 0.25], big object [-0.15, 0.15]
+random_goal_radius_limits: [0.0, 10.0]
+
+random_goal_gen_max_attempts: 100
+pairwise_goal_distance: 0.20  # How far each pair of goals must be from each other

@@ -98,6 +98,12 @@ c3_to_repos_confirm_frac_position: 0.0
 repos_to_c3_confirm_frac: 0.3
 repos_to_c3_confirm_frac_position: 0.3
 
+# Leave C3 for repositioning on every goal change rather than carrying the old
+# goal's push into the new one, and keep C3 off that spot until the object
+# moves.  The 2026-09-23 hardware runs entered goal 2 mid-push at 19-40 mm and
+# two of three jammed the cone into the ramp toe within 1.4 s.
+force_repos_on_goal_change: true
+
 # Live jam watchdog:  allow the controller to switch C3 -> Repos if it detects
 # the EE is jammed against the object.  This is a safety feature to get out of
 # dangerous situations faster than the other C3 -> Repos switching logic.  Omit
@@ -125,3 +131,16 @@ jam_guard:
                       # travel along the object surface normal at the fastest
                       # speed reposition_params' speed_horizontal /
                       # speed_vertical allow in that direction
+  # Deep tier:  trip when the gap from the printer's REPORTED EE position (not
+  # the predicted one) stays below deep_gap_trip for deep_trip_hold_seconds,
+  # whatever the object does.  The printer reports stepper position, so a
+  # jammed finger that bends shows up as the EE driving into and through the
+  # object; the gates above miss it because the predicted-EE gap flips positive
+  # once it crosses the object's axis.  Scored offline on the 2026-09-23 logs
+  # (three_d_printer/test/score_deep_jam_guard.py):  one trip per hardware run,
+  # each at its launch event (1.1 s and 0.7 s ahead of hw0/hw2's launch), none
+  # elsewhere on hardware, and 1 across the five realistic-sim runs.  Not
+  # comparable with gap_trip, which is measured from the predicted EE.  Omit
+  # both keys to turn the tier off.
+  deep_gap_trip: -0.011
+  deep_trip_hold_seconds: 0.2

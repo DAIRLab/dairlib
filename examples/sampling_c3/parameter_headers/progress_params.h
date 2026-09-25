@@ -103,6 +103,15 @@ struct JamGuardParams {
   /// repositioning plan, each one knot period of travel along the outward
   /// object surface normal.
   int retreat_knots;
+  /// The deep tier: arm below this gap [m] measured from the printer's
+  /// reported EE position rather than the predicted one, regardless of object
+  /// travel.  The reported position is the stepper's, so a jammed, bending
+  /// finger shows up as the EE passing into and through the object.  Must be
+  /// negative; not comparable with gap_trip, which is measured from the
+  /// predicted EE.  Omit this and deep_trip_hold_seconds to turn the tier off.
+  std::optional<double> deep_gap_trip;
+  /// Seconds the deep condition must hold continuously before the latch sets.
+  std::optional<double> deep_trip_hold_seconds;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -117,6 +126,13 @@ struct JamGuardParams {
     a->Visit(DRAKE_NVP(trip_hold_seconds));
     a->Visit(DRAKE_NVP(release_hold_seconds));
     a->Visit(DRAKE_NVP(retreat_knots));
+    a->Visit(DRAKE_NVP(deep_gap_trip));
+    a->Visit(DRAKE_NVP(deep_trip_hold_seconds));
+    if (deep_gap_trip.has_value() != deep_trip_hold_seconds.has_value()) {
+      throw std::runtime_error(
+          "jam_guard: set both deep_gap_trip and deep_trip_hold_seconds, or "
+          "neither.");
+    }
   }
 };
 
@@ -162,6 +178,10 @@ struct SamplingC3ProgressParams {
   std::optional<double> repos_to_c3_confirm_frac_position;
   /// Live jam watchdog.  Unset => no watchdog.
   std::optional<JamGuardParams> jam_guard;
+  /// Leave C3 for repositioning whenever the goal changes, instead of carrying
+  /// the previous goal's push into the new one, and keep C3 off the spot the
+  /// EE was at until the object moves.  Omitted means false.
+  std::optional<bool> force_repos_on_goal_change;
   /// Release the pose-tracking cost once it is latched, if the object's XY
   /// distance to the goal stays above the active cost switching threshold plus
   /// this margin (m) for cost_switching_unlatch_seconds.  It re-latches as
@@ -203,6 +223,7 @@ struct SamplingC3ProgressParams {
     a->Visit(DRAKE_NVP(repos_to_c3_confirm_frac));
     a->Visit(DRAKE_NVP(repos_to_c3_confirm_frac_position));
     a->Visit(DRAKE_NVP(jam_guard));
+    a->Visit(DRAKE_NVP(force_repos_on_goal_change));
     a->Visit(DRAKE_NVP(cost_switching_unlatch_margin));
     a->Visit(DRAKE_NVP(cost_switching_unlatch_seconds));
     if (cost_switching_unlatch_margin.has_value() !=

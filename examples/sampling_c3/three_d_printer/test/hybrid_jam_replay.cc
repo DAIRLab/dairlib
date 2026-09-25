@@ -70,6 +70,9 @@
 #include <vector>
 
 #include <Eigen/Dense>
+#include <archive/dairlib/lcmt_sampling_c3_debug.hpp>
+#include <archive/dairlib/lcmt_sampling_c3_debug_v2.hpp>
+#include <archive/dairlib/lcmt_sampling_c3_debug_v3.hpp>
 #include <dairlib/lcmt_object_state.hpp>
 #include <dairlib/lcmt_radio_out.hpp>
 #include <dairlib/lcmt_robot_output.hpp>
@@ -260,32 +263,60 @@ std::vector<uint8_t> UpgradeIfNeeded(const std::string& channel,
   };
   const float kNoReading = std::numeric_limits<float>::quiet_NaN();
 
+  auto append_int32 = [&out](int32_t value) {
+    const uint32_t raw = static_cast<uint32_t>(value);
+    for (int i = 0; i < 4; ++i) {
+      out.push_back(static_cast<uint8_t>((raw >> (8 * (3 - i))) & 0xFF));
+    }
+  };
+
   if (channel == kTickChannel) {
-    const int current_size = dairlib::lcmt_sampling_c3_debug().getEncodedSize();
-    // Two generations of older log to upgrade, distinguished by how short they
-    // are.  Both are pure appends: every jam field this type has gained was
-    // added at the end, jam_object_travel included, so nothing has to be
-    // reinserted under a trailing byte.
-    constexpr int kJamFieldsBytes = 4 + 4 + 1;  // force, gap, tripped
-    constexpr int kTravelBytes = 4;             // jam_object_travel
-    if (size + kJamFieldsBytes + kTravelBytes == current_size) {
-      // Predates the watchdog entirely: none of the four fields is present.
-      overwrite_hash(dairlib::lcmt_sampling_c3_debug::getHash());
+    // Every field this type has gained was appended, so each archived
+    // generation is a prefix of the next.  Identify the generation by its
+    // fingerprint -- NOT by how short it is: two generations have been exactly
+    // the same number of bytes short of current before, and a length rule then
+    // upgrades one as the other and lands a field's bytes in its neighbour.
+    // The appended tails below are cumulative, oldest generation first.
+    if (size < 8) return out;
+    int64_t hash = 0;
+    for (int i = 0; i < 8; ++i) hash = (hash << 8) | bytes[i];
+    // repos_target_decision's "no reading": 0 is a real decision ("kept the
+    // incumbent"), so an upgraded log must not claim it.
+    constexpr int32_t kNoDecision = -1;
+    const auto append_travel = [&]() {
+      append_float(kNoReading);  // jam_object_travel
+    };
+    const auto append_repos_target_decision = [&]() {
+      append_int32(kNoDecision);
+    };
+    const auto append_deep_tier = [&]() {
+      append_float(kNoReading);  // jam_ee_object_gap_measured
+      out.push_back(0);          // jam_deep_armed
+    };
+    if (hash == archive::dairlib::lcmt_sampling_c3_debug::getHash()) {
+      // v1: the original three jam fields, nothing after.
+      append_travel();
+      append_repos_target_decision();
+      append_deep_tier();
+    } else if (hash == archive::dairlib::lcmt_sampling_c3_debug_v2::getHash()) {
+      append_repos_target_decision();
+      append_deep_tier();
+    } else if (hash == archive::dairlib::lcmt_sampling_c3_debug_v3::getHash()) {
+      append_deep_tier();
+    } else if (size + (4 + 4 + 1) + 4 + 4 + (4 + 1) ==
+               dairlib::lcmt_sampling_c3_debug().getEncodedSize()) {
+      // Predates the watchdog entirely, and has no archived layout to match a
+      // fingerprint against; the only generation left that is this short.
       append_float(kNoReading);  // jam_ee_object_force
       append_float(kNoReading);  // jam_ee_object_gap
       out.push_back(0);          // jam_tripped
-      append_float(kNoReading);  // jam_object_travel
+      append_travel();
+      append_repos_target_decision();
+      append_deep_tier();
+    } else {
       return out;
     }
-    if (size + kTravelBytes == current_size) {
-      // Has the original three jam fields but not the travel term -- which is
-      // every log recorded between the watchdog landing and this change,
-      // including the 2026-09-17 hardware logs and the 2026-09-22 sim logs the
-      // thresholds were scored on.
-      overwrite_hash(dairlib::lcmt_sampling_c3_debug::getHash());
-      append_float(kNoReading);  // jam_object_travel
-      return out;
-    }
+    overwrite_hash(dairlib::lcmt_sampling_c3_debug::getHash());
     return out;
   }
   if (channel == "SAMPLE_BUFFER" || channel == "UNSUCCESSFUL_SAMPLE_BUFFER") {

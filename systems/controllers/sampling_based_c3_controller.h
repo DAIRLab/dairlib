@@ -90,7 +90,8 @@ enum ModeSwitchReason {
   kToReposCost,
   kToReposUnproductive,
   kToC3Xbox,
-  kToReposJamDetected
+  kToReposJamDetected,
+  kToReposGoalChanged
 };
 
 enum PursuedTargetSource { kNoTarget, kPrevious, kNewSample, kFromBuffer };
@@ -513,7 +514,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   ///      of @p curr_location_plan -- the same lambda C3_FORCES_CURR carries,
   ///      so nothing new is solved; and
   ///   2. the apparent EE-to-object interpenetration, one signed-distance
-  ///      query against the object geometries; and
+  ///      query against the object geometries from the predicted EE, and a
+  ///      second from the printer's reported EE for the deep tier; and
   ///   3. how far the object estimate has travelled over the last
   ///      object_travel_window_seconds, from a short history this keeps.
   /// The arming, dwell and release rules themselves live in JamLatch; a no-op
@@ -994,6 +996,24 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // first.  Entries older than the window are dropped each loop, so this holds
   // a handful of samples at the control rate and never grows.
   mutable std::deque<std::pair<double, Eigen::Vector3d>> jam_object_history_;
+  // (time [s], reported EE position [m]) over the same window, pruned the same
+  // way.  Reversed, it is the direction a deep trip retreats along.
+  mutable std::deque<std::pair<double, Eigen::Vector3d>> jam_ee_history_;
+  // The gap as above but from the EE position the printer reported, before
+  // prediction; feeds the deep tier.  NaN when the query returned nothing.
+  mutable double jam_ee_object_gap_measured_ =
+      std::numeric_limits<double>::quiet_NaN();
+  // Whether the deep tier's condition held this loop, dwell or not.
+  mutable bool jam_deep_armed_ = false;
+  // Whether this control loop detected a goal change.  Cleared at the top of
+  // every loop's goal check.
+  mutable bool goal_changed_this_loop_ = false;
+  // The last outward normal from the reported-EE query while that gap was
+  // still above gap_trip.  Zero until one has been seen.
+  mutable Eigen::Vector3d jam_last_shallow_normal_ = Eigen::Vector3d::Zero();
+  // The retreat direction a deep trip froze at its rising edge; replaces
+  // jam_escape_direction_ for as long as that latch holds.
+  mutable Eigen::Vector3d jam_deep_escape_direction_ = Eigen::Vector3d::Zero();
   // Farthest the object estimate has moved from its newest sample across that
   // history [m].  NaN until the history spans the whole window, which is the
   // same "no trustworthy reading" signal the gap uses.

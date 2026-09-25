@@ -9,6 +9,8 @@
 #include "drake/common/drake_assert.h"
 #include "drake/common/drake_throw.h"
 #include "drake/multibody/parsing/parser.h"
+#include "drake/multibody/tree/prismatic_joint.h"
+#include "drake/multibody/tree/prismatic_spring.h"
 
 namespace dairlib {
 
@@ -17,6 +19,7 @@ using drake::math::RigidTransform;
 using drake::multibody::ModelInstanceIndex;
 using drake::multibody::MultibodyPlant;
 using drake::multibody::Parser;
+using drake::multibody::RigidBody;
 using std::vector;
 
 ModelInstanceIndex AddFrankaToPlant(MultibodyPlant<double>* plant,
@@ -205,9 +208,10 @@ vector<ModelInstanceIndex> AddLCSModelsToPlant(
   return obj_models;
 }
 
-ModelInstanceIndex Add3DPrinterToPlant(MultibodyPlant<double>* plant,
-                                       SceneGraph<double>* scene_graph,
-                                       const bool& include_ee) {
+ModelInstanceIndex Add3DPrinterToPlant(
+    MultibodyPlant<double>* plant, SceneGraph<double>* scene_graph,
+    const bool& include_ee,
+    const std::optional<FingerCompliance>& finger_compliance) {
   Parser parser(plant, scene_graph);
   parser.SetAutoRenaming(true);
 
@@ -253,9 +257,42 @@ ModelInstanceIndex Add3DPrinterToPlant(MultibodyPlant<double>* plant,
   if (include_ee) {
     ModelInstanceIndex ee_index = parser.AddModels(k3dEndEffectorModel)[0];
     RigidTransform<double> T_Printer_EE(k3dPrinterToolAttachmentFrame);
-    plant->WeldFrames(plant->GetFrameByName("x_carriage"),
-                      plant->GetFrameByName("end_effector_flange"),
-                      T_Printer_EE);
+    if (!finger_compliance.has_value()) {
+      plant->WeldFrames(plant->GetFrameByName("x_carriage"),
+                        plant->GetFrameByName("end_effector_flange"),
+                        T_Printer_EE);
+    } else {
+      // The whole end effector translates horizontally on two springs, x then
+      // y, through a light intermediate body.  A translation rather than a
+      // bend about the flange: what matters here is how far the tip can trail
+      // the carriage it is reported as, not the tip's small rise as it bends.
+      const RigidBody<double>& deflection_x_body = plant->AddRigidBody(
+          "finger_deflection_x", ee_index,
+          drake::multibody::SpatialInertia<double>::SolidSphereWithMass(
+              0.01, 0.005));
+      const auto& x_joint =
+          plant->AddJoint<drake::multibody::PrismaticJoint>(
+              "finger_deflection_x_joint",
+              plant->GetBodyByName("x_carriage"), T_Printer_EE,
+              deflection_x_body, RigidTransform<double>::Identity(),
+              Eigen::Vector3d::UnitX(),
+              -std::numeric_limits<double>::infinity(),
+              std::numeric_limits<double>::infinity(),
+              finger_compliance->damping);
+      const auto& y_joint =
+          plant->AddJoint<drake::multibody::PrismaticJoint>(
+              "finger_deflection_y_joint", deflection_x_body,
+              RigidTransform<double>::Identity(),
+              plant->GetBodyByName("end_effector_flange", ee_index),
+              RigidTransform<double>::Identity(), Eigen::Vector3d::UnitY(),
+              -std::numeric_limits<double>::infinity(),
+              std::numeric_limits<double>::infinity(),
+              finger_compliance->damping);
+      plant->AddForceElement<drake::multibody::PrismaticSpring>(
+          x_joint, 0.0, finger_compliance->stiffness);
+      plant->AddForceElement<drake::multibody::PrismaticSpring>(
+          y_joint, 0.0, finger_compliance->stiffness);
+    }
 
     // Disable gravity for all end effector bodies.
     plant->set_gravity_enabled(ee_index, false);

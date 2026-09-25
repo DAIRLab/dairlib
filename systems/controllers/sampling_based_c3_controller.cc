@@ -564,6 +564,10 @@ SamplingC3Controller::SamplingC3Controller(
     DRAKE_DEMAND(jam_params.trip_hold_seconds >= 0.0);
     DRAKE_DEMAND(jam_params.release_hold_seconds >= 0.0);
     DRAKE_DEMAND(jam_params.retreat_knots >= 0);
+    if (jam_params.deep_gap_trip.has_value()) {
+      DRAKE_DEMAND(*jam_params.deep_gap_trip < 0.0);
+      DRAKE_DEMAND(*jam_params.deep_trip_hold_seconds >= 0.0);
+    }
     // The retreat is prepended to an N-knot plan and the remainder is still
     // repositioned, so it must leave at least two knots for that leg.
     DRAKE_DEMAND(jam_params.retreat_knots <= sampling_c3_options_.N - 2);
@@ -579,7 +583,11 @@ SamplingC3Controller::SamplingC3Controller(
         .object_travel_trip = jam_params.object_travel_trip,
         .object_travel_release = jam_params.object_travel_release,
         .trip_hold_seconds = jam_params.trip_hold_seconds,
-        .release_hold_seconds = jam_params.release_hold_seconds});
+        .release_hold_seconds = jam_params.release_hold_seconds,
+        .deep_gap_trip = jam_params.deep_gap_trip.value_or(
+            -std::numeric_limits<double>::infinity()),
+        .deep_trip_hold_seconds =
+            jam_params.deep_trip_hold_seconds.value_or(0.0)});
     std::cout << "Jam watchdog enabled: trips below " << jam_params.gap_trip
               << " m gap while the object moves under "
               << jam_params.object_travel_trip << " m per "
@@ -587,6 +595,13 @@ SamplingC3Controller::SamplingC3Controller(
               << jam_params.force_trip << " N while within "
               << jam_params.force_gate_gap << " m of contact, held "
               << jam_params.trip_hold_seconds << " s." << std::endl;
+    if (jam_params.deep_gap_trip.has_value()) {
+      std::cout << "Jam watchdog deep tier enabled: trips below "
+                << *jam_params.deep_gap_trip
+                << " m gap from the reported EE, held "
+                << *jam_params.deep_trip_hold_seconds
+                << " s, whatever the object does." << std::endl;
+    }
   }
 
   // Below code loads in the mesh and enumerates triangular faces.
@@ -1072,6 +1087,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     }
   }
 
+  goal_changed_this_loop_ = final_target_changed;
   if (final_target_changed) {
     std::cout << "Detected goal change!" << std::endl;
     if (verbose_) {
@@ -1094,7 +1110,6 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
         sampling_c3_options_.planning_dt_position;  // Always set dt_ according
                                                     // to pose or position mode.
     x_final_target_ = x_lcs_final_des.value();
-    // is_doing_c3_ = false;
     detected_goal_changes_++;
     // Select the per-goal-step settings (cost switching threshold, keep-out
     // geometry) for the goal we just advanced to.
@@ -1602,6 +1617,30 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
       std::cout << "C3 -> Repos:  jam detected (EE<->object force "
                 << jam_ee_object_force_ << " N, gap " << jam_ee_object_gap_
                 << " m)" << std::endl;
+    }
+
+    // Switch to repositioning on a goal change.  Otherwise C3 carries on the
+    // push it was making for the old goal from wherever the EE happens to be:
+    // on the 2026-09-23 hardware runs that was 19-40 mm off the ground, under
+    // the cone's mid-height, and two of the three jammed the cone into the
+    // ramp toe 0.9-1.4 s into goal 2 without ever repositioning.  Ahead of the
+    // cost comparison because the new goal's samples have not had a chance to
+    // compete yet.
+    // detected_goal_changes_ is 0 after the first goal is loaded at startup,
+    // which is not a change of goal.
+    else if (goal_changed_this_loop_ && detected_goal_changes_ > 0 &&
+             progress_params_.force_repos_on_goal_change.value_or(false) &&
+             !force_c3_mode &&
+             (sampling_params_.num_additional_samples_c3 > 0)) {
+      is_doing_c3_ = false;
+      mode_switch_reason_ = ModeSwitchReason::kToReposGoalChanged;
+      std::cout << "C3 -> Repos:  goal changed" << std::endl;
+      // Without this the very next loop can take C3 again at the same spot on
+      // cost alone.  The goal change has just emptied the buffer, so this is
+      // its only entry, and it lapses once the object moves.
+      AddToUnsuccessfulBuffer(candidate_states[SampleIndex::kCurrentLocation],
+                              SampleIndex::kCurrentLocation,
+                              context.get_time());
     }
 
     // Switch to repositioning if progress was insufficient.
@@ -3718,16 +3757,22 @@ void SamplingC3Controller::UpdateJamWatchdog(
   const auto& query_object =
       plant_.get_geometry_query_input_port()
           .template Eval<drake::geometry::QueryObject<double>>(*context_);
-  const auto& results = query_object.ComputeSignedDistanceGeometryToPoint(
-      x_lcs_curr.head(3), drake::geometry::GeometrySet(object_geometry_ids_));
-  double min_distance = std::numeric_limits<double>::infinity();
-  Vector3d escape_direction = Vector3d::Zero();
-  for (const auto& result : results) {
-    if (result.distance < min_distance) {
-      min_distance = result.distance;
-      escape_direction = result.grad_W;
+  // Signed distance from a point to the nearest object geometry, and that
+  // geometry's gradient there; infinite distance when nothing answers.
+  const auto query_objects = [&](const Vector3d& point) {
+    const auto& results = query_object.ComputeSignedDistanceGeometryToPoint(
+        point, drake::geometry::GeometrySet(object_geometry_ids_));
+    std::pair<double, Vector3d> nearest{
+        std::numeric_limits<double>::infinity(), Vector3d::Zero()};
+    for (const auto& result : results) {
+      if (result.distance < nearest.first) {
+        nearest = {result.distance, result.grad_W};
+      }
     }
-  }
+    return nearest;
+  };
+  const auto [min_distance, escape_direction] =
+      query_objects(x_lcs_curr.head(3));
 
   // A reading this deep is not a real penetration: it means the
   // signed-distance query is unreliable (a non-watertight or non-manifold
@@ -3751,6 +3796,31 @@ void SamplingC3Controller::UpdateJamWatchdog(
     jam_escape_direction_ = Vector3d::Zero();
   }
 
+  // Guard 2b, the deep tier: the same query from the EE position the printer
+  // reported this loop, before ResolvePredictedEEState moved it along the
+  // plan.  The printer reports stepper position, not the fingertip, so a
+  // jammed finger that bends shows up here as the EE driving into and then
+  // through the object.  The predicted EE is the wrong point to ask: it runs
+  // ahead along the same push, crosses the object's axis first, and from there
+  // the memoryless signed distance climbs back towards zero -- on the
+  // 2026-09-23 hardware runs it read +4 to +21 mm while the reported EE was
+  // still 20 mm inside the cone.  No plausibility cap either: depth past
+  // kMaxPlausiblePenetration is exactly what a bending finger produces.
+  const Vector3d measured_ee = x_from_last_control_loop_.head(3);
+  const auto [measured_distance, measured_gradient] =
+      query_objects(measured_ee);
+  const bool measured_gap_is_valid = std::isfinite(measured_distance);
+  jam_ee_object_gap_measured_ =
+      measured_gap_is_valid ? measured_distance - ee_radius_
+                            : std::numeric_limits<double>::quiet_NaN();
+  // The last outward normal read while the reported EE was still shallow, so
+  // still on the side it came in from.
+  if (measured_gap_is_valid && measured_gradient.norm() > 1e-9 &&
+      jam_ee_object_gap_measured_ >=
+          progress_params_.jam_guard.value().gap_trip) {
+    jam_last_shallow_normal_ = measured_gradient.normalized();
+  }
+
   // Guard 3: is the object actually going anywhere?  A jam is contact with no
   // object progress, and the gap cannot tell those apart on its own -- the
   // object pose estimate manufactures apparent penetration deeper than the
@@ -3765,12 +3835,15 @@ void SamplingC3Controller::UpdateJamWatchdog(
   const Vector3d object_position =
       x_lcs_curr.segment<3>(MakeObjectStateLayout(0).position_offset);
   jam_object_history_.emplace_back(now, object_position);
+  jam_ee_history_.emplace_back(now, measured_ee);
   // Keep one sample older than the window so the history spans it rather than
   // stopping just inside, then the front is the oldest pose still in scope.
-  while (jam_object_history_.size() > 1 &&
-         now - jam_object_history_[1].first >=
-             jam_params.object_travel_window_seconds) {
-    jam_object_history_.pop_front();
+  for (auto* history : {&jam_object_history_, &jam_ee_history_}) {
+    while (history->size() > 1 &&
+           now - (*history)[1].first >=
+               jam_params.object_travel_window_seconds) {
+      history->pop_front();
+    }
   }
   // A partial window under-reports travel, which would arm the latch on a
   // stillness that has not been observed yet.  Same fail-safe direction as an
@@ -3795,15 +3868,46 @@ void SamplingC3Controller::UpdateJamWatchdog(
       now, jam_ee_object_force_,
       gap_is_valid ? std::optional<double>(jam_ee_object_gap_) : std::nullopt,
       travel_is_valid ? std::optional<double>(jam_object_travel_)
-                      : std::nullopt);
+                      : std::nullopt,
+      measured_gap_is_valid
+          ? std::optional<double>(jam_ee_object_gap_measured_)
+          : std::nullopt);
   jam_trip_seconds_ = jam_latch_->trip_seconds();
   jam_tripped_ = jam_latch_->tripped();
+  jam_deep_armed_ = jam_latch_->deep_arming();
+
+  // A deep trip retreats the way the EE came in, frozen at the trip.  The
+  // query's own gradient is no use by then: past the object's axis it points
+  // out of the far side, i.e. further into the jam.  Reversing the reported
+  // EE's recent motion is the direct answer; the last shallow normal covers a
+  // stall where the EE has barely moved.  Frozen because once the retreat
+  // starts, the reversed recent motion would point back into the object.
+  if (rising_edge && jam_latch_->tripped_by_deep()) {
+    const Vector3d backwards = jam_ee_history_.front().second - measured_ee;
+    constexpr double kMinMotionForDirection = 0.002;  // meters
+    if (backwards.norm() > kMinMotionForDirection) {
+      jam_deep_escape_direction_ = backwards.normalized();
+    } else if (!jam_last_shallow_normal_.isZero()) {
+      jam_deep_escape_direction_ = jam_last_shallow_normal_;
+    } else {
+      jam_deep_escape_direction_ = jam_escape_direction_;
+    }
+  }
+  if (jam_latch_->tripped_by_deep()) {
+    jam_escape_direction_ = jam_deep_escape_direction_;
+  }
 
   if (rising_edge) {
-    std::cout << "Jam detected: EE<->object force " << jam_ee_object_force_
-              << " N, gap " << jam_ee_object_gap_ << " m, object travel "
-              << jam_object_travel_ << " m, held " << jam_trip_seconds_ << " s."
-              << std::endl;
+    std::cout << "Jam detected"
+              << (jam_latch_->tripped_by_deep() ? " (deep tier)" : "")
+              << ": EE<->object force " << jam_ee_object_force_
+              << " N, gap " << jam_ee_object_gap_ << " m, reported-EE gap "
+              << jam_ee_object_gap_measured_ << " m, object travel "
+              << jam_object_travel_ << " m, held "
+              << (jam_latch_->tripped_by_deep()
+                      ? jam_params.deep_trip_hold_seconds.value_or(0.0)
+                      : jam_trip_seconds_)
+              << " s." << std::endl;
   } else if (was_tripped && !jam_tripped_) {
     std::cout << "Jam cleared: EE<->object force " << jam_ee_object_force_
               << " N, gap " << jam_ee_object_gap_ << " m, object travel "
@@ -5005,6 +5109,8 @@ void SamplingC3Controller::OutputDebug(
   debug_msg->repos_target_decision = repos_target_decision_;
   debug_msg->mode_switch_decision = mode_switch_decision_;
   debug_msg->jam_tripped = jam_tripped_;
+  debug_msg->jam_ee_object_gap_measured = jam_ee_object_gap_measured_;
+  debug_msg->jam_deep_armed = jam_deep_armed_;
 }
 
 void SamplingC3Controller::OutputSampleBufferConfigurations(

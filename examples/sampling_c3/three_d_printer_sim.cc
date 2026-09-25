@@ -11,6 +11,7 @@
 #include <drake/lcm/drake_lcm.h>
 #include <drake/math/rigid_transform.h>
 #include <drake/multibody/parsing/parser.h>
+#include <drake/multibody/tree/prismatic_joint.h>
 #include <drake/systems/analysis/simulator.h>
 #include <drake/systems/framework/diagram_builder.h>
 #include <drake/systems/lcm/lcm_interface_system.h>
@@ -105,8 +106,17 @@ int DoMain(int argc, char* argv[]) {
 
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
 
-  ModelInstanceIndex robot_index =
-      Add3DPrinterToPlant(&plant, &scene_graph, true);
+  std::optional<FingerCompliance> finger_compliance;
+  if (sim_params.compliant_finger.value_or(false)) {
+    finger_compliance = FingerCompliance{
+        .stiffness = sim_params.finger_stiffness.value(),
+        .damping = sim_params.finger_damping.value()};
+    std::cout << "Compliant finger: " << finger_compliance->stiffness
+              << " N/m, " << finger_compliance->damping << " N s/m per axis."
+              << std::endl;
+  }
+  ModelInstanceIndex robot_index = Add3DPrinterToPlant(
+      &plant, &scene_graph, true, finger_compliance);
 
   int num_objects = sim_params.object_models.size();
 
@@ -222,7 +232,13 @@ int DoMain(int argc, char* argv[]) {
   int nv = plant.num_velocities();
 
   if (sim_params.visualize_drake_sim) {
-    drake::visualization::AddDefaultVisualization(&builder);
+    // On this sim's own --lcm_url bus.  AddDefaultVisualization opens a second
+    // connection on Drake's default URL, which puts the viewer and contact
+    // messages on a different bus from everything else this sim publishes.
+    drake::visualization::ApplyVisualizationConfig(
+        drake::visualization::VisualizationConfig{}, &builder,
+        /*lcm_buses=*/nullptr, &plant, &scene_graph, /*meshcat=*/nullptr,
+        &drake_lcm);
   }
 
   // --------------------------------------------------------------------------
@@ -247,17 +263,25 @@ int DoMain(int argc, char* argv[]) {
   // Initialize state
   // --------------------------------------------------------------------------
 
-  VectorXd q = VectorXd::Zero(nq);
-
-  q.head(plant.num_positions(robot_index)) = sim_params.q_init_robot;
-
-  for (int i = 0; i < num_objects; i++) {
-    q.segment(3 + 7 * (i), 7) = sim_params.q_init_objects.at(i);
+  // Per model instance rather than by offset into the full q: a compliant
+  // finger adds two positions of its own (left at zero deflection), and where
+  // Drake orders them in the full vector is not something to hard-code.
+  plant.SetPositions(&plant_context, VectorXd::Zero(nq));
+  // q_init_robot is [x, y, z], the order the command path holds it in (the
+  // input receiver and the command lag below both seed from it).  The plant
+  // orders the printer's joints z, y, x, so set them by name.
+  DRAKE_DEMAND(sim_params.q_init_robot.size() == 3);
+  const char* kPrinterJoints[] = {"x_axis_joint", "y_axis_joint",
+                                  "z_axis_joint"};
+  for (int i = 0; i < 3; i++) {
+    plant.GetJointByName<drake::multibody::PrismaticJoint>(kPrinterJoints[i],
+                                                           robot_index)
+        .set_translation(&plant_context, sim_params.q_init_robot[i]);
   }
-
-  q.tail(7) = sim_params.q_init_objects.at(num_objects - 1);
-
-  plant.SetPositions(&plant_context, q);
+  for (int i = 0; i < num_objects; i++) {
+    plant.SetPositions(&plant_context, object_indices.at(i),
+                       sim_params.q_init_objects.at(i));
+  }
 
   VectorXd v = VectorXd::Zero(nv);
 

@@ -114,7 +114,8 @@ ObjectStateLayout MakeObjectStateLayout(int object_index) {
 
 bool JamLatch::Update(double now, double ee_object_force,
                       std::optional<double> ee_object_gap,
-                      std::optional<double> object_travel) {
+                      std::optional<double> object_travel,
+                      std::optional<double> measured_ee_object_gap) {
   constexpr double kNaN = std::numeric_limits<double>::quiet_NaN();
 
   // The force term arms only near contact.  C3's knot-0 lambda is an ADMM
@@ -155,9 +156,26 @@ bool JamLatch::Update(double now, double ee_object_force,
     trip_seconds_ = 0.0;
   }
 
+  // The deep tier keeps its own dwell and ignores travel; see deep_gap_trip.
+  // Its dwell is not reported through trip_seconds(), which stays the shallow
+  // arms' dwell so the logged value keeps meaning what it meant.
+  deep_arming_ = measured_ee_object_gap.has_value() &&
+                 *measured_ee_object_gap < thresholds_.deep_gap_trip;
+  if (deep_arming_) {
+    if (std::isnan(deep_arming_since_)) deep_arming_since_ = now;
+  } else {
+    deep_arming_since_ = kNaN;
+  }
+  const bool deep_held =
+      deep_arming_ &&
+      now - deep_arming_since_ >= thresholds_.deep_trip_hold_seconds;
+
   if (!tripped_) {
-    if (arming && trip_seconds_ >= thresholds_.trip_hold_seconds) {
+    const bool shallow_held =
+        arming && trip_seconds_ >= thresholds_.trip_hold_seconds;
+    if (shallow_held || deep_held) {
       tripped_ = true;
+      tripped_by_deep_ = deep_held && !shallow_held;
       releasing_since_ = kNaN;
       return true;
     }
@@ -189,11 +207,16 @@ bool JamLatch::Update(double now, double ee_object_force,
   const bool object_moving_again =
       travel_term_enabled && object_travel.has_value() &&
       *object_travel > thresholds_.object_travel_release;
-  const bool releasing = force_clear && (gap_clear || object_moving_again);
+  // Whatever set the latch, it cannot release while the reported EE is still
+  // deep inside the object.  A bending finger drags the object along, so
+  // without this the travel route above would release a deep jam on its own.
+  const bool releasing =
+      force_clear && (gap_clear || object_moving_again) && !deep_arming_;
   if (releasing) {
     if (std::isnan(releasing_since_)) releasing_since_ = now;
     if (now - releasing_since_ >= thresholds_.release_hold_seconds) {
       tripped_ = false;
+      tripped_by_deep_ = false;
       arming_since_ = kNaN;
       trip_seconds_ = 0.0;
     }

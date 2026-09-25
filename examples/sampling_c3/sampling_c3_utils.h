@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -169,12 +170,24 @@ std::vector<drake::multibody::ModelInstanceIndex> AddLCSModelsToPlant(
 /// Add the 3D printer to a given multibody plant and scene graph.
 /// @param plant a pointer to the MultibodyPlant
 /// @param scene_graph a pointer to the SceneGraph--may be nullptr (or omitted)
+/// A horizontal spring mount for the 3D printer's end effector, in place of
+/// the rigid weld.  Per axis, x and y; see RobotSimParams::compliant_finger.
+struct FingerCompliance {
+  double stiffness;  // [N/m]
+  double damping;    // [N s/m]
+};
+
 /// @param include_ee whether to include the end effector
+/// @param finger_compliance mount the end effector on a horizontal spring
+/// rather than welding it to the carriage; nullopt keeps the weld.  Only for a
+/// simulated plant: the carriage joints stay the printer model instance's only
+/// joints, and the two deflection joints belong to the end effector's.
 /// @return the ModelInstanceIndex of the Franka in the plant
 drake::multibody::ModelInstanceIndex Add3DPrinterToPlant(
     drake::multibody::MultibodyPlant<double>* plant,
     drake::geometry::SceneGraph<double>* scene_graph = nullptr,
-    const bool& include_ee = true);
+    const bool& include_ee = true,
+    const std::optional<FingerCompliance>& finger_compliance = std::nullopt);
 
 /// Add 3D printer LCS models to a given multibody plant and scene graph.
 /// @param plant a pointer to the MultibodyPlant

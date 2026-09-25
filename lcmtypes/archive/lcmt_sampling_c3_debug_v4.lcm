@@ -1,6 +1,11 @@
-package dairlib;
+package archive.dairlib;
 
-/* lcmtype with debug information for the sampling controller.
+/* Archived generation of lcmt_sampling_c3_debug:  v3 plus
+   jam_ee_object_gap_measured and jam_deep_armed (the jam guard's deep tier,
+   added 2026-09-24), but not mode_switch_decision.  Reads the 2026-09-24
+   realistic-sim runs 000000-000001.
+
+   lcmtype with debug information for the sampling controller.
 
     mode_switch_reason key:
         0: No mode switch
@@ -26,24 +31,9 @@ package dairlib;
         2: Kept incumbent target, pending nominee lost its re-score
         3: Retargeted to the nominee after it confirmed
         4: Retargeted because the incumbent is in penetration
-        5: Kept incumbent target, pending nominee lost its re-score, and
-           another of this loop's samples was nominated in its place
-
-    mode_switch_decision key (the nominate-then-confirm gates on cost-driven
-    C3 <-> repositioning switches; nominating deliberately leaves the mode
-    alone, so an actual gated switch is exactly 3 or 6):
-        0: No gated decision this loop
-        1: Stayed in C3, repositioning target nominated this loop
-        2: Stayed in C3, pending repositioning nominee lost its re-score
-        3: Switched to repositioning after the nominee confirmed
-        4: Stayed repositioning, switch to C3 nominated this loop
-        5: Stayed repositioning, pending switch to C3 lost its re-score
-        6: Switched to C3 after the nomination confirmed
-        7: Stayed in C3, pending repositioning nominee lost its re-score, and
-           another of this loop's samples was nominated in its place
 */
 
-struct lcmt_sampling_c3_debug
+struct lcmt_sampling_c3_debug_v4
 {
   int64_t utime;
 
@@ -76,8 +66,6 @@ struct lcmt_sampling_c3_debug
   float jam_object_travel;
 
   int32_t repos_target_decision;
-
-  int32_t mode_switch_decision;
 
   // The EE<->object gap measured from the printer's reported EE position
   // rather than the predicted one [m], and whether the jam guard's deep tier

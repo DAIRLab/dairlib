@@ -1,3 +1,7 @@
+# Goal-2 ramp-toe jam scenario (2026-09-24); see goal_params_goal2_toe.yaml.
+# Same as sim_params.yaml except the starting poses and the compliant finger,
+# which is on here because the failure this reproduces is the finger bending.
+
 object_models: [examples/sampling_c3/urdf/cone/cone.sdf]
 # Hardware publishes PRINTER_STATE at ~29 Hz, and the OSC controller publishes
 # one PRINTER_INPUT per state it receives, so this also sets the command rate
@@ -20,9 +24,10 @@ publish_efforts: true
 dt: 0.001
 realtime_rate: 1.0
 
-q_init_robot: [0.175, 0.175, 0.175]
-
-q_init_objects: [[0.707, 0.0, -0.707, 0, 0.280, 0.224, 0.05]]
+# Printer joints [x, y, z]; the z joint reads 0.110864 m above the EE centre.
+# EE at (0.283, 0.048, 0.022) in the world, low behind the cone.
+q_init_robot: [0.283, 0.048, 0.132864]
+q_init_objects: [[0.707, 0.0, -0.707, 0, 0.257, 0.057, 0.001]]
 
 # Inject hardware-like object state estimation errors.  When true, the clean
 # object state is published on the lcm channels' clean_object_state_channels
@@ -75,6 +80,6 @@ object_state_error_params:
 # that.  The stiffness is a placeholder until measured on the bench (N per mm
 # of tip deflection); the carriage's 100 N effort limit caps deflection at
 # 100 N / finger_stiffness.  The two numbers are only read when enabled.
-compliant_finger: false
+compliant_finger: true
 finger_stiffness: 1000.0    # [N/m] per axis
 finger_damping: 20.0        # [N s/m] per axis

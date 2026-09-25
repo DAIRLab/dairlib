@@ -25,6 +25,9 @@ base_names: [cone]
 # mismatch).  "" = no keep-out regions for that goal; otherwise a URDF path (see
 # examples/sampling_c3/urdf/cone/keep_out_example.urdf) whose obstacle geometry
 # samples must avoid for that goal.
+# NOTE 9/24/26:  Trying to avoid relying on these keep-out regions and instead
+# rely on sample costs picking good ones that would avoid jamming and the jam
+# detection to abort any maneuvers that turn into a jam.
 keep_out_model_sequence: ["", "", ""] #"examples/sampling_c3/urdf/cone/keep_out_goal_2.urdf"]
 
 include_end_effector_orientation: false  # Unused for 3D printer

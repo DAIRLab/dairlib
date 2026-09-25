@@ -1,6 +1,12 @@
-package dairlib;
+package archive.dairlib;
 
-/* lcmtype with debug information for the sampling controller.
+/* Archived generation of lcmt_sampling_c3_debug:  v3 plus
+   mode_switch_decision (added 2026-09-24), but not the deep jam tier fields
+   of v4 -- the two were developed in parallel.  Reads the 2026-09-24
+   realistic-sim runs 000007-000011, the baseline the C3 <-> repos confirm
+   gates are measured against.
+
+   lcmtype with debug information for the sampling controller.
 
     mode_switch_reason key:
         0: No mode switch
@@ -10,7 +16,6 @@ package dairlib;
         4: Switch to repositioning because unproductive in C3
         5: Switch to C3 because xbox controller forced into C3 mode
         6: Switch to repositioning because a jam was detected
-        7: Switch to repositioning because the goal changed
 
     source_of_pursued_target key:
         0: No pursued target (i.e. in C3 mode)
@@ -43,7 +48,7 @@ package dairlib;
            another of this loop's samples was nominated in its place
 */
 
-struct lcmt_sampling_c3_debug
+struct lcmt_sampling_c3_debug_v5
 {
   int64_t utime;
 
@@ -78,10 +83,4 @@ struct lcmt_sampling_c3_debug
   int32_t repos_target_decision;
 
   int32_t mode_switch_decision;
-
-  // The EE<->object gap measured from the printer's reported EE position
-  // rather than the predicted one [m], and whether the jam guard's deep tier
-  // armed on it this loop.
-  float jam_ee_object_gap_measured;
-  boolean jam_deep_armed;
 }

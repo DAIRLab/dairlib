@@ -230,6 +230,23 @@ struct JamLatchThresholds {
   /// retreat it commands moves the end effector far enough in one loop to
   /// satisfy gap_release, so the latch drops before the escape is finished.
   double release_hold_seconds = 0.0;
+  /// The deep tier: arms below this *measured* gap [m] -- the gap from the
+  /// printer's reported EE position, not the predicted one -- with no travel
+  /// condition at all.  The printer reports stepper position, not the
+  /// fingertip, so when the finger jams and bends the reported EE carries on
+  /// through the object; on the 2026-09-23 hardware runs it reached 15-25 mm
+  /// inside the cone while the real finger was still on the near side.  A
+  /// rigid finger cannot get there: the realistic sim's reported-EE gap never
+  /// went below -4 mm against the true pose, and -13 mm with injected pose
+  /// error.  The travel veto is skipped because a bending finger still drags
+  /// the object along -- 4-18 mm per 0.3 s through the hw0 wedge.  Negative
+  /// infinity turns the tier off.
+  double deep_gap_trip = -std::numeric_limits<double>::infinity();
+  /// Seconds the deep condition must hold continuously before the latch sets.
+  /// Its own dwell, separate from trip_hold_seconds: the gap from a bending
+  /// finger stops deepening once the reported EE crosses the object's axis,
+  /// and that window was only 0.7-0.9 s long on hardware.
+  double deep_trip_hold_seconds = 0.0;
 };
 
 /// The live jam watchdog's decision, separated from the queries that feed it.
@@ -259,14 +276,23 @@ class JamLatch {
   /// has moved across the recent window [m], nullopt until the window has
   /// filled; like the gap it cannot arm the latch while missing, and cannot
   /// hold it open either.
+  /// @p measured_ee_object_gap feeds the deep tier (see deep_gap_trip); it
+  /// is the same quantity as @p ee_object_gap but measured from the printer's
+  /// reported EE position.  nullopt means no reading, which can neither arm
+  /// the deep tier nor hold the latch open.
   /// @return true iff this update was the rising edge (the latch just set).
   bool Update(double now, double ee_object_force,
               std::optional<double> ee_object_gap,
-              std::optional<double> object_travel);
+              std::optional<double> object_travel,
+              std::optional<double> measured_ee_object_gap = std::nullopt);
 
   bool tripped() const { return tripped_; }
   /// Seconds the arming condition has held continuously, 0 when not arming.
   double trip_seconds() const { return trip_seconds_; }
+  /// Whether the deep tier's condition held on the last update, dwell or not.
+  bool deep_arming() const { return deep_arming_; }
+  /// Whether the current latch was set by the deep tier.  Cleared on release.
+  bool tripped_by_deep() const { return tripped_by_deep_; }
 
  private:
   JamLatchThresholds thresholds_;
@@ -274,8 +300,11 @@ class JamLatch {
   // elapsed time yet, so a dwell of 0 still needs two loops to be meaningful.
   double arming_since_ = std::numeric_limits<double>::quiet_NaN();
   double releasing_since_ = std::numeric_limits<double>::quiet_NaN();
+  double deep_arming_since_ = std::numeric_limits<double>::quiet_NaN();
   double trip_seconds_ = 0.0;
+  bool deep_arming_ = false;
   bool tripped_ = false;
+  bool tripped_by_deep_ = false;
 };
 
 /// Indices of the lambda entries belonging to one group of contacts, together

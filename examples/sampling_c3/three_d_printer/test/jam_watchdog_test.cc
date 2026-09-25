@@ -378,6 +378,103 @@ Eigen::VectorXd MakeLcsState(const Eigen::Vector3d& ee) {
   return x;
 }
 
+// The deep tier on top of the travel-gated rules, with its own 0.15 s dwell
+// so the tests can tell the two dwells apart.
+JamLatchThresholds MakeThresholdsWithDeepTier() {
+  JamLatchThresholds thresholds = MakeThresholdsWithTravel();
+  thresholds.deep_gap_trip = -0.020;
+  thresholds.deep_trip_hold_seconds = 0.15;
+  return thresholds;
+}
+
+constexpr double kDeep = -0.030;      // reported EE well past deep_gap_trip.
+constexpr double kDragging = 0.012;  // a bending finger drags the object.
+
+// Walks the latch forward with a measured gap as well.
+bool StepDeep(JamLatch* latch, double* now, int loops, double force,
+              std::optional<double> gap, std::optional<double> travel,
+              std::optional<double> measured_gap) {
+  bool edge = false;
+  for (int i = 0; i < loops; i++) {
+    edge = latch->Update(*now, force, gap, travel, measured_gap);
+    *now += kLoop;
+  }
+  return edge;
+}
+
+// The hw0 launch: the object was being dragged 4-18 mm per window, so the
+// travel veto held the shallow gap guard off; the deep tier ignores travel.
+TEST(JamLatchTest, TheDeepTierArmsWhileTheObjectIsDragged) {
+  JamLatch latch(MakeThresholdsWithDeepTier());
+  double now = 0.0;
+  EXPECT_FALSE(StepDeep(&latch, &now, 2, 0.0, kDeep, kDragging, kDeep));
+  EXPECT_TRUE(latch.deep_arming());
+  EXPECT_TRUE(StepDeep(&latch, &now, 1, 0.0, kDeep, kDragging, kDeep));
+  EXPECT_TRUE(latch.tripped());
+  EXPECT_TRUE(latch.tripped_by_deep());
+}
+
+// Its dwell is its own: 0.15 s, not trip_hold_seconds' 0.25 s.
+TEST(JamLatchTest, TheDeepTierHasItsOwnDwell) {
+  JamLatch latch(MakeThresholdsWithDeepTier());
+  EXPECT_FALSE(latch.Update(0.0, 0.0, kDeep, kDragging, kDeep));
+  EXPECT_FALSE(latch.Update(0.1, 0.0, kDeep, kDragging, kDeep));
+  EXPECT_TRUE(latch.Update(0.15, 0.0, kDeep, kDragging, kDeep));
+}
+
+// The predicted-EE gap is the one that flips positive once the reported EE is
+// past the object's axis; the deep tier must not care what it says.
+TEST(JamLatchTest, TheDeepTierIgnoresThePredictedGap) {
+  JamLatch latch(MakeThresholdsWithDeepTier());
+  double now = 0.0;
+  EXPECT_TRUE(StepDeep(&latch, &now, 3, 0.0, kClear, kDragging, kDeep));
+}
+
+TEST(JamLatchTest, AShallowMeasuredGapDoesNotArmTheDeepTier) {
+  JamLatch latch(MakeThresholdsWithDeepTier());
+  double now = 0.0;
+  EXPECT_FALSE(StepDeep(&latch, &now, 20, 0.0, kContact, kDragging, -0.015));
+  EXPECT_FALSE(latch.deep_arming());
+}
+
+TEST(JamLatchTest, AMissingMeasuredGapCannotArmTheDeepTier) {
+  JamLatch latch(MakeThresholdsWithDeepTier());
+  double now = 0.0;
+  EXPECT_FALSE(
+      StepDeep(&latch, &now, 20, 0.0, kContact, kDragging, std::nullopt));
+}
+
+// Without the deep tier's own release condition, the dragged object's travel
+// would release the latch on its own the moment it tripped.
+TEST(JamLatchTest, ADeepJamCannotReleaseWhileStillDeep) {
+  JamLatch latch(MakeThresholdsWithDeepTier());
+  double now = 0.0;
+  ASSERT_TRUE(StepDeep(&latch, &now, 3, 0.0, kDeep, kDragging, kDeep));
+  StepDeep(&latch, &now, 20, 0.0, kClear, kDragging, kDeep);
+  EXPECT_TRUE(latch.tripped());
+  // Out of the deep band, and the ordinary release rules take over.
+  StepDeep(&latch, &now, 4, 0.0, kClear, kDragging, kClear);
+  EXPECT_FALSE(latch.tripped());
+  EXPECT_FALSE(latch.tripped_by_deep());
+}
+
+// A latch set by the shallow rules is not reported as a deep trip, so it keeps
+// retreating along the query's own normal.
+TEST(JamLatchTest, AShallowTripIsNotADeepTrip) {
+  JamLatch latch(MakeThresholdsWithDeepTier());
+  double now = 0.0;
+  EXPECT_TRUE(StepDeep(&latch, &now, 4, 0.0, -0.012, 0.001, -0.012));
+  EXPECT_FALSE(latch.tripped_by_deep());
+}
+
+// The default thresholds leave the tier off whatever is passed in.
+TEST(JamLatchTest, AnUnsetDeepThresholdIsANoOp) {
+  JamLatch latch(MakeThresholdsWithTravel());
+  double now = 0.0;
+  EXPECT_FALSE(StepDeep(&latch, &now, 20, 0.0, kContact, kDragging, -1.0));
+  EXPECT_FALSE(latch.deep_arming());
+}
+
 // Knot 0 must stay exactly where the end effector already is, or the published
 // plan is discontinuous with what the OSC is tracking.  The next knots are one
 // knot period of travel apart along the escape direction -- purely horizontal
@@ -571,6 +668,14 @@ TEST(JamGuardParamsTest, TheConeYamlShipsTheDetectorTheReportScored) {
   EXPECT_EQ(jam_guard.gap_release, 0.002);
   EXPECT_EQ(jam_guard.trip_hold_seconds, 0.3);
   EXPECT_EQ(jam_guard.release_hold_seconds, 0.5);
+  // The deep tier, scored offline on the 2026-09-23 hardware and sim logs.
+  // Unlike gap_trip it is read from the reported EE, whose gap distribution in
+  // contact is shallower than the predicted EE's, so the two are not
+  // comparable numbers.
+  ASSERT_TRUE(jam_guard.deep_gap_trip.has_value());
+  ASSERT_TRUE(jam_guard.deep_trip_hold_seconds.has_value());
+  EXPECT_EQ(*jam_guard.deep_gap_trip, -0.011);
+  EXPECT_EQ(*jam_guard.deep_trip_hold_seconds, 0.2);
 
   // The invariants the controller DRAKE_DEMANDs, checked here so a bad yaml
   // fails the test rather than the demo.
@@ -585,6 +690,8 @@ TEST(JamGuardParamsTest, TheConeYamlShipsTheDetectorTheReportScored) {
   // The force gate has to sit outside the gap trip, or the force term could
   // only ever arm where the gap term already had.
   EXPECT_GT(jam_guard.force_gate_gap, jam_guard.gap_trip);
+  EXPECT_LT(*jam_guard.deep_gap_trip, 0.0);
+  EXPECT_GE(*jam_guard.deep_trip_hold_seconds, 0.0);
 }
 
 // The gate: jam_guard is what turns the watchdog on, and every demo that omits

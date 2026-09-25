@@ -66,7 +66,9 @@ enum SampleIndex {
   kPendingNominee  // Only present while repositioning with a nominated
                    // challenger awaiting confirmation; see
                    // pending_repos_nominee_.  Check
-                   // pending_nominee_sample_index_ >= 0 before using it.
+                   // pending_nominee_sample_index_ >= 0 before using it.  (In
+                   // C3 mode a pending nominee sits at index 1 instead, since
+                   // there is no repositioning target.)
   // Could expand this enum if want to reference more samples.
 };
 
@@ -101,7 +103,26 @@ enum ReposTargetDecision {
   kKeptNominated,        // kept incumbent, challenger nominated this loop
   kKeptNomineeRejected,  // kept incumbent, nominee lost its re-score
   kRetargetConfirmed,    // switched to the nominee after it confirmed
-  kRetargetCollision     // switched because the incumbent is in penetration
+  kRetargetCollision,    // switched because the incumbent is in penetration
+  kKeptNomineeRejectedRenominated  // kept incumbent, nominee lost its
+                                   // re-score, and another of this loop's
+                                   // samples was nominated in its place
+};
+
+/// What the nominate-then-confirm gates on cost-driven C3 <-> repos switches
+/// did this control loop.  Nominating leaves the mode untouched; an actual
+/// gated switch is exactly {kToReposConfirmed, kToC3Confirmed}.
+enum ModeSwitchDecision {
+  kNoGatedDecision = 0,   // neither gate acted
+  kToReposNominated,      // stayed in C3, repositioning target nominated
+  kToReposRejected,       // stayed in C3, nominee lost its re-score
+  kToReposConfirmed,      // switched to repositioning after confirming
+  kToC3Nominated,         // stayed repositioning, switch to C3 nominated
+  kToC3Rejected,          // stayed repositioning, nomination lost its re-score
+  kToC3Confirmed,         // switched to C3 after confirming
+  kToReposRejectedRenominated  // stayed in C3, nominee lost its re-score, and
+                               // another of this loop's samples was nominated
+                               // in its place
 };
 
 /// One sample's worth of offline jamming analysis: the predicted peak EE effort
@@ -808,10 +829,17 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable Eigen::Vector3d prev_repositioning_target_ = Eigen::Vector3d::Zero();
   mutable std::vector<double> all_sample_costs_;
 
-  // A challenger that won the repos -> repos comparison on a previous loop and
-  // is waiting to be re-scored before it is allowed to steal the target.  Unset
-  // when nothing is pending.  See the repositioning branch of ComputePlan().
+  // A candidate repositioning target waiting to be re-scored before it is
+  // allowed to take effect:  in repositioning mode, a challenger that won the
+  // repos -> repos comparison and would steal the target; in C3 mode, a sample
+  // that won the C3 -> repos cost comparison and would end C3.  The two uses
+  // never overlap since both are cleared on every mode switch.  Unset when
+  // nothing is pending.  See ComputePlan().
   mutable std::optional<Eigen::Vector3d> pending_repos_nominee_;
+
+  // Whether a cost-driven repos -> C3 switch was nominated last loop and is
+  // waiting to be confirmed this loop.
+  mutable bool pending_repos_to_c3_ = false;
 
   // Where the two persistent candidates ended up in this loop's sample list,
   // or -1 when that candidate is absent.  These record the layout explicitly so
@@ -918,6 +946,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable ModeSwitchReason mode_switch_reason_ = kNoSwitch;
   mutable PursuedTargetSource pursued_target_source_ = kNoTarget;
   mutable ReposTargetDecision repos_target_decision_ = kKeptNoNominee;
+  mutable ModeSwitchDecision mode_switch_decision_ = kNoGatedDecision;
 
   // Live jam watchdog state.  See UpdateJamWatchdog().  All of it is left at
   // these defaults when progress_params_.jam_guard is unset.

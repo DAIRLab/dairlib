@@ -403,3 +403,27 @@ cc_test(
         "@googletest//:gtest_main",
     ],
 )
+
+cc_binary(
+    name = "sample_cost_repeatability",
+    srcs = [
+        "sample_cost_repeatability.cc",
+    ],
+    data = [
+        "//examples/sampling_c3:all_example_params_yamls",
+        "//examples/sampling_c3:shared_params_yamls",
+        "//examples/sampling_c3:urdfs",
+        "//examples/sampling_c3/three_d_printer:printer_shared_params_yamls",
+        "//examples/sampling_c3/three_d_printer/cone:parameters",
+    ],
+    deps = [
+        "//examples/sampling_c3:sampling_c3_utils",
+        "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
+        "//lcmtypes:lcmt_robot",
+        "//systems/controllers:sampling_c3_controller",
+        "//systems/framework:vector",
+        "@c3//:libc3",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)

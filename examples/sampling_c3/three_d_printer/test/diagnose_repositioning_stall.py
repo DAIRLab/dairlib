@@ -56,22 +56,24 @@ class _SamplingC3Debug:
   """Decodes SAMPLING_C3_DEBUG from any generation of the type.
 
   LCM verifies the fingerprint on decode, so the current type cannot read a log
-  recorded before a field was appended.  Two fields have been appended so far,
-  giving three generations:
+  recorded before a field was appended.  Three fields have been appended so
+  far, giving four generations:
 
     v1  the original layout -- every log up to and including the 2026-09-17
         hardware runs.
     v2  + jam_object_travel (2026-09-22) -- the 2026-09-22 realistic-sim runs,
         which are the baseline the repos -> repos confirm gate is measured
         against, so they have to stay readable.
-    v3  + repos_target_decision (2026-09-23) -- current.
+    v3  + repos_target_decision (2026-09-23) -- the 2026-09-23/24 sim runs,
+        the baseline the C3 <-> repos confirm gates are measured against.
+    v4  + mode_switch_decision (2026-09-24) -- current.
 
   Fall back to the newest archived layout that decodes, and report each field
   that generation does not carry as a sentinel.  NaN for jam_object_travel is
   the same sentinel the live controller publishes before its travel window has
-  filled.  repos_target_decision reports as None rather than 0, because 0 is a
-  real value ("kept the incumbent, nothing nominated") and a log that predates
-  the gate must not be counted as evidence that the gate kept anything.
+  filled.  repos_target_decision and mode_switch_decision report as None rather
+  than 0, because 0 is a real value ("nothing nominated") and a log that
+  predates a gate must not be counted as evidence that the gate kept anything.
   """
 
   class _Older:
@@ -99,12 +101,19 @@ class _SamplingC3Debug:
       pass
     try:
       return _SamplingC3Debug._Older(
+          archive_dairlib.lcmt_sampling_c3_debug_v3.decode(data),
+          mode_switch_decision=None)
+    except ValueError:
+      pass
+    try:
+      return _SamplingC3Debug._Older(
           archive_dairlib.lcmt_sampling_c3_debug_v2.decode(data),
-          repos_target_decision=None)
+          repos_target_decision=None, mode_switch_decision=None)
     except ValueError:
       return _SamplingC3Debug._Older(
           archive_dairlib.lcmt_sampling_c3_debug.decode(data),
-          jam_object_travel=float('nan'), repos_target_decision=None)
+          jam_object_travel=float('nan'), repos_target_decision=None,
+          mode_switch_decision=None)
 
 
 CHANNEL_LCMT = {

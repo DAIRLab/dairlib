@@ -530,6 +530,29 @@
   </joint>
 
   <!--
+    Actuators:
+    Drake creates one actuator per transmission, taking its effort limit from
+    the joint's <limit effort>.  Declared x, y, z to keep that actuator order.
+  -->
+  <transmission name="x_axis_trans" type="transmission_interface/SimpleTransmission">
+    <actuator name="x_axis_actuator"/>
+    <joint name="x_axis_joint"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+
+  <transmission name="y_axis_trans" type="transmission_interface/SimpleTransmission">
+    <actuator name="y_axis_actuator"/>
+    <joint name="y_axis_joint"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+
+  <transmission name="z_axis_trans" type="transmission_interface/SimpleTransmission">
+    <actuator name="z_axis_actuator"/>
+    <joint name="z_axis_joint"/>
+    <mechanicalReduction>1</mechanicalReduction>
+  </transmission>
+
+  <!--
     Add a collision group for collision geometries that are defined to penetrate
     each other but should not register collisions.
   -->

@@ -1,11 +1,11 @@
 #pragma once
 
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <Eigen/Dense>
+#include <optional>
 
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 
@@ -76,12 +76,8 @@ static const Eigen::Vector3d k3dPrinterRampAttachmentFrame = {0.0437, 0.0400,
 static const drake::math::RotationMatrix<double>
     k3dPrinterRampAttachmentRotationMatrix(
         drake::math::RollPitchYaw<double>(0, 0, 3.14159));
-static const drake::multibody::PdControllerGains k3dPrinterXYAxesPdGains{
-    250000.0, 25000.0};
-// Lower-bandwidth gains for the z axis, which is driven much more slowly than
-// x/y on the real printer (github.com/DAIRLab/printer_robot_driver).
-static const drake::multibody::PdControllerGains k3dPrinterZAxisPdGains{31250.0,
-                                                                        3125.0};
+static const drake::multibody::PdControllerGains k3dPrinterPdGains{250000.0,
+                                                                   25000.0};
 
 /// Bin wall constants.
 static const Eigen::Vector4d kWallColor = {0.7, 0.7, 0.7, 1.0};

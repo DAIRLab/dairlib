@@ -232,26 +232,21 @@ ModelInstanceIndex Add3DPrinterToPlant(
   plant->set_gravity_enabled(printer_index, false);
   plant->set_gravity_enabled(ramp_index, false);
 
-  plant->AddJointActuator("x_axis_actuator",
-                          plant->GetJointByName("x_axis_joint", printer_index));
-  plant->AddJointActuator("y_axis_actuator",
-                          plant->GetJointByName("y_axis_joint", printer_index));
-  plant->AddJointActuator("z_axis_actuator",
-                          plant->GetJointByName("z_axis_joint", printer_index));
-
+  // The x/y/z actuators, and their effort limits, come from the URDF's
+  // transmissions.
   if (plant->time_step() > 0.0) {
     plant
         ->get_mutable_joint_actuator(
             plant->GetJointActuatorByName("x_axis_actuator").index())
-        .set_controller_gains(k3dPrinterXYAxesPdGains);
+        .set_controller_gains(k3dPrinterPdGains);
     plant
         ->get_mutable_joint_actuator(
             plant->GetJointActuatorByName("y_axis_actuator").index())
-        .set_controller_gains(k3dPrinterXYAxesPdGains);
+        .set_controller_gains(k3dPrinterPdGains);
     plant
         ->get_mutable_joint_actuator(
             plant->GetJointActuatorByName("z_axis_actuator").index())
-        .set_controller_gains(k3dPrinterZAxisPdGains);
+        .set_controller_gains(k3dPrinterPdGains);
   }
 
   if (include_ee) {
@@ -268,26 +263,20 @@ ModelInstanceIndex Add3DPrinterToPlant(
       // the carriage it is reported as, not the tip's small rise as it bends.
       const RigidBody<double>& deflection_x_body = plant->AddRigidBody(
           "finger_deflection_x", ee_index,
-          drake::multibody::SpatialInertia<double>::SolidSphereWithMass(
-              0.001, 0.005));
-      const auto& x_joint =
-          plant->AddJoint<drake::multibody::PrismaticJoint>(
-              "finger_deflection_x_joint",
-              plant->GetBodyByName("x_carriage"), T_Printer_EE,
-              deflection_x_body, RigidTransform<double>::Identity(),
-              Eigen::Vector3d::UnitX(),
-              -std::numeric_limits<double>::infinity(),
-              std::numeric_limits<double>::infinity(),
-              finger_compliance->damping);
-      const auto& y_joint =
-          plant->AddJoint<drake::multibody::PrismaticJoint>(
-              "finger_deflection_y_joint", deflection_x_body,
-              RigidTransform<double>::Identity(),
-              plant->GetBodyByName("end_effector_flange", ee_index),
-              RigidTransform<double>::Identity(), Eigen::Vector3d::UnitY(),
-              -std::numeric_limits<double>::infinity(),
-              std::numeric_limits<double>::infinity(),
-              finger_compliance->damping);
+          drake::multibody::SpatialInertia<double>::SolidSphereWithMass(0.001,
+                                                                        0.005));
+      const auto& x_joint = plant->AddJoint<drake::multibody::PrismaticJoint>(
+          "finger_deflection_x_joint", plant->GetBodyByName("x_carriage"),
+          T_Printer_EE, deflection_x_body, RigidTransform<double>::Identity(),
+          Eigen::Vector3d::UnitX(), -std::numeric_limits<double>::infinity(),
+          std::numeric_limits<double>::infinity(), finger_compliance->damping);
+      const auto& y_joint = plant->AddJoint<drake::multibody::PrismaticJoint>(
+          "finger_deflection_y_joint", deflection_x_body,
+          RigidTransform<double>::Identity(),
+          plant->GetBodyByName("end_effector_flange", ee_index),
+          RigidTransform<double>::Identity(), Eigen::Vector3d::UnitY(),
+          -std::numeric_limits<double>::infinity(),
+          std::numeric_limits<double>::infinity(), finger_compliance->damping);
       plant->AddForceElement<drake::multibody::PrismaticSpring>(
           x_joint, 0.0, finger_compliance->stiffness);
       plant->AddForceElement<drake::multibody::PrismaticSpring>(

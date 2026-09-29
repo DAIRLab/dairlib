@@ -112,8 +112,10 @@ Eigen::MatrixXd RepositionWithRetreat(
     const SamplingC3RepositionParams& reposition_params,
     const SamplingC3Options& sampling_c3_options,
     const drake::geometry::QueryObject<double>* query_object,
-    drake::geometry::GeometryId ee_geometry_id, double ee_radius) {
+    drake::geometry::GeometryId ee_geometry_id, double ee_radius,
+    double max_retreat_distance) {
   DRAKE_DEMAND(N >= 2);
+  DRAKE_DEMAND(max_retreat_distance >= 0.0);
   // Never spend the whole horizon retreating: the repositioning leg needs at
   // least one knot to exist in.
   const int retreat_knots = std::min(num_retreat_knots, N - 1);
@@ -127,10 +129,13 @@ Eigen::MatrixXd RepositionWithRetreat(
                       sampling_c3_options, query_object, ee_geometry_id,
                       ee_radius);
   }
-  // One knot period of travel, as fast as this direction allows.
+  // One knot period of travel, as fast as this direction allows, unless that
+  // would carry the whole retreat past max_retreat_distance.
+  const double retreat_step =
+      std::min(MaxSpeedAlongDirection(retreat_direction, reposition_params) * dt,
+               max_retreat_distance / retreat_knots);
   const Eigen::Vector3d retreat_step_vector =
-      MaxSpeedAlongDirection(retreat_direction, reposition_params) * dt *
-      retreat_direction.normalized();
+      retreat_step * retreat_direction.normalized();
 
   // Update only the EE position.
   Eigen::MatrixXd knots = Eigen::MatrixXd::Zero(n_x, N);

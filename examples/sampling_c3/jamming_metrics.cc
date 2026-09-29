@@ -115,7 +115,8 @@ ObjectStateLayout MakeObjectStateLayout(int object_index) {
 bool JamLatch::Update(double now, double ee_object_force,
                       std::optional<double> ee_object_gap,
                       std::optional<double> object_travel,
-                      std::optional<double> measured_ee_object_gap) {
+                      std::optional<double> measured_ee_object_gap,
+                      std::optional<double> unload_distance) {
   constexpr double kNaN = std::numeric_limits<double>::quiet_NaN();
 
   // The force term arms only near contact.  C3's knot-0 lambda is an ADMM
@@ -177,6 +178,7 @@ bool JamLatch::Update(double now, double ee_object_force,
       tripped_ = true;
       tripped_by_deep_ = deep_held && !shallow_held;
       releasing_since_ = kNaN;
+      unloaded_ = false;
       return true;
     }
     return false;
@@ -210,8 +212,20 @@ bool JamLatch::Update(double now, double ee_object_force,
   // Whatever set the latch, it cannot release while the reported EE is still
   // deep inside the object.  A bending finger drags the object along, so
   // without this the travel route above would release a deep jam on its own.
-  const bool releasing =
-      force_clear && (gap_clear || object_moving_again) && !deep_arming_;
+  // Nor while the finger is still bent: a retreat that slides over the object
+  // clears every gap above with the tip still caught on the near side.  Once
+  // it has been seen unbent, it stops voting for the rest of this trip: the
+  // retreat keeps moving the EE after the finger is free, and a gantry that
+  // circled the entry point just outside unload_release held the latch
+  // indefinitely in the 2026-09-29 closed-loop sim re-run.
+  if (unload_distance.has_value() &&
+      *unload_distance < thresholds_.unload_release) {
+    unloaded_ = true;
+  }
+  const bool finger_loaded = !unloaded_ && unload_distance.has_value() &&
+                             *unload_distance >= thresholds_.unload_release;
+  const bool releasing = force_clear && (gap_clear || object_moving_again) &&
+                         !deep_arming_ && !finger_loaded;
   if (releasing) {
     if (std::isnan(releasing_since_)) releasing_since_ = now;
     if (now - releasing_since_ >= thresholds_.release_hold_seconds) {

@@ -144,3 +144,13 @@ jam_guard:
   # both keys to turn the tier off.
   deep_gap_trip: -0.011
   deep_trip_hold_seconds: 0.2
+  # Unloading:  while latched, retreat horizontally towards where the reported
+  # EE's gap last read >= 0 -- the stepper's offset from there is the compliant
+  # finger's deflection -- and do not release until within unload_release [m]
+  # of it.  Scored offline on the
+  # 2026-09-29 compliant-sim logs 000005/7/8:  that offset matched the true
+  # deflection's direction (cos >= 0.95) on 49 of 51 trips, with a median
+  # magnitude error of 3.5 mm.  Before this, 9 of those 52 trips released
+  # with 9-54 mm of deflection left, mostly by sliding over the cone, and
+  # snapped.  Omit the key to turn unloading off.
+  unload_release: 0.004

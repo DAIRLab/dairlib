@@ -1,6 +1,10 @@
-package dairlib;
+package archive.dairlib;
 
-/* lcmtype with debug information for the sampling controller.
+/* Archived generation of lcmt_sampling_c3_debug:  both v4's deep jam tier
+   fields and v5's mode_switch_decision, but not jam_unload_distance (added
+   2026-09-29).  Reads the 2026-09-25 through 2026-09-29 logs.
+
+   lcmtype with debug information for the sampling controller.
 
     mode_switch_reason key:
         0: No mode switch
@@ -43,7 +47,7 @@ package dairlib;
            another of this loop's samples was nominated in its place
 */
 
-struct lcmt_sampling_c3_debug
+struct lcmt_sampling_c3_debug_v6
 {
   int64_t utime;
 
@@ -84,9 +88,4 @@ struct lcmt_sampling_c3_debug
   // armed on it this loop.
   float jam_ee_object_gap_measured;
   boolean jam_deep_armed;
-
-  // The jam guard's estimate of a compliant finger's deflection [m]: the
-  // horizontal distance from the reported EE back to where its gap last read
-  // non-negative.  NaN before the EE has been seen outside the object.
-  float jam_unload_distance;
 }

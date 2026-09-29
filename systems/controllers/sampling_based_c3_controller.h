@@ -518,6 +518,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   ///      second from the printer's reported EE for the deep tier; and
   ///   3. how far the object estimate has travelled over the last
   ///      object_travel_window_seconds, from a short history this keeps.
+  /// Also tracks jam_entry_point_ / jam_unload_distance_, the estimated
+  /// deflection of a compliant finger that the retreat unloads first.
   /// The arming, dwell and release rules themselves live in JamLatch; a no-op
   /// when progress_params_.jam_guard is unset, in which case jam_latch_ is
   /// null and no demo pays for any of this.
@@ -989,8 +991,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // negative means the commanded EE position is inside the measured object.
   // NaN when the signed-distance query returned nothing trustworthy.
   mutable double jam_ee_object_gap_ = std::numeric_limits<double>::quiet_NaN();
-  // Unit outward normal out of the object at the EE, i.e. the direction that
-  // most directly undoes the interpenetration.  Zero when unavailable.
+  // The unit direction the retreat leaves along once the finger is unloaded,
+  // frozen at the latch's rising edge: the reported EE's recent motion
+  // reversed, else jam_last_shallow_normal_.  Zero when neither is available
+  // (plain repositioning) and whenever the latch is clear.
   mutable Eigen::Vector3d jam_escape_direction_ = Eigen::Vector3d::Zero();
   // (time [s], object position [m]) over the trailing travel window, oldest
   // first.  Entries older than the window are dropped each loop, so this holds
@@ -1011,9 +1015,15 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // The last outward normal from the reported-EE query while that gap was
   // still above gap_trip.  Zero until one has been seen.
   mutable Eigen::Vector3d jam_last_shallow_normal_ = Eigen::Vector3d::Zero();
-  // The retreat direction a deep trip froze at its rising edge; replaces
-  // jam_escape_direction_ for as long as that latch holds.
-  mutable Eigen::Vector3d jam_deep_escape_direction_ = Eigen::Vector3d::Zero();
+  // The reported EE position on the last unlatched loop its gap read >= 0,
+  // i.e. where a jammed fingertip is still caught.  Frozen while latched.  NaN
+  // until one has been seen.
+  mutable Eigen::Vector3d jam_entry_point_ =
+      Eigen::Vector3d::Constant(std::numeric_limits<double>::quiet_NaN());
+  // Horizontal distance from the reported EE back to jam_entry_point_ [m]:
+  // the estimated finger deflection.  NaN when there is no entry point.
+  mutable double jam_unload_distance_ =
+      std::numeric_limits<double>::quiet_NaN();
   // Farthest the object estimate has moved from its newest sample across that
   // history [m].  NaN until the history spans the whole window, which is the
   // same "no trustworthy reading" signal the gap uses.

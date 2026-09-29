@@ -109,8 +109,14 @@ class _SamplingC3Debug:
       return dairlib.lcmt_sampling_c3_debug.decode(data)
     except ValueError:
       pass
+    no_unload = dict(jam_unload_distance=float('nan'))
+    try:
+      return _SamplingC3Debug._Older(
+          archive_dairlib.lcmt_sampling_c3_debug_v6.decode(data), **no_unload)
+    except ValueError:
+      pass
     no_deep_tier = dict(jam_ee_object_gap_measured=float('nan'),
-                        jam_deep_armed=None)
+                        jam_deep_armed=None, **no_unload)
     try:
       return _SamplingC3Debug._Older(
           archive_dairlib.lcmt_sampling_c3_debug_v5.decode(data),
@@ -120,7 +126,7 @@ class _SamplingC3Debug:
     try:
       return _SamplingC3Debug._Older(
           archive_dairlib.lcmt_sampling_c3_debug_v4.decode(data),
-          mode_switch_decision=None)
+          mode_switch_decision=None, **no_unload)
     except ValueError:
       pass
     try:

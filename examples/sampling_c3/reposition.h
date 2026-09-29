@@ -1,3 +1,4 @@
+#include <limits>
 #include <utility>
 
 #include <Eigen/Core>
@@ -50,7 +51,10 @@ Eigen::MatrixXd Reposition(
 /// retreating plan has not arrived anywhere.
 ///
 /// @p retreat_direction need not be normalized; a zero vector disables the
-/// retreat.  The remaining arguments carry the same meaning as Reposition().
+/// retreat.  @p max_retreat_distance caps the retreat's total length [m], so
+/// a retreat aimed at a point stops on it rather than overshooting; the knots
+/// are then spaced evenly over that shorter distance.  The remaining arguments
+/// carry the same meaning as Reposition().
 Eigen::MatrixXd RepositionWithRetreat(
     const int& n_q, const int& n_x, const int& N, const Eigen::VectorXd& x_lcs,
     const Eigen::Vector3d& repos_target, const double& dt,
@@ -59,7 +63,8 @@ Eigen::MatrixXd RepositionWithRetreat(
     const SamplingC3RepositionParams& reposition_params,
     const SamplingC3Options& sampling_c3_options,
     const drake::geometry::QueryObject<double>* query_object = nullptr,
-    drake::geometry::GeometryId ee_geometry_id = {}, double ee_radius = 0.0);
+    drake::geometry::GeometryId ee_geometry_id = {}, double ee_radius = 0.0,
+    double max_retreat_distance = std::numeric_limits<double>::infinity());
 
 /// The fastest the end effector may travel along @p direction without exceeding
 /// horizontal or vertical speeds. @p reposition_params.speed_horizontal and the

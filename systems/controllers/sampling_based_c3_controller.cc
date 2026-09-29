@@ -568,6 +568,9 @@ SamplingC3Controller::SamplingC3Controller(
       DRAKE_DEMAND(*jam_params.deep_gap_trip < 0.0);
       DRAKE_DEMAND(*jam_params.deep_trip_hold_seconds >= 0.0);
     }
+    if (jam_params.unload_release.has_value()) {
+      DRAKE_DEMAND(*jam_params.unload_release > 0.0);
+    }
     // The retreat is prepended to an N-knot plan and the remainder is still
     // repositioned, so it must leave at least two knots for that leg.
     DRAKE_DEMAND(jam_params.retreat_knots <= sampling_c3_options_.N - 2);
@@ -587,7 +590,9 @@ SamplingC3Controller::SamplingC3Controller(
         .deep_gap_trip = jam_params.deep_gap_trip.value_or(
             -std::numeric_limits<double>::infinity()),
         .deep_trip_hold_seconds =
-            jam_params.deep_trip_hold_seconds.value_or(0.0)});
+            jam_params.deep_trip_hold_seconds.value_or(0.0),
+        .unload_release = jam_params.unload_release.value_or(
+            std::numeric_limits<double>::infinity())});
     std::cout << "Jam watchdog enabled: trips below " << jam_params.gap_trip
               << " m gap while the object moves under "
               << jam_params.object_travel_trip << " m per "
@@ -601,6 +606,11 @@ SamplingC3Controller::SamplingC3Controller(
                 << " m gap from the reported EE, held "
                 << *jam_params.deep_trip_hold_seconds
                 << " s, whatever the object does." << std::endl;
+    }
+    if (jam_params.unload_release.has_value()) {
+      std::cout << "Jam watchdog unloading enabled: retreats towards the entry "
+                   "point and holds the latch until within "
+                << *jam_params.unload_release << " m of it." << std::endl;
     }
   }
 
@@ -2954,23 +2964,42 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   const auto& query_object =
       plant_.get_geometry_query_input_port()
           .template Eval<drake::geometry::QueryObject<double>>(*context_);
-  // While the jam watchdog is latched, prepend a short retreat along the
-  // outward object normal to whatever the repositioning strategy would plan.
+  // While the jam watchdog is latched, prepend a short retreat to whatever the
+  // repositioning strategy would plan: towards the entry point while the finger
+  // is still bent, then along the direction the EE came in from.
   // The whole plan is rebuilt every loop, so a retreat that needs more than one
   // tick is simply this happening on several loops in a row, tapering back into
   // the plain repositioning path the moment the guard releases -- no committed
   // escape trajectory to get stuck in.  The retreat knots pass through the same
   // ProjectPlanAwayFromFixedGeometries / ClampPlanToWorkspaceLimits at publish
-  // time as everything else, so an escape normal pointing into the ramp is
+  // time as everything else, so an escape direction pointing into the ramp is
   // projected back out rather than driven into it.
   MatrixXd knots;
   if (jam_tripped_) {
     const JamGuardParams& jam_params = progress_params_.jam_guard.value();
+    // While the finger is still bent, retreat horizontally towards where its
+    // tip is caught.  Leaving by any other route drags the loaded tip across
+    // the object until it snaps free, and rising is exactly the route over the
+    // top.  Measured from the plan's own start and capped at that distance so
+    // the retreat lands on the point: uncapped, each loop's full-speed retreat
+    // overshot it and the gantry circled it without the latch ever releasing
+    // (2026-09-29 closed-loop sim re-run).  The latch holds until this is
+    // done; see unload_release.
+    Vector3d retreat_direction = jam_escape_direction_;
+    double max_retreat_distance = std::numeric_limits<double>::infinity();
+    if (jam_params.unload_release.has_value() && !jam_latch_->unloaded() &&
+        std::isfinite(jam_unload_distance_) &&
+        jam_unload_distance_ >= *jam_params.unload_release) {
+      retreat_direction = Vector3d::Zero();
+      retreat_direction.head<2>() =
+          (jam_entry_point_ - x_lcs.head(3)).head<2>();
+      max_retreat_distance = retreat_direction.norm();
+    }
     knots = RepositionWithRetreat(
         n_q_, n_x_, N_, x_lcs, best_sample_location, dt_, is_doing_c3_,
-        jam_escape_direction_, jam_params.retreat_knots, reposition_params_,
+        retreat_direction, jam_params.retreat_knots, reposition_params_,
         sampling_c3_options_, &query_object, contact_pairs_.at(0).at(0).first(),
-        ee_radius_);
+        ee_radius_, max_retreat_distance);
     // A retreating plan has not reached its target, whatever the leg beyond the
     // retreat thinks.
     finished_reposition_flag_ = false;
@@ -3747,9 +3776,10 @@ void SamplingC3Controller::UpdateJamWatchdog(
   // ProjectPlanAwayFromFixedGeometries runs, pointed at the object geometries
   // instead of the fixed scene.  result.distance is measured from the EE
   // *centre*, so subtracting ee_radius_ gives the gap from the EE sphere's
-  // surface to the object's surface; grad_W is the gradient of that signed
-  // distance, which points out of the object and is therefore the direction
-  // that most directly undoes the penetration.
+  // surface to the object's surface.  Its gradient is only a validity check
+  // here, not a retreat direction: past the object's axis it points out of the
+  // far side, and a shallow trip that retreated along it drove the finger over
+  // the top of the cone (2026-09-29 compliant-sim logs).
   //
   // The context is already synced to x_lcs_curr -- CreateLCSObjectsForSamples
   // restores it before returning -- so the object pose the query sees is the
@@ -3771,8 +3801,7 @@ void SamplingC3Controller::UpdateJamWatchdog(
     }
     return nearest;
   };
-  const auto [min_distance, escape_direction] =
-      query_objects(x_lcs_curr.head(3));
+  const auto [min_distance, gradient] = query_objects(x_lcs_curr.head(3));
 
   // A reading this deep is not a real penetration: it means the
   // signed-distance query is unreliable (a non-watertight or non-manifold
@@ -3784,17 +3813,9 @@ void SamplingC3Controller::UpdateJamWatchdog(
   const double gap = min_distance - ee_radius_;
   const bool gap_is_valid = std::isfinite(min_distance) &&
                             gap > -kMaxPlausiblePenetration &&
-                            escape_direction.norm() > 1e-9;
-  if (gap_is_valid) {
-    jam_ee_object_gap_ = gap;
-    jam_escape_direction_ = escape_direction.normalized();
-  } else {
-    // No escape direction rather than a stale one: the retreat is only worth
-    // making along a normal this loop's query actually produced, and
-    // RepositionWithRetreat falls back to plain repositioning without one.
-    jam_ee_object_gap_ = std::numeric_limits<double>::quiet_NaN();
-    jam_escape_direction_ = Vector3d::Zero();
-  }
+                            gradient.norm() > 1e-9;
+  jam_ee_object_gap_ =
+      gap_is_valid ? gap : std::numeric_limits<double>::quiet_NaN();
 
   // Guard 2b, the deep tier: the same query from the EE position the printer
   // reported this loop, before ResolvePredictedEEState moved it along the
@@ -3820,6 +3841,21 @@ void SamplingC3Controller::UpdateJamWatchdog(
           progress_params_.jam_guard.value().gap_trip) {
     jam_last_shallow_normal_ = measured_gradient.normalized();
   }
+  // Where a jammed fingertip is still caught: the reported EE on the last
+  // unlatched loop it was not inside the object.  A compliant finger jams by
+  // bending, so from here on the stepper's horizontal offset from this point
+  // is the finger's deflection -- on the 2026-09-29 compliant-sim logs it
+  // matched the true deflection's direction (cos >= 0.95) on 49 of 51 trips.
+  // Horizontal only because the finger only bends horizontally.  Frozen while
+  // latched so the retreat has a fixed point to unload towards.
+  if (!jam_latch_->tripped() && measured_gap_is_valid &&
+      jam_ee_object_gap_measured_ >= 0.0) {
+    jam_entry_point_ = measured_ee;
+  }
+  jam_unload_distance_ =
+      jam_entry_point_.allFinite()
+          ? (jam_entry_point_ - measured_ee).head<2>().norm()
+          : std::numeric_limits<double>::quiet_NaN();
 
   // Guard 3: is the object actually going anywhere?  A jam is contact with no
   // object progress, and the gap cannot tell those apart on its own -- the
@@ -3869,30 +3905,34 @@ void SamplingC3Controller::UpdateJamWatchdog(
       travel_is_valid ? std::optional<double>(jam_object_travel_)
                       : std::nullopt,
       measured_gap_is_valid ? std::optional<double>(jam_ee_object_gap_measured_)
-                            : std::nullopt);
+                            : std::nullopt,
+      std::isfinite(jam_unload_distance_)
+          ? std::optional<double>(jam_unload_distance_)
+          : std::nullopt);
   jam_trip_seconds_ = jam_latch_->trip_seconds();
   jam_tripped_ = jam_latch_->tripped();
   jam_deep_armed_ = jam_latch_->deep_arming();
 
-  // A deep trip retreats the way the EE came in, frozen at the trip.  The
+  // Either tier retreats the way the EE came in, frozen at the trip.  The
   // query's own gradient is no use by then: past the object's axis it points
   // out of the far side, i.e. further into the jam.  Reversing the reported
   // EE's recent motion is the direct answer; the last shallow normal covers a
   // stall where the EE has barely moved.  Frozen because once the retreat
   // starts, the reversed recent motion would point back into the object.
-  if (rising_edge && jam_latch_->tripped_by_deep()) {
+  // UpdateRepositioningExecutionTrajectory only leaves along this once the
+  // finger is unloaded; until then it heads for jam_entry_point_.
+  if (rising_edge) {
     const Vector3d backwards = jam_ee_history_.front().second - measured_ee;
     constexpr double kMinMotionForDirection = 0.002;  // meters
     if (backwards.norm() > kMinMotionForDirection) {
-      jam_deep_escape_direction_ = backwards.normalized();
+      jam_escape_direction_ = backwards.normalized();
     } else if (!jam_last_shallow_normal_.isZero()) {
-      jam_deep_escape_direction_ = jam_last_shallow_normal_;
+      jam_escape_direction_ = jam_last_shallow_normal_;
     } else {
-      jam_deep_escape_direction_ = jam_escape_direction_;
+      jam_escape_direction_ = Vector3d::Zero();
     }
-  }
-  if (jam_latch_->tripped_by_deep()) {
-    jam_escape_direction_ = jam_deep_escape_direction_;
+  } else if (!jam_latch_->tripped()) {
+    jam_escape_direction_ = Vector3d::Zero();
   }
 
   if (rising_edge) {
@@ -3900,7 +3940,8 @@ void SamplingC3Controller::UpdateJamWatchdog(
               << (jam_latch_->tripped_by_deep() ? " (deep tier)" : "")
               << ": EE<->object force " << jam_ee_object_force_ << " N, gap "
               << jam_ee_object_gap_ << " m, reported-EE gap "
-              << jam_ee_object_gap_measured_ << " m, object travel "
+              << jam_ee_object_gap_measured_ << " m, finger deflection "
+              << jam_unload_distance_ << " m, object travel "
               << jam_object_travel_ << " m, held "
               << (jam_latch_->tripped_by_deep()
                       ? jam_params.deep_trip_hold_seconds.value_or(0.0)
@@ -3908,7 +3949,8 @@ void SamplingC3Controller::UpdateJamWatchdog(
               << " s." << std::endl;
   } else if (was_tripped && !jam_tripped_) {
     std::cout << "Jam cleared: EE<->object force " << jam_ee_object_force_
-              << " N, gap " << jam_ee_object_gap_ << " m, object travel "
+              << " N, gap " << jam_ee_object_gap_ << " m, finger deflection "
+              << jam_unload_distance_ << " m, object travel "
               << jam_object_travel_ << " m." << std::endl;
   }
 }
@@ -5109,6 +5151,7 @@ void SamplingC3Controller::OutputDebug(
   debug_msg->jam_tripped = jam_tripped_;
   debug_msg->jam_ee_object_gap_measured = jam_ee_object_gap_measured_;
   debug_msg->jam_deep_armed = jam_deep_armed_;
+  debug_msg->jam_unload_distance = jam_unload_distance_;
 }
 
 void SamplingC3Controller::OutputSampleBufferConfigurations(

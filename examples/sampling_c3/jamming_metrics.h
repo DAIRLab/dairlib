@@ -247,6 +247,12 @@ struct JamLatchThresholds {
   /// finger stops deepening once the reported EE crosses the object's axis,
   /// and that window was only 0.7-0.9 s long on hardware.
   double deep_trip_hold_seconds = 0.0;
+  /// The latch cannot release while the estimated finger deflection is at or
+  /// above this [m] -- the horizontal distance from the reported EE back to
+  /// where its gap last read non-negative.  Without it a retreat that slides
+  /// over the object clears every gap term with the finger still loaded, and
+  /// the finger snaps free.  Infinity turns the condition off.
+  double unload_release = std::numeric_limits<double>::infinity();
 };
 
 /// The live jam watchdog's decision, separated from the queries that feed it.
@@ -280,11 +286,16 @@ class JamLatch {
   /// is the same quantity as @p ee_object_gap but measured from the printer's
   /// reported EE position.  nullopt means no reading, which can neither arm
   /// the deep tier nor hold the latch open.
+  /// @p unload_distance is the estimated finger deflection (see
+  /// unload_release); it only ever holds the latch set, never arms it, and
+  /// nullopt does not vote.  It stops voting for the rest of a trip once it
+  /// has read below unload_release; see unloaded().
   /// @return true iff this update was the rising edge (the latch just set).
   bool Update(double now, double ee_object_force,
               std::optional<double> ee_object_gap,
               std::optional<double> object_travel,
-              std::optional<double> measured_ee_object_gap = std::nullopt);
+              std::optional<double> measured_ee_object_gap = std::nullopt,
+              std::optional<double> unload_distance = std::nullopt);
 
   bool tripped() const { return tripped_; }
   /// Seconds the arming condition has held continuously, 0 when not arming.
@@ -293,6 +304,9 @@ class JamLatch {
   bool deep_arming() const { return deep_arming_; }
   /// Whether the current latch was set by the deep tier.  Cleared on release.
   bool tripped_by_deep() const { return tripped_by_deep_; }
+  /// Whether the unload distance has dropped below unload_release at any point
+  /// since the current latch set.  Once true it stays true until the next trip.
+  bool unloaded() const { return unloaded_; }
 
  private:
   JamLatchThresholds thresholds_;
@@ -305,6 +319,7 @@ class JamLatch {
   bool deep_arming_ = false;
   bool tripped_ = false;
   bool tripped_by_deep_ = false;
+  bool unloaded_ = false;
 };
 
 /// Indices of the lambda entries belonging to one group of contacts, together

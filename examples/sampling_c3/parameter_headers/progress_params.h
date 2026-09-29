@@ -112,6 +112,14 @@ struct JamGuardParams {
   std::optional<double> deep_gap_trip;
   /// Seconds the deep condition must hold continuously before the latch sets.
   std::optional<double> deep_trip_hold_seconds;
+  /// Unloading: while latched, retreat horizontally towards the point where
+  /// the reported EE's gap last read non-negative -- where the fingertip is
+  /// still caught -- and do not release until the reported EE is within this
+  /// [m] of it.  A compliant finger jams by bending, so the stepper's offset
+  /// from that point is the finger's deflection; any other exit drags the
+  /// loaded tip across the object and lets it snap free.  Omit to turn
+  /// unloading off.
+  std::optional<double> unload_release;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -128,6 +136,7 @@ struct JamGuardParams {
     a->Visit(DRAKE_NVP(retreat_knots));
     a->Visit(DRAKE_NVP(deep_gap_trip));
     a->Visit(DRAKE_NVP(deep_trip_hold_seconds));
+    a->Visit(DRAKE_NVP(unload_release));
     if (deep_gap_trip.has_value() != deep_trip_hold_seconds.has_value()) {
       throw std::runtime_error(
           "jam_guard: set both deep_gap_trip and deep_trip_hold_seconds, or "

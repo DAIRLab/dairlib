@@ -458,8 +458,8 @@ TEST(JamLatchTest, ADeepJamCannotReleaseWhileStillDeep) {
   EXPECT_FALSE(latch.tripped_by_deep());
 }
 
-// A latch set by the shallow rules is not reported as a deep trip, so it keeps
-// retreating along the query's own normal.
+// A latch set by the shallow rules is not reported as a deep trip.  Both
+// retreat the same way now; the distinction only labels the trip.
 TEST(JamLatchTest, AShallowTripIsNotADeepTrip) {
   JamLatch latch(MakeThresholdsWithDeepTier());
   double now = 0.0;
@@ -473,6 +473,98 @@ TEST(JamLatchTest, AnUnsetDeepThresholdIsANoOp) {
   double now = 0.0;
   EXPECT_FALSE(StepDeep(&latch, &now, 20, 0.0, kContact, kDragging, -1.0));
   EXPECT_FALSE(latch.deep_arming());
+}
+
+// A bent finger holds the latch whatever the gap and force say: on the
+// 2026-09-29 compliant-sim logs every shallow trip that slid over the cone
+// cleared all of them with 27-54 mm of deflection left, and the finger snapped.
+TEST(JamLatchTest, ALoadedFingerHoldsTheLatch) {
+  JamLatchThresholds thresholds = MakeThresholds();
+  thresholds.unload_release = 0.004;
+  JamLatch latch(thresholds);
+  double now = 0.0;
+  ASSERT_TRUE(Step(&latch, &now, 4, 0.0, -0.012));
+  for (int i = 0; i < 20; i++) {
+    latch.Update(now, 0.0, kClear, std::nullopt, kClear, 0.015);
+    now += kLoop;
+  }
+  EXPECT_TRUE(latch.tripped());
+  // Unloaded, and the ordinary release dwell takes over.
+  for (int i = 0; i < 4; i++) {
+    latch.Update(now, 0.0, kClear, std::nullopt, kClear, 0.002);
+    now += kLoop;
+  }
+  EXPECT_FALSE(latch.tripped());
+}
+
+// The deflection only ever holds a latch; it never sets one, and a missing
+// estimate does not vote.
+TEST(JamLatchTest, TheUnloadDistanceNeitherArmsNorHoldsWhenMissing) {
+  JamLatchThresholds thresholds = MakeThresholds();
+  thresholds.unload_release = 0.004;
+  JamLatch latch(thresholds);
+  double now = 0.0;
+  for (int i = 0; i < 20; i++) {
+    EXPECT_FALSE(latch.Update(now, 0.0, kClear, std::nullopt, kClear, 0.050));
+    now += kLoop;
+  }
+  ASSERT_TRUE(Step(&latch, &now, 4, 0.0, -0.012));
+  for (int i = 0; i < 4; i++) {
+    latch.Update(now, 0.0, kClear, std::nullopt, kClear, std::nullopt);
+    now += kLoop;
+  }
+  EXPECT_FALSE(latch.tripped());
+}
+
+// Once the finger has been seen unbent, the unload distance stops voting for
+// the rest of the trip.  In the 2026-09-29 closed-loop re-run the gantry
+// circled the entry point at ~9 mm after the finger was free, and a check that
+// kept voting held the latch for as long as that lasted.  A new trip re-arms
+// it.
+TEST(JamLatchTest, OnceUnloadedTheDistanceStopsHoldingTheLatch) {
+  JamLatchThresholds thresholds = MakeThresholds();
+  thresholds.unload_release = 0.004;
+  JamLatch latch(thresholds);
+  double now = 0.0;
+  ASSERT_TRUE(Step(&latch, &now, 4, 0.0, -0.012));
+  EXPECT_FALSE(latch.unloaded());
+  latch.Update(now, 0.0, -0.012, std::nullopt, kClear, 0.002);
+  now += kLoop;
+  EXPECT_TRUE(latch.unloaded());
+  for (int i = 0; i < 4; i++) {
+    latch.Update(now, 0.0, kClear, std::nullopt, kClear, 0.009);
+    now += kLoop;
+  }
+  EXPECT_FALSE(latch.tripped());
+
+  // The next trip starts loaded again.
+  ASSERT_TRUE(Step(&latch, &now, 4, 0.0, -0.012));
+  EXPECT_FALSE(latch.unloaded());
+  for (int i = 0; i < 20; i++) {
+    latch.Update(now, 0.0, kClear, std::nullopt, kClear, 0.009);
+    now += kLoop;
+  }
+  EXPECT_TRUE(latch.tripped());
+}
+
+// A retreat aimed at a point stops on it: the knots are spaced evenly over the
+// capped distance instead of a full-speed knot period each, and the
+// repositioning leg starts from the point.
+TEST(RepositionWithRetreatTest, TheRetreatStopsAtItsMaximumDistance) {
+  const Eigen::Vector3d ee(0.10, 0.10, 0.02);
+  const Eigen::Vector3d target(0.30, 0.30, 0.02);
+  const Eigen::Vector3d escape(0.005, 0.0, 0.0);  // 5 mm, under one 9 mm step
+  constexpr int kRetreatKnots = 2;
+
+  const Eigen::MatrixXd knots = RepositionWithRetreat(
+      kNq, kNx, kN, MakeLcsState(ee), target, kDt, /*is_doing_c3=*/false,
+      escape, kRetreatKnots, MakeRepositionParams(), MakeOptions(),
+      /*query_object=*/nullptr, /*ee_geometry_id=*/{}, /*ee_radius=*/0.0,
+      /*max_retreat_distance=*/escape.norm());
+
+  EXPECT_NEAR((knots.col(0).head(3) - ee).norm(), 0.0, 1e-12);
+  EXPECT_NEAR((knots.col(1).head(3) - (ee + 0.5 * escape)).norm(), 0.0, 1e-12);
+  EXPECT_NEAR((knots.col(2).head(3) - (ee + escape)).norm(), 0.0, 1e-12);
 }
 
 // Knot 0 must stay exactly where the end effector already is, or the published
@@ -676,6 +768,9 @@ TEST(JamGuardParamsTest, TheConeYamlShipsTheDetectorTheReportScored) {
   ASSERT_TRUE(jam_guard.deep_trip_hold_seconds.has_value());
   EXPECT_EQ(*jam_guard.deep_gap_trip, -0.011);
   EXPECT_EQ(*jam_guard.deep_trip_hold_seconds, 0.2);
+  // Unloading, from the 2026-09-29 compliant-sim logs.
+  ASSERT_TRUE(jam_guard.unload_release.has_value());
+  EXPECT_EQ(*jam_guard.unload_release, 0.004);
 
   // The invariants the controller DRAKE_DEMANDs, checked here so a bad yaml
   // fails the test rather than the demo.

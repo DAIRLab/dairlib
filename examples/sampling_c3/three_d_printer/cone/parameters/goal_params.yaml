@@ -11,7 +11,7 @@ goal_mode: 3  # This 3D printer demo steps through a fixed goal sequence.
 ### Parameters used for multiple goal modes.
 # Success thresholds for position and orientation.
 position_success_threshold: 0.02
-orientation_success_threshold: 0.1  # 0.1 rad = 5.7 degrees
+orientation_success_threshold: 0.2
 only_use_xy_position: true
 tracked_orientation_axis: [[1.0, 0.0, 0.0]]  # cone's symmetry axis is body +x
 
@@ -49,12 +49,14 @@ fixed_target_position_sequence:
   # - [[0.280, 0.224, 0.0]]   # this is where the cone is printed
   - [[0.280, 0.07, 0.0]]      # line up cone with ramp in Y
   - [[0.234, 0.07, 0.0]]      # get cone close to ramp in X
-  # - [[0.204, 0.07, 0.025]]
+  - [[0.204, 0.07, 0.025]]    # tip the cone onto the toe ramp
+  - [[0.145, 0.0705, 0.044]]  # mid-ramp pose to discourage flipping the cone
   - [[0.069, 0.07, 0.05]]     # final position at end of ramp 
 fixed_target_orientation_sequence:
   - [[0.707, 0, -0.707, 0]]
   - [[0.707, 0, -0.707, 0]]
-  # - [[-0.18, 0.0, -0.98, 0.0]]
+  - [[-0.18, 0.0, -0.98, 0.0]]
+  - [[0.068, 0, -0.9977, 0]]
   - [[0.707, 0, 0.707, 0]]
 
 

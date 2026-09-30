@@ -44,7 +44,7 @@ cost_switching_threshold_distance: 0.05
 # entry per step in goal_params.yaml's fixed_target_position_sequence (startup
 # throws on a length mismatch).  Comment out to use the single value above for
 # every goal.
-cost_switching_threshold_distance_sequence: [0.0, 0.0, 0.08]
+cost_switching_threshold_distance_sequence: [0.0, 0.0, 0.08, 0.08, 0.05]
 
 # Release the pose-tracking cost once the object has stayed this far (m) beyond
 # the active threshold for this long (s), e.g. after sliding back down the ramp.

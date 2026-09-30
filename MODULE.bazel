@@ -88,10 +88,17 @@ archive_override(
 )
 
 bazel_dep(name = "c3")
+# TEMPORARY (uncommitted):  build against the local c3 checkout carrying
+# uncommitted changes during development.  Restore the git_override below (with
+# updated hash) once the changes are committed to the c3 repo.
+# local_path_override(
+#     module_name = "c3",
+#     path = "/home/bibit/3d_printer/c3",
+# )
 git_override(
     module_name = "c3",
     remote = "https://github.com/DAIRLab/c3.git",
-    commit = "19a3452571e6836b82406bc22d857a3a114735bd"
+    commit = "728e2af58468211952b1701f786d001a1636f9bb"
 )
 
 

@@ -395,6 +395,12 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
     return Q_;
   }
   bool is_doing_c3_for_testing() const { return is_doing_c3_; }
+  /// The current-location plan's final-QP forces.  With end_on_qp_step false
+  /// these, not the projected forces the solution ports publish, are what the
+  /// published plan states were rolled out with.
+  std::vector<Eigen::VectorXd> curr_plan_qp_forces_for_testing() const {
+    return c3_curr_plan_->GetForceSolution();
+  }
 
  private:
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(

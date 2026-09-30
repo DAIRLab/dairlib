@@ -50,6 +50,7 @@
 #include "systems/controllers/sampling_based_c3_controller.h"
 
 #include "core/lcs.h"
+#include "core/traj_eval.h"
 #include "multibody/lcs_factory.h"
 #include "multibody/lcs_factory_options.h"
 
@@ -122,6 +123,26 @@ DEFINE_double(witness_dedup_mm, -1.0,
               "Override the yaml's contact_dedup_witness_radius, in mm: 0 keys "
               "the per-object-geometry cap on geometry, > 0 on the object-side "
               "witness point.  -1 (the default) uses the yaml.");
+DEFINE_string(object_model, "",
+              "Override the controller's object model (a path relative to the "
+              "repo, like sampling_c3_controller_params' object_models), e.g. "
+              "to try a different mass.  Empty keeps the yaml.");
+DEFINE_string(push_mm, "",
+              "\"dx,dy,dz\" [mm]:  after each u = 0 rollout, also roll the cost "
+              "LCS out with the end effector PD-tracking a straight line from "
+              "--ee_xyz to --ee_xyz + this over the horizon, with the cost "
+              "rollout's Kp/Kd and no feedforward, to see what the model "
+              "predicts a given push does to the object.");
+DEFINE_bool(push_kinematic, true,
+            "--push_mm drives the end effector with a deadbeat position servo:  "
+            "each step, the input that would land it on the next planned "
+            "position were nothing in contact.  false "
+            "uses the cost rollout's own PD tracking instead, which has no "
+            "gravity compensation without C3's feedforward and sags.");
+DEFINE_double(push_gain_scale, 1.0,
+              "Multiplies --push_mm's Kp and Kd.  The cost rollout's own gains "
+              "are soft, so a resisted push lags; raise this to approximate the "
+              "position-controlled gantry.");
 DEFINE_string(drop_pairs, "",
               "Comma-separated substrings; a resolved cost contact whose "
               "\"body::geometry <-> body::geometry\" description contains any "
@@ -224,10 +245,24 @@ void ReportGroup(const MultibodyPlant<double>& plant,
 
   vector<std::pair<double, drake::SortedPair<GeometryId>>> sorted;
   sorted.reserve(candidates.size());
+  // Witness point on each geometry, in world, keyed by pair, for the table.
+  std::map<drake::SortedPair<GeometryId>, std::pair<Vector3d, Vector3d>>
+      witnesses;
+  std::map<drake::SortedPair<GeometryId>, Vector3d> normals;
   for (const auto& pair : candidates) {
     const auto result = query_object.ComputeSignedDistancePairClosestPoints(
         pair.first(), pair.second());
     sorted.emplace_back(result.distance, pair);
+    // Stored in pair order (first, second), whichever of them Drake called A.
+    const Vector3d p_WA = query_object.GetPoseInWorld(result.id_A) * result.p_ACa;
+    const Vector3d p_WB = query_object.GetPoseInWorld(result.id_B) * result.p_BCb;
+    const bool a_is_first = result.id_A == pair.first();
+    witnesses[pair] = a_is_first ? std::make_pair(p_WA, p_WB)
+                                 : std::make_pair(p_WB, p_WA);
+    // nhat_BA_W points from B towards A; store it pointing from the second
+    // geometry towards the first.
+    normals[pair] = a_is_first ? Vector3d(result.nhat_BA_W)
+                               : Vector3d(-result.nhat_BA_W);
   }
   std::sort(sorted.begin(), sorted.end(),
             [](const auto& a, const auto& b) { return a.first < b.first; });
@@ -264,8 +299,20 @@ void ReportGroup(const MultibodyPlant<double>& plant,
               << sorted[i].first
               << DescribeGeometry(plant, inspector, sorted[i].second.first())
               << "  <->  "
-              << DescribeGeometry(plant, inspector, sorted[i].second.second())
-              << std::endl;
+              << DescribeGeometry(plant, inspector, sorted[i].second.second());
+    // The object-side witness point [mm] and the normal pointing from the
+    // world-fixed geometry into the object, so which part of the object each
+    // slot touches (apex, rim, side) and which way it pushes is visible.
+    const auto& w = witnesses.at(sorted[i].second);
+    const bool object_is_first = object_side(sorted[i].second) ==
+                                 sorted[i].second.first();
+    const Vector3d p_object = 1e3 * (object_is_first ? w.first : w.second);
+    Vector3d n = normals.at(sorted[i].second);
+    if (!object_is_first) n = -n;  // now from the world-fixed side inwards
+    std::cout << std::setprecision(1) << "   @ (" << p_object.x() << ", "
+              << p_object.y() << ", " << p_object.z() << ") mm  n ("
+              << std::setprecision(2) << n.x() << ", " << n.y() << ", "
+              << n.z() << ")" << std::endl;
   }
   if (to_print < static_cast<int>(sorted.size())) {
     std::cout << "    ... " << sorted.size() - to_print << " more" << std::endl;
@@ -518,8 +565,10 @@ int DoMain(int argc, char* argv[]) {
   DiagramBuilder<double> plant_lcs_builder;
   auto [plant_lcs, scene_graph] =
       AddMultibodyPlantSceneGraph(&plant_lcs_builder, 0.0);
-  AddLCSModelsTo3DPrinterPlant(&plant_lcs, &scene_graph,
-                               controller_params.object_models);
+  const vector<string> object_models =
+      FLAGS_object_model.empty() ? controller_params.object_models
+                                 : vector<string>{FLAGS_object_model};
+  AddLCSModelsTo3DPrinterPlant(&plant_lcs, &scene_graph, object_models);
   plant_lcs.Finalize();
 
   std::unique_ptr<MultibodyPlant<drake::AutoDiffXd>> plant_lcs_autodiff =
@@ -784,6 +833,80 @@ int DoMain(int argc, char* argv[]) {
     ReportAttribution(plant_lcs, query_object, inspector, resolved_cost,
                       cost_friction_directions, cost_contact_model, lcs, x_lcs,
                       u_zero);
+
+    // ================= 4. A forced push (--push_mm) =================
+    VectorXd push_mm;
+    if (!ParseDoubles(FLAGS_push_mm, 3, &push_mm)) continue;
+    const double horizon = cost_options.dt * cost_options.N;
+    const Vector3d push = push_mm / 1000.0;
+    vector<VectorXd> x_plan(cost_options.N + 1, x_lcs);
+    for (int k = 0; k <= cost_options.N; ++k) {
+      x_plan[k].head(3) =
+          x_lcs.head(3) + push * static_cast<double>(k) / cost_options.N;
+      x_plan[k].segment(n_q, 3) = push / horizon;
+    }
+    VectorXd Kp = VectorXd::Zero(n_x);
+    VectorXd Kd = VectorXd::Zero(n_x);
+    for (int i = 0; i < 3; ++i) {
+      Kp(i) = FLAGS_push_gain_scale * sampling_c3_options.Kp_for_ee_pd_rollout[i];
+      Kd(n_q + i) =
+          FLAGS_push_gain_scale * sampling_c3_options.Kd_for_ee_pd_rollout[i];
+    }
+    vector<VectorXd> x_push;
+    if (FLAGS_push_kinematic) {
+      // A deadbeat position servo:  each step, the input that would put the
+      // EE exactly on the next planned position were nothing in contact.  The
+      // EE rows of B are full rank for the gantry's three prismatic actuators,
+      // so that is a 3x3 solve.  Any lag contact causes turns into force on
+      // the next step, about m_EE * lag / dt^2 -- as stiff as this discrete
+      // model can push without going unstable.
+      x_push.assign(1, x_plan[0]);
+      VectorXd x = x_plan[0];
+      const double dt = cost_options.dt;
+      for (int k = 0; k < cost_options.N; ++k) {
+        const VectorXd free = lcs.A()[k] * x + lcs.d()[k];
+        const Vector3d v_target =
+            (x_plan[k + 1].head(3) - x.head(3)) / dt;
+        const VectorXd u = lcs.B()[k].middleRows(n_q, 3).fullPivLu().solve(
+            v_target - free.segment(n_q, 3));
+        x = lcs.Simulate(x, u);
+        x_push.push_back(x);
+      }
+    } else {
+      x_push = c3::traj_eval::TrajectoryEvaluator::SimulatePDControlWithLCS(
+                   x_plan, Kp, Kd, lcs)
+                   .first;
+    }
+
+    // Body +x is the cone's symmetry axis.
+    auto axis_of = [](const VectorXd& x) {
+      const Eigen::Quaterniond q(x(3), x(4), x(5), x(6));
+      return Vector3d(q.normalized().toRotationMatrix().col(0));
+    };
+    const Vector3d axis0 = axis_of(x_lcs);
+    std::cout << "\n  PUSH rollout:  EE target moves " << push_mm.transpose()
+              << " mm over " << horizon << " s (gain scale "
+              << FLAGS_push_gain_scale << ")" << std::endl;
+    std::cout << "    knot    obj x      obj y      obj z      travel mm  "
+                 "swing deg  axis                   EE x     EE y     EE z"
+              << std::endl;
+    for (int k = 0; k <= cost_options.N; ++k) {
+      if (k % print_every != 0 && k != cost_options.N) continue;
+      const VectorXd& x = x_push[k];
+      const Vector3d axis = axis_of(x);
+      std::cout << std::fixed << "    " << std::left << std::setw(8) << k
+                << std::setprecision(4) << std::setw(11) << x(7)
+                << std::setw(11) << x(8) << std::setw(11) << x(9)
+                << std::setprecision(1) << std::setw(11)
+                << (x.segment(7, 3) - start).norm() * 1000.0 << std::setw(11)
+                << std::acos(std::clamp(axis.dot(axis0), -1.0, 1.0)) * 180.0 /
+                       M_PI
+                << std::setprecision(2) << "(" << std::setw(5) << axis(0)
+                << "," << std::setw(5) << axis(1) << "," << std::setw(5)
+                << axis(2) << ")    " << std::setprecision(1) << std::setw(9)
+                << x(0) * 1000.0 << std::setw(9) << x(1) * 1000.0
+                << std::setw(9) << x(2) * 1000.0 << std::endl;
+    }
   }
 
   return 0;

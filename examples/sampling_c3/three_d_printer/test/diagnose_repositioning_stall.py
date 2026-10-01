@@ -58,7 +58,7 @@ class _SamplingC3Debug:
 
   LCM verifies the fingerprint on decode, so the current type cannot read a log
   recorded before a field was appended.  Fields have been appended five times
-  so far, along two parallel branches that were then joined, giving six
+  so far, along two parallel branches that were then joined, giving nine
   generations:
 
     v1  the original layout -- every log up to and including the 2026-09-17
@@ -74,7 +74,12 @@ class _SamplingC3Debug:
     v5  v3 + mode_switch_decision (2026-09-24) -- the 2026-09-24 realistic-sim
         runs 000007-000011, the baseline the C3 <-> repos confirm gates are
         measured against.
-    v6  v3 + all three -- current.
+    v6  v3 + all three -- the 2026-09-25 through 2026-09-29 runs.
+    v7  v6 + jam_unload_distance (2026-09-29) -- the 2026-09-29 and
+        2026-09-30 compliant-sim runs.
+    v8  v7 + jam_finger_load, jam_tripped_by_load (2026-10-01) -- the
+        2026-10-01 compliant-sim runs 000000-000013.
+    v9  v8 + jam_retreat_pushing (2026-10-01) -- current.
 
   Fall back to the newest archived layout that decodes, and report each field
   that generation does not carry as a sentinel.  NaN for jam_object_travel is
@@ -82,8 +87,10 @@ class _SamplingC3Debug:
   filled.  repos_target_decision and mode_switch_decision report as None rather
   than 0, because 0 is a real value ("nothing nominated") and a log that
   predates a gate must not be counted as evidence that the gate kept anything.
-  The same goes for jam_deep_armed, and jam_ee_object_gap_measured reports as
-  NaN, the controller's own "no reading" value.
+  The same goes for jam_deep_armed, jam_tripped_by_load and
+  jam_retreat_pushing, and
+  jam_ee_object_gap_measured, jam_unload_distance and jam_finger_load report
+  as NaN, the controller's own "no reading" value.
   """
 
   class _Older:
@@ -109,7 +116,22 @@ class _SamplingC3Debug:
       return dairlib.lcmt_sampling_c3_debug.decode(data)
     except ValueError:
       pass
-    no_unload = dict(jam_unload_distance=float('nan'))
+    no_push_guard = dict(jam_retreat_pushing=None)
+    try:
+      return _SamplingC3Debug._Older(
+          archive_dairlib.lcmt_sampling_c3_debug_v8.decode(data),
+          **no_push_guard)
+    except ValueError:
+      pass
+    no_load_tier = dict(jam_finger_load=float('nan'), jam_tripped_by_load=None,
+                        **no_push_guard)
+    try:
+      return _SamplingC3Debug._Older(
+          archive_dairlib.lcmt_sampling_c3_debug_v7.decode(data),
+          **no_load_tier)
+    except ValueError:
+      pass
+    no_unload = dict(jam_unload_distance=float('nan'), **no_load_tier)
     try:
       return _SamplingC3Debug._Older(
           archive_dairlib.lcmt_sampling_c3_debug_v6.decode(data), **no_unload)

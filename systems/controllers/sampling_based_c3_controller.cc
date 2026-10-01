@@ -571,6 +571,23 @@ SamplingC3Controller::SamplingC3Controller(
     if (jam_params.unload_release.has_value()) {
       DRAKE_DEMAND(*jam_params.unload_release > 0.0);
     }
+    if (jam_params.load_trip.has_value()) {
+      // Only the unload distance holds a load trip until the finger is
+      // unloaded; without it the far side's clear gap would release the latch
+      // at once and the finger would snap free.
+      DRAKE_DEMAND(jam_params.unload_release.has_value());
+      DRAKE_DEMAND(*jam_params.load_trip > 0.0);
+      DRAKE_DEMAND(*jam_params.load_trip_hold_seconds >= 0.0);
+      DRAKE_DEMAND(*jam_params.load_clear_gap >= 0.0);
+      jam_finger_load_estimator_ =
+          std::make_unique<FingerLoadEstimator>(*jam_params.load_clear_gap);
+    }
+    if (jam_params.retreat_push_travel.has_value()) {
+      // Scored only against the load tier's entry point; see
+      // RetreatIsPushing.
+      DRAKE_DEMAND(jam_params.load_trip.has_value());
+      DRAKE_DEMAND(*jam_params.retreat_push_travel > 0.0);
+    }
     // The retreat is prepended to an N-knot plan and the remainder is still
     // repositioned, so it must leave at least two knots for that leg.
     DRAKE_DEMAND(jam_params.retreat_knots <= sampling_c3_options_.N - 2);
@@ -591,6 +608,10 @@ SamplingC3Controller::SamplingC3Controller(
             -std::numeric_limits<double>::infinity()),
         .deep_trip_hold_seconds =
             jam_params.deep_trip_hold_seconds.value_or(0.0),
+        .load_trip = jam_params.load_trip.value_or(
+            std::numeric_limits<double>::infinity()),
+        .load_trip_hold_seconds =
+            jam_params.load_trip_hold_seconds.value_or(0.0),
         .unload_release = jam_params.unload_release.value_or(
             std::numeric_limits<double>::infinity())});
     std::cout << "Jam watchdog enabled: trips below " << jam_params.gap_trip
@@ -611,6 +632,14 @@ SamplingC3Controller::SamplingC3Controller(
       std::cout << "Jam watchdog unloading enabled: retreats towards the entry "
                    "point and holds the latch until within "
                 << *jam_params.unload_release << " m of it." << std::endl;
+    }
+    if (jam_params.load_trip.has_value()) {
+      std::cout << "Jam watchdog load tier enabled: trips at "
+                << *jam_params.load_trip
+                << " m of reported-EE run past the entry plane, held "
+                << *jam_params.load_trip_hold_seconds
+                << " s; re-anchors once clear by "
+                << *jam_params.load_clear_gap << " m." << std::endl;
     }
   }
 
@@ -2987,7 +3016,12 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     // done; see unload_release.
     Vector3d retreat_direction = jam_escape_direction_;
     double max_retreat_distance = std::numeric_limits<double>::infinity();
-    if (jam_params.unload_release.has_value() && !jam_latch_->unloaded() &&
+    if (jam_retreat_pushing_) {
+      // The finger is free and every horizontal way out runs through the
+      // object; up is clear of it.
+      retreat_direction = Vector3d::UnitZ();
+    } else if (jam_params.unload_release.has_value() &&
+               !jam_latch_->unloaded() &&
         std::isfinite(jam_unload_distance_) &&
         jam_unload_distance_ >= *jam_params.unload_release) {
       retreat_direction = Vector3d::Zero();
@@ -3841,15 +3875,40 @@ void SamplingC3Controller::UpdateJamWatchdog(
           progress_params_.jam_guard.value().gap_trip) {
     jam_last_shallow_normal_ = measured_gradient.normalized();
   }
-  // Where a jammed fingertip is still caught: the reported EE on the last
-  // unlatched loop it was not inside the object.  A compliant finger jams by
+  // Where a jammed fingertip is still caught.  A compliant finger jams by
   // bending, so from here on the stepper's horizontal offset from this point
   // is the finger's deflection -- on the 2026-09-29 compliant-sim logs it
   // matched the true deflection's direction (cos >= 0.95) on 49 of 51 trips.
   // Horizontal only because the finger only bends horizontally.  Frozen while
   // latched so the retreat has a fixed point to unload towards.
-  if (!jam_latch_->tripped() && measured_gap_is_valid &&
-      jam_ee_object_gap_measured_ >= 0.0) {
+  //
+  // Guard 4, the load tier, sharpens this point and reads a load off it.  Its
+  // anchor moves with the object and survives the reported EE leaving the far
+  // side of the object, which is how a finger caught on the near side looks
+  // once the gantry has slid over a thin part; see FingerLoadEstimator.
+  // Without the tier, the point is simply the reported EE on the last
+  // unlatched loop it was not inside the object.
+  const ObjectStateLayout object_layout = MakeObjectStateLayout(0);
+  const Vector3d object_position =
+      x_lcs_curr.segment<3>(object_layout.position_offset);
+  if (jam_finger_load_estimator_ != nullptr) {
+    const Eigen::Vector4d q = x_lcs_curr.segment<4>(
+        object_layout.quaternion_offset);
+    const Eigen::Matrix3d R_WO =
+        Quaterniond(q(0), q(1), q(2), q(3)).normalized().toRotationMatrix();
+    const std::optional<double> load = jam_finger_load_estimator_->Update(
+        measured_ee,
+        measured_gap_is_valid
+            ? std::optional<double>(jam_ee_object_gap_measured_)
+            : std::nullopt,
+        measured_gradient, R_WO, object_position, jam_latch_->tripped());
+    jam_finger_load_ =
+        load.value_or(std::numeric_limits<double>::quiet_NaN());
+    if (!jam_latch_->tripped()) {
+      jam_entry_point_ = jam_finger_load_estimator_->entry_point_W();
+    }
+  } else if (!jam_latch_->tripped() && measured_gap_is_valid &&
+             jam_ee_object_gap_measured_ >= 0.0) {
     jam_entry_point_ = measured_ee;
   }
   jam_unload_distance_ =
@@ -3868,8 +3927,6 @@ void SamplingC3Controller::UpdateJamWatchdog(
   // not a filtered or ground-truth pose: the point is to describe the same
   // object this loop's gap query saw.
   const JamGuardParams& jam_params = progress_params_.jam_guard.value();
-  const Vector3d object_position =
-      x_lcs_curr.segment<3>(MakeObjectStateLayout(0).position_offset);
   jam_object_history_.emplace_back(now, object_position);
   jam_ee_history_.emplace_back(now, measured_ee);
   // Keep one sample older than the window so the history spans it rather than
@@ -3895,6 +3952,25 @@ void SamplingC3Controller::UpdateJamWatchdog(
     jam_object_travel_ = std::numeric_limits<double>::quiet_NaN();
   }
 
+  // A latched retreat that carries the object along is shoving it, not
+  // unloading a caught finger -- the finger has already slipped free.  Left
+  // alone it drove cones 50-80 mm back across the build plate (2026-10-01
+  // compliant sims); instead the trip counts as unloaded and the retreat lifts
+  // clear.  See RetreatIsPushing.
+  if (jam_latch_->tripped() && jam_params.retreat_push_travel.has_value() &&
+      travel_is_valid && !jam_retreat_pushing_ &&
+      RetreatIsPushing(measured_ee, jam_ee_history_.front().second,
+                       object_position, jam_object_history_.front().second,
+                       jam_entry_point_, jam_latch_->unloaded(),
+                       *jam_params.retreat_push_travel)) {
+    jam_retreat_pushing_ = true;
+    jam_latch_->MarkUnloaded();
+    std::cout << "Jam retreat is pushing the object (finger load "
+              << jam_finger_load_ << " m, unload distance "
+              << jam_unload_distance_ << " m); lifting clear instead."
+              << std::endl;
+  }
+
   // The dwell counter and its hysteresis live in JamLatch; see its comment for
   // why the arm and release conditions are asymmetric and why nothing here is
   // reset by a mode switch.
@@ -3908,10 +3984,14 @@ void SamplingC3Controller::UpdateJamWatchdog(
                             : std::nullopt,
       std::isfinite(jam_unload_distance_)
           ? std::optional<double>(jam_unload_distance_)
-          : std::nullopt);
+          : std::nullopt,
+      std::isfinite(jam_finger_load_) ? std::optional<double>(jam_finger_load_)
+                                      : std::nullopt);
   jam_trip_seconds_ = jam_latch_->trip_seconds();
   jam_tripped_ = jam_latch_->tripped();
   jam_deep_armed_ = jam_latch_->deep_arming();
+  jam_tripped_by_load_ = jam_latch_->tripped_by_load();
+  if (!jam_tripped_) jam_retreat_pushing_ = false;
 
   // Either tier retreats the way the EE came in, frozen at the trip.  The
   // query's own gradient is no use by then: past the object's axis it points
@@ -3938,13 +4018,16 @@ void SamplingC3Controller::UpdateJamWatchdog(
   if (rising_edge) {
     std::cout << "Jam detected"
               << (jam_latch_->tripped_by_deep() ? " (deep tier)" : "")
+              << (jam_latch_->tripped_by_load() ? " (load tier)" : "")
               << ": EE<->object force " << jam_ee_object_force_ << " N, gap "
               << jam_ee_object_gap_ << " m, reported-EE gap "
               << jam_ee_object_gap_measured_ << " m, finger deflection "
-              << jam_unload_distance_ << " m, object travel "
-              << jam_object_travel_ << " m, held "
+              << jam_unload_distance_ << " m, finger load " << jam_finger_load_
+              << " m, object travel " << jam_object_travel_ << " m, held "
               << (jam_latch_->tripped_by_deep()
                       ? jam_params.deep_trip_hold_seconds.value_or(0.0)
+                  : jam_latch_->tripped_by_load()
+                      ? jam_params.load_trip_hold_seconds.value_or(0.0)
                       : jam_trip_seconds_)
               << " s." << std::endl;
   } else if (was_tripped && !jam_tripped_) {
@@ -5152,6 +5235,9 @@ void SamplingC3Controller::OutputDebug(
   debug_msg->jam_ee_object_gap_measured = jam_ee_object_gap_measured_;
   debug_msg->jam_deep_armed = jam_deep_armed_;
   debug_msg->jam_unload_distance = jam_unload_distance_;
+  debug_msg->jam_finger_load = jam_finger_load_;
+  debug_msg->jam_tripped_by_load = jam_tripped_by_load_;
+  debug_msg->jam_retreat_pushing = jam_retreat_pushing_;
 }
 
 void SamplingC3Controller::OutputSampleBufferConfigurations(

@@ -1,6 +1,10 @@
-package dairlib;
+package archive.dairlib;
 
-/* lcmtype with debug information for the sampling controller.
+/* Archived generation of lcmt_sampling_c3_debug:  the load tier's
+   jam_finger_load and jam_tripped_by_load, but not jam_retreat_pushing.
+   Reads the 2026-10-01 compliant-sim logs 000000-000013.
+
+   lcmtype with debug information for the sampling controller.
 
     mode_switch_reason key:
         0: No mode switch
@@ -43,7 +47,7 @@ package dairlib;
            another of this loop's samples was nominated in its place
 */
 
-struct lcmt_sampling_c3_debug
+struct lcmt_sampling_c3_debug_v8
 {
   int64_t utime;
 
@@ -96,7 +100,4 @@ struct lcmt_sampling_c3_debug
   float jam_finger_load;
   // Whether the current latch was set by the load tier alone.
   boolean jam_tripped_by_load;
-  // Whether the current latch's retreat was caught pushing the object and
-  // switched to lifting straight up.
-  boolean jam_retreat_pushing;
 }

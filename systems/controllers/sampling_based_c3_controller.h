@@ -525,7 +525,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   ///   3. how far the object estimate has travelled over the last
   ///      object_travel_window_seconds, from a short history this keeps.
   /// Also tracks jam_entry_point_ / jam_unload_distance_, the estimated
-  /// deflection of a compliant finger that the retreat unloads first.
+  /// deflection of a compliant finger that the retreat unloads first, and,
+  /// with the load tier on, jam_finger_load_, which can set the latch itself.
   /// The arming, dwell and release rules themselves live in JamLatch; a no-op
   /// when progress_params_.jam_guard is unset, in which case jam_latch_ is
   /// null and no demo pays for any of this.
@@ -1021,8 +1022,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // The last outward normal from the reported-EE query while that gap was
   // still above gap_trip.  Zero until one has been seen.
   mutable Eigen::Vector3d jam_last_shallow_normal_ = Eigen::Vector3d::Zero();
-  // The reported EE position on the last unlatched loop its gap read >= 0,
-  // i.e. where a jammed fingertip is still caught.  Frozen while latched.  NaN
+  // Where a jammed fingertip is still caught.  With the load tier on, it is
+  // jam_finger_load_estimator_'s anchor; without, the reported EE position on
+  // the last unlatched loop its gap read >= 0.  Frozen in the world frame
+  // while latched, so the retreat has a fixed point to unload towards.  NaN
   // until one has been seen.
   mutable Eigen::Vector3d jam_entry_point_ =
       Eigen::Vector3d::Constant(std::numeric_limits<double>::quiet_NaN());
@@ -1030,6 +1033,16 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // the estimated finger deflection.  NaN when there is no entry point.
   mutable double jam_unload_distance_ =
       std::numeric_limits<double>::quiet_NaN();
+  // Tracks the load tier's anchor; null when the tier is off.
+  std::unique_ptr<FingerLoadEstimator> jam_finger_load_estimator_;
+  // The load tier's estimate [m]: how far the reported EE has run past the
+  // anchor's tangent plane.  NaN when the tier is off or has no anchor yet.
+  mutable double jam_finger_load_ = std::numeric_limits<double>::quiet_NaN();
+  // Whether the current latch was set by the load tier alone.
+  mutable bool jam_tripped_by_load_ = false;
+  // Whether the current latch's retreat was caught pushing the object, which
+  // switches it to lifting straight up.  Cleared on release.
+  mutable bool jam_retreat_pushing_ = false;
   // Farthest the object estimate has moved from its newest sample across that
   // history [m].  NaN until the history spans the whole window, which is the
   // same "no trustworthy reading" signal the gap uses.

@@ -120,6 +120,29 @@ struct JamGuardParams {
   /// loaded tip across the object and lets it snap free.  Omit to turn
   /// unloading off.
   std::optional<double> unload_release;
+  /// The load tier: arm once the estimated finger load reaches this [m] --
+  /// how far the reported EE has run past the tangent plane where it last
+  /// touched the object from outside, carried along with the object (see
+  /// FingerLoadEstimator in jamming_metrics.h).  Catches the finger that loads
+  /// while the gantry slides over or along the object and then snaps free,
+  /// which the gap tiers read as touching.  Requires unload_release, which is
+  /// what holds a load trip until the finger is unloaded.  Omit this,
+  /// load_trip_hold_seconds and load_clear_gap to turn the tier off; while it
+  /// is off the unload entry point keeps its old rule (the reported EE's last
+  /// non-negative gap).
+  std::optional<double> load_trip;
+  /// Seconds the load condition must hold continuously before the latch sets.
+  std::optional<double> load_trip_hold_seconds;
+  /// At or above this gap [m] the finger is taken to be free whichever side of
+  /// the object the reported EE is on, and the load estimate re-anchors.
+  std::optional<double> load_clear_gap;
+  /// While latched, if the object estimate moves at least this far [m] over
+  /// the travel window along with a retreating EE (see RetreatIsPushing in
+  /// jamming_metrics.h), the retreat is shoving the object, not unloading a
+  /// caught finger: the trip is marked unloaded and the retreat lifts straight
+  /// up instead, which a free finger clears the object by.  Requires the load
+  /// tier, whose entry point it was scored with.  Omit to turn it off.
+  std::optional<double> retreat_push_travel;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -137,10 +160,20 @@ struct JamGuardParams {
     a->Visit(DRAKE_NVP(deep_gap_trip));
     a->Visit(DRAKE_NVP(deep_trip_hold_seconds));
     a->Visit(DRAKE_NVP(unload_release));
+    a->Visit(DRAKE_NVP(load_trip));
+    a->Visit(DRAKE_NVP(load_trip_hold_seconds));
+    a->Visit(DRAKE_NVP(load_clear_gap));
+    a->Visit(DRAKE_NVP(retreat_push_travel));
     if (deep_gap_trip.has_value() != deep_trip_hold_seconds.has_value()) {
       throw std::runtime_error(
           "jam_guard: set both deep_gap_trip and deep_trip_hold_seconds, or "
           "neither.");
+    }
+    if (load_trip.has_value() != load_trip_hold_seconds.has_value() ||
+        load_trip.has_value() != load_clear_gap.has_value()) {
+      throw std::runtime_error(
+          "jam_guard: set all of load_trip, load_trip_hold_seconds and "
+          "load_clear_gap, or none.");
     }
   }
 };

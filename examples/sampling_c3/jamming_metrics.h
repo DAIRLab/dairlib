@@ -247,6 +247,17 @@ struct JamLatchThresholds {
   /// finger stops deepening once the reported EE crosses the object's axis,
   /// and that window was only 0.7-0.9 s long on hardware.
   double deep_trip_hold_seconds = 0.0;
+  /// The load tier: arms at or above this estimated finger load [m] (see
+  /// FingerLoadEstimator), with no travel condition -- the estimate already
+  /// moves with the object, so a push that carries the object along does not
+  /// grow it.  It catches the finger that loads while the gantry slides over
+  /// or along the object: that crosses the object's thin parts too fast for
+  /// the deep tier's dwell and exits the far side, where every gap reads
+  /// "touching".  It only ever sets the latch; unload_release is what holds a
+  /// load trip until the finger is unloaded.  Infinity turns the tier off.
+  double load_trip = std::numeric_limits<double>::infinity();
+  /// Seconds the load condition must hold continuously before the latch sets.
+  double load_trip_hold_seconds = 0.0;
   /// The latch cannot release while the estimated finger deflection is at or
   /// above this [m] -- the horizontal distance from the reported EE back to
   /// where its gap last read non-negative.  Without it a retreat that slides
@@ -290,12 +301,15 @@ class JamLatch {
   /// unload_release); it only ever holds the latch set, never arms it, and
   /// nullopt does not vote.  It stops voting for the rest of a trip once it
   /// has read below unload_release; see unloaded().
+  /// @p finger_load feeds the load tier (see load_trip).  It never holds the
+  /// latch open, and nullopt cannot arm the tier.
   /// @return true iff this update was the rising edge (the latch just set).
   bool Update(double now, double ee_object_force,
               std::optional<double> ee_object_gap,
               std::optional<double> object_travel,
               std::optional<double> measured_ee_object_gap = std::nullopt,
-              std::optional<double> unload_distance = std::nullopt);
+              std::optional<double> unload_distance = std::nullopt,
+              std::optional<double> finger_load = std::nullopt);
 
   bool tripped() const { return tripped_; }
   /// Seconds the arming condition has held continuously, 0 when not arming.
@@ -304,9 +318,20 @@ class JamLatch {
   bool deep_arming() const { return deep_arming_; }
   /// Whether the current latch was set by the deep tier.  Cleared on release.
   bool tripped_by_deep() const { return tripped_by_deep_; }
+  /// Whether the load tier's condition held on the last update, dwell or not.
+  bool load_arming() const { return load_arming_; }
+  /// Whether the current latch was set by the load tier alone.  Cleared on
+  /// release.
+  bool tripped_by_load() const { return tripped_by_load_; }
   /// Whether the unload distance has dropped below unload_release at any point
   /// since the current latch set.  Once true it stays true until the next trip.
   bool unloaded() const { return unloaded_; }
+  /// Records independent evidence that the finger is free -- see
+  /// RetreatIsPushing -- so the unload distance stops holding this trip, as if
+  /// it had read below unload_release.  A no-op while unlatched.
+  void MarkUnloaded() {
+    if (tripped_) unloaded_ = true;
+  }
 
  private:
   JamLatchThresholds thresholds_;
@@ -315,12 +340,101 @@ class JamLatch {
   double arming_since_ = std::numeric_limits<double>::quiet_NaN();
   double releasing_since_ = std::numeric_limits<double>::quiet_NaN();
   double deep_arming_since_ = std::numeric_limits<double>::quiet_NaN();
+  double load_arming_since_ = std::numeric_limits<double>::quiet_NaN();
   double trip_seconds_ = 0.0;
   bool deep_arming_ = false;
+  bool load_arming_ = false;
   bool tripped_ = false;
   bool tripped_by_deep_ = false;
+  bool tripped_by_load_ = false;
   bool unloaded_ = false;
 };
+
+/// Estimates how far a compliant finger is loaded against the object, from the
+/// printer's reported EE position alone -- no force sensing, and the stepper
+/// position is not the fingertip.
+///
+/// A jammed fingertip stays where it caught the object while the stepper
+/// carries on, so the finger's bend is the stepper's run past that point.  This
+/// keeps an anchor -- the reported EE where it last touched the object from
+/// outside, and the object's outward normal there -- and reports how far the
+/// reported EE has gone past the anchor's tangent plane, horizontally, since
+/// the finger only bends horizontally.  Three choices make that usable:
+///
+///  - The anchor lives in the object's body frame, so a push that carries the
+///    object along carries the anchor too and reads ~0.
+///  - The anchor does not reset just because the gap reads non-negative again.
+///    That is also what happens when the stepper exits the FAR side of the
+///    object with the tip still caught on the near side.  It resets only once
+///    the reported EE is out of the object on the anchor's side (outward normal
+///    within 90 degrees of the anchor's), or clear of it by clear_gap whichever
+///    side it is on.
+///  - The plane, not the distance to the anchor point: sliding along the
+///    surface in light contact moves the stepper a long way from the anchor
+///    point without bending the finger, but not past the plane.
+///
+/// Measured over the 2026-09-29/30 compliant-sim logs against
+/// FINGER_DEFLECTION_SIMULATION; see three_d_printer/test/
+/// score_finger_load_guard.py.
+class FingerLoadEstimator {
+ public:
+  /// @p clear_gap [m]: at or above this gap the finger is taken to be free,
+  /// whichever side of the object the reported EE is on.
+  explicit FingerLoadEstimator(double clear_gap) : clear_gap_(clear_gap) {}
+
+  /// Folds in one loop.  @p reported_ee is the printer's reported EE position
+  /// and @p gap its signed gap to the object's surface [m], nullopt when the
+  /// query gave nothing usable; @p outward_normal is the unit signed-distance
+  /// gradient there.  @p R_WO and @p p_WO are the object pose this loop.
+  /// While @p latched the anchor is frozen, so a retreat has a fixed point to
+  /// unload towards; it is dropped when the latch releases.
+  /// @return the load [m], >= 0; nullopt until there is an anchor.
+  std::optional<double> Update(const Eigen::Vector3d& reported_ee,
+                               std::optional<double> gap,
+                               const Eigen::Vector3d& outward_normal,
+                               const Eigen::Matrix3d& R_WO,
+                               const Eigen::Vector3d& p_WO, bool latched);
+
+  /// The anchor in the world frame at the latest pose passed to Update; NaN
+  /// until there is one.
+  Eigen::Vector3d entry_point_W() const;
+  /// Whether the reported EE has been inside the object since the anchor was
+  /// last set.  Until then the anchor simply follows it.
+  bool engaged() const { return engaged_; }
+
+  /// Below this horizontal share of the anchor's normal the plane says nothing
+  /// about a horizontal bend -- the anchor is on a face the finger presses
+  /// down on, such as the top of a lying cone -- and the load reads 0.
+  static constexpr double kMinHorizontalNormal = 0.3;
+
+ private:
+  double clear_gap_;
+  bool has_anchor_ = false;
+  bool engaged_ = false;
+  bool was_latched_ = false;
+  // The anchor and its outward normal, in the object's body frame.
+  Eigen::Vector3d anchor_O_ =
+      Eigen::Vector3d::Constant(std::numeric_limits<double>::quiet_NaN());
+  Eigen::Vector3d normal_O_ = Eigen::Vector3d::Zero();
+  Eigen::Matrix3d R_WO_ = Eigen::Matrix3d::Identity();
+  Eigen::Vector3d p_WO_ = Eigen::Vector3d::Zero();
+};
+
+/// Whether a jam retreat is pushing the object rather than unloading a caught
+/// finger: the reported EE is heading back to where the tip caught (closer to
+/// @p entry_point by at least kMinHeadingBack over the window), or the finger
+/// has already been judged unloaded, and the object estimate has moved along
+/// with it by at least @p push_travel.  A caught, loaded finger cannot do that
+/// -- heading back towards the tip relaxes it -- so the gantry itself is
+/// shoving the object, and the finger is free.  Arguments are the reported EE
+/// and object positions now and at the start of the travel window [m];
+/// horizontal components only.  Requires the load tier's entry point.
+bool RetreatIsPushing(const Eigen::Vector3d& ee_now,
+                      const Eigen::Vector3d& ee_then,
+                      const Eigen::Vector3d& object_now,
+                      const Eigen::Vector3d& object_then,
+                      const Eigen::Vector3d& entry_point, bool unloaded,
+                      double push_travel);
 
 /// Indices of the lambda entries belonging to one group of contacts, together
 /// with the force basis that maps each to a Cartesian force.

@@ -51,6 +51,8 @@ def find_log(path):
 
 def decode_debug(data):
   for lcmt in (dairlib.lcmt_sampling_c3_debug,
+               archive_dairlib.lcmt_sampling_c3_debug_v8,
+               archive_dairlib.lcmt_sampling_c3_debug_v7,
                archive_dairlib.lcmt_sampling_c3_debug_v6):
     try:
       return lcmt.decode(data)

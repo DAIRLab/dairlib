@@ -154,3 +154,21 @@ jam_guard:
   # with 9-54 mm of deflection left, mostly by sliding over the cone, and
   # snapped.  Omit the key to turn unloading off.
   unload_release: 0.004
+  # Load tier:  trip once the reported EE has run load_trip [m] past the
+  # tangent plane where it last touched the object from outside, with that
+  # anchor carried along with the object estimate.  It catches the finger
+  # that loads while the gantry slides over or along the cone and then snaps
+  # free -- the gap tiers read those as touching, because the gantry crosses
+  # the cone's thin top faster than the deep dwell and exits the far side.
+  # The anchor re-anchors once the reported EE is out of the object on its
+  # own side, or load_clear_gap clear of it on any side.  Omit all three keys to
+  # turn the tier off.
+  load_trip: 0.020
+  load_trip_hold_seconds: 0.0
+  load_clear_gap: 0.005
+  # Push guard (needs the load tier):  while latched, if the object estimate
+  # moves this far [m] over the travel window along with an EE that is heading
+  # back to the entry point (or already unloaded), the retreat is shoving the
+  # object -- the finger slipped free after the trip -- so the trip counts as
+  # unloaded and the retreat lifts straight up instead.  Omit to turn it off.
+  retreat_push_travel: 0.006

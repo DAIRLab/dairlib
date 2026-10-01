@@ -116,7 +116,8 @@ bool JamLatch::Update(double now, double ee_object_force,
                       std::optional<double> ee_object_gap,
                       std::optional<double> object_travel,
                       std::optional<double> measured_ee_object_gap,
-                      std::optional<double> unload_distance) {
+                      std::optional<double> unload_distance,
+                      std::optional<double> finger_load) {
   constexpr double kNaN = std::numeric_limits<double>::quiet_NaN();
 
   // The force term arms only near contact.  C3's knot-0 lambda is an ADMM
@@ -167,16 +168,28 @@ bool JamLatch::Update(double now, double ee_object_force,
   } else {
     deep_arming_since_ = kNaN;
   }
-  const bool deep_held =
-      deep_arming_ &&
-      now - deep_arming_since_ >= thresholds_.deep_trip_hold_seconds;
+  const bool deep_held = deep_arming_ && now - deep_arming_since_ >=
+                                             thresholds_.deep_trip_hold_seconds;
+
+  // The load tier, likewise with its own dwell and no travel condition; see
+  // load_trip.
+  load_arming_ =
+      finger_load.has_value() && *finger_load >= thresholds_.load_trip;
+  if (load_arming_) {
+    if (std::isnan(load_arming_since_)) load_arming_since_ = now;
+  } else {
+    load_arming_since_ = kNaN;
+  }
+  const bool load_held = load_arming_ && now - load_arming_since_ >=
+                                             thresholds_.load_trip_hold_seconds;
 
   if (!tripped_) {
     const bool shallow_held =
         arming && trip_seconds_ >= thresholds_.trip_hold_seconds;
-    if (shallow_held || deep_held) {
+    if (shallow_held || deep_held || load_held) {
       tripped_ = true;
       tripped_by_deep_ = deep_held && !shallow_held;
+      tripped_by_load_ = load_held && !shallow_held && !deep_held;
       releasing_since_ = kNaN;
       unloaded_ = false;
       return true;
@@ -224,6 +237,12 @@ bool JamLatch::Update(double now, double ee_object_force,
   }
   const bool finger_loaded = !unloaded_ && unload_distance.has_value() &&
                              *unload_distance >= thresholds_.unload_release;
+  // The load tier's own condition does NOT hold the latch, unlike the deep
+  // tier's.  Its anchor is frozen in the object's frame, so once the object
+  // tips or slides after the trip -- or the retreat leaves past the anchor's
+  // plane -- the load can stay over load_trip however far the end effector
+  // gets.  The unload distance holds a load trip instead, measured from a world
+  // point frozen at the trip.
   const bool releasing = force_clear && (gap_clear || object_moving_again) &&
                          !deep_arming_ && !finger_loaded;
   if (releasing) {
@@ -231,6 +250,7 @@ bool JamLatch::Update(double now, double ee_object_force,
     if (now - releasing_since_ >= thresholds_.release_hold_seconds) {
       tripped_ = false;
       tripped_by_deep_ = false;
+      tripped_by_load_ = false;
       arming_since_ = kNaN;
       trip_seconds_ = 0.0;
     }
@@ -238,6 +258,83 @@ bool JamLatch::Update(double now, double ee_object_force,
     releasing_since_ = kNaN;
   }
   return false;
+}
+
+bool RetreatIsPushing(const Vector3d& ee_now, const Vector3d& ee_then,
+                      const Vector3d& object_now, const Vector3d& object_then,
+                      const Vector3d& entry_point, bool unloaded,
+                      double push_travel) {
+  // The EE has to be going somewhere for "along" to mean anything, and has to
+  // have closed on the entry point by more than pose noise.
+  constexpr double kMinRetreatMotion = 0.005;  // meters
+  constexpr double kMinHeadingBack = 0.004;    // meters
+  const Eigen::Vector2d ee_motion = (ee_now - ee_then).head<2>();
+  if (ee_motion.norm() < kMinRetreatMotion) return false;
+  const bool heading_back =
+      unloaded || (entry_point.allFinite() &&
+                   (entry_point - ee_then).head<2>().norm() -
+                           (entry_point - ee_now).head<2>().norm() >=
+                       kMinHeadingBack);
+  if (!heading_back) return false;
+  const double along =
+      (object_now - object_then).head<2>().dot(ee_motion.normalized());
+  return along >= push_travel;
+}
+
+std::optional<double> FingerLoadEstimator::Update(
+    const Vector3d& reported_ee, std::optional<double> gap,
+    const Vector3d& outward_normal, const Eigen::Matrix3d& R_WO,
+    const Vector3d& p_WO, bool latched) {
+  R_WO_ = R_WO;
+  p_WO_ = p_WO;
+  // A release means the finger was judged unloaded, so whatever it was caught
+  // on is history.  Kept, the stale anchor re-tripped the latch on the next
+  // loops with no bend at all (2026-10-01 closed-loop sims).
+  if (was_latched_ && !latched) {
+    has_anchor_ = false;
+    engaged_ = false;
+  }
+  was_latched_ = latched;
+  const bool gap_is_valid = gap.has_value() && std::isfinite(*gap);
+  if (gap_is_valid && *gap < 0.0) engaged_ = true;
+
+  // How far the reported EE is past the anchor's tangent plane, horizontally.
+  double load = 0.0;
+  if (has_anchor_) {
+    const Vector3d normal_W = R_WO * normal_O_;
+    const double horizontal = normal_W.head<2>().norm();
+    if (horizontal >= kMinHorizontalNormal) {
+      load = -(reported_ee - entry_point_W())
+                  .head<2>()
+                  .dot(normal_W.head<2>() / horizontal);
+    }
+  }
+
+  // Re-anchor on the reported EE once the finger has to be free: out of the
+  // object and either never in it since the last anchor, back on the anchor's
+  // side, or clear by clear_gap_.  A non-negative gap on the far side is not
+  // enough -- see the class comment.  Frozen while latched.
+  const bool normal_is_valid = outward_normal.norm() > 1e-9;
+  if (!latched && gap_is_valid && *gap >= 0.0 && normal_is_valid) {
+    const bool on_anchor_side =
+        has_anchor_ && outward_normal.dot(R_WO * normal_O_) > 0.0;
+    if (!has_anchor_ || !engaged_ || on_anchor_side || *gap >= clear_gap_) {
+      anchor_O_ = R_WO.transpose() * (reported_ee - p_WO);
+      normal_O_ = R_WO.transpose() * outward_normal.normalized();
+      has_anchor_ = true;
+      engaged_ = false;
+      load = 0.0;
+    }
+  }
+  if (!has_anchor_) return std::nullopt;
+  return std::max(load, 0.0);
+}
+
+Vector3d FingerLoadEstimator::entry_point_W() const {
+  if (!has_anchor_) {
+    return Vector3d::Constant(std::numeric_limits<double>::quiet_NaN());
+  }
+  return R_WO_ * anchor_O_ + p_WO_;
 }
 
 Vector3d ContactForceVector(const VectorXd& lambda,

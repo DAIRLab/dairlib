@@ -547,6 +547,353 @@ TEST(JamLatchTest, OnceUnloadedTheDistanceStopsHoldingTheLatch) {
   EXPECT_TRUE(latch.tripped());
 }
 
+// The load tier on top of the travel-gated rules, with its own 0.15 s dwell.
+JamLatchThresholds MakeThresholdsWithLoadTier() {
+  JamLatchThresholds thresholds = MakeThresholdsWithTravel();
+  thresholds.load_trip = 0.020;
+  thresholds.load_trip_hold_seconds = 0.15;
+  return thresholds;
+}
+
+constexpr double kLoaded = 0.030;  // finger load well past load_trip.
+
+// Walks the latch forward with a finger load as well.
+bool StepLoad(JamLatch* latch, double* now, int loops, std::optional<double> gap,
+              std::optional<double> travel, std::optional<double> load) {
+  bool edge = false;
+  for (int i = 0; i < loops; i++) {
+    edge = latch->Update(*now, 0.0, gap, travel, gap, std::nullopt, load);
+    *now += kLoop;
+  }
+  return edge;
+}
+
+// The 5A1 launch (09_30/000007): every gap reads "touching" and the bending
+// finger drags the cone along, yet the finger is loaded 20+ mm.  The load tier
+// arms on the load alone.
+TEST(JamLatchTest, TheLoadTierArmsWhileEveryGapReadsTouching) {
+  JamLatch latch(MakeThresholdsWithLoadTier());
+  double now = 0.0;
+  EXPECT_FALSE(StepLoad(&latch, &now, 2, kContact, kDragging, kLoaded));
+  EXPECT_TRUE(latch.load_arming());
+  EXPECT_TRUE(StepLoad(&latch, &now, 1, kContact, kDragging, kLoaded));
+  EXPECT_TRUE(latch.tripped());
+  EXPECT_TRUE(latch.tripped_by_load());
+  EXPECT_FALSE(latch.tripped_by_deep());
+}
+
+TEST(JamLatchTest, TheLoadTierHasItsOwnDwell) {
+  JamLatch latch(MakeThresholdsWithLoadTier());
+  EXPECT_FALSE(latch.Update(0.0, 0.0, kClear, kDragging, kClear, std::nullopt,
+                            kLoaded));
+  EXPECT_FALSE(latch.Update(0.1, 0.0, kClear, kDragging, kClear, std::nullopt,
+                            kLoaded));
+  EXPECT_TRUE(latch.Update(0.15, 0.0, kClear, kDragging, kClear, std::nullopt,
+                           kLoaded));
+}
+
+TEST(JamLatchTest, ALightLoadOrAMissingOneCannotArmTheLoadTier) {
+  JamLatch latch(MakeThresholdsWithLoadTier());
+  double now = 0.0;
+  EXPECT_FALSE(StepLoad(&latch, &now, 20, kContact, kDragging, 0.015));
+  EXPECT_FALSE(StepLoad(&latch, &now, 20, kContact, kDragging, std::nullopt));
+  EXPECT_FALSE(latch.load_arming());
+}
+
+// The load never holds the latch: its anchor is frozen in the object's frame,
+// so once the object tips after the trip -- or the retreat leaves past the
+// anchor's plane -- it can read over load_trip indefinitely.  Held on it, the
+// latch stuck for 315 s in a 2026-10-01 closed-loop run.  The unload distance
+// is what holds a load trip.
+TEST(JamLatchTest, AStaleLoadCannotHoldTheLatch) {
+  JamLatch latch(MakeThresholdsWithLoadTier());
+  double now = 0.0;
+  ASSERT_TRUE(StepLoad(&latch, &now, 3, kClear, kDragging, kLoaded));
+  StepLoad(&latch, &now, 4, kClear, kDragging, 0.200);
+  EXPECT_FALSE(latch.tripped());
+}
+
+TEST(JamLatchTest, TheUnloadDistanceHoldsALoadTrip) {
+  JamLatchThresholds thresholds = MakeThresholdsWithLoadTier();
+  thresholds.unload_release = 0.004;
+  JamLatch latch(thresholds);
+  double now = 0.0;
+  for (int i = 0; i < 3; i++) {
+    latch.Update(now, 0.0, kClear, kDragging, kClear, kLoaded, kLoaded);
+    now += kLoop;
+  }
+  ASSERT_TRUE(latch.tripped_by_load());
+  for (int i = 0; i < 20; i++) {
+    latch.Update(now, 0.0, kClear, kDragging, kClear, 0.015, 0.0);
+    now += kLoop;
+  }
+  EXPECT_TRUE(latch.tripped());
+  for (int i = 0; i < 4; i++) {
+    latch.Update(now, 0.0, kClear, kDragging, kClear, 0.002, 0.0);
+    now += kLoop;
+  }
+  EXPECT_FALSE(latch.tripped());
+  EXPECT_FALSE(latch.tripped_by_load());
+}
+
+// The deep tier's dwell is shorter here, so it gets the credit.
+TEST(JamLatchTest, ADeepTripIsNotALoadTrip) {
+  JamLatchThresholds thresholds = MakeThresholdsWithLoadTier();
+  thresholds.deep_gap_trip = -0.020;
+  thresholds.deep_trip_hold_seconds = 0.05;
+  JamLatch latch(thresholds);
+  double now = 0.0;
+  ASSERT_TRUE(StepLoad(&latch, &now, 2, kDeep, kDragging, kLoaded));
+  EXPECT_TRUE(latch.tripped_by_deep());
+  EXPECT_FALSE(latch.tripped_by_load());
+}
+
+TEST(JamLatchTest, AnUnsetLoadThresholdIsANoOp) {
+  JamLatch latch(MakeThresholdsWithTravel());
+  double now = 0.0;
+  EXPECT_FALSE(StepLoad(&latch, &now, 20, kContact, kDragging, 1.0));
+  EXPECT_FALSE(latch.load_arming());
+}
+
+// Independent evidence that the finger is free stops the unload distance
+// holding the latch, as if it had read below unload_release.
+TEST(JamLatchTest, MarkUnloadedLetsALoadTripRelease) {
+  JamLatchThresholds thresholds = MakeThresholdsWithLoadTier();
+  thresholds.unload_release = 0.004;
+  JamLatch latch(thresholds);
+  latch.MarkUnloaded();  // a no-op while unlatched
+  double now = 0.0;
+  for (int i = 0; i < 3; i++) {
+    latch.Update(now, 0.0, kClear, kDragging, kClear, kLoaded, kLoaded);
+    now += kLoop;
+  }
+  ASSERT_TRUE(latch.tripped());
+  EXPECT_FALSE(latch.unloaded());
+  latch.MarkUnloaded();
+  EXPECT_TRUE(latch.unloaded());
+  for (int i = 0; i < 4; i++) {
+    latch.Update(now, 0.0, kClear, kDragging, kClear, 0.030, 0.0);
+    now += kLoop;
+  }
+  EXPECT_FALSE(latch.tripped());
+}
+
+// RetreatIsPushing: the reported EE heads back to the entry point at +x and
+// the object comes along with it.
+const Eigen::Vector3d kEntry(0.30, 0.10, 0.04);
+constexpr double kPushTravel = 0.006;
+
+TEST(RetreatIsPushingTest, AnObjectCarriedAlongTheRetreatIsBeingPushed) {
+  EXPECT_TRUE(RetreatIsPushing(
+      Eigen::Vector3d(0.27, 0.10, 0.04), Eigen::Vector3d(0.26, 0.10, 0.04),
+      Eigen::Vector3d(0.288, 0.10, 0.0), Eigen::Vector3d(0.280, 0.10, 0.0),
+      kEntry, /*unloaded=*/false, kPushTravel));
+}
+
+// Heading back towards a caught tip relaxes the finger; the object staying
+// put, or moving the other way as it is let go, is no push.
+TEST(RetreatIsPushingTest, AnObjectLeftBehindIsNotBeingPushed) {
+  EXPECT_FALSE(RetreatIsPushing(
+      Eigen::Vector3d(0.27, 0.10, 0.04), Eigen::Vector3d(0.26, 0.10, 0.04),
+      Eigen::Vector3d(0.281, 0.10, 0.0), Eigen::Vector3d(0.280, 0.10, 0.0),
+      kEntry, false, kPushTravel));
+  EXPECT_FALSE(RetreatIsPushing(
+      Eigen::Vector3d(0.27, 0.10, 0.04), Eigen::Vector3d(0.26, 0.10, 0.04),
+      Eigen::Vector3d(0.272, 0.10, 0.0), Eigen::Vector3d(0.280, 0.10, 0.0),
+      kEntry, false, kPushTravel));
+}
+
+// Right after a trip the gantry's lag carries it further in, dragging the
+// object with a loaded finger: moving away from the entry point is not a
+// retreat, however the object moves.
+TEST(RetreatIsPushingTest, LagPastTheTripIsNotARetreat) {
+  EXPECT_FALSE(RetreatIsPushing(
+      Eigen::Vector3d(0.25, 0.10, 0.04), Eigen::Vector3d(0.26, 0.10, 0.04),
+      Eigen::Vector3d(0.270, 0.10, 0.0), Eigen::Vector3d(0.280, 0.10, 0.0),
+      kEntry, false, kPushTravel));
+}
+
+// Once unloaded the retreat leaves along its escape direction, away from the
+// entry point; carrying the object along there is a push all the same.
+TEST(RetreatIsPushingTest, TheEscapeLegCountsOnceUnloaded) {
+  const Eigen::Vector3d behind(0.29, 0.10, 0.04);  // entry point passed
+  EXPECT_FALSE(RetreatIsPushing(
+      Eigen::Vector3d(0.32, 0.10, 0.04), Eigen::Vector3d(0.31, 0.10, 0.04),
+      Eigen::Vector3d(0.338, 0.10, 0.0), Eigen::Vector3d(0.330, 0.10, 0.0),
+      behind, /*unloaded=*/false, kPushTravel));
+  EXPECT_TRUE(RetreatIsPushing(
+      Eigen::Vector3d(0.32, 0.10, 0.04), Eigen::Vector3d(0.31, 0.10, 0.04),
+      Eigen::Vector3d(0.338, 0.10, 0.0), Eigen::Vector3d(0.330, 0.10, 0.0),
+      behind, /*unloaded=*/true, kPushTravel));
+}
+
+// A gantry that has barely moved says nothing about direction.
+TEST(RetreatIsPushingTest, AStillGantryCannotPush) {
+  EXPECT_FALSE(RetreatIsPushing(
+      Eigen::Vector3d(0.262, 0.10, 0.04), Eigen::Vector3d(0.26, 0.10, 0.04),
+      Eigen::Vector3d(0.290, 0.10, 0.0), Eigen::Vector3d(0.280, 0.10, 0.0),
+      kEntry, true, kPushTravel));
+}
+
+// FingerLoadEstimator, against a slab standing in for the cone's thin top:
+// in the object's body frame its near face is x = 0 with outward normal +x and
+// its far face is x = -kSlabThickness, unbounded in y and z.  The gap is from
+// the EE sphere's surface, as the controller passes it.
+constexpr double kSlabThickness = 0.010;
+constexpr double kClearGap = 0.005;
+
+struct SlabReading {
+  double gap;
+  Eigen::Vector3d normal;  // outward, world frame
+};
+
+SlabReading ReadSlab(const Eigen::Vector3d& ee, const Eigen::Matrix3d& R_WO,
+                     const Eigen::Vector3d& p_WO) {
+  const double x = (R_WO.transpose() * (ee - p_WO)).x();
+  const double near_gap = x;
+  const double far_gap = -kSlabThickness - x;
+  if (near_gap >= far_gap) {
+    return {near_gap, R_WO * Eigen::Vector3d::UnitX()};
+  }
+  return {far_gap, -(R_WO * Eigen::Vector3d::UnitX())};
+}
+
+// One loop of the estimator with the slab's reading at @p ee.
+std::optional<double> UpdateOnSlab(
+    FingerLoadEstimator* estimator, const Eigen::Vector3d& ee,
+    bool latched = false,
+    const Eigen::Matrix3d& R_WO = Eigen::Matrix3d::Identity(),
+    const Eigen::Vector3d& p_WO = Eigen::Vector3d::Zero()) {
+  const SlabReading reading = ReadSlab(ee, R_WO, p_WO);
+  return estimator->Update(ee, reading.gap, reading.normal, R_WO, p_WO,
+                           latched);
+}
+
+Eigen::Vector3d At(double x, double y = 0.0) {
+  return Eigen::Vector3d(x, y, 0.03);
+}
+
+// Nothing to measure from until the reported EE has been seen outside.
+TEST(FingerLoadEstimatorTest, NoReadingUntilTheEEHasBeenOutside) {
+  FingerLoadEstimator estimator(kClearGap);
+  EXPECT_FALSE(UpdateOnSlab(&estimator, At(-0.002)).has_value());
+  EXPECT_FALSE(estimator.entry_point_W().allFinite());
+  EXPECT_EQ(UpdateOnSlab(&estimator, At(0.004)), 0.0);
+  EXPECT_TRUE(estimator.entry_point_W().isApprox(At(0.004)));
+}
+
+// Out of contact the anchor just follows the reported EE.
+TEST(FingerLoadEstimatorTest, TheAnchorFollowsTheEEInFreeSpace) {
+  FingerLoadEstimator estimator(kClearGap);
+  UpdateOnSlab(&estimator, At(0.030));
+  EXPECT_EQ(UpdateOnSlab(&estimator, At(0.001, 0.050)), 0.0);
+  EXPECT_TRUE(estimator.entry_point_W().isApprox(At(0.001, 0.050)));
+  EXPECT_FALSE(estimator.engaged());
+}
+
+// The 5A1 launch in miniature: the stepper crosses the thin slab and comes out
+// of the far side, where the gap reads non-negative again.  The old entry
+// point reset there; this keeps measuring from the near side until the
+// reported EE is clear_gap clear.
+TEST(FingerLoadEstimatorTest, AFarSideExitKeepsTheLoad) {
+  FingerLoadEstimator estimator(kClearGap);
+  UpdateOnSlab(&estimator, At(0.001));
+  EXPECT_NEAR(*UpdateOnSlab(&estimator, At(-0.004)), 0.005, 1e-12);
+  EXPECT_TRUE(estimator.engaged());
+  EXPECT_NEAR(*UpdateOnSlab(&estimator, At(-0.008)), 0.009, 1e-12);
+  // Out of the far side by 3 mm, under clear_gap.
+  EXPECT_NEAR(*UpdateOnSlab(&estimator, At(-0.013)), 0.014, 1e-12);
+  EXPECT_TRUE(estimator.entry_point_W().isApprox(At(0.001)));
+  // 11 mm clear: free whichever side it is on.
+  EXPECT_EQ(UpdateOnSlab(&estimator, At(-0.021)), 0.0);
+  EXPECT_TRUE(estimator.entry_point_W().isApprox(At(-0.021)));
+}
+
+// Sliding along the face in light contact moves the stepper a long way from
+// the anchor point without bending the finger: 4B1 (09_30/000005) read 19 mm
+// on the old entry-point distance with 0.4 mm true.  The plane reads only the
+// penetration.
+TEST(FingerLoadEstimatorTest, ASlideAlongTheFaceReadsOnlyThePenetration) {
+  FingerLoadEstimator estimator(kClearGap);
+  UpdateOnSlab(&estimator, At(0.001));
+  EXPECT_NEAR(*UpdateOnSlab(&estimator, At(-0.002, 0.030)), 0.003, 1e-12);
+  EXPECT_NEAR((estimator.entry_point_W() - At(-0.002, 0.030)).norm(), 0.030,
+              1e-3);
+}
+
+// A push that carries the object along carries the anchor too: 31 mm of
+// stepper travel with the object 28 mm ahead of where it started is a 3 mm
+// load, not 31.
+TEST(FingerLoadEstimatorTest, APushedObjectCarriesTheAnchor) {
+  FingerLoadEstimator estimator(kClearGap);
+  UpdateOnSlab(&estimator, At(0.001));
+  const Eigen::Vector3d pushed(-0.028, 0.0, 0.0);
+  EXPECT_NEAR(*UpdateOnSlab(&estimator, At(-0.030), false,
+                            Eigen::Matrix3d::Identity(), pushed),
+              0.003, 1e-12);
+  EXPECT_TRUE(estimator.entry_point_W().isApprox(At(0.001) + pushed));
+}
+
+// The anchor and its normal turn with the object.
+TEST(FingerLoadEstimatorTest, TheAnchorTurnsWithTheObject) {
+  FingerLoadEstimator estimator(kClearGap);
+  const Eigen::Matrix3d quarter_turn =
+      Eigen::AngleAxisd(M_PI / 2, Eigen::Vector3d::UnitZ()).toRotationMatrix();
+  // Near face normal is +y in the world.
+  UpdateOnSlab(&estimator, Eigen::Vector3d(0.0, 0.001, 0.03), false,
+               quarter_turn);
+  EXPECT_NEAR(*UpdateOnSlab(&estimator, Eigen::Vector3d(0.020, -0.006, 0.03),
+                            false, quarter_turn),
+              0.007, 1e-12);
+}
+
+// Back out on the side it went in: the finger is free, and the anchor moves.
+TEST(FingerLoadEstimatorTest, BackOnTheEntrySideReAnchors) {
+  FingerLoadEstimator estimator(kClearGap);
+  UpdateOnSlab(&estimator, At(0.001));
+  UpdateOnSlab(&estimator, At(-0.004));
+  EXPECT_EQ(UpdateOnSlab(&estimator, At(0.002, 0.010)), 0.0);
+  EXPECT_FALSE(estimator.engaged());
+  EXPECT_TRUE(estimator.entry_point_W().isApprox(At(0.002, 0.010)));
+}
+
+// While latched the anchor is frozen, so the retreat has a fixed point.
+TEST(FingerLoadEstimatorTest, TheAnchorIsFrozenWhileLatched) {
+  FingerLoadEstimator estimator(kClearGap);
+  UpdateOnSlab(&estimator, At(0.001));
+  UpdateOnSlab(&estimator, At(-0.004));
+  EXPECT_EQ(UpdateOnSlab(&estimator, At(0.030), /*latched=*/true), 0.0);
+  EXPECT_TRUE(estimator.entry_point_W().isApprox(At(0.001)));
+  EXPECT_NEAR(*UpdateOnSlab(&estimator, At(-0.009), /*latched=*/true), 0.010,
+              1e-12);
+}
+
+// A release drops the anchor: the next reading starts from wherever the
+// reported EE is, and nothing is measured until it has been outside.
+TEST(FingerLoadEstimatorTest, AReleaseDropsTheAnchor) {
+  FingerLoadEstimator estimator(kClearGap);
+  UpdateOnSlab(&estimator, At(0.001));
+  UpdateOnSlab(&estimator, At(-0.004));
+  UpdateOnSlab(&estimator, At(-0.004), /*latched=*/true);
+  EXPECT_FALSE(UpdateOnSlab(&estimator, At(-0.006)).has_value());
+  EXPECT_EQ(UpdateOnSlab(&estimator, At(0.002)), 0.0);
+  EXPECT_TRUE(estimator.entry_point_W().isApprox(At(0.002)));
+}
+
+// An anchor on a face the finger presses down on says nothing about a
+// horizontal bend.
+TEST(FingerLoadEstimatorTest, ANearlyHorizontalFaceReadsNoLoad) {
+  FingerLoadEstimator estimator(kClearGap);
+  // The slab's normal tipped 80 degrees towards -z: horizontal share 0.17.
+  const Eigen::Matrix3d tipped =
+      Eigen::AngleAxisd(80.0 * M_PI / 180.0, Eigen::Vector3d::UnitY())
+          .toRotationMatrix();
+  UpdateOnSlab(&estimator, Eigen::Vector3d(0.0, 0.0, -0.001), false, tipped);
+  EXPECT_EQ(UpdateOnSlab(&estimator, Eigen::Vector3d(-0.030, 0.0, 0.004),
+                         false, tipped),
+            0.0);
+}
+
 // A retreat aimed at a point stops on it: the knots are spaced evenly over the
 // capped distance instead of a full-speed knot period each, and the
 // repositioning leg starts from the point.
@@ -771,6 +1118,15 @@ TEST(JamGuardParamsTest, TheConeYamlShipsTheDetectorTheReportScored) {
   // Unloading, from the 2026-09-29 compliant-sim logs.
   ASSERT_TRUE(jam_guard.unload_release.has_value());
   EXPECT_EQ(*jam_guard.unload_release, 0.004);
+  // The load tier, scored offline on the 2026-09-29/30 compliant-sim logs.
+  ASSERT_TRUE(jam_guard.load_trip.has_value());
+  ASSERT_TRUE(jam_guard.load_trip_hold_seconds.has_value());
+  ASSERT_TRUE(jam_guard.load_clear_gap.has_value());
+  EXPECT_EQ(*jam_guard.load_trip, 0.020);
+  EXPECT_EQ(*jam_guard.load_trip_hold_seconds, 0.0);
+  EXPECT_EQ(*jam_guard.load_clear_gap, 0.005);
+  ASSERT_TRUE(jam_guard.retreat_push_travel.has_value());
+  EXPECT_EQ(*jam_guard.retreat_push_travel, 0.006);
 
   // The invariants the controller DRAKE_DEMANDs, checked here so a bad yaml
   // fails the test rather than the demo.
@@ -787,6 +1143,9 @@ TEST(JamGuardParamsTest, TheConeYamlShipsTheDetectorTheReportScored) {
   EXPECT_GT(jam_guard.force_gate_gap, jam_guard.gap_trip);
   EXPECT_LT(*jam_guard.deep_gap_trip, 0.0);
   EXPECT_GE(*jam_guard.deep_trip_hold_seconds, 0.0);
+  EXPECT_GT(*jam_guard.load_trip, 0.0);
+  EXPECT_GE(*jam_guard.load_trip_hold_seconds, 0.0);
+  EXPECT_GE(*jam_guard.load_clear_gap, 0.0);
 }
 
 // The gate: jam_guard is what turns the watchdog on, and every demo that omits

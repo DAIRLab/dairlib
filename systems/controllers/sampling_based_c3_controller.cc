@@ -508,6 +508,11 @@ SamplingC3Controller::SamplingC3Controller(
     }
   }
   fixed_obstacle_geometries_ = drake::geometry::GeometrySet(fixed_geometry_ids);
+  // The path check holds the path between knots to workspace_margins, so the
+  // knots themselves must sit at least that far out.
+  DRAKE_DEMAND(sampling_c3_options_.fixed_geometry_knot_margin.value_or(
+                   sampling_c3_options_.workspace_margins) >=
+               sampling_c3_options_.workspace_margins);
 
   // Build the private keep-out scene, then seed the per-goal-step settings for
   // goal step 0.  RefreshPerGoalSettings is called again from ComputePlan
@@ -582,6 +587,22 @@ SamplingC3Controller::SamplingC3Controller(
       jam_finger_load_estimator_ =
           std::make_unique<FingerLoadEstimator>(*jam_params.load_clear_gap);
     }
+    if (jam_params.ramp_load_trip.has_value()) {
+      // Shares the load tier's dwell, clear gap and unloading.
+      DRAKE_DEMAND(jam_params.load_trip.has_value());
+      DRAKE_DEMAND(*jam_params.ramp_load_trip > 0.0);
+      std::vector<GeometryId> ramp_geometry_ids;
+      for (const std::string& body_name : *jam_params.ramp_load_bodies) {
+        for (const GeometryId& id : plant_.GetCollisionGeometriesForBody(
+                 plant_.GetBodyByName(body_name))) {
+          ramp_geometry_ids.push_back(id);
+        }
+      }
+      DRAKE_DEMAND(!ramp_geometry_ids.empty());
+      jam_ramp_geometries_ = drake::geometry::GeometrySet(ramp_geometry_ids);
+      jam_ramp_load_estimator_ =
+          std::make_unique<FingerLoadEstimator>(*jam_params.load_clear_gap);
+    }
     if (jam_params.retreat_push_travel.has_value()) {
       // Scored only against the load tier's entry point; see
       // RetreatIsPushing.
@@ -613,6 +634,8 @@ SamplingC3Controller::SamplingC3Controller(
         .load_trip_hold_seconds =
             jam_params.load_trip_hold_seconds.value_or(0.0),
         .unload_release = jam_params.unload_release.value_or(
+            std::numeric_limits<double>::infinity()),
+        .ramp_load_trip = jam_params.ramp_load_trip.value_or(
             std::numeric_limits<double>::infinity())});
     std::cout << "Jam watchdog enabled: trips below " << jam_params.gap_trip
               << " m gap while the object moves under "
@@ -627,6 +650,13 @@ SamplingC3Controller::SamplingC3Controller(
                 << " m gap from the reported EE, held "
                 << *jam_params.deep_trip_hold_seconds
                 << " s, whatever the object does." << std::endl;
+    }
+    if (jam_params.ramp_load_trip.has_value()) {
+      std::cout << "Jam watchdog ramp-load tier enabled: trips once the "
+                   "reported EE runs "
+                << *jam_params.ramp_load_trip << " m past where it touched "
+                << jam_params.ramp_load_bodies->size() << " fixed bodies."
+                << std::endl;
     }
     if (jam_params.unload_release.has_value()) {
       std::cout << "Jam watchdog unloading enabled: retreats towards the entry "
@@ -2933,6 +2963,25 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
     }
   }
 
+  // C3 does not model the EE against the fixed scene, so its plan can run the
+  // EE straight through a ramp wall.  Stop it short of the wall instead, before
+  // timing the plan and predicting the next x0 from it, so x0 never carries on
+  // through a wall the printer is not going to cross.  If C3 keeps asking for
+  // the far side, the plan stays held until the unproductive switch hands over
+  // to repositioning, which routes over the wall.
+  if (CheckFixedGeometryPaths()) {
+    MatrixXd ee_knots = knots.topRows(3);
+    const FixedGeometryPathCheck check = ClearEEPlanPath(0, &ee_knots);
+    if (check.first_blocked_knot >= 0) {
+      HoldEEPlanFrom(check.first_blocked_knot, check.last_clear_point,
+                     &ee_knots);
+    }
+    knots.topRows(3) = ee_knots;
+    if (is_doing_c3_) {
+      NoteFixedGeometryPathHold(check, "C3", t_context);
+    }
+  }
+
   // Stretch the plan's time grid so no segment asks the printer to exceed its
   // EE speed limits (C3 does not reliably enforce the tight vertical bound).
   RetimeEEPlanToVelocityLimits(knots.topRows(3), &timestamps);
@@ -2999,11 +3048,13 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   // The whole plan is rebuilt every loop, so a retreat that needs more than one
   // tick is simply this happening on several loops in a row, tapering back into
   // the plain repositioning path the moment the guard releases -- no committed
-  // escape trajectory to get stuck in.  The retreat knots pass through the same
-  // ProjectPlanAwayFromFixedGeometries / ClampPlanToWorkspaceLimits at publish
-  // time as everything else, so an escape direction pointing into the ramp is
-  // projected back out rather than driven into it.
+  // escape trajectory to get stuck in.  The retreat knots are kept off the
+  // fixed scene like everything else, so an escape direction pointing into the
+  // ramp is projected back out rather than driven into it -- except the unload
+  // leg below, when the path check is on.
   MatrixXd knots;
+  // Leading knots exempt from the fixed-geometry path check.
+  int num_exempt_knots = 0;
   if (jam_tripped_) {
     const JamGuardParams& jam_params = progress_params_.jam_guard.value();
     // While the finger is still bent, retreat horizontally towards where its
@@ -3028,6 +3079,14 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
       retreat_direction.head<2>() =
           (jam_entry_point_ - x_lcs.head(3)).head<2>();
       max_retreat_distance = retreat_direction.norm();
+      // The unload leg retraces the way the EE came in.  If the bent finger
+      // carried the gantry across a wall, that way runs back through it, and
+      // projecting the leg out of the wall would stop the finger unbending.
+      // RepositionWithRetreat's retreat is its first retreat_knots knots plus
+      // the knot where the repositioning leg starts.
+      if (retreat_direction.norm() >= 1e-9 && jam_params.retreat_knots > 0) {
+        num_exempt_knots = std::min(jam_params.retreat_knots, N_ - 1) + 1;
+      }
     }
     knots = RepositionWithRetreat(
         n_q_, n_x_, N_, x_lcs, best_sample_location, dt_, is_doing_c3_,
@@ -3051,6 +3110,51 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   // pursuing the same target since at least the previous loop.
   if (pursued_target_source_ != PursuedTargetSource::kPrevious) {
     finished_reposition_flag_ = false;
+  }
+
+  // Keep the plan's path off the fixed scene before timing it and predicting
+  // the next x0 from it.  Unlike a C3 plan, a repositioning plan is not held
+  // short of a wall: it is rebuilt from the same x0 every loop, so it would
+  // stay held for good.  It is rerouted over the wall instead -- up, across at
+  // the lowest clear cruise height, and down -- which nothing in this scene
+  // overhangs.  Only a retreating plan, or a reroute that is still blocked,
+  // is held.
+  if (CheckFixedGeometryPaths()) {
+    MatrixXd ee_knots = knots.topRows(3);
+    FixedGeometryPathCheck check = ClearEEPlanPath(num_exempt_knots, &ee_knots);
+    if (check.first_blocked_knot >= 0 && !jam_tripped_) {
+      const GeometryId ee_geometry_id = contact_pairs_.at(0).at(0).first();
+      const double cruise_z =
+          ComputeRepositionClearance(query_object, ee_geometry_id,
+                                     x_lcs.head(3), best_sample_location,
+                                     ee_radius_, reposition_params_,
+                                     sampling_c3_options_)
+              .second;
+      bool rerouted_plan_finished = false;
+      RepositionPiecewiseLinear(knots, N_, x_lcs, best_sample_location, dt_,
+                                is_doing_c3_, rerouted_plan_finished,
+                                reposition_params_, cruise_z);
+      finished_reposition_flag_ = false;
+      ee_knots = knots.topRows(3);
+      check = ClearEEPlanPath(0, &ee_knots);
+      if (!is_doing_c3_) {
+        std::cout << "[fixed geometry path] t=" << t_context
+                  << " repositioning plan rerouted over fixed geometry at "
+                     "cruise height "
+                  << 1e3 * cruise_z << " mm"
+                  << (check.first_blocked_knot >= 0 ? ", still blocked" : "")
+                  << std::endl;
+      }
+    }
+    if (check.first_blocked_knot >= 0) {
+      HoldEEPlanFrom(check.first_blocked_knot, check.last_clear_point,
+                     &ee_knots);
+      finished_reposition_flag_ = false;
+    }
+    knots.topRows(3) = ee_knots;
+    if (!is_doing_c3_) {
+      NoteFixedGeometryPathHold(check, "repositioning", t_context);
+    }
   }
 
   // Set up the trajectory.
@@ -3911,10 +4015,35 @@ void SamplingC3Controller::UpdateJamWatchdog(
              jam_ee_object_gap_measured_ >= 0.0) {
     jam_entry_point_ = measured_ee;
   }
-  jam_unload_distance_ =
-      jam_entry_point_.allFinite()
-          ? (jam_entry_point_ - measured_ee).head<2>().norm()
-          : std::numeric_limits<double>::quiet_NaN();
+  // Guard 5, the ramp-load tier: the load tier's estimate against the fixed
+  // geometry instead of the object.  Plans are kept off that geometry (see
+  // ClearEEPlanOfFixedGeometries), so this is a backstop for a scene that is
+  // not where the controller thinks, and for the unload leg, which is exempt.
+  if (jam_ramp_load_estimator_ != nullptr) {
+    std::pair<double, Vector3d> nearest{
+        std::numeric_limits<double>::infinity(), Vector3d::Zero()};
+    for (const auto& result : query_object.ComputeSignedDistanceGeometryToPoint(
+             measured_ee, jam_ramp_geometries_)) {
+      if (result.distance < nearest.first) {
+        nearest = {result.distance, result.grad_W};
+      }
+    }
+    const std::optional<double> load = jam_ramp_load_estimator_->Update(
+        measured_ee,
+        std::isfinite(nearest.first)
+            ? std::optional<double>(nearest.first - ee_radius_)
+            : std::nullopt,
+        nearest.second, Eigen::Matrix3d::Identity(), Vector3d::Zero(),
+        jam_latch_->tripped());
+    jam_ramp_load_ = load.value_or(std::numeric_limits<double>::quiet_NaN());
+  }
+  const auto update_unload_distance = [&]() {
+    jam_unload_distance_ =
+        jam_entry_point_.allFinite()
+            ? (jam_entry_point_ - measured_ee).head<2>().norm()
+            : std::numeric_limits<double>::quiet_NaN();
+  };
+  update_unload_distance();
 
   // Guard 3: is the object actually going anywhere?  A jam is contact with no
   // object progress, and the gap cannot tell those apart on its own -- the
@@ -3986,11 +4115,19 @@ void SamplingC3Controller::UpdateJamWatchdog(
           ? std::optional<double>(jam_unload_distance_)
           : std::nullopt,
       std::isfinite(jam_finger_load_) ? std::optional<double>(jam_finger_load_)
-                                      : std::nullopt);
+                                      : std::nullopt,
+      std::isfinite(jam_ramp_load_) ? std::optional<double>(jam_ramp_load_)
+                                    : std::nullopt);
   jam_trip_seconds_ = jam_latch_->trip_seconds();
   jam_tripped_ = jam_latch_->tripped();
   jam_deep_armed_ = jam_latch_->deep_arming();
   jam_tripped_by_load_ = jam_latch_->tripped_by_load();
+  jam_tripped_by_ramp_load_ = jam_latch_->tripped_by_ramp_load();
+  // A ramp trip unloads towards where the finger caught the ramp.
+  if (rising_edge && jam_tripped_by_ramp_load_) {
+    jam_entry_point_ = jam_ramp_load_estimator_->entry_point_W();
+    update_unload_distance();
+  }
   if (!jam_tripped_) jam_retreat_pushing_ = false;
 
   // Either tier retreats the way the EE came in, frozen at the trip.  The
@@ -4019,14 +4156,16 @@ void SamplingC3Controller::UpdateJamWatchdog(
     std::cout << "Jam detected"
               << (jam_latch_->tripped_by_deep() ? " (deep tier)" : "")
               << (jam_latch_->tripped_by_load() ? " (load tier)" : "")
+              << (jam_tripped_by_ramp_load_ ? " (ramp-load tier)" : "")
               << ": EE<->object force " << jam_ee_object_force_ << " N, gap "
               << jam_ee_object_gap_ << " m, reported-EE gap "
               << jam_ee_object_gap_measured_ << " m, finger deflection "
               << jam_unload_distance_ << " m, finger load " << jam_finger_load_
+              << " m, ramp load " << jam_ramp_load_
               << " m, object travel " << jam_object_travel_ << " m, held "
               << (jam_latch_->tripped_by_deep()
                       ? jam_params.deep_trip_hold_seconds.value_or(0.0)
-                  : jam_latch_->tripped_by_load()
+                  : jam_latch_->tripped_by_load() || jam_tripped_by_ramp_load_
                       ? jam_params.load_trip_hold_seconds.value_or(0.0)
                       : jam_trip_seconds_)
               << " s." << std::endl;
@@ -4188,6 +4327,50 @@ void SamplingC3Controller::ProjectPlanAwayFromFixedGeometries(
       p += (target_clearance - min_distance) * push_direction;
     }
     ee_position_traj->col(col) = p;
+  }
+}
+
+bool SamplingC3Controller::CheckFixedGeometryPaths() const {
+  return sampling_c3_options_.check_fixed_geometry_paths.value_or(false);
+}
+
+FixedGeometryPathCheck SamplingC3Controller::ClearEEPlanPath(
+    int num_exempt_knots, Eigen::MatrixXd* ee_positions) const {
+  const auto& query_object =
+      plant_.get_geometry_query_input_port()
+          .template Eval<drake::geometry::QueryObject<double>>(*context_);
+  const double margin = sampling_c3_options_.workspace_margins;
+  return ClearEEPlanOfFixedGeometries(
+      query_object, fixed_obstacle_geometries_,
+      ee_radius_ +
+          sampling_c3_options_.fixed_geometry_knot_margin.value_or(margin),
+      ee_radius_ + margin, sampling_c3_options_, num_exempt_knots,
+      ee_positions);
+}
+
+void SamplingC3Controller::NoteFixedGeometryPathHold(
+    const FixedGeometryPathCheck& check, const char* plan_name,
+    double t_context) const {
+  const bool held = check.first_blocked_knot >= 0;
+  if (held && std::isnan(fixed_geometry_hold_since_)) {
+    fixed_geometry_hold_since_ = t_context;
+    fixed_geometry_hold_loops_ = 0;
+    const Eigen::Vector3d p = 1e3 * check.last_clear_point;
+    std::cout << "[fixed geometry path] t=" << t_context << " " << plan_name
+              << " plan held from knot " << check.first_blocked_knot
+              << " at (" << p(0) << ", " << p(1) << ", " << p(2)
+              << ") mm; its path came within "
+              << 1e3 * (check.blocked_distance - ee_radius_)
+              << " mm of the fixed geometry (EE surface)" << std::endl;
+  }
+  if (held) {
+    ++fixed_geometry_hold_loops_;
+  } else if (!std::isnan(fixed_geometry_hold_since_)) {
+    std::cout << "[fixed geometry path] t=" << t_context << " " << plan_name
+              << " plan hold released after "
+              << t_context - fixed_geometry_hold_since_ << " s ("
+              << fixed_geometry_hold_loops_ << " loops)" << std::endl;
+    fixed_geometry_hold_since_ = std::numeric_limits<double>::quiet_NaN();
   }
 }
 
@@ -4711,7 +4894,11 @@ void SamplingC3Controller::OutputC3TrajExecuteActor(
   LcmTrajectory::Trajectory end_effector_traj =
       c3_execution_lcm_traj_.GetTrajectory("end_effector_position_target");
   DRAKE_DEMAND(end_effector_traj.datapoints.rows() == 3);
-  ProjectPlanAwayFromFixedGeometries(&end_effector_traj.datapoints);
+  // With the path check on, UpdateC3ExecutionTrajectory already cleared this
+  // plan of the fixed scene.
+  if (!CheckFixedGeometryPaths()) {
+    ProjectPlanAwayFromFixedGeometries(&end_effector_traj.datapoints);
+  }
   ClampPlanToWorkspaceLimits(&end_effector_traj.datapoints);
   // Re-assert the EE speed limits: Project/Clamp above can lengthen a segment
   // relative to the grid set in UpdateC3ExecutionTrajectory.
@@ -4745,7 +4932,12 @@ void SamplingC3Controller::OutputReposTrajExecuteActor(
   LcmTrajectory::Trajectory end_effector_traj =
       repos_execution_lcm_traj_.GetTrajectory("end_effector_position_target");
   DRAKE_DEMAND(end_effector_traj.datapoints.rows() == 3);
-  ProjectPlanAwayFromFixedGeometries(&end_effector_traj.datapoints);
+  // With the path check on, UpdateRepositioningExecutionTrajectory already
+  // cleared this plan of the fixed scene, minus any exempt unload leg that a
+  // second projection here would undo.
+  if (!CheckFixedGeometryPaths()) {
+    ProjectPlanAwayFromFixedGeometries(&end_effector_traj.datapoints);
+  }
   ClampPlanToWorkspaceLimits(&end_effector_traj.datapoints);
   // Re-assert the EE speed limits: Project/Clamp above can lengthen a segment
   // relative to the grid set in UpdateRepositioningExecutionTrajectory.
@@ -4783,7 +4975,12 @@ void SamplingC3Controller::OutputTrajExecuteActor(
       execution_lcm_traj.GetTrajectory("end_effector_position_target");
   DRAKE_DEMAND(end_effector_traj.datapoints.rows() == 3);
   MatrixXd pre_projection_datapoints = end_effector_traj.datapoints;
-  ProjectPlanAwayFromFixedGeometries(&end_effector_traj.datapoints);
+  // With the path check on, Update{C3,Repositioning}ExecutionTrajectory
+  // already cleared this plan of the fixed scene, minus any exempt unload leg
+  // that a second projection here would undo.
+  if (!CheckFixedGeometryPaths()) {
+    ProjectPlanAwayFromFixedGeometries(&end_effector_traj.datapoints);
+  }
   ClampPlanToWorkspaceLimits(&end_effector_traj.datapoints);
   // Re-assert the EE speed limits: Project/Clamp above can lengthen a segment
   // relative to the grid set in Update{C3,Repositioning}ExecutionTrajectory.
@@ -5237,6 +5434,8 @@ void SamplingC3Controller::OutputDebug(
   debug_msg->jam_unload_distance = jam_unload_distance_;
   debug_msg->jam_finger_load = jam_finger_load_;
   debug_msg->jam_tripped_by_load = jam_tripped_by_load_;
+  debug_msg->jam_ramp_load = jam_ramp_load_;
+  debug_msg->jam_tripped_by_ramp_load = jam_tripped_by_ramp_load_;
   debug_msg->jam_retreat_pushing = jam_retreat_pushing_;
 }
 

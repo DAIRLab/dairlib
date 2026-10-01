@@ -683,6 +683,81 @@ TEST(JamLatchTest, MarkUnloadedLetsALoadTripRelease) {
 const Eigen::Vector3d kEntry(0.30, 0.10, 0.04);
 constexpr double kPushTravel = 0.006;
 
+constexpr double kStalled = 0.001;  // the object holding still.
+
+// The ramp-load tier on top of the load tier, sharing its 0.15 s dwell.
+JamLatchThresholds MakeThresholdsWithRampLoadTier() {
+  JamLatchThresholds thresholds = MakeThresholdsWithLoadTier();
+  thresholds.ramp_load_trip = 0.010;
+  thresholds.unload_release = 0.004;
+  return thresholds;
+}
+
+// Walks the latch forward with a ramp load and an unload distance.
+bool StepRampLoad(JamLatch* latch, double* now, int loops,
+                  std::optional<double> unload_distance,
+                  std::optional<double> ramp_load) {
+  bool edge = false;
+  for (int i = 0; i < loops; i++) {
+    edge = latch->Update(*now, 0.0, kClear, kStalled, kClear, unload_distance,
+                         0.0, ramp_load);
+    *now += kLoop;
+  }
+  return edge;
+}
+
+// The finger caught on the ramp with the cone nowhere near: every object tier
+// reads clear, and the ramp load alone sets the latch after the dwell.
+TEST(JamLatchTest, TheRampLoadTierArmsWithTheObjectClear) {
+  JamLatch latch(MakeThresholdsWithRampLoadTier());
+  double now = 0.0;
+  EXPECT_FALSE(StepRampLoad(&latch, &now, 2, 0.0, 0.012));
+  EXPECT_TRUE(StepRampLoad(&latch, &now, 1, 0.012, 0.012));
+  EXPECT_TRUE(latch.tripped_by_ramp_load());
+  EXPECT_FALSE(latch.tripped_by_load());
+}
+
+TEST(JamLatchTest, ALightRampLoadOrAMissingOneCannotArmTheTier) {
+  JamLatch latch(MakeThresholdsWithRampLoadTier());
+  double now = 0.0;
+  EXPECT_FALSE(StepRampLoad(&latch, &now, 20, 0.0, 0.008));
+  EXPECT_FALSE(StepRampLoad(&latch, &now, 20, 0.0, std::nullopt));
+}
+
+// Like a load trip, the ramp load never holds the latch; the unload distance
+// does, until the finger is back at where it caught the ramp.
+TEST(JamLatchTest, TheUnloadDistanceHoldsARampLoadTrip) {
+  JamLatch latch(MakeThresholdsWithRampLoadTier());
+  double now = 0.0;
+  ASSERT_TRUE(StepRampLoad(&latch, &now, 3, 0.012, 0.012));
+  StepRampLoad(&latch, &now, 20, 0.010, 0.0);
+  EXPECT_TRUE(latch.tripped());
+  StepRampLoad(&latch, &now, 4, 0.002, 0.050);  // A stale load cannot hold.
+  EXPECT_FALSE(latch.tripped());
+  EXPECT_FALSE(latch.tripped_by_ramp_load());
+}
+
+// When both load tiers hold on the same loop the object's gets the credit,
+// so the retreat unloads towards where the finger caught the object.
+TEST(JamLatchTest, AnObjectLoadTripIsNotARampLoadTrip) {
+  JamLatch latch(MakeThresholdsWithRampLoadTier());
+  double now = 0.0;
+  for (int i = 0; i < 4; i++) {
+    latch.Update(now, 0.0, kClear, kStalled, kClear, 0.0, kLoaded, kLoaded);
+    now += kLoop;
+  }
+  ASSERT_TRUE(latch.tripped());
+  EXPECT_TRUE(latch.tripped_by_load());
+  EXPECT_FALSE(latch.tripped_by_ramp_load());
+}
+
+TEST(JamLatchTest, AnUnsetRampLoadThresholdIsANoOp) {
+  JamLatchThresholds thresholds = MakeThresholdsWithLoadTier();
+  JamLatch latch(thresholds);
+  double now = 0.0;
+  EXPECT_FALSE(StepRampLoad(&latch, &now, 20, 0.0, 1.0));
+}
+
 TEST(RetreatIsPushingTest, AnObjectCarriedAlongTheRetreatIsBeingPushed) {
   EXPECT_TRUE(RetreatIsPushing(
       Eigen::Vector3d(0.27, 0.10, 0.04), Eigen::Vector3d(0.26, 0.10, 0.04),
@@ -1127,6 +1202,12 @@ TEST(JamGuardParamsTest, TheConeYamlShipsTheDetectorTheReportScored) {
   EXPECT_EQ(*jam_guard.load_clear_gap, 0.005);
   ASSERT_TRUE(jam_guard.retreat_push_travel.has_value());
   EXPECT_EQ(*jam_guard.retreat_push_travel, 0.006);
+  // The ramp-load tier, replayed offline on the 2026-09-30/10-01 compliant-sim
+  // logs.
+  ASSERT_TRUE(jam_guard.ramp_load_trip.has_value());
+  EXPECT_EQ(*jam_guard.ramp_load_trip, 0.010);
+  EXPECT_EQ(jam_guard.ramp_load_bodies,
+            std::optional<std::vector<std::string>>({"ramp_link"}));
 
   // The invariants the controller DRAKE_DEMANDs, checked here so a bad yaml
   // fails the test rather than the demo.

@@ -173,6 +173,18 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
   std::vector<Eigen::VectorXd>
       workspace_limits;      ///< Workspace boundaries as vectors.
   double workspace_margins;  ///< Margins to be maintained within the workspace.
+  /// Surface clearance [m] that each knot of a published EE plan is projected
+  /// to off the fixed scene (the ramp, the ground).  Defaults to
+  /// workspace_margins.  Set it above workspace_margins when
+  /// check_fixed_geometry_paths is on, so the path between two knots can sag a
+  /// little toward a surface without failing the path's workspace_margins.
+  std::optional<double> fixed_geometry_knot_margin;
+  /// Keep the EE plan's whole path, not just its knots, workspace_margins off
+  /// the fixed scene (see ClearEEPlanOfFixedGeometries in reposition.h), and
+  /// predict the next x0 from that cleared plan.  A C3 plan that would pass
+  /// through fixed geometry stops short of it; a repositioning plan is
+  /// rerouted over it.  Off (knot-wise projection at publish only) if unset.
+  std::optional<bool> check_fixed_geometry_paths;
   std::vector<double> ee_velocity_horizontal_limits;  ///< Limits for
                                                       ///< horizontal (xy) EE
                                                       ///< velocity.
@@ -280,6 +292,8 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     a->Visit(DRAKE_NVP(u_vertical_limits));
     a->Visit(DRAKE_NVP(workspace_limits));
     a->Visit(DRAKE_NVP(workspace_margins));
+    a->Visit(DRAKE_NVP(fixed_geometry_knot_margin));
+    a->Visit(DRAKE_NVP(check_fixed_geometry_paths));
     a->Visit(DRAKE_NVP(ee_velocity_horizontal_limits));
     a->Visit(DRAKE_NVP(ee_velocity_vertical_limits));
 

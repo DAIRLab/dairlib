@@ -4,6 +4,7 @@
 
 #include <optional>
 #include <stdexcept>
+#include <string>
 
 #include "common/file_utils.h"
 
@@ -143,6 +144,17 @@ struct JamGuardParams {
   /// up instead, which a free finger clears the object by.  Requires the load
   /// tier, whose entry point it was scored with.  Omit to turn it off.
   std::optional<double> retreat_push_travel;
+  /// The ramp-load tier: the load tier's estimate against the fixed geometry
+  /// of ramp_load_bodies instead of the object, armed at or above this load
+  /// [m] with the load tier's dwell and clear gap.  A backstop for the finger
+  /// catching on fixed geometry, which ClearEEPlanOfFixedGeometries keeps
+  /// plans off but which a misaligned scene or an exempt unload leg can still
+  /// put the finger into.  A trip unloads towards where the finger caught the
+  /// ramp, like any load trip.  Requires the load tier.  Omit this and
+  /// ramp_load_bodies to turn it off.
+  std::optional<double> ramp_load_trip;
+  /// The bodies whose collision geometry the ramp-load tier watches.
+  std::optional<std::vector<std::string>> ramp_load_bodies;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -164,6 +176,8 @@ struct JamGuardParams {
     a->Visit(DRAKE_NVP(load_trip_hold_seconds));
     a->Visit(DRAKE_NVP(load_clear_gap));
     a->Visit(DRAKE_NVP(retreat_push_travel));
+    a->Visit(DRAKE_NVP(ramp_load_trip));
+    a->Visit(DRAKE_NVP(ramp_load_bodies));
     if (deep_gap_trip.has_value() != deep_trip_hold_seconds.has_value()) {
       throw std::runtime_error(
           "jam_guard: set both deep_gap_trip and deep_trip_hold_seconds, or "
@@ -174,6 +188,15 @@ struct JamGuardParams {
       throw std::runtime_error(
           "jam_guard: set all of load_trip, load_trip_hold_seconds and "
           "load_clear_gap, or none.");
+    }
+    if (ramp_load_trip.has_value() != ramp_load_bodies.has_value()) {
+      throw std::runtime_error(
+          "jam_guard: set both ramp_load_trip and ramp_load_bodies, or "
+          "neither.");
+    }
+    if (ramp_load_trip.has_value() && !load_trip.has_value()) {
+      throw std::runtime_error(
+          "jam_guard: ramp_load_trip needs the load tier (load_trip).");
     }
   }
 };

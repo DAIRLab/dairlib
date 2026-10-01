@@ -264,6 +264,11 @@ struct JamLatchThresholds {
   /// over the object clears every gap term with the finger still loaded, and
   /// the finger snaps free.  Infinity turns the condition off.
   double unload_release = std::numeric_limits<double>::infinity();
+  /// The ramp-load tier: the load tier's rule, on the finger load estimated
+  /// against fixed geometry rather than the object, with the load tier's dwell
+  /// (load_trip_hold_seconds).  Like the load tier it only ever sets the latch.
+  /// Infinity turns the tier off.
+  double ramp_load_trip = std::numeric_limits<double>::infinity();
 };
 
 /// The live jam watchdog's decision, separated from the queries that feed it.
@@ -302,14 +307,16 @@ class JamLatch {
   /// nullopt does not vote.  It stops voting for the rest of a trip once it
   /// has read below unload_release; see unloaded().
   /// @p finger_load feeds the load tier (see load_trip).  It never holds the
-  /// latch open, and nullopt cannot arm the tier.
+  /// latch open, and nullopt cannot arm the tier.  @p ramp_load feeds the
+  /// ramp-load tier (see ramp_load_trip) the same way.
   /// @return true iff this update was the rising edge (the latch just set).
   bool Update(double now, double ee_object_force,
               std::optional<double> ee_object_gap,
               std::optional<double> object_travel,
               std::optional<double> measured_ee_object_gap = std::nullopt,
               std::optional<double> unload_distance = std::nullopt,
-              std::optional<double> finger_load = std::nullopt);
+              std::optional<double> finger_load = std::nullopt,
+              std::optional<double> ramp_load = std::nullopt);
 
   bool tripped() const { return tripped_; }
   /// Seconds the arming condition has held continuously, 0 when not arming.
@@ -323,6 +330,9 @@ class JamLatch {
   /// Whether the current latch was set by the load tier alone.  Cleared on
   /// release.
   bool tripped_by_load() const { return tripped_by_load_; }
+  /// Whether the current latch was set by the ramp-load tier alone.  Cleared
+  /// on release.
+  bool tripped_by_ramp_load() const { return tripped_by_ramp_load_; }
   /// Whether the unload distance has dropped below unload_release at any point
   /// since the current latch set.  Once true it stays true until the next trip.
   bool unloaded() const { return unloaded_; }
@@ -341,12 +351,14 @@ class JamLatch {
   double releasing_since_ = std::numeric_limits<double>::quiet_NaN();
   double deep_arming_since_ = std::numeric_limits<double>::quiet_NaN();
   double load_arming_since_ = std::numeric_limits<double>::quiet_NaN();
+  double ramp_load_arming_since_ = std::numeric_limits<double>::quiet_NaN();
   double trip_seconds_ = 0.0;
   bool deep_arming_ = false;
   bool load_arming_ = false;
   bool tripped_ = false;
   bool tripped_by_deep_ = false;
   bool tripped_by_load_ = false;
+  bool tripped_by_ramp_load_ = false;
   bool unloaded_ = false;
 };
 

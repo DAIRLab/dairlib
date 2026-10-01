@@ -2,7 +2,7 @@ package archive.dairlib;
 
 /* Archived generation of lcmt_sampling_c3_debug:  the load tier's
    jam_finger_load and jam_tripped_by_load, but not jam_retreat_pushing.
-   Reads the 2026-10-01 compliant-sim logs 000000-000013.
+   Reads the 2026-10-01 compliant-sim logs 000000-000011.
 
    lcmtype with debug information for the sampling controller.
 

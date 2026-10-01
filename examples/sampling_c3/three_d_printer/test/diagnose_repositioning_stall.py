@@ -58,7 +58,7 @@ class _SamplingC3Debug:
 
   LCM verifies the fingerprint on decode, so the current type cannot read a log
   recorded before a field was appended.  Fields have been appended five times
-  so far, along two parallel branches that were then joined, giving nine
+  so far, along two parallel branches that were then joined, giving ten
   generations:
 
     v1  the original layout -- every log up to and including the 2026-09-17
@@ -78,8 +78,10 @@ class _SamplingC3Debug:
     v7  v6 + jam_unload_distance (2026-09-29) -- the 2026-09-29 and
         2026-09-30 compliant-sim runs.
     v8  v7 + jam_finger_load, jam_tripped_by_load (2026-10-01) -- the
-        2026-10-01 compliant-sim runs 000000-000013.
-    v9  v8 + jam_retreat_pushing (2026-10-01) -- current.
+        2026-10-01 compliant-sim runs 000000-000011.
+    v9  v8 + jam_retreat_pushing (2026-10-01) -- the 2026-10-01 compliant-sim
+        runs 000012-000025.
+    v10 v9 + jam_ramp_load, jam_tripped_by_ramp_load (2026-10-01) -- current.
 
   Fall back to the newest archived layout that decodes, and report each field
   that generation does not carry as a sentinel.  NaN for jam_object_travel is
@@ -87,10 +89,10 @@ class _SamplingC3Debug:
   filled.  repos_target_decision and mode_switch_decision report as None rather
   than 0, because 0 is a real value ("nothing nominated") and a log that
   predates a gate must not be counted as evidence that the gate kept anything.
-  The same goes for jam_deep_armed, jam_tripped_by_load and
-  jam_retreat_pushing, and
-  jam_ee_object_gap_measured, jam_unload_distance and jam_finger_load report
-  as NaN, the controller's own "no reading" value.
+  The same goes for jam_deep_armed, jam_tripped_by_load,
+  jam_retreat_pushing and jam_tripped_by_ramp_load, and
+  jam_ee_object_gap_measured, jam_unload_distance, jam_finger_load and
+  jam_ramp_load report as NaN, the controller's own "no reading" value.
   """
 
   class _Older:
@@ -116,7 +118,15 @@ class _SamplingC3Debug:
       return dairlib.lcmt_sampling_c3_debug.decode(data)
     except ValueError:
       pass
-    no_push_guard = dict(jam_retreat_pushing=None)
+    no_ramp_tier = dict(jam_ramp_load=float('nan'),
+                        jam_tripped_by_ramp_load=None)
+    try:
+      return _SamplingC3Debug._Older(
+          archive_dairlib.lcmt_sampling_c3_debug_v9.decode(data),
+          **no_ramp_tier)
+    except ValueError:
+      pass
+    no_push_guard = dict(jam_retreat_pushing=None, **no_ramp_tier)
     try:
       return _SamplingC3Debug._Older(
           archive_dairlib.lcmt_sampling_c3_debug_v8.decode(data),

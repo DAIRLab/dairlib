@@ -1,7 +1,10 @@
 #include "reposition.h"
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
+#include <stdexcept>
+#include <string>
 
 #include "drake/common/drake_assert.h"
 
@@ -638,6 +641,145 @@ std::pair<bool, double> ComputeRepositionClearance(
     }
   }
   return {direct_path_clear, min_cruise_height};
+}
+
+void ClampEEPositionToWorkspace(const SamplingC3Options& sampling_c3_options,
+                                Eigen::Vector3d* p) {
+  for (int i = 0; i < 3; ++i) {
+    const double lower_bound = sampling_c3_options.workspace_limits[i][3] +
+                               sampling_c3_options.workspace_margins;
+    const double upper_bound = sampling_c3_options.workspace_limits[i][4] -
+                               sampling_c3_options.workspace_margins;
+    (*p)(i) = std::clamp((*p)(i), lower_bound, upper_bound);
+  }
+}
+
+namespace {
+
+// The nearest fixed geometry to a point: its signed distance and outward
+// gradient.  Infinite distance when the set reports nothing.
+std::pair<double, Eigen::Vector3d> NearestFixedGeometry(
+    const drake::geometry::QueryObject<double>& query_object,
+    const drake::geometry::GeometrySet& fixed_geometries,
+    const Eigen::Vector3d& p) {
+  // Sanity bound on how deep a point can plausibly be inside this scene's
+  // fixed geometry.  Anything deeper means the signed-distance query itself is
+  // unreliable (e.g. a non-watertight collision mesh -- the ramp pieces are
+  // declared convex for exactly this reason), not a real penetration to undo.
+  constexpr double kMaxPlausiblePenetration = 0.05;  // meters
+  double min_distance = std::numeric_limits<double>::infinity();
+  Eigen::Vector3d gradient = Eigen::Vector3d::Zero();
+  drake::geometry::GeometryId closest_id;
+  for (const auto& result :
+       query_object.ComputeSignedDistanceGeometryToPoint(p, fixed_geometries)) {
+    if (result.distance < min_distance) {
+      min_distance = result.distance;
+      gradient = result.grad_W;
+      closest_id = result.id_G;
+    }
+  }
+  if (min_distance < -kMaxPlausiblePenetration) {
+    throw std::runtime_error(
+        "ClearEEPlanOfFixedGeometries: implausible signed distance " +
+        std::to_string(min_distance) + "m reported at p=[" +
+        std::to_string(p(0)) + ", " + std::to_string(p(1)) + ", " +
+        std::to_string(p(2)) + "] against geometry '" +
+        query_object.inspector().GetName(closest_id) +
+        "' -- this indicates an unreliable signed-distance query (e.g. a "
+        "non-watertight/non-manifold collision mesh) rather than a real "
+        "penetration; refusing to apply a corrupted correction.");
+  }
+  return {min_distance, gradient};
+}
+
+}  // namespace
+
+FixedGeometryPathCheck ClearEEPlanOfFixedGeometries(
+    const drake::geometry::QueryObject<double>& query_object,
+    const drake::geometry::GeometrySet& fixed_geometries,
+    double knot_clearance, double path_clearance,
+    const SamplingC3Options& sampling_c3_options, int num_exempt_knots,
+    Eigen::MatrixXd* ee_positions) {
+  DRAKE_DEMAND(ee_positions->rows() == 3);
+  DRAKE_DEMAND(path_clearance <= knot_clearance);
+  const int num_knots = ee_positions->cols();
+  num_exempt_knots = std::clamp(num_exempt_knots, 0, num_knots);
+  // A knot inside a wall can take a few pushes to leave the union of the
+  // pieces: out of one piece into its neighbour, or out through a floor-level
+  // underside and back up by the clamp.
+  constexpr int kMaxProjectionIterations = 8;
+  for (int col = 0; col < num_knots; ++col) {
+    Eigen::Vector3d p = ee_positions->col(col);
+    ClampEEPositionToWorkspace(sampling_c3_options, &p);
+    for (int iter = 0; col >= num_exempt_knots &&
+                       iter < kMaxProjectionIterations;
+         ++iter) {
+      const auto [distance, gradient] =
+          NearestFixedGeometry(query_object, fixed_geometries, p);
+      if (!std::isfinite(distance) || distance >= knot_clearance ||
+          gradient.norm() < 1e-9) {
+        break;
+      }
+      p += (knot_clearance - distance) * gradient;
+      ClampEEPositionToWorkspace(sampling_c3_options, &p);
+    }
+    ee_positions->col(col) = p;
+  }
+
+  // Walk the path.  From a point at distance d nothing within (d -
+  // path_clearance) of it can be blocked, since signed distance is
+  // 1-Lipschitz, so each step can go that far.
+  constexpr double kMinPathStep = 0.0005;  // meters
+  FixedGeometryPathCheck check;
+  const int start = std::max(num_exempt_knots - 1, 0);
+  // The last points visited that clear knot_clearance and path_clearance.
+  Eigen::Vector3d last_knot_clear_point = ee_positions->col(start);
+  Eigen::Vector3d last_path_clear_point = ee_positions->col(start);
+  bool any_knot_clear = false;
+  bool escaping = true;  // Until the path is first clear; see the header.
+  auto visit = [&](const Eigen::Vector3d& p, int knot) {
+    const double d =
+        NearestFixedGeometry(query_object, fixed_geometries, p).first;
+    if (d >= knot_clearance) {
+      any_knot_clear = true;
+      last_knot_clear_point = p;
+    }
+    if (d >= path_clearance) {
+      escaping = false;
+      last_path_clear_point = p;
+    } else if (!escaping) {
+      check.first_blocked_knot = knot;
+      check.blocked_distance = d;
+      check.last_clear_point =
+          any_knot_clear ? last_knot_clear_point : last_path_clear_point;
+    }
+    return d;
+  };
+  // The distance at the walk's current point, carried from segment to segment.
+  double distance = visit(ee_positions->col(start), start);
+  for (int k = start + 1; k < num_knots && check.first_blocked_knot < 0; ++k) {
+    const Eigen::Vector3d a = ee_positions->col(k - 1);
+    const Eigen::Vector3d b = ee_positions->col(k);
+    const double length = (b - a).norm();
+    double s = 0.0;
+    while (check.first_blocked_knot < 0) {
+      s += std::max(distance - path_clearance, kMinPathStep);
+      if (s >= length) {
+        distance = visit(b, k);
+        break;
+      }
+      distance = visit(a + (s / length) * (b - a), k);
+    }
+  }
+  return check;
+}
+
+void HoldEEPlanFrom(int from_knot, const Eigen::Vector3d& point,
+                    Eigen::MatrixXd* ee_positions) {
+  DRAKE_DEMAND(ee_positions->rows() == 3);
+  for (int col = std::max(from_knot, 0); col < ee_positions->cols(); ++col) {
+    ee_positions->col(col) = point;
+  }
 }
 
 }  // namespace systems

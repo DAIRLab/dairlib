@@ -84,6 +84,7 @@ def decode_debug(data):
   """Newest layout first; only jam_tripped is needed from the older ones,
   which every generation carries (see process_lcm_logs.py)."""
   for lcmt in (dairlib.lcmt_sampling_c3_debug,
+               archive_dairlib.lcmt_sampling_c3_debug_v9,
                archive_dairlib.lcmt_sampling_c3_debug_v8,
                archive_dairlib.lcmt_sampling_c3_debug_v7,
                archive_dairlib.lcmt_sampling_c3_debug_v6,

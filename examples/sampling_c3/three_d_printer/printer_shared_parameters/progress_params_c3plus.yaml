@@ -172,3 +172,11 @@ jam_guard:
   # object -- the finger slipped free after the trip -- so the trip counts as
   # unloaded and the retreat lifts straight up instead.  Omit to turn it off.
   retreat_push_travel: 0.006
+  # Ramp-load tier (needs the load tier):  the load tier's estimate against
+  # the fixed geometry of ramp_load_bodies instead of the cone, with its dwell,
+  # clear gap and unloading.  Plans are kept off the ramp along their whole
+  # path (check_fixed_geometry_paths), so this is a backstop for a ramp that
+  # is not quite where the model puts it on hardware.  Omit both keys to turn it
+  # off.
+  ramp_load_trip: 0.010
+  ramp_load_bodies: [ramp_link]

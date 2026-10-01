@@ -1,3 +1,5 @@
+#pragma once
+
 #include <limits>
 #include <utility>
 
@@ -7,6 +9,7 @@
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 
 #include "drake/geometry/geometry_ids.h"
+#include "drake/geometry/geometry_set.h"
 #include "drake/geometry/query_object.h"
 
 namespace dairlib {
@@ -130,6 +133,59 @@ std::pair<bool, double> ComputeRepositionClearance(
     const Eigen::Vector3d& current_ee_location, const Eigen::Vector3d& target,
     double ee_radius, const SamplingC3RepositionParams& reposition_params,
     const SamplingC3Options& sampling_c3_options);
+
+/// Clamps @p p to sampling_c3_options.workspace_limits, held
+/// sampling_c3_options.workspace_margins inside each bound.
+void ClampEEPositionToWorkspace(const SamplingC3Options& sampling_c3_options,
+                                Eigen::Vector3d* p);
+
+/// What ClearEEPlanOfFixedGeometries() found along the plan's path.
+struct FixedGeometryPathCheck {
+  /// The first knot whose incoming straight segment comes within
+  /// path_clearance of a fixed geometry, or -1 if the whole path is clear.
+  int first_blocked_knot{-1};
+  /// Where to hold a blocked plan: the last point before the block, along the
+  /// path, that clears knot_clearance (or, if none does, path_clearance), so a
+  /// held plan sits where its knots would have been projected to.
+  Eigen::Vector3d last_clear_point{Eigen::Vector3d::Zero()};
+  /// The EE-centre signed distance [m] where the path was found blocked.
+  double blocked_distance{std::numeric_limits<double>::infinity()};
+};
+
+/// Keeps an EE position plan (3 x N, one column per knot) off the fixed scene,
+/// along its whole path rather than only at its knots.
+///
+/// First, every knot from @p num_exempt_knots on is projected at least
+/// @p knot_clearance (EE centre to surface) away from @p fixed_geometries,
+/// along the nearest geometry's gradient, and clamped to the workspace (see
+/// ClampEEPositionToWorkspace) before every distance query.  Clamping inside
+/// the loop matters for geometry that rests on the floor: a knot pushed out
+/// through such a piece's underside would otherwise be lifted straight back
+/// into it by a clamp applied afterwards.  The exempt leading knots are only
+/// clamped.
+///
+/// Then the straight segments between consecutive knots are walked from knot
+/// max(@p num_exempt_knots - 1, 0), and the first one that comes within
+/// @p path_clearance of the geometry is reported -- projecting knot by knot
+/// alone lets neighbouring knots inside a wall land on its opposite faces, with
+/// the segment between them running straight through it.  A path that starts
+/// inside path_clearance (the end of an exempt retreat, say) may leave it; it
+/// is checked from the first clear point on.  The walk sphere-traces: from a
+/// point at distance d it steps (d - path_clearance), at least 0.5 mm.
+///
+/// The caller decides what to do with a blocked path; see HoldEEPlanFrom().
+/// Throws if a query reports a penetration deeper than 5 cm, which only an
+/// unreliable query (a bad collision mesh) produces in this scene.
+FixedGeometryPathCheck ClearEEPlanOfFixedGeometries(
+    const drake::geometry::QueryObject<double>& query_object,
+    const drake::geometry::GeometrySet& fixed_geometries,
+    double knot_clearance, double path_clearance,
+    const SamplingC3Options& sampling_c3_options, int num_exempt_knots,
+    Eigen::MatrixXd* ee_positions);
+
+/// Holds an EE position plan (3 x N) at @p point from knot @p from_knot on.
+void HoldEEPlanFrom(int from_knot, const Eigen::Vector3d& point,
+                    Eigen::MatrixXd* ee_positions);
 
 }  // namespace systems
 }  // namespace dairlib

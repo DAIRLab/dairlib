@@ -35,6 +35,7 @@
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
 #include "examples/sampling_c3/parameter_headers/sampling_params.h"
+#include "examples/sampling_c3/reposition.h"
 #include "lcm/lcm_trajectory.h"
 #include "systems/controllers/face.h"
 #include "systems/controllers/pose_latch_release.h"
@@ -566,6 +567,22 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void ProjectPlanAwayFromFixedGeometries(
       Eigen::MatrixXd* ee_position_traj) const;
 
+  /// Whether sampling_c3_options_.check_fixed_geometry_paths is on.
+  bool CheckFixedGeometryPaths() const;
+
+  /// ClearEEPlanOfFixedGeometries() against fixed_obstacle_geometries_, with
+  /// knots kept fixed_geometry_knot_margin and the path workspace_margins off
+  /// it (both plus ee_radius_).
+  FixedGeometryPathCheck ClearEEPlanPath(int num_exempt_knots,
+                                         Eigen::MatrixXd* ee_positions) const;
+
+  /// Prints when the live plan starts and stops being held short of fixed
+  /// geometry, so a hold streak (a plan pinned against a wall) shows in the
+  /// controller's output with its start, end and length.
+  void NoteFixedGeometryPathHold(const FixedGeometryPathCheck& check,
+                                 const char* plan_name,
+                                 double t_context) const;
+
   /// Collapse sampling_c3_options_.ee_velocity_{horizontal,vertical}_limits,
   /// each a [min, max] pair, into the scalar speeds the retiming works with.
   /// Returns false (with a one-time warning) if either limit is missing or
@@ -706,6 +723,13 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // scene that exported EE plans must stay workspace_margins (plus ee_radius_)
   // away from.
   drake::geometry::GeometrySet fixed_obstacle_geometries_;
+
+  // The current streak of loops whose live plan was held short of fixed
+  // geometry (see NoteFixedGeometryPathHold): when it began (NaN when there is
+  // no streak) and how many loops it has lasted.
+  mutable double fixed_geometry_hold_since_ =
+      std::numeric_limits<double>::quiet_NaN();
+  mutable int fixed_geometry_hold_loops_ = 0;
 
   // A private scene holding ONLY the per-goal keep-out geometry.  Null when no
   // goal step declares a keep-out model.
@@ -1040,6 +1064,14 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable double jam_finger_load_ = std::numeric_limits<double>::quiet_NaN();
   // Whether the current latch was set by the load tier alone.
   mutable bool jam_tripped_by_load_ = false;
+  // The ramp-load tier: the same estimator against jam_ramp_geometries_
+  // (fixed, so its pose is the identity); null when the tier is off.
+  std::unique_ptr<FingerLoadEstimator> jam_ramp_load_estimator_;
+  drake::geometry::GeometrySet jam_ramp_geometries_;
+  // The ramp-load tier's estimate [m]; NaN when off or without an anchor.
+  mutable double jam_ramp_load_ = std::numeric_limits<double>::quiet_NaN();
+  // Whether the current latch was set by the ramp-load tier alone.
+  mutable bool jam_tripped_by_ramp_load_ = false;
   // Whether the current latch's retreat was caught pushing the object, which
   // switches it to lifting straight up.  Cleared on release.
   mutable bool jam_retreat_pushing_ = false;

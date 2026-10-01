@@ -117,7 +117,8 @@ bool JamLatch::Update(double now, double ee_object_force,
                       std::optional<double> object_travel,
                       std::optional<double> measured_ee_object_gap,
                       std::optional<double> unload_distance,
-                      std::optional<double> finger_load) {
+                      std::optional<double> finger_load,
+                      std::optional<double> ramp_load) {
   constexpr double kNaN = std::numeric_limits<double>::quiet_NaN();
 
   // The force term arms only near contact.  C3's knot-0 lambda is an ADMM
@@ -183,13 +184,27 @@ bool JamLatch::Update(double now, double ee_object_force,
   const bool load_held = load_arming_ && now - load_arming_since_ >=
                                              thresholds_.load_trip_hold_seconds;
 
+  // The ramp-load tier: the same rule against fixed geometry.
+  const bool ramp_load_arming =
+      ramp_load.has_value() && *ramp_load >= thresholds_.ramp_load_trip;
+  if (ramp_load_arming) {
+    if (std::isnan(ramp_load_arming_since_)) ramp_load_arming_since_ = now;
+  } else {
+    ramp_load_arming_since_ = kNaN;
+  }
+  const bool ramp_load_held =
+      ramp_load_arming &&
+      now - ramp_load_arming_since_ >= thresholds_.load_trip_hold_seconds;
+
   if (!tripped_) {
     const bool shallow_held =
         arming && trip_seconds_ >= thresholds_.trip_hold_seconds;
-    if (shallow_held || deep_held || load_held) {
+    if (shallow_held || deep_held || load_held || ramp_load_held) {
       tripped_ = true;
       tripped_by_deep_ = deep_held && !shallow_held;
       tripped_by_load_ = load_held && !shallow_held && !deep_held;
+      tripped_by_ramp_load_ =
+          ramp_load_held && !shallow_held && !deep_held && !load_held;
       releasing_since_ = kNaN;
       unloaded_ = false;
       return true;
@@ -251,6 +266,7 @@ bool JamLatch::Update(double now, double ee_object_force,
       tripped_ = false;
       tripped_by_deep_ = false;
       tripped_by_load_ = false;
+      tripped_by_ramp_load_ = false;
       arming_since_ = kNaN;
       trip_seconds_ = 0.0;
     }

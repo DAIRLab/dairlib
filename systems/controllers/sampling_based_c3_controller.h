@@ -100,16 +100,20 @@ enum PursuedTargetSource { kNoTarget, kPrevious, kNewSample, kFromBuffer };
 /// What happened to the repositioning target this control loop.  Most values
 /// are deliberately *not* retargets:  nominating a challenger leaves the target
 /// untouched, which is the entire point of the confirm gate.  An actual
-/// repos -> repos switch is exactly {kRetargetConfirmed, kRetargetCollision}.
+/// repos -> repos switch is exactly {kRetargetConfirmed, kRetargetCollision,
+/// kRetargetUnsuccessful}.
 enum ReposTargetDecision {
   kKeptNoNominee = 0,    // kept incumbent, nothing nominated
   kKeptNominated,        // kept incumbent, challenger nominated this loop
   kKeptNomineeRejected,  // kept incumbent, nominee lost its re-score
   kRetargetConfirmed,    // switched to the nominee after it confirmed
   kRetargetCollision,    // switched because the incumbent is in penetration
-  kKeptNomineeRejectedRenominated  // kept incumbent, nominee lost its
-                                   // re-score, and another of this loop's
-                                   // samples was nominated in its place
+  kKeptNomineeRejectedRenominated,  // kept incumbent, nominee lost its
+                                    // re-score, and another of this loop's
+                                    // samples was nominated in its place
+  kRetargetUnsuccessful  // switched because an unsuccessful sample was
+                         // recorded within unsuccessful_radius of the
+                         // incumbent
 };
 
 /// What the nominate-then-confirm gates on cost-driven C3 <-> repos switches
@@ -579,6 +583,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   /// Where ClearEEPlanPath() lets a plan ending at @p ee_position end: the
   /// point projected the same knot clearance off fixed_obstacle_geometries_.
   Eigen::Vector3d ReachableEEPosition(const Eigen::Vector3d& ee_position) const;
+
+  /// Whether an EE at @p ee_position is closer to fixed_obstacle_geometries_
+  /// than ClearEEPlanPath() lets a knot be, i.e. in or against the scene.
+  bool InsideKnotClearance(const Eigen::Vector3d& ee_position) const;
 
   /// Prints when the live plan starts and stops being held short of fixed
   /// geometry, so a hold streak (a plan pinned against a wall) shows in the

@@ -36,6 +36,7 @@
         </mesh>
       </geometry>
       <drake:proximity_properties>
+        <drake:rigid_hydroelastic/>
         <drake:point_contact_stiffness value="1e7"/>
       </drake:proximity_properties>
     </collision>
@@ -58,6 +59,7 @@
         </mesh>
       </geometry>
       <drake:proximity_properties>
+        <drake:rigid_hydroelastic/>
         <drake:point_contact_stiffness value="1e7"/>
       </drake:proximity_properties>
     </collision>
@@ -80,6 +82,7 @@
         </mesh>
       </geometry>
       <drake:proximity_properties>
+        <drake:rigid_hydroelastic/>
         <drake:point_contact_stiffness value="1e7"/>
       </drake:proximity_properties>
     </collision>
@@ -102,6 +105,7 @@
         </mesh>
       </geometry>
       <drake:proximity_properties>
+        <drake:rigid_hydroelastic/>
         <drake:point_contact_stiffness value="1e7"/>
       </drake:proximity_properties>
     </collision>
@@ -124,6 +128,7 @@
         </mesh>
       </geometry>
       <drake:proximity_properties>
+        <drake:rigid_hydroelastic/>
         <drake:point_contact_stiffness value="1e7"/>
       </drake:proximity_properties>
     </collision>
@@ -145,6 +150,7 @@
         </mesh>
       </geometry>
       <drake:proximity_properties>
+        <drake:rigid_hydroelastic/>
         <drake:point_contact_stiffness value="1e7"/>
       </drake:proximity_properties>
     </collision>
@@ -166,6 +172,7 @@
         </mesh>
       </geometry>
       <drake:proximity_properties>
+        <drake:rigid_hydroelastic/>
         <drake:point_contact_stiffness value="1e7"/>
       </drake:proximity_properties>
     </collision>
@@ -188,6 +195,7 @@
         </mesh>
       </geometry>
       <drake:proximity_properties>
+        <drake:rigid_hydroelastic/>
         <drake:point_contact_stiffness value="1e7"/>
       </drake:proximity_properties>
     </collision>
@@ -209,6 +217,7 @@
         </mesh>
       </geometry>
       <drake:proximity_properties>
+        <drake:rigid_hydroelastic/>
         <drake:point_contact_stiffness value="1e7"/>
       </drake:proximity_properties>
     </collision>
@@ -230,6 +239,7 @@
         </mesh>
       </geometry>
       <drake:proximity_properties>
+        <drake:rigid_hydroelastic/>
         <drake:point_contact_stiffness value="1e7"/>
       </drake:proximity_properties>
     </collision>
@@ -251,6 +261,7 @@
         </mesh>
       </geometry>
       <drake:proximity_properties>
+        <drake:rigid_hydroelastic/>
         <drake:point_contact_stiffness value="1e7"/>
       </drake:proximity_properties>
     </collision>
@@ -272,6 +283,7 @@
         </mesh>
       </geometry>
       <drake:proximity_properties>
+        <drake:rigid_hydroelastic/>
         <drake:point_contact_stiffness value="1e7"/>
       </drake:proximity_properties>
     </collision>
@@ -293,6 +305,7 @@
         </mesh>
       </geometry>
       <drake:proximity_properties>
+        <drake:rigid_hydroelastic/>
         <drake:point_contact_stiffness value="1e7"/>
       </drake:proximity_properties>
     </collision>
@@ -314,6 +327,7 @@
         </mesh>
       </geometry>
       <drake:proximity_properties>
+        <drake:rigid_hydroelastic/>
         <drake:point_contact_stiffness value="1e7"/>
       </drake:proximity_properties>
     </collision>

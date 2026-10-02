@@ -106,7 +106,13 @@ class Monitor:
   def _contacts(self, _, data):
     msg = drake.lcmt_contact_results_for_viz.decode(data)
     plate = ramp = False
-    for pair in msg.point_pair_contact_info:
+    # Cone-ramp contact is hydroelastic since the ramp pieces went rigid
+    # hydroelastic (8449aad55); reading point pairs alone cut runs whose cone
+    # lay tipped toward the ramp, rim on the plate and apex on the ramp, as
+    # tipped (10_02_26/000022, 23, 25, 27, 28), and never started the flipped
+    # window.
+    for pair in (list(msg.point_pair_contact_info) +
+                 list(msg.hydroelastic_contacts)):
       # Names carry the model instance index, e.g. 'cone(5)'.
       bodies = {name.split('(')[0] for name in (pair.body1_name,
                                                 pair.body2_name)}

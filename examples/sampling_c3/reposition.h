@@ -24,7 +24,10 @@ namespace systems {
 /// is collision-checked (see ComputeRepositionClearance): a clear direct 3D
 /// segment routes to the diagonal RepositionStraightLine, and otherwise the
 /// up/over/down move rises only to the lowest collision-free cruise height
-/// rather than the fixed reposition_params.pwl_waypoint_height.  Pass
+/// rather than the fixed reposition_params.pwl_waypoint_height.  A short hop
+/// (under use_straight_line_traj_under_piecewise_linear of xy travel) also
+/// goes straight, but only if StraightHopIsClear(); otherwise it lifts first
+/// like any other blocked move.  Pass
 /// query_object == nullptr (the default) to disable that check and reproduce
 /// the original fixed-height behavior; ee_geometry_id / ee_radius are the EE
 /// collision geometry and its radius, used only for the check.
@@ -133,6 +136,25 @@ std::pair<bool, double> ComputeRepositionClearance(
     const Eigen::Vector3d& current_ee_location, const Eigen::Vector3d& target,
     double ee_radius, const SamplingC3RepositionParams& reposition_params,
     const SamplingC3Options& sampling_c3_options);
+
+/// Whether the straight hop @p start -> @p target keeps the EE clear of every
+/// geometry except ee_geometry_id: its centre stays at least (ee_radius +
+/// sampling_c3_options.workspace_margins) from them, checked at
+/// reposition_params.pwl_num_path_collision_samples interior points plus both
+/// ends, or as far as @p target itself is when that is less.  A hop that
+/// starts inside that clearance (the EE resting on the object, say) may only
+/// move away until it is clear; one that slides deeper, or comes back in once
+/// clear, is not clear.
+///
+/// This is the check for the short hops Reposition() takes straight to the
+/// target, whose ends sit too close to the object for
+/// ComputeRepositionClearance's wider clearance ever to call them clear.
+bool StraightHopIsClear(const drake::geometry::QueryObject<double>& query_object,
+                        drake::geometry::GeometryId ee_geometry_id,
+                        const Eigen::Vector3d& start,
+                        const Eigen::Vector3d& target, double ee_radius,
+                        const SamplingC3RepositionParams& reposition_params,
+                        const SamplingC3Options& sampling_c3_options);
 
 /// Clamps @p p to sampling_c3_options.workspace_limits, held
 /// sampling_c3_options.workspace_margins inside each bound.

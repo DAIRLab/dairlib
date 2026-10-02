@@ -33,6 +33,8 @@ Eigen::MatrixXd Reposition(
   // pwl_waypoint_height.  Without a scene (query_object == nullptr) or when
   // disabled, fall back to the original fixed-height behavior.
   bool direct_path_clear = false;
+  // Short hops go straight to the target unchecked without a scene.
+  bool short_hop_clear = true;
   double adaptive_waypoint_height = reposition_params.pwl_waypoint_height;
   if (query_object != nullptr &&
       reposition_params.pwl_adaptive_waypoint_height &&
@@ -43,6 +45,9 @@ Eigen::MatrixXd Reposition(
         ee_radius, reposition_params, sampling_c3_options);
     direct_path_clear = clearance.first;
     adaptive_waypoint_height = clearance.second;
+    short_hop_clear = StraightHopIsClear(
+        *query_object, ee_geometry_id, current_ee_location, repos_target,
+        ee_radius, reposition_params, sampling_c3_options);
   }
 
   // Get two unit vectors in the plane of the arc between the current and goal
@@ -58,6 +63,15 @@ Eigen::MatrixXd Reposition(
   double xy_travel_distance = curr_to_goal_vec.head(2).norm();
   // Use a straight line trajectory if close to the target.
   RepositioningTrajectoryType traj_type = reposition_params.traj_type;
+  // A short piecewise-linear hop goes straight rather than up, over and down,
+  // unless it would cut through something on the way.
+  const bool short_hop =
+      (xy_travel_distance <
+       reposition_params.use_straight_line_traj_under_piecewise_linear) ||
+      ((xy_travel_distance <
+        reposition_params.use_straight_line_traj_under_piecewise_linear +
+            0.01) &&
+       (current_ee_location[2] < reposition_params.pwl_waypoint_height));
   bool allow_ground_penetration = false;
   if ((travel_distance <
            reposition_params.use_straight_line_traj_under_spline &&
@@ -66,13 +80,7 @@ Eigen::MatrixXd Reposition(
         traj_type == RepositioningTrajectoryType::kCircular) &&
        travel_angle < reposition_params.use_straight_line_traj_within_angle) ||
       (traj_type == RepositioningTrajectoryType::kPiecewiseLinear &&
-       (direct_path_clear ||
-        (xy_travel_distance <
-         reposition_params.use_straight_line_traj_under_piecewise_linear) ||
-        ((xy_travel_distance <
-          reposition_params.use_straight_line_traj_under_piecewise_linear +
-              0.01) &&
-         (current_ee_location[2] < reposition_params.pwl_waypoint_height))))) {
+       (direct_path_clear || (short_hop && short_hop_clear)))) {
     RepositionStraightLine(knots, n_q, n_x, N, x_lcs, repos_target, dt,
                            is_doing_c3, finished_reposition_flag,
                            reposition_params);
@@ -641,6 +649,50 @@ std::pair<bool, double> ComputeRepositionClearance(
     }
   }
   return {direct_path_clear, min_cruise_height};
+}
+
+bool StraightHopIsClear(const drake::geometry::QueryObject<double>& query_object,
+                        drake::geometry::GeometryId ee_geometry_id,
+                        const Eigen::Vector3d& start,
+                        const Eigen::Vector3d& target, double ee_radius,
+                        const SamplingC3RepositionParams& reposition_params,
+                        const SamplingC3Options& sampling_c3_options) {
+  const double clearance = sampling_c3_options.workspace_margins + ee_radius;
+  // The EE centre's distance to the nearest geometry other than the EE, capped
+  // at `clearance`: the query only reports geometry closer than that.
+  auto distance_at = [&](const Eigen::Vector3d& p) {
+    double distance = clearance;
+    for (const auto& result :
+         query_object.ComputeSignedDistanceToPoint(p, clearance)) {
+      if (result.id_G != ee_geometry_id) {
+        distance = std::min(distance, result.distance);
+      }
+    }
+    return distance;
+  };
+  // The hop may end as close as its target is: the target is the planner's
+  // choice, and a hop that could never reach it would be rebuilt the same way
+  // every loop without arriving.
+  const double required = std::min(clearance, distance_at(target));
+  // Moving a little closer by numerical noise while leaving still counts as
+  // leaving.
+  constexpr double kDistanceTolerance = 1e-4;  // meters
+  const int num_samples =
+      std::max(1, reposition_params.pwl_num_path_collision_samples);
+  double previous_distance = distance_at(start);
+  bool escaping = previous_distance < required;
+  for (int i = 1; i <= num_samples + 1; ++i) {
+    const double s = static_cast<double>(i) / (num_samples + 1);
+    const double distance = distance_at(start + s * (target - start));
+    if (distance >= required - kDistanceTolerance) {
+      escaping = false;
+    } else if (!escaping ||
+               distance < previous_distance - kDistanceTolerance) {
+      return false;
+    }
+    previous_distance = distance;
+  }
+  return true;
 }
 
 void ClampEEPositionToWorkspace(const SamplingC3Options& sampling_c3_options,

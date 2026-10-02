@@ -4,6 +4,7 @@
 // and the collision-check gating (ComputeRepositionClearance / the direct-
 // diagonal route inside Reposition) exercised against a small SceneGraph.
 
+#include <limits>
 #include <memory>
 
 #include <gtest/gtest.h>
@@ -213,6 +214,165 @@ TEST(AdaptiveRepositionTest, NoNeedlessDipWhenAlreadyHigh) {
     EXPECT_GE(knots(2, i), ee.z() - 1e-9) << "knot " << i;
   }
   EXPECT_GT(knots(0, 2), ee.x());  // has started moving in x by knot 2
+}
+
+// Short hops (under 18 mm of xy travel below the cruise height) go straight to
+// the target only when StraightHopIsClear.  These scenes use a 3 mm EE, so the
+// hop clearance is 5 mm and the direct-path clearance 15 mm.
+constexpr double kHopEERadius = 0.003;
+
+// Distance from p to an axis-aligned box.
+double DistanceToBox(const Eigen::Vector3d& p, const Eigen::Vector3d& centre,
+                     const Eigen::Vector3d& size) {
+  const Eigen::Vector3d outside =
+      ((p - centre).cwiseAbs() - size / 2).cwiseMax(0.0);
+  return outside.norm();
+}
+
+// The smallest EE-centre distance to the box along the straight segments
+// between consecutive knots.
+double MinPathDistanceToBox(const Eigen::MatrixXd& knots,
+                            const Eigen::Vector3d& centre,
+                            const Eigen::Vector3d& size) {
+  double min_distance = std::numeric_limits<double>::infinity();
+  for (int i = 0; i + 1 < knots.cols(); ++i) {
+    const Eigen::Vector3d a = knots.col(i).head(3);
+    const Eigen::Vector3d b = knots.col(i + 1).head(3);
+    for (int k = 0; k <= 20; ++k) {
+      min_distance = std::min(
+          min_distance, DistanceToBox(a + (k / 20.0) * (b - a), centre, size));
+    }
+  }
+  return min_distance;
+}
+
+// Whether every knot lies on the straight line from start to target.
+bool KnotsOnSegment(const Eigen::MatrixXd& knots, const Eigen::Vector3d& start,
+                    const Eigen::Vector3d& target) {
+  const Eigen::Vector3d dir = (target - start).normalized();
+  for (int i = 0; i < knots.cols(); ++i) {
+    const Eigen::Vector3d p = knots.col(i).head(3);
+    if ((p - start).cross(dir).norm() > 1e-9) return false;
+  }
+  return true;
+}
+
+// The issue-#4 regression: a short hop whose straight line runs through a thin
+// wall between the EE and its target lifts first and goes over the wall,
+// instead of cutting through it unchecked.
+TEST(AdaptiveRepositionTest, ShortHopThroughObstacleLiftsFirst) {
+  const auto params = MakeParams();
+  const auto options = MakeOptions();
+  // A 2 mm wall across the hop, top at z = 0.05; both ends 6 mm off its faces.
+  const Eigen::Vector3d wall_centre(0.2, 0.2, 0.0);
+  const Eigen::Vector3d wall_size(0.002, 0.05, 0.1);
+  Scene s = MakeScene(RigidTransformd(wall_centre), wall_size);
+  const Eigen::Vector3d ee(0.193, 0.2, 0.03);
+  const Eigen::Vector3d target(0.207, 0.2, 0.03);
+
+  EXPECT_FALSE(StraightHopIsClear(s.query(), s.ee_id, ee, target, kHopEERadius,
+                                  params, options));
+
+  bool finished = false;
+  Eigen::MatrixXd knots = Reposition(kNq, kNx, 400, MakeLcsState(ee), target,
+                                     kDt, /*is_doing_c3=*/false, finished,
+                                     params, options, &s.query(), s.ee_id,
+                                     kHopEERadius);
+
+  // Lift first: knot 1 rises straight above knot 0.
+  EXPECT_LT((knots.col(1).head(2) - ee.head(2)).norm(), 1e-9);
+  EXPECT_GT(knots(2, 1), ee.z());
+  // Over the wall, never through it, and on to the target.
+  EXPECT_GE(MinPathDistanceToBox(knots, wall_centre, wall_size),
+            kHopEERadius);
+  EXPECT_LT((knots.col(knots.cols() - 1).head(3) - target).norm(), 1e-9);
+}
+
+// A short hop past a wall that it never comes within the hop clearance of
+// still goes straight, though the wider direct-path clearance calls it
+// blocked: no needless slow lift.
+TEST(AdaptiveRepositionTest, ClearShortHopGoesStraight) {
+  const auto params = MakeParams();
+  const auto options = MakeOptions();
+  // A wall parallel to the hop, its face 9 mm to the side of it.
+  Scene s = MakeScene(RigidTransformd(Eigen::Vector3d(0.2, 0.21, 0.0)),
+                      Eigen::Vector3d(0.05, 0.002, 0.1));
+  const Eigen::Vector3d ee(0.193, 0.2, 0.03);
+  const Eigen::Vector3d target(0.207, 0.2, 0.03);
+
+  EXPECT_FALSE(ComputeRepositionClearance(s.query(), s.ee_id, ee, target,
+                                          kHopEERadius, params, options)
+                   .first);
+  EXPECT_TRUE(StraightHopIsClear(s.query(), s.ee_id, ee, target, kHopEERadius,
+                                 params, options));
+
+  bool finished = false;
+  Eigen::MatrixXd knots = Reposition(kNq, kNx, kN, MakeLcsState(ee), target,
+                                     kDt, /*is_doing_c3=*/false, finished,
+                                     params, options, &s.query(), s.ee_id,
+                                     kHopEERadius);
+  EXPECT_TRUE(KnotsOnSegment(knots, ee, target));
+}
+
+// An EE resting closer to an object than the clearance (it just let go of it,
+// say) may hop straight away from it.
+TEST(AdaptiveRepositionTest, ShortHopAwayFromObstacleGoesStraight) {
+  const auto params = MakeParams();
+  const auto options = MakeOptions();
+  Scene s = MakeScene(RigidTransformd(Eigen::Vector3d(0.2, 0.2, 0.0)),
+                      Eigen::Vector3d(0.002, 0.05, 0.1));
+  const Eigen::Vector3d ee(0.204, 0.2, 0.03);  // 3 mm off the face
+  const Eigen::Vector3d target(0.216, 0.2, 0.03);
+
+  EXPECT_TRUE(StraightHopIsClear(s.query(), s.ee_id, ee, target, kHopEERadius,
+                                 params, options));
+
+  bool finished = false;
+  Eigen::MatrixXd knots = Reposition(kNq, kNx, kN, MakeLcsState(ee), target,
+                                     kDt, /*is_doing_c3=*/false, finished,
+                                     params, options, &s.query(), s.ee_id,
+                                     kHopEERadius);
+  EXPECT_TRUE(KnotsOnSegment(knots, ee, target));
+}
+
+// But from inside the clearance it may not slide closer: a hop past the corner
+// of a post it starts 4.2 mm from comes within 3 mm of it, so it lifts.
+TEST(AdaptiveRepositionTest, ShortHopSlidingCloserLiftsFirst) {
+  const auto params = MakeParams();
+  const auto options = MakeOptions();
+  const Eigen::Vector3d post_centre(0.2, 0.2, 0.0);
+  const Eigen::Vector3d post_size(0.002, 0.004, 0.1);
+  Scene s = MakeScene(RigidTransformd(post_centre), post_size);
+  const Eigen::Vector3d ee(0.204, 0.195, 0.03);
+  const Eigen::Vector3d target(0.204, 0.207, 0.03);
+  ASSERT_LT(DistanceToBox(ee, post_centre, post_size), 0.005);
+  ASSERT_GT(DistanceToBox(target, post_centre, post_size), 0.005);
+
+  EXPECT_FALSE(StraightHopIsClear(s.query(), s.ee_id, ee, target, kHopEERadius,
+                                  params, options));
+
+  bool finished = false;
+  Eigen::MatrixXd knots = Reposition(kNq, kNx, kN, MakeLcsState(ee), target,
+                                     kDt, /*is_doing_c3=*/false, finished,
+                                     params, options, &s.query(), s.ee_id,
+                                     kHopEERadius);
+  EXPECT_LT((knots.col(1).head(2) - ee.head(2)).norm(), 1e-9);
+  EXPECT_GT(knots(2, 1), ee.z());
+}
+
+// A target that is itself inside the clearance is still reachable by a hop that
+// gets no closer than the target does; otherwise every loop would lift away
+// from a target the EE can never arrive at.
+TEST(AdaptiveRepositionTest, ShortHopToTargetInsideClearanceGoesStraight) {
+  const auto params = MakeParams();
+  const auto options = MakeOptions();
+  Scene s = MakeScene(RigidTransformd(Eigen::Vector3d(0.2, 0.2, 0.0)),
+                      Eigen::Vector3d(0.002, 0.05, 0.1));
+  const Eigen::Vector3d ee(0.212, 0.2, 0.03);     // 11 mm off the face
+  const Eigen::Vector3d target(0.205, 0.2, 0.03);  // 4 mm off it
+
+  EXPECT_TRUE(StraightHopIsClear(s.query(), s.ee_id, ee, target, kHopEERadius,
+                                 params, options));
 }
 
 }  // namespace

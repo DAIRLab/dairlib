@@ -465,8 +465,12 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void UpdateC3ExecutionTrajectory(const Eigen::VectorXd& x_lcs,
                                    const double& t_context) const;
 
+  /// @p switched_to_repos: this loop switched from C3 to repositioning, so
+  /// @p x_lcs's EE state was predicted from the C3 plan; see
+  /// SamplingC3Options::reset_predicted_x0_on_switch_to_repos.
   void UpdateRepositioningExecutionTrajectory(const Eigen::VectorXd& x_lcs,
-                                              const double& t_context) const;
+                                              const double& t_context,
+                                              bool switched_to_repos) const;
 
   /// Prunes samples whose stored object pose has gone stale.  Used for the
   /// unattempted buffer.

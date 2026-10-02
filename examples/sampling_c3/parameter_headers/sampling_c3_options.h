@@ -30,6 +30,10 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
   bool use_predicted_x0_c3;
   bool use_predicted_x0_repos;
   bool use_predicted_x0_reset_mechanism;  // Resets if prediction is too far.
+  /// Start the first repositioning plan after a switch from C3 at the EE
+  /// position the robot reported, not at the x0 predicted from the C3 plan. Off
+  /// if unset.
+  std::optional<bool> reset_predicted_x0_on_switch_to_repos;
 
   /// Whether this is a planar demo, which ensures C3 mode is restricted to a
   /// plane.
@@ -211,6 +215,7 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     a->Visit(DRAKE_NVP(use_predicted_x0_c3));
     a->Visit(DRAKE_NVP(use_predicted_x0_repos));
     a->Visit(DRAKE_NVP(use_predicted_x0_reset_mechanism));
+    a->Visit(DRAKE_NVP(reset_predicted_x0_on_switch_to_repos));
     a->Visit(DRAKE_NVP(planar_demo));
 
     a->Visit(DRAKE_NVP(mu_per_pair_type));

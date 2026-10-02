@@ -2082,7 +2082,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // Update the execution trajectories.
   double t = context.get_discrete_state(plan_start_time_index_)[0];
   UpdateC3ExecutionTrajectory(x_lcs_curr, t);
-  UpdateRepositioningExecutionTrajectory(x_lcs_curr, t);
+  UpdateRepositioningExecutionTrajectory(x_lcs_curr, t,
+                                         was_doing_c3 && !is_doing_c3_);
 
   if (verbose_) {
     std::cout << "x_pred_curr_plan_ after updating: "
@@ -3045,7 +3046,22 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
 
 // Compute repositioning trajectory.
 void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
-    const VectorXd& x_lcs, const double& t_context) const {
+    const VectorXd& x_lcs_curr, const double& t_context,
+    bool switched_to_repos) const {
+  // The state this plan starts from.
+  VectorXd x_lcs = x_lcs_curr;
+  if (switched_to_repos &&
+      sampling_c3_options_.reset_predicted_x0_on_switch_to_repos.value_or(
+          false)) {
+    const double offset =
+        (x_from_last_control_loop_.head(3) - x_lcs.head(3)).norm();
+    x_lcs.head(3) = x_from_last_control_loop_.head(3);
+    x_lcs.segment(n_q_, 3) = x_from_last_control_loop_.segment(n_q_, 3);
+    std::cout << "[repos start] t=" << t_context
+              << " reason=" << static_cast<int>(mode_switch_reason_)
+              << " planning from the reported EE, " << 1e3 * offset
+              << " mm from the predicted x0" << std::endl;
+  }
   // Get the best sample location.  Once all fixed goals have been reached,
   // drive the EE deterministically to the configured parked position rather
   // than whichever sample happened to win on C3 cost -- the parked-sample

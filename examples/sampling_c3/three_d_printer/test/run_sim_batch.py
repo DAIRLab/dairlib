@@ -26,9 +26,21 @@ logger, when:
             0.2 rad of the goal's) for --success_seconds.
   exited:   SC3 exited on its own (e.g. it threw).
   cap:      --cap_seconds since SC3 started.
-The reason and time (s since the logger started, which is close to the log's
-own clock) go into the log folder's run_record.yaml and, one line per run,
-into --summary.
+The reason and time (s since the logger started, a few seconds before the
+log's first message) go into the log folder's run_record.yaml and, one line
+per run, into --summary.
+
+--arm interleaves parameter variants run by run (A, B, A, B, ...), so drift in
+the machine's load or anything else over a batch lands on every arm alike.  An
+arm is a name, optionally followed by top-level yaml keys to override:
+  --arm wg20 --arm 'wg018=sampling_c3plus_options.yaml:w_G=0.18,w_G_position=0.18'
+Files are looked up in the demo's parameters folder, then in
+printer_shared_parameters; several files go after ';'.  Each override is
+written into the yaml in place before the logger starts, so the copy the
+logger saves into the log folder records the arm, and every patched file is
+restored after each run.  The batch refuses to start if a file to be patched
+differs from git HEAD.  run_record.yaml also gets the arm and the load
+average at the start and end of the run.
 
 Build everything first (bazel build ...): the debug message's layout changes
 between versions, and a partial build mixes binaries.
@@ -41,6 +53,7 @@ Usage:
 import glob
 import os
 import os.path as op
+import re
 import signal
 import subprocess
 import sys
@@ -207,9 +220,54 @@ def stop(proc, name, timeout=15.0):
       print(f'  {name} ignored {signal.Signals(sig).name}', flush=True)
 
 
+def parameter_file(demo, name):
+  for folder in (op.join(demo, 'parameters'), 'printer_shared_parameters'):
+    path = op.join(DAIRLIB_DIR, 'examples', 'sampling_c3', 'three_d_printer',
+                   folder, name)
+    if op.exists(path):
+      return path
+  raise click.ClickException(f'no parameter file {name} for demo {demo}')
+
+
+def parse_arm(demo, spec):
+  """'name' or 'name=file.yaml:k=v,k=v;file.yaml:k=v' -> (name, {path:
+  {key: value}})."""
+  name, _, rest = spec.partition('=')
+  patches = {}
+  for part in filter(None, rest.split(';')):
+    file_name, _, pairs = part.partition(':')
+    keys = patches.setdefault(parameter_file(demo, file_name.strip()), {})
+    for pair in filter(None, pairs.split(',')):
+      key, _, value = pair.partition('=')
+      if not value:
+        raise click.ClickException(f'arm {name}: no value in "{pair}"')
+      keys[key.strip()] = value.strip()
+  return name.strip(), patches
+
+
+def patched(text, keys, path):
+  """Overrides top-level keys in a yaml's text, keeping comments."""
+  for key, value in keys.items():
+    pattern = re.compile(rf'^({re.escape(key)}:[ \t]*)([^#\n]*?)([ \t]*#.*)?$',
+                         re.MULTILINE)
+    if len(pattern.findall(text)) != 1:
+      raise click.ClickException(f'{path}: top-level key {key} not found '
+                                 'exactly once')
+    text = pattern.sub(lambda m: m.group(1) + value + (m.group(3) or ''),
+                       text)
+    if yaml.safe_load(text).get(key) != yaml.safe_load(value):
+      raise click.ClickException(f'{path}: {key} did not parse as {value}')
+  return text
+
+
+def interrupt(*_):
+  raise KeyboardInterrupt
+
+
 def run_once(demo, logs_root, cap_seconds, tipped_seconds, flipped_seconds,
-             success_seconds):
+             success_seconds, arm=None):
   today, before = log_dirs(logs_root)
+  load_start = os.getloadavg()
   t0 = time.monotonic()
   logger = start(['python3', 'examples/sampling_c3/start_logging.py', 'sim',
                   f'three_d_printer/{demo}', op.expanduser(logs_root)], None)
@@ -257,7 +315,13 @@ def run_once(demo, logs_root, cap_seconds, tipped_seconds, flipped_seconds,
       stop(procs.get(name), name)
     stop(logger, 'logger')
   record = dict(log=op.basename(log_dir), reason=reason,
-                stopped_at=round(stopped_at, 1))
+                stopped_at=round(stopped_at, 1),
+                load_average=[round(v, 2) for v in load_start + os.getloadavg()])
+  if arm is not None:
+    name, patches = arm
+    record['arm'] = name
+    record['arm_overrides'] = {op.basename(path): keys
+                               for path, keys in patches.items()}
   with open(op.join(log_dir, 'run_record.yaml'), 'w') as f:
     yaml.safe_dump(record, f)
   return log_dir, record
@@ -273,26 +337,62 @@ def run_once(demo, logs_root, cap_seconds, tipped_seconds, flipped_seconds,
 @click.option('--logs_root', default='~/3d_printer/logs')
 @click.option('--summary', default=None,
               help='File to append one line per run to.')
+@click.option('--arm', 'arm_specs', multiple=True,
+              help='A parameter variant; runs cycle through the arms in order.'
+                   '  See the module docstring.')
 def main(demo, runs, cap_seconds, tipped_seconds, flipped_seconds,
-         success_seconds, logs_root, summary):
+         success_seconds, logs_root, summary, arm_specs):
   running = already_running()
   if running:
     raise click.ClickException('already running:\n' + '\n'.join(running))
-  for i in range(runs):
-    log_dir, record = run_once(demo, logs_root, cap_seconds, tipped_seconds,
-                               flipped_seconds, success_seconds)
-    line = (f'{log_dir}  {record["reason"]}  at {record["stopped_at"]} s')
-    print(f'run {i + 1}/{runs}: {line}', flush=True)
-    if summary:
-      with open(summary, 'a') as f:
-        f.write(line + '\n')
-    if record['reason'] == 'interrupted':
-      break
-    time.sleep(2.0)
-    leftover = already_running()
-    if leftover:
-      raise click.ClickException('processes left running:\n' +
-                                 '\n'.join(leftover))
+  arms = [parse_arm(demo, spec) for spec in arm_specs]
+  originals = {}
+  for _, patches in arms:
+    for path in patches:
+      if subprocess.run(['git', 'diff', '--quiet', 'HEAD', '--', path],
+                        cwd=DAIRLIB_DIR).returncode != 0:
+        raise click.ClickException(f'{path} differs from HEAD; commit or '
+                                   'revert it before patching it per arm')
+      originals[path] = open(path).read()
+  for _, patches in arms:  # Fail on a bad override before the first run.
+    for path, keys in patches.items():
+      patched(originals[path], keys, path)
+
+  def restore():
+    for path, text in originals.items():
+      with open(path, 'w') as f:
+        f.write(text)
+
+  # SIGTERM restores the yaml too; SIGINT is a KeyboardInterrupt already.
+  signal.signal(signal.SIGTERM, interrupt)
+  try:
+    for i in range(runs):
+      arm = arms[i % len(arms)] if arms else None
+      if arm is not None:
+        for path, keys in arm[1].items():
+          with open(path, 'w') as f:
+            f.write(patched(originals[path], keys, path))
+      try:
+        log_dir, record = run_once(demo, logs_root, cap_seconds,
+                                   tipped_seconds, flipped_seconds,
+                                   success_seconds, arm)
+      finally:
+        restore()
+      line = (f'{log_dir}  {record["reason"]}  at {record["stopped_at"]} s'
+              + (f'  arm {arm[0]}' if arm else ''))
+      print(f'run {i + 1}/{runs}: {line}', flush=True)
+      if summary:
+        with open(summary, 'a') as f:
+          f.write(line + '\n')
+      if record['reason'] == 'interrupted':
+        break
+      time.sleep(2.0)
+      leftover = already_running()
+      if leftover:
+        raise click.ClickException('processes left running:\n' +
+                                   '\n'.join(leftover))
+  finally:
+    restore()
 
 
 if __name__ == '__main__':

@@ -9,7 +9,8 @@ confidence intervals bootstrapped over runs.
 
 Per run (compliant-sim logs; the stop reason comes from run_sim_batch.py's
 run_record.yaml when there is one):
-  arm        read from the log folder's yaml copies: w_G, the cost-LCS budget
+  arm        run_sim_batch.py's --arm name (group with --group name), and,
+             read from the log folder's yaml copies: w_G, the cost-LCS budget
              entry, whether unload-before-lift is on, the sim's cone model, and
              the ramp's contact model as CONTACT_RESULTS shows it (point pairs
              or hydroelastic surfaces between the cone and ramp_link).
@@ -282,6 +283,7 @@ def score_log(path):
   record = yaml.safe_load(open(record_path)) if op.exists(record_path) else {}
   goal_pos, goal_axes = goals_of(folder)
   arm = arm_of(folder)
+  arm['name'] = record.get('arm')  # run_sim_batch.py --arm
   ramp = contacts[:, 2].sum(), contacts[:, 3].sum()
   arm['ramp'] = 'hydro' if ramp[1] > ramp[0] else 'point'
 

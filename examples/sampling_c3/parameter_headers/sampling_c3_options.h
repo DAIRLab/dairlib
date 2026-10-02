@@ -424,6 +424,17 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     }
   }
 
+  /// The surface clearance [m] off the fixed scene that every published EE
+  /// plan's knots are held to:  fixed_geometry_knot_margin when
+  /// check_fixed_geometry_paths is on, workspace_margins (the knot-wise
+  /// projection at publish) otherwise.  No plan can put the EE closer than
+  /// this, so a sample closer than this is a target it can never reach.
+  double FixedGeometryKnotMargin() const {
+    return check_fixed_geometry_paths.value_or(false)
+               ? fixed_geometry_knot_margin.value_or(workspace_margins)
+               : workspace_margins;
+  }
+
   /// Whether any goal-sequence step overrides q_vector_position.
   bool has_per_goal_position_cost() const {
     return !c3_options_position_per_goal.empty();

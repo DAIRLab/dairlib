@@ -694,6 +694,28 @@ std::pair<double, Eigen::Vector3d> NearestFixedGeometry(
 
 }  // namespace
 
+void ProjectEEPositionOffFixedGeometries(
+    const drake::geometry::QueryObject<double>& query_object,
+    const drake::geometry::GeometrySet& fixed_geometries,
+    double knot_clearance, const SamplingC3Options& sampling_c3_options,
+    Eigen::Vector3d* p) {
+  // A point inside a wall can take a few pushes to leave the union of the
+  // pieces: out of one piece into its neighbour, or out through a floor-level
+  // underside and back up by the clamp.
+  constexpr int kMaxProjectionIterations = 8;
+  ClampEEPositionToWorkspace(sampling_c3_options, p);
+  for (int iter = 0; iter < kMaxProjectionIterations; ++iter) {
+    const auto [distance, gradient] =
+        NearestFixedGeometry(query_object, fixed_geometries, *p);
+    if (!std::isfinite(distance) || distance >= knot_clearance ||
+        gradient.norm() < 1e-9) {
+      break;
+    }
+    *p += (knot_clearance - distance) * gradient;
+    ClampEEPositionToWorkspace(sampling_c3_options, p);
+  }
+}
+
 FixedGeometryPathCheck ClearEEPlanOfFixedGeometries(
     const drake::geometry::QueryObject<double>& query_object,
     const drake::geometry::GeometrySet& fixed_geometries,
@@ -704,24 +726,14 @@ FixedGeometryPathCheck ClearEEPlanOfFixedGeometries(
   DRAKE_DEMAND(path_clearance <= knot_clearance);
   const int num_knots = ee_positions->cols();
   num_exempt_knots = std::clamp(num_exempt_knots, 0, num_knots);
-  // A knot inside a wall can take a few pushes to leave the union of the
-  // pieces: out of one piece into its neighbour, or out through a floor-level
-  // underside and back up by the clamp.
-  constexpr int kMaxProjectionIterations = 8;
   for (int col = 0; col < num_knots; ++col) {
     Eigen::Vector3d p = ee_positions->col(col);
-    ClampEEPositionToWorkspace(sampling_c3_options, &p);
-    for (int iter = 0; col >= num_exempt_knots &&
-                       iter < kMaxProjectionIterations;
-         ++iter) {
-      const auto [distance, gradient] =
-          NearestFixedGeometry(query_object, fixed_geometries, p);
-      if (!std::isfinite(distance) || distance >= knot_clearance ||
-          gradient.norm() < 1e-9) {
-        break;
-      }
-      p += (knot_clearance - distance) * gradient;
+    if (col < num_exempt_knots) {
       ClampEEPositionToWorkspace(sampling_c3_options, &p);
+    } else {
+      ProjectEEPositionOffFixedGeometries(query_object, fixed_geometries,
+                                          knot_clearance, sampling_c3_options,
+                                          &p);
     }
     ee_positions->col(col) = p;
   }

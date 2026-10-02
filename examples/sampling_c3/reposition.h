@@ -139,6 +139,19 @@ std::pair<bool, double> ComputeRepositionClearance(
 void ClampEEPositionToWorkspace(const SamplingC3Options& sampling_c3_options,
                                 Eigen::Vector3d* p);
 
+/// Projects the EE centre @p p at least @p knot_clearance (EE centre to
+/// surface) off @p fixed_geometries, along the nearest geometry's gradient, and
+/// clamps it to the workspace (see ClampEEPositionToWorkspace) before every
+/// distance query -- what ClearEEPlanOfFixedGeometries() does to each
+/// non-exempt knot.  A clear point inside the workspace is left where it is, so
+/// a repositioning target passed through this is exactly where the cleared
+/// plan's last knot lands.  Throws like ClearEEPlanOfFixedGeometries().
+void ProjectEEPositionOffFixedGeometries(
+    const drake::geometry::QueryObject<double>& query_object,
+    const drake::geometry::GeometrySet& fixed_geometries,
+    double knot_clearance, const SamplingC3Options& sampling_c3_options,
+    Eigen::Vector3d* p);
+
 /// What ClearEEPlanOfFixedGeometries() found along the plan's path.
 struct FixedGeometryPathCheck {
   /// The first knot whose incoming straight segment comes within

@@ -68,6 +68,7 @@ sample_on_wall: true
 c3_min_clearance: 0.01
 
 # If true, reject any candidate sample whose EE position comes within
-# workspace_margins + ee_radius of any fixed (non-EE, non-object) scene
-# geometry, regardless of sampling strategy.
+# ee_radius plus the plans' knot clearance (fixed_geometry_knot_margin when
+# check_fixed_geometry_paths is on, else workspace_margins) of any fixed
+# (non-EE, non-object) scene geometry, regardless of sampling strategy.
 avoid_sampling_within_fixed_environment_geometries: true

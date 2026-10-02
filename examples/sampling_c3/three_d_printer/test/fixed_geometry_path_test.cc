@@ -26,8 +26,11 @@
 #include <Eigen/Dense>
 #include <gtest/gtest.h>
 
+#include "examples/sampling_c3/generate_samples.h"
+#include "examples/sampling_c3/parameter_headers/reposition_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_options.h"
+#include "examples/sampling_c3/parameter_headers/sampling_params.h"
 #include "examples/sampling_c3/reposition.h"
 #include "examples/sampling_c3/sampling_c3_utils.h"
 
@@ -50,6 +53,7 @@ using drake::multibody::MultibodyPlant;
 using drake::systems::DiagramBuilder;
 using Eigen::MatrixXd;
 using Eigen::Vector3d;
+using Eigen::VectorXd;
 
 constexpr double kEERadius = 0.010;
 constexpr double kMargin = 0.002;      // workspace_margins
@@ -135,6 +139,9 @@ class RampScene {
     }
     return d;
   }
+
+  // The controller's fixed_obstacle_geometries_.
+  const GeometrySet& fixed() const { return fixed_; }
 
   FixedGeometryPathCheck Clear(int num_exempt_knots, MatrixXd* knots) const {
     return ClearEEPlanOfFixedGeometries(query_object(), fixed_, kKnotClearance,
@@ -244,6 +251,107 @@ TEST(FixedGeometryPathTest, ExemptLeadingKnotsAreNotMoved) {
   EXPECT_TRUE(knots.leftCols(2).isApprox(original.leftCols(2), 1e-12));
   EXPECT_EQ(check.first_blocked_knot, -1);
   EXPECT_GE(scene.Distance(knots.col(2)), kKnotClearance - 1e-6);
+}
+
+// A point straight above the step floor whose EE surface clears it by @p gap.
+Vector3d AboveStepFloor(const RampScene& scene, double gap) {
+  Vector3d p = Mm(185, 70, 21);
+  p(2) -= scene.Distance(p) - (kEERadius + gap);
+  return p;
+}
+
+// The controller's repositioning loop, with the printer tracking perfectly:
+// plan from x0 to the target, clear the plan's path, and start the next loop
+// from the cleared plan's knot 1 (use_predicted_x0_repos).  Returns the loop on
+// which Reposition() first reports the target reached, or -1.
+int LoopsToFinish(const RampScene& scene, Vector3d x0, const Vector3d& target,
+                  int max_loops) {
+  constexpr int kNq = 10;  // 3 EE + 7 object (quat + xyz)
+  constexpr int kNx = 19;  // + 3 EE vel + 6 object vel
+  constexpr int kN = 10;
+  constexpr double kDt = 0.075;  // planning_dt_position
+  const auto params = drake::yaml::LoadYamlFile<SamplingC3RepositionParams>(
+      "examples/sampling_c3/three_d_printer/printer_shared_parameters/"
+      "reposition_params.yaml");
+  for (int loop = 0; loop < max_loops; ++loop) {
+    VectorXd x = VectorXd::Zero(kNx);
+    x.head(3) = x0;
+    x.segment(kNq - 3, 3) = Mm(230, 70, 25);  // The cone, out of the way.
+    bool finished = false;
+    MatrixXd knots = Reposition(kNq, kNx, kN, x, target, kDt,
+                                /*is_doing_c3=*/false, finished, params,
+                                MakeOptions(), /*query_object=*/nullptr,
+                                GeometryId::get_new_id(), kEERadius);
+    MatrixXd ee_knots = knots.topRows(3);
+    if (scene.Clear(0, &ee_knots).first_blocked_knot >= 0) finished = false;
+    if (finished) return loop;
+    x0 = ee_knots.col(1);
+  }
+  return -1;
+}
+
+// Samples used to be accepted 2 mm off the ramp while plan knots are held
+// 4 mm off it.  A repositioning target in between is never reached:  the EE
+// parks 2 mm short, more than one 75 ms knot of the 15 mm/s z axis, so
+// Reposition() never reports it finished and the controller repositions until
+// something else changes (2026-10-01 compliant sims 20, 25 and 26: 46-129 s).
+// Planning to the projected target arrives.
+TEST(FixedGeometryPathTest, TargetInsideTheKnotClearanceIsReachedOnceProjected) {
+  RampScene scene;
+  const Vector3d target = AboveStepFloor(scene, 0.0021);
+  ASSERT_NEAR(scene.Distance(target), kEERadius + 0.0021, 1e-6);
+  const Vector3d start = target + Mm(0, 0, 15);
+
+  // The stall, reproduced.
+  EXPECT_EQ(LoopsToFinish(scene, start, target, 100), -1);
+
+  Vector3d reachable = target;
+  ProjectEEPositionOffFixedGeometries(scene.query_object(), scene.fixed(),
+                                      kKnotClearance, MakeOptions(),
+                                      &reachable);
+  EXPECT_NEAR(scene.Distance(reachable), kKnotClearance, 1e-6);
+  EXPECT_LT((reachable - target).norm(), 0.0021);
+  const int loops = LoopsToFinish(scene, start, reachable, 100);
+  EXPECT_GE(loops, 0);
+  EXPECT_LE(loops, 20);  // 15 mm down at 15 mm/s is 13 loops.
+
+  // A target already clear of the knot clearance is left alone.
+  Vector3d clear = AboveStepFloor(scene, 0.006);
+  const Vector3d clear_before = clear;
+  ProjectEEPositionOffFixedGeometries(scene.query_object(), scene.fixed(),
+                                      kKnotClearance, MakeOptions(), &clear);
+  EXPECT_TRUE(clear.isApprox(clear_before, 1e-12));
+}
+
+// Samples are accepted no closer to the fixed scene than the plans' knots may
+// go, so the controller never picks a target it cannot reach.
+TEST(FixedGeometryPathTest, SamplesKeepTheKnotClearance) {
+  RampScene scene;
+  SamplingParams sampling_params{};
+  sampling_params.avoid_sampling_within_fixed_environment_geometries = true;
+  SamplingC3Options options = MakeOptions();
+  options.robot_radius_limits = {0.0, 10.0};
+  const auto acceptable = [&](double gap) {
+    VectorXd sample = VectorXd::Zero(10);
+    sample.head(3) = AboveStepFloor(scene, gap);
+    return SampleIsAcceptable(sample, sampling_params, options,
+                              MatrixXd::Zero(0, 10), scene.query_object(),
+                              scene.fixed(), kEERadius);
+  };
+
+  // Path check off: knots are projected workspace_margins off at publish.
+  EXPECT_DOUBLE_EQ(options.FixedGeometryKnotMargin(), kMargin);
+  options.fixed_geometry_knot_margin = kKnotMargin;
+  EXPECT_DOUBLE_EQ(options.FixedGeometryKnotMargin(), kMargin);
+  EXPECT_FALSE(acceptable(0.0015));
+  EXPECT_TRUE(acceptable(0.003));
+
+  // Path check on, as in the cone demo.
+  options.check_fixed_geometry_paths = true;
+  EXPECT_DOUBLE_EQ(options.FixedGeometryKnotMargin(), kKnotMargin);
+  EXPECT_FALSE(acceptable(0.0021));
+  EXPECT_FALSE(acceptable(0.003));
+  EXPECT_TRUE(acceptable(0.0045));
 }
 
 }  // namespace

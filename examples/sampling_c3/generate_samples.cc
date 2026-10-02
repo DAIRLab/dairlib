@@ -210,10 +210,10 @@ bool SampleIsAcceptable(
                          : true;
 
   // Condition 3:  Sample avoids fixed (non-EE, non-object) environment
-  // geometries.  Use workspace_margin + ee_radius as the clearance.
+  // geometries by as much as every plan's knots are kept off them.
   bool avoids_fixed_geometries = SampleAvoidsGeometries(
       candidate_state, query_object, fixed_obstacle_geometries,
-      sampling_c3_options.workspace_margins + ee_radius);
+      sampling_c3_options.FixedGeometryKnotMargin() + ee_radius);
   bool condition_3 =
       sampling_params.avoid_sampling_within_fixed_environment_geometries
           ? avoids_fixed_geometries

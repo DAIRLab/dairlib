@@ -668,8 +668,8 @@ SamplingC3Controller::SamplingC3Controller(
                 << *jam_params.load_trip
                 << " m of reported-EE run past the entry plane, held "
                 << *jam_params.load_trip_hold_seconds
-                << " s; re-anchors once clear by "
-                << *jam_params.load_clear_gap << " m." << std::endl;
+                << " s; re-anchors once clear by " << *jam_params.load_clear_gap
+                << " m." << std::endl;
     }
   }
 
@@ -2963,12 +2963,7 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
     }
   }
 
-  // C3 does not model the EE against the fixed scene, so its plan can run the
-  // EE straight through a ramp wall.  Stop it short of the wall instead, before
-  // timing the plan and predicting the next x0 from it, so x0 never carries on
-  // through a wall the printer is not going to cross.  If C3 keeps asking for
-  // the far side, the plan stays held until the unproductive switch hands over
-  // to repositioning, which routes over the wall.
+  // Ensure C3 cannot ram the EE into any fixed environment geometries.
   if (CheckFixedGeometryPaths()) {
     MatrixXd ee_knots = knots.topRows(3);
     const FixedGeometryPathCheck check = ClearEEPlanPath(0, &ee_knots);
@@ -3034,6 +3029,14 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
                            : all_sample_locations_[best_sample_index_];
   // Update the previous repositioning target for reference in next loop.
   prev_repositioning_target_ = best_sample_location;
+  // Plan to where the path check below lets the plan end.  Its last knots are
+  // projected off the fixed scene, so a target any closer is never reached.
+  // Samples are already accepted at this clearance (see SampleIsAcceptable);
+  // this covers every other target.  The sample itself stays the target on
+  // record, since that is where it was scored.
+  if (CheckFixedGeometryPaths()) {
+    best_sample_location = ReachableEEPosition(best_sample_location);
+  }
 
   // Generate knot points according to the repositioning strategy.  Passing the
   // scene's query object lets Reposition() collision-check the move for
@@ -3072,9 +3075,8 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
       // object; up is clear of it.
       retreat_direction = Vector3d::UnitZ();
     } else if (jam_params.unload_release.has_value() &&
-               !jam_latch_->unloaded() &&
-        std::isfinite(jam_unload_distance_) &&
-        jam_unload_distance_ >= *jam_params.unload_release) {
+               !jam_latch_->unloaded() && std::isfinite(jam_unload_distance_) &&
+               jam_unload_distance_ >= *jam_params.unload_release) {
       retreat_direction = Vector3d::Zero();
       retreat_direction.head<2>() =
           (jam_entry_point_ - x_lcs.head(3)).head<2>();
@@ -3125,10 +3127,9 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     if (check.first_blocked_knot >= 0 && !jam_tripped_) {
       const GeometryId ee_geometry_id = contact_pairs_.at(0).at(0).first();
       const double cruise_z =
-          ComputeRepositionClearance(query_object, ee_geometry_id,
-                                     x_lcs.head(3), best_sample_location,
-                                     ee_radius_, reposition_params_,
-                                     sampling_c3_options_)
+          ComputeRepositionClearance(
+              query_object, ee_geometry_id, x_lcs.head(3), best_sample_location,
+              ee_radius_, reposition_params_, sampling_c3_options_)
               .second;
       bool rerouted_plan_finished = false;
       RepositionPiecewiseLinear(knots, N_, x_lcs, best_sample_location, dt_,
@@ -3996,8 +3997,8 @@ void SamplingC3Controller::UpdateJamWatchdog(
   const Vector3d object_position =
       x_lcs_curr.segment<3>(object_layout.position_offset);
   if (jam_finger_load_estimator_ != nullptr) {
-    const Eigen::Vector4d q = x_lcs_curr.segment<4>(
-        object_layout.quaternion_offset);
+    const Eigen::Vector4d q =
+        x_lcs_curr.segment<4>(object_layout.quaternion_offset);
     const Eigen::Matrix3d R_WO =
         Quaterniond(q(0), q(1), q(2), q(3)).normalized().toRotationMatrix();
     const std::optional<double> load = jam_finger_load_estimator_->Update(
@@ -4006,8 +4007,7 @@ void SamplingC3Controller::UpdateJamWatchdog(
             ? std::optional<double>(jam_ee_object_gap_measured_)
             : std::nullopt,
         measured_gradient, R_WO, object_position, jam_latch_->tripped());
-    jam_finger_load_ =
-        load.value_or(std::numeric_limits<double>::quiet_NaN());
+    jam_finger_load_ = load.value_or(std::numeric_limits<double>::quiet_NaN());
     if (!jam_latch_->tripped()) {
       jam_entry_point_ = jam_finger_load_estimator_->entry_point_W();
     }
@@ -4020,8 +4020,8 @@ void SamplingC3Controller::UpdateJamWatchdog(
   // ClearEEPlanOfFixedGeometries), so this is a backstop for a scene that is
   // not where the controller thinks, and for the unload leg, which is exempt.
   if (jam_ramp_load_estimator_ != nullptr) {
-    std::pair<double, Vector3d> nearest{
-        std::numeric_limits<double>::infinity(), Vector3d::Zero()};
+    std::pair<double, Vector3d> nearest{std::numeric_limits<double>::infinity(),
+                                        Vector3d::Zero()};
     for (const auto& result : query_object.ComputeSignedDistanceGeometryToPoint(
              measured_ee, jam_ramp_geometries_)) {
       if (result.distance < nearest.first) {
@@ -4161,8 +4161,8 @@ void SamplingC3Controller::UpdateJamWatchdog(
               << jam_ee_object_gap_ << " m, reported-EE gap "
               << jam_ee_object_gap_measured_ << " m, finger deflection "
               << jam_unload_distance_ << " m, finger load " << jam_finger_load_
-              << " m, ramp load " << jam_ramp_load_
-              << " m, object travel " << jam_object_travel_ << " m, held "
+              << " m, ramp load " << jam_ramp_load_ << " m, object travel "
+              << jam_object_travel_ << " m, held "
               << (jam_latch_->tripped_by_deep()
                       ? jam_params.deep_trip_hold_seconds.value_or(0.0)
                   : jam_latch_->tripped_by_load() || jam_tripped_by_ramp_load_
@@ -4339,13 +4339,24 @@ FixedGeometryPathCheck SamplingC3Controller::ClearEEPlanPath(
   const auto& query_object =
       plant_.get_geometry_query_input_port()
           .template Eval<drake::geometry::QueryObject<double>>(*context_);
-  const double margin = sampling_c3_options_.workspace_margins;
   return ClearEEPlanOfFixedGeometries(
       query_object, fixed_obstacle_geometries_,
-      ee_radius_ +
-          sampling_c3_options_.fixed_geometry_knot_margin.value_or(margin),
-      ee_radius_ + margin, sampling_c3_options_, num_exempt_knots,
-      ee_positions);
+      ee_radius_ + sampling_c3_options_.FixedGeometryKnotMargin(),
+      ee_radius_ + sampling_c3_options_.workspace_margins, sampling_c3_options_,
+      num_exempt_knots, ee_positions);
+}
+
+Vector3d SamplingC3Controller::ReachableEEPosition(
+    const Vector3d& ee_position) const {
+  const auto& query_object =
+      plant_.get_geometry_query_input_port()
+          .template Eval<drake::geometry::QueryObject<double>>(*context_);
+  Vector3d p = ee_position;
+  ProjectEEPositionOffFixedGeometries(
+      query_object, fixed_obstacle_geometries_,
+      ee_radius_ + sampling_c3_options_.FixedGeometryKnotMargin(),
+      sampling_c3_options_, &p);
+  return p;
 }
 
 void SamplingC3Controller::NoteFixedGeometryPathHold(
@@ -4357,8 +4368,8 @@ void SamplingC3Controller::NoteFixedGeometryPathHold(
     fixed_geometry_hold_loops_ = 0;
     const Eigen::Vector3d p = 1e3 * check.last_clear_point;
     std::cout << "[fixed geometry path] t=" << t_context << " " << plan_name
-              << " plan held from knot " << check.first_blocked_knot
-              << " at (" << p(0) << ", " << p(1) << ", " << p(2)
+              << " plan held from knot " << check.first_blocked_knot << " at ("
+              << p(0) << ", " << p(1) << ", " << p(2)
               << ") mm; its path came within "
               << 1e3 * (check.blocked_distance - ee_radius_)
               << " mm of the fixed geometry (EE surface)" << std::endl;

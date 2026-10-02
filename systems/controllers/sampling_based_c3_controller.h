@@ -576,6 +576,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   FixedGeometryPathCheck ClearEEPlanPath(int num_exempt_knots,
                                          Eigen::MatrixXd* ee_positions) const;
 
+  /// Where ClearEEPlanPath() lets a plan ending at @p ee_position end: the
+  /// point projected the same knot clearance off fixed_obstacle_geometries_.
+  Eigen::Vector3d ReachableEEPosition(const Eigen::Vector3d& ee_position) const;
+
   /// Prints when the live plan starts and stops being held short of fixed
   /// geometry, so a hold streak (a plan pinned against a wall) shows in the
   /// controller's output with its start, end and length.

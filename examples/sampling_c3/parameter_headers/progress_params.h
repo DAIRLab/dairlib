@@ -161,6 +161,17 @@ struct JamGuardParams {
   std::optional<double> ramp_load_trip;
   /// The bodies whose collision geometry the ramp-load tier watches.
   std::optional<std::vector<std::string>> ramp_load_bodies;
+  /// Unload before lifting: for repos_unload_window_seconds after a switch
+  /// from C3 to repositioning, while the load tier reads at least this [m]
+  /// and the latch is off, the repositioning plan first backs off
+  /// horizontally towards the load tier's anchor, as a latched unload does,
+  /// instead of lifting a finger that C3 left pressed into the object.  Below
+  /// load_trip, so nothing is latched or recorded.  Requires the load tier.
+  /// Omit this and repos_unload_window_seconds to turn it off.
+  std::optional<double> repos_unload_load;
+  /// Seconds after the switch to repositioning in which repos_unload_load
+  /// applies; a load later in the stretch is left to the latch.
+  std::optional<double> repos_unload_window_seconds;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -185,6 +196,8 @@ struct JamGuardParams {
     a->Visit(DRAKE_NVP(retreat_push_travel));
     a->Visit(DRAKE_NVP(ramp_load_trip));
     a->Visit(DRAKE_NVP(ramp_load_bodies));
+    a->Visit(DRAKE_NVP(repos_unload_load));
+    a->Visit(DRAKE_NVP(repos_unload_window_seconds));
     if (deep_gap_trip.has_value() != deep_trip_hold_seconds.has_value()) {
       throw std::runtime_error(
           "jam_guard: set both deep_gap_trip and deep_trip_hold_seconds, or "
@@ -204,6 +217,16 @@ struct JamGuardParams {
     if (ramp_load_trip.has_value() && !load_trip.has_value()) {
       throw std::runtime_error(
           "jam_guard: ramp_load_trip needs the load tier (load_trip).");
+    }
+    if (repos_unload_load.has_value() !=
+        repos_unload_window_seconds.has_value()) {
+      throw std::runtime_error(
+          "jam_guard: set both repos_unload_load and "
+          "repos_unload_window_seconds, or neither.");
+    }
+    if (repos_unload_load.has_value() && !load_trip.has_value()) {
+      throw std::runtime_error(
+          "jam_guard: repos_unload_load needs the load tier (load_trip).");
     }
   }
 };

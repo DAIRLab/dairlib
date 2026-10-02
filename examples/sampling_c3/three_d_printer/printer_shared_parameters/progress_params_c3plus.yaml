@@ -185,3 +185,10 @@ jam_guard:
   # off.
   ramp_load_trip: 0.010
   ramp_load_bodies: [ramp_link]
+  # Unload before lifting (needs the load tier):  for the first
+  # repos_unload_window_seconds of repositioning after C3, while the load tier
+  # reads at least repos_unload_load [m], back off horizontally towards its
+  # anchor before the plan lifts, as a latched unload does.  Omit both keys to
+  # turn it off.
+  repos_unload_load: 0.004
+  repos_unload_window_seconds: 1.0

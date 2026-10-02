@@ -591,6 +591,11 @@ SamplingC3Controller::SamplingC3Controller(
       jam_finger_load_estimator_ =
           std::make_unique<FingerLoadEstimator>(*jam_params.load_clear_gap);
     }
+    if (jam_params.repos_unload_load.has_value()) {
+      DRAKE_DEMAND(jam_params.load_trip.has_value());
+      DRAKE_DEMAND(*jam_params.repos_unload_load > 0.0);
+      DRAKE_DEMAND(*jam_params.repos_unload_window_seconds > 0.0);
+    }
     if (jam_params.ramp_load_trip.has_value()) {
       // Shares the load tier's dwell, clear gap and unloading.
       DRAKE_DEMAND(jam_params.load_trip.has_value());
@@ -3050,6 +3055,13 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     bool switched_to_repos) const {
   // The state this plan starts from.
   VectorXd x_lcs = x_lcs_curr;
+  if (switched_to_repos) {
+    repos_start_time_ = t_context;
+    repos_stretch_latched_ = false;
+  }
+  if (jam_tripped_) {
+    repos_stretch_latched_ = true;
+  }
   if (switched_to_repos &&
       sampling_c3_options_.reset_predicted_x0_on_switch_to_repos.value_or(
           false)) {
@@ -3159,6 +3171,26 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     // A retreating plan has not reached its target, whatever the leg beyond the
     // retreat thinks.
     finished_reposition_flag_ = false;
+  } else if (ShouldUnloadBeforeLifting(t_context)) {
+    // C3 handed over with the finger still pressed into the object.  Lifting
+    // it from there drags the object along with the tip until the tip slips
+    // off, so first back off horizontally towards where the finger touched
+    // the object from outside, as a latched unload does, but without the
+    // latch.  The plan is rebuilt every loop, so this lasts until the load
+    // drops below repos_unload_load or the window ends.
+    Vector3d unload_direction = Vector3d::Zero();
+    unload_direction.head<2>() = (jam_entry_point_ - x_lcs.head(3)).head<2>();
+    std::cout << "[repos unload] t=" << t_context << " load "
+              << 1e3 * jam_finger_load_ << " mm: backing off "
+              << 1e3 * unload_direction.norm() << " mm before lifting"
+              << std::endl;
+    knots = RepositionWithRetreat(
+        n_q_, n_x_, N_, x_lcs, best_sample_location, dt_, is_doing_c3_,
+        unload_direction, progress_params_.jam_guard->retreat_knots,
+        reposition_params_, sampling_c3_options_, &query_object,
+        contact_pairs_.at(0).at(0).first(), ee_radius_,
+        unload_direction.norm());
+    finished_reposition_flag_ = false;
   } else {
     knots = Reposition(n_q_, n_x_, N_, x_lcs, best_sample_location, dt_,
                        is_doing_c3_, finished_reposition_flag_,
@@ -3258,6 +3290,30 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   repos_execution_lcm_traj_.AddTrajectory(force_traj.traj_name, force_traj);
 
   // No need to add object position and orientation.
+}
+
+bool SamplingC3Controller::ShouldUnloadBeforeLifting(double t_context) const {
+  // A latched stretch has had its unload.  On the loop the latch releases the
+  // load still reads the frozen anchor, so it would send the EE back towards
+  // it.
+  if (is_doing_c3_ || repos_stretch_latched_ ||
+      !progress_params_.jam_guard.has_value()) {
+    return false;
+  }
+  const JamGuardParams& jam_params = progress_params_.jam_guard.value();
+  if (!jam_params.repos_unload_load.has_value() ||
+      jam_params.retreat_knots <= 0) {
+    return false;
+  }
+  // Only the first moments of a stretch: later in it, a load is the plan
+  // running into the object, which the latch handles.
+  if (!(t_context - repos_start_time_ <=
+        *jam_params.repos_unload_window_seconds)) {
+    return false;
+  }
+  return std::isfinite(jam_finger_load_) &&
+         jam_finger_load_ >= *jam_params.repos_unload_load &&
+         jam_entry_point_.allFinite();
 }
 
 // Prune outdated samples from a sample buffer, based on object motion.

@@ -465,6 +465,10 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void UpdateC3ExecutionTrajectory(const Eigen::VectorXd& x_lcs,
                                    const double& t_context) const;
 
+  /// Whether this loop's repositioning plan should first back the finger off
+  /// the object horizontally; see JamGuardParams::repos_unload_load.
+  bool ShouldUnloadBeforeLifting(double t_context) const;
+
   /// @p switched_to_repos: this loop switched from C3 to repositioning, so
   /// @p x_lcs's EE state was predicted from the C3 plan; see
   /// SamplingC3Options::reset_predicted_x0_on_switch_to_repos.
@@ -1073,6 +1077,11 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // the estimated finger deflection.  NaN when there is no entry point.
   mutable double jam_unload_distance_ =
       std::numeric_limits<double>::quiet_NaN();
+  // Controller time of the latest switch from C3 to repositioning; NaN until
+  // the first one.  See JamGuardParams::repos_unload_window_seconds.
+  mutable double repos_start_time_ = std::numeric_limits<double>::quiet_NaN();
+  // Whether the jam latch has been set since that switch.
+  mutable bool repos_stretch_latched_ = false;
   // Tracks the load tier's anchor; null when the tier is off.
   std::unique_ptr<FingerLoadEstimator> jam_finger_load_estimator_;
   // The load tier's estimate [m]: how far the reported EE has run past the

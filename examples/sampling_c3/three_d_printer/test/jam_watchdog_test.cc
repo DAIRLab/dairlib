@@ -1283,6 +1283,14 @@ TEST(JamGuardParamsTest, TheConeYamlShipsTheDetectorTheReportScored) {
   EXPECT_EQ(*jam_guard.ramp_load_trip, 0.010);
   EXPECT_EQ(jam_guard.ramp_load_bodies,
             std::optional<std::vector<std::string>>({"ramp_link"}));
+  // Unload before lifting, from the switch census of the 2026-09-30..10-02
+  // compliant sims: well under load_trip, since nothing is latched.
+  ASSERT_TRUE(jam_guard.repos_unload_load.has_value());
+  ASSERT_TRUE(jam_guard.repos_unload_window_seconds.has_value());
+  EXPECT_EQ(*jam_guard.repos_unload_load, 0.004);
+  EXPECT_EQ(*jam_guard.repos_unload_window_seconds, 1.0);
+  EXPECT_LT(*jam_guard.repos_unload_load, *jam_guard.load_trip);
+  EXPECT_GT(jam_guard.retreat_knots, 0);
 
   // The invariants the controller DRAKE_DEMANDs, checked here so a bad yaml
   // fails the test rather than the demo.

@@ -45,6 +45,9 @@ Per log this reports:
              turning the hop away.  Before it, no short hop lifted.  The
              fixed-geometry reroute can also lift one beside the ramp.
   resets:    the '[repos start]' lines in sc3_stdout.txt.
+  unloads:   the '[repos unload]' lines there (unload before lifting): the
+             events, a run of lines with no gap over 0.2 s of controller
+             time, and the largest load each started at.
 
 The cone geometry and pose helpers come from score_finger_load_guard.  The
 reported EE is C3_ACTUAL's head (the state before ResolvePredictedEEState),
@@ -193,12 +196,25 @@ def read_log(path):
       contacts=np.array(contacts), bend=np.array(bend), clean=np.array(clean))
 
 
-def count_resets(path):
+def read_stdout(path):
+  """The '[repos start]' count and the '[repos unload]' events' starting
+  loads [m], or (None, None) without sc3_stdout.txt."""
   stdout = op.join(op.dirname(path), 'sc3_stdout.txt')
   if not op.isfile(stdout):
-    return None
+    return None, None
+  resets, unloads, last_t = 0, [], -np.inf
   with open(stdout, errors='replace') as f:
-    return sum(1 for line in f if line.startswith('[repos start]'))
+    for line in f:
+      if line.startswith('[repos start]'):
+        resets += 1
+      elif line.startswith('[repos unload]'):
+        fields = line.split()
+        t = float(fields[2][2:])
+        load = float(fields[4]) * 1e-3
+        if t - last_t > 0.2:
+          unloads.append(load)
+        last_t = t
+  return resets, unloads
 
 
 def episodes_of(log):
@@ -326,7 +342,7 @@ def score_log(args):
   lifted_stretches = int(np.sum(lengths >= 2))
 
   minutes = (t[-1] - t[0]) / 60
-  resets = count_resets(path)
+  resets, unloads = read_stdout(path)
   name = '/'.join(path.split('/')[-3:-1])
   out = [f'{name}: {60 * minutes:.0f} s, {significant} significant '
          f'repositioning contacts ({significant / minutes:.2f}/min), '
@@ -338,13 +354,18 @@ def score_log(args):
          f'straight short hops {shorts}, from the reported EE cutting the '
          f'cone {short_cuts}'
          + ('' if resets is None else f'; [repos start] lines {resets}'),
-         f'  short hops lifted first: {lifted_stretches} times (2+ loops)']
+         f'  short hops lifted first: {lifted_stretches} times (2+ loops)'
+         + ('' if not unloads else
+            f'; unloads before lifting: {len(unloads)}, starting load p50 '
+            f'{1e3 * np.median(unloads):.1f} / max {1e3 * max(unloads):.1f}'
+            f' mm')]
   out += notes
   return '\n'.join(out), dict(
       minutes=minutes, significant=significant, harmful=harmful, moved=moved,
       worse=worse,
       classes=classes, offsets=offsets, inside=inside, shorts=shorts,
-      short_cuts=short_cuts, lifted=lifted_stretches)
+      short_cuts=short_cuts, lifted=lifted_stretches,
+      unloads=len(unloads or []))
 
 
 def percentiles(offsets):
@@ -384,7 +405,8 @@ def main(logs, jobs):
   print(f'  straight short hops at a switch {sum(r["shorts"] for r in totals)}'
         f', from the reported EE cutting the cone '
         f'{sum(r["short_cuts"] for r in totals)}; short hops lifted first '
-        f'{sum(r["lifted"] for r in totals)} times')
+        f'{sum(r["lifted"] for r in totals)} times; unloads before lifting '
+        f'{sum(r["unloads"] for r in totals)}')
 
 
 if __name__ == '__main__':

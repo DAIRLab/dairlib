@@ -694,6 +694,13 @@ std::pair<double, Eigen::Vector3d> NearestFixedGeometry(
 
 }  // namespace
 
+double DistanceToFixedGeometries(
+    const drake::geometry::QueryObject<double>& query_object,
+    const drake::geometry::GeometrySet& fixed_geometries,
+    const Eigen::Vector3d& p) {
+  return NearestFixedGeometry(query_object, fixed_geometries, p).first;
+}
+
 void ProjectEEPositionOffFixedGeometries(
     const drake::geometry::QueryObject<double>& query_object,
     const drake::geometry::GeometrySet& fixed_geometries,
@@ -714,6 +721,21 @@ void ProjectEEPositionOffFixedGeometries(
     *p += (knot_clearance - distance) * gradient;
     ClampEEPositionToWorkspace(sampling_c3_options, p);
   }
+}
+
+bool RetreatIsBlockedByFixedGeometries(
+    const drake::geometry::QueryObject<double>& query_object,
+    const drake::geometry::GeometrySet& fixed_geometries,
+    double knot_clearance, const SamplingC3Options& sampling_c3_options,
+    const Eigen::Vector3d& start, const Eigen::Vector3d& direction,
+    double step) {
+  if (direction.norm() < 1e-9 || step <= 0.0) return false;
+  const Eigen::Vector3d unit = direction.normalized();
+  Eigen::Vector3d reached = start + step * unit;
+  ProjectEEPositionOffFixedGeometries(query_object, fixed_geometries,
+                                      knot_clearance, sampling_c3_options,
+                                      &reached);
+  return (reached - start).dot(unit) < 0.5 * step;
 }
 
 FixedGeometryPathCheck ClearEEPlanOfFixedGeometries(

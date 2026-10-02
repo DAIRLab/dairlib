@@ -154,6 +154,11 @@ jam_guard:
   # with 9-54 mm of deflection left, mostly by sliding over the cone, and
   # snapped.  Omit the key to turn unloading off.
   unload_release: 0.004
+  # Seconds after a trip at which the unload distance stops holding the latch.
+  # The unload leg is path-checked against the ramp unless the gantry starts
+  # inside it, so an entry point across a wall is out of reach.  Omit to turn it
+  # off.
+  unload_timeout_seconds: 4.0
   # Load tier:  trip once the reported EE has run load_trip [m] past the
   # tangent plane where it last touched the object from outside, with that
   # anchor carried along with the object estimate.  It catches the finger

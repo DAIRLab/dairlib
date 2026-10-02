@@ -323,6 +323,28 @@ TEST(FixedGeometryPathTest, TargetInsideTheKnotClearanceIsReachedOnceProjected) 
   EXPECT_TRUE(clear.isApprox(clear_before, 1e-12));
 }
 
+// A jam escape that runs into the fixed scene is projected back onto its
+// surface knot by knot, so the plan -- rebuilt from the same x0 every loop --
+// never moves (2026-10-02 compliant sim 0: the gantry parked on the knot
+// clearance above the step floor for 93 s, its escape pointing down).  Such a
+// step is reported blocked; one along the surface or away from it is not.
+TEST(FixedGeometryPathTest, AnEscapeIntoTheSceneIsBlocked) {
+  RampScene scene;
+  const Vector3d start = AboveStepFloor(scene, kKnotMargin);
+  constexpr double kStep = 0.009;  // one 75 ms knot at 0.12 m/s
+  const auto blocked = [&](const Vector3d& direction) {
+    return RetreatIsBlockedByFixedGeometries(scene.query_object(),
+                                             scene.fixed(), kKnotClearance,
+                                             MakeOptions(), start, direction,
+                                             kStep);
+  };
+  EXPECT_TRUE(blocked(Vector3d(0, 0, -1)));
+  EXPECT_TRUE(blocked(Vector3d(0.2, 0, -1)));
+  EXPECT_FALSE(blocked(Vector3d(1, 0, -0.1)));  // along the floor
+  EXPECT_FALSE(blocked(Vector3d(0, 0, 1)));
+  EXPECT_FALSE(blocked(Vector3d::Zero()));
+}
+
 // Samples are accepted no closer to the fixed scene than the plans' knots may
 // go, so the controller never picks a target it cannot reach.
 TEST(FixedGeometryPathTest, SamplesKeepTheKnotClearance) {

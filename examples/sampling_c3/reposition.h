@@ -139,6 +139,14 @@ std::pair<bool, double> ComputeRepositionClearance(
 void ClampEEPositionToWorkspace(const SamplingC3Options& sampling_c3_options,
                                 Eigen::Vector3d* p);
 
+/// The signed distance [m] from the EE centre @p p to the nearest of
+/// @p fixed_geometries; infinity if the set reports nothing.  Throws like
+/// ClearEEPlanOfFixedGeometries().
+double DistanceToFixedGeometries(
+    const drake::geometry::QueryObject<double>& query_object,
+    const drake::geometry::GeometrySet& fixed_geometries,
+    const Eigen::Vector3d& p);
+
 /// Projects the EE centre @p p at least @p knot_clearance (EE centre to
 /// surface) off @p fixed_geometries, along the nearest geometry's gradient, and
 /// clamps it to the workspace (see ClampEEPositionToWorkspace) before every
@@ -151,6 +159,18 @@ void ProjectEEPositionOffFixedGeometries(
     const drake::geometry::GeometrySet& fixed_geometries,
     double knot_clearance, const SamplingC3Options& sampling_c3_options,
     Eigen::Vector3d* p);
+
+/// Whether one retreat @p step [m] from @p start along @p direction is mostly
+/// undone by the knot projection (see ProjectEEPositionOffFixedGeometries):
+/// less than half of it survives.  A plan that retreats that way, rebuilt from
+/// the same start every loop, never gets anywhere.  False for a zero
+/// direction.
+bool RetreatIsBlockedByFixedGeometries(
+    const drake::geometry::QueryObject<double>& query_object,
+    const drake::geometry::GeometrySet& fixed_geometries,
+    double knot_clearance, const SamplingC3Options& sampling_c3_options,
+    const Eigen::Vector3d& start, const Eigen::Vector3d& direction,
+    double step);
 
 /// What ClearEEPlanOfFixedGeometries() found along the plan's path.
 struct FixedGeometryPathCheck {

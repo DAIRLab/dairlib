@@ -264,6 +264,12 @@ struct JamLatchThresholds {
   /// over the object clears every gap term with the finger still loaded, and
   /// the finger snaps free.  Infinity turns the condition off.
   double unload_release = std::numeric_limits<double>::infinity();
+  /// Seconds after a trip at which the unload distance stops holding the
+  /// latch, as if it had read below unload_release.  The retreat towards the
+  /// entry point is kept off the fixed scene like any plan, so an entry point
+  /// the scene puts out of reach -- across a wall, say -- would otherwise hold
+  /// the latch for good.  Infinity turns the timeout off.
+  double unload_timeout_seconds = std::numeric_limits<double>::infinity();
   /// The ramp-load tier: the load tier's rule, on the finger load estimated
   /// against fixed geometry rather than the object, with the load tier's dwell
   /// (load_trip_hold_seconds).  Like the load tier it only ever sets the latch.
@@ -342,6 +348,10 @@ class JamLatch {
   void MarkUnloaded() {
     if (tripped_) unloaded_ = true;
   }
+  /// Whether the current trip stopped holding on the unload distance because
+  /// unload_timeout_seconds ran out rather than because the finger unloaded.
+  /// Cleared by the next trip.
+  bool unload_timed_out() const { return unload_timed_out_; }
 
  private:
   JamLatchThresholds thresholds_;
@@ -352,6 +362,7 @@ class JamLatch {
   double deep_arming_since_ = std::numeric_limits<double>::quiet_NaN();
   double load_arming_since_ = std::numeric_limits<double>::quiet_NaN();
   double ramp_load_arming_since_ = std::numeric_limits<double>::quiet_NaN();
+  double tripped_since_ = std::numeric_limits<double>::quiet_NaN();
   double trip_seconds_ = 0.0;
   bool deep_arming_ = false;
   bool load_arming_ = false;
@@ -360,6 +371,7 @@ class JamLatch {
   bool tripped_by_load_ = false;
   bool tripped_by_ramp_load_ = false;
   bool unloaded_ = false;
+  bool unload_timed_out_ = false;
 };
 
 /// Estimates how far a compliant finger is loaded against the object, from the

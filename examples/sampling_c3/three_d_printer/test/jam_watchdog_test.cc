@@ -678,6 +678,78 @@ TEST(JamLatchTest, MarkUnloadedLetsALoadTripRelease) {
   EXPECT_FALSE(latch.tripped());
 }
 
+// An unload the fixed scene stops short of the entry point -- the unload leg
+// is path-checked unless the gantry starts inside the scene -- never reads
+// unloaded on its own.  unload_timeout_seconds after the trip the unload
+// distance stops holding the latch, as MarkUnloaded would, and says so.
+TEST(JamLatchTest, AnUnloadThatCannotFinishTimesOut) {
+  JamLatchThresholds thresholds = MakeThresholdsWithLoadTier();
+  thresholds.unload_release = 0.004;
+  thresholds.unload_timeout_seconds = 0.95;  // off the loop grid
+  JamLatch latch(thresholds);
+  double now = 0.0;
+  for (int i = 0; i < 3; i++) {
+    latch.Update(now, 0.0, kClear, kDragging, kClear, kLoaded, kLoaded);
+    now += kLoop;
+  }
+  ASSERT_TRUE(latch.tripped());
+  const double tripped_at = now - kLoop;
+  // Held by the unload distance, stuck 30 mm out, until the timeout.
+  while (now < tripped_at + 0.95) {
+    latch.Update(now, 0.0, kClear, kDragging, kClear, 0.030, 0.0);
+    EXPECT_TRUE(latch.tripped());
+    EXPECT_FALSE(latch.unloaded());
+    EXPECT_FALSE(latch.unload_timed_out());
+    now += kLoop;
+  }
+  latch.Update(now, 0.0, kClear, kDragging, kClear, 0.030, 0.0);
+  now += kLoop;
+  EXPECT_TRUE(latch.unloaded());
+  EXPECT_TRUE(latch.unload_timed_out());
+  for (int i = 0; i < 4; i++) {
+    latch.Update(now, 0.0, kClear, kDragging, kClear, 0.030, 0.0);
+    now += kLoop;
+  }
+  EXPECT_FALSE(latch.tripped());
+
+  // The next trip starts its own clock.
+  for (int i = 0; i < 3; i++) {
+    latch.Update(now, 0.0, kClear, kDragging, kClear, kLoaded, kLoaded);
+    now += kLoop;
+  }
+  ASSERT_TRUE(latch.tripped());
+  EXPECT_FALSE(latch.unloaded());
+  EXPECT_FALSE(latch.unload_timed_out());
+}
+
+// An unload that finishes in time is not reported as timed out, and without a
+// timeout the unload distance holds the latch however long it takes.
+TEST(JamLatchTest, AFinishedOrUntimedUnloadDoesNotTimeOut) {
+  JamLatchThresholds thresholds = MakeThresholdsWithLoadTier();
+  thresholds.unload_release = 0.004;
+  JamLatch untimed(thresholds);
+  thresholds.unload_timeout_seconds = 0.95;  // off the loop grid
+  JamLatch timed(thresholds);
+  double now = 0.0;
+  for (int i = 0; i < 3; i++) {
+    untimed.Update(now, 0.0, kClear, kDragging, kClear, kLoaded, kLoaded);
+    timed.Update(now, 0.0, kClear, kDragging, kClear, kLoaded, kLoaded);
+    now += kLoop;
+  }
+  ASSERT_TRUE(untimed.tripped());
+  ASSERT_TRUE(timed.tripped());
+  timed.Update(now, 0.0, kClear, kDragging, kClear, 0.002, 0.0);
+  EXPECT_TRUE(timed.unloaded());
+  for (int i = 0; i < 100; i++) {
+    untimed.Update(now, 0.0, kClear, kDragging, kClear, 0.030, 0.0);
+    timed.Update(now, 0.0, kClear, kDragging, kClear, 0.030, 0.0);
+    now += kLoop;
+  }
+  EXPECT_TRUE(untimed.tripped());
+  EXPECT_FALSE(untimed.unloaded());
+  EXPECT_FALSE(timed.unload_timed_out());
+}
+
 // RetreatIsPushing: the reported EE heads back to the entry point at +x and
 // the object comes along with it.
 const Eigen::Vector3d kEntry(0.30, 0.10, 0.04);
@@ -1193,6 +1265,9 @@ TEST(JamGuardParamsTest, TheConeYamlShipsTheDetectorTheReportScored) {
   // Unloading, from the 2026-09-29 compliant-sim logs.
   ASSERT_TRUE(jam_guard.unload_release.has_value());
   EXPECT_EQ(*jam_guard.unload_release, 0.004);
+  // Above the longest unload that finished on the 2026-10-01 compliant sims.
+  ASSERT_TRUE(jam_guard.unload_timeout_seconds.has_value());
+  EXPECT_EQ(*jam_guard.unload_timeout_seconds, 4.0);
   // The load tier, scored offline on the 2026-09-29/30 compliant-sim logs.
   ASSERT_TRUE(jam_guard.load_trip.has_value());
   ASSERT_TRUE(jam_guard.load_trip_hold_seconds.has_value());

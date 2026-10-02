@@ -19,7 +19,7 @@ package dairlib;
         3: Sample from buffer
 
     repos_target_decision key (only meaningful while repositioning; an actual
-    repos -> repos switch is exactly 3 or 4, since nominating a challenger
+    repos -> repos switch is exactly 3, 4 or 6, since nominating a challenger
     deliberately leaves the target alone):
         0: Kept incumbent target, nothing nominated
         1: Kept incumbent target, challenger nominated this loop
@@ -28,6 +28,8 @@ package dairlib;
         4: Retargeted because the incumbent is in penetration
         5: Kept incumbent target, pending nominee lost its re-score, and
            another of this loop's samples was nominated in its place
+        6: Retargeted because an unsuccessful sample (a jam, say) was
+           recorded within unsuccessful_radius of the incumbent
 
     mode_switch_decision key (the nominate-then-confirm gates on cost-driven
     C3 <-> repositioning switches; nominating deliberately leaves the mode

@@ -206,7 +206,9 @@ bool JamLatch::Update(double now, double ee_object_force,
       tripped_by_ramp_load_ =
           ramp_load_held && !shallow_held && !deep_held && !load_held;
       releasing_since_ = kNaN;
+      tripped_since_ = now;
       unloaded_ = false;
+      unload_timed_out_ = false;
       return true;
     }
     return false;
@@ -249,6 +251,13 @@ bool JamLatch::Update(double now, double ee_object_force,
   if (unload_distance.has_value() &&
       *unload_distance < thresholds_.unload_release) {
     unloaded_ = true;
+  }
+  // A retreat that the fixed scene stops short of the entry point never reads
+  // unloaded on its own.
+  if (!unloaded_ &&
+      now - tripped_since_ >= thresholds_.unload_timeout_seconds) {
+    unloaded_ = true;
+    unload_timed_out_ = true;
   }
   const bool finger_loaded = !unloaded_ && unload_distance.has_value() &&
                              *unload_distance >= thresholds_.unload_release;

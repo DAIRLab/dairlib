@@ -576,6 +576,10 @@ SamplingC3Controller::SamplingC3Controller(
     if (jam_params.unload_release.has_value()) {
       DRAKE_DEMAND(*jam_params.unload_release > 0.0);
     }
+    if (jam_params.unload_timeout_seconds.has_value()) {
+      DRAKE_DEMAND(jam_params.unload_release.has_value());
+      DRAKE_DEMAND(*jam_params.unload_timeout_seconds > 0.0);
+    }
     if (jam_params.load_trip.has_value()) {
       // Only the unload distance holds a load trip until the finger is
       // unloaded; without it the far side's clear gap would release the latch
@@ -635,6 +639,8 @@ SamplingC3Controller::SamplingC3Controller(
             jam_params.load_trip_hold_seconds.value_or(0.0),
         .unload_release = jam_params.unload_release.value_or(
             std::numeric_limits<double>::infinity()),
+        .unload_timeout_seconds = jam_params.unload_timeout_seconds.value_or(
+            std::numeric_limits<double>::infinity()),
         .ramp_load_trip = jam_params.ramp_load_trip.value_or(
             std::numeric_limits<double>::infinity())});
     std::cout << "Jam watchdog enabled: trips below " << jam_params.gap_trip
@@ -661,7 +667,12 @@ SamplingC3Controller::SamplingC3Controller(
     if (jam_params.unload_release.has_value()) {
       std::cout << "Jam watchdog unloading enabled: retreats towards the entry "
                    "point and holds the latch until within "
-                << *jam_params.unload_release << " m of it." << std::endl;
+                << *jam_params.unload_release << " m of it";
+      if (jam_params.unload_timeout_seconds.has_value()) {
+        std::cout << ", or for at most " << *jam_params.unload_timeout_seconds
+                  << " s";
+      }
+      std::cout << "." << std::endl;
     }
     if (jam_params.load_trip.has_value()) {
       std::cout << "Jam watchdog load tier enabled: trips at "
@@ -1339,6 +1350,18 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   };
   const bool in_collision =
       point_in_collision(prev_repositioning_target_.segment(0, 3));
+  // An unsuccessful sample recorded within unsuccessful_radius of the target
+  // after it was chosen -- a jam tripped nearby, say -- vetoes starting C3
+  // there (curr_location_can_start_c3), but nothing vetoes the target itself.
+  // Fresh samples are already kept clear of the buffer, so drop the target like
+  // one in penetration.
+  VectorXd prev_repositioning_target_state = x_lcs_curr;
+  prev_repositioning_target_state.head(3) = prev_repositioning_target_;
+  const bool target_near_unsuccessful =
+      !is_doing_c3_ && !in_collision &&
+      sampling_params_.avoid_choosing_unsuccessful_samples &&
+      !SampleAvoidsBadSpots(prev_repositioning_target_state, sampling_params_,
+                            unsuccessful_sample_buffer_);
   // The object may have moved since the nominee was drawn -- in C3 mode that is
   // the whole point of the mode -- so a nominee now in penetration is dropped
   // rather than re-scored.
@@ -1358,11 +1381,11 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   // mode.
   repos_target_sample_index_ = -1;
   pending_nominee_sample_index_ = -1;
-  const bool has_incumbent_target = !is_doing_c3_ && !in_collision;
+  const bool has_incumbent_target =
+      !is_doing_c3_ && !in_collision && !target_near_unsuccessful;
   if (!has_incumbent_target && !is_doing_c3_) {
-    // The incumbent is in penetration and is being abandoned unconditionally,
-    // so there is nothing for a repos -> repos nominee to beat; drop it so the
-    // gate starts over.
+    // The incumbent is being abandoned unconditionally, so there is nothing
+    // for a repos -> repos nominee to beat; drop it so the gate starts over.
     pending_repos_nominee_.reset();
   }
   if (pending_repos_nominee_.has_value() && !candidate_states.empty()) {
@@ -1824,17 +1847,21 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     };
 
     // First, apply hysteresis between repositioning targets.
-    if (in_collision) {
+    if (in_collision || target_near_unsuccessful) {
       // This means the previous repositioning target is now in penetration with
-      // the object and has been rejected.  Switch to the new lowest cost
-      // sample.  Checked before the "incumbent already won" case because with
-      // no incumbent in the candidate list, index 1 is an ordinary new sample
-      // and winning it means nothing about the target being kept.
-      std::cout << "Repos -> Repos:  Previous repositioning target in "
-                   "collision; switching to new sample"
-                << std::endl;
+      // the object, or next to an unsuccessful sample, and has been rejected.
+      // Switch to the new lowest cost sample.  Checked before the "incumbent
+      // already won" case because with no incumbent in the candidate list,
+      // index 1 is an ordinary new sample and winning it means nothing about
+      // the target being kept.
+      std::cout << "Repos -> Repos:  Previous repositioning target "
+                << (in_collision ? "in collision"
+                                 : "next to an unsuccessful sample")
+                << "; switching to new sample" << std::endl;
       pursued_target_source_ = PursuedTargetSource::kNewSample;
-      repos_target_decision_ = ReposTargetDecision::kRetargetCollision;
+      repos_target_decision_ = in_collision
+                                   ? ReposTargetDecision::kRetargetCollision
+                                   : ReposTargetDecision::kRetargetUnsuccessful;
       pending_repos_nominee_.reset();
     } else if (pending_nominee_sample_index_ >= 0 &&
                repos_target_confirm_frac.has_value()) {
@@ -3054,7 +3081,7 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   // escape trajectory to get stuck in.  The retreat knots are kept off the
   // fixed scene like everything else, so an escape direction pointing into the
   // ramp is projected back out rather than driven into it -- except the unload
-  // leg below, when the path check is on.
+  // leg below, when the gantry starts inside the scene.
   MatrixXd knots;
   // Leading knots exempt from the fixed-geometry path check.
   int num_exempt_knots = 0;
@@ -3070,6 +3097,19 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     // done; see unload_release.
     Vector3d retreat_direction = jam_escape_direction_;
     double max_retreat_distance = std::numeric_limits<double>::infinity();
+    // Once the finger is free it leaves the way it came in, unless that way
+    // now runs into the fixed scene:  the path check projects that leg back
+    // onto the scene's surface, the plan -- rebuilt from the same x0 every loop
+    // -- never moves, and the latch, held by the object gap, never releases. Up
+    // is clear of both.
+    const bool escape_is_blocked =
+        CheckFixedGeometryPaths() &&
+        RetreatIsBlockedByFixedGeometries(
+            query_object, fixed_obstacle_geometries_,
+            ee_radius_ + sampling_c3_options_.FixedGeometryKnotMargin(),
+            sampling_c3_options_, x_lcs.head(3), jam_escape_direction_,
+            MaxSpeedAlongDirection(jam_escape_direction_, reposition_params_) *
+                dt_);
     if (jam_retreat_pushing_) {
       // The finger is free and every horizontal way out runs through the
       // object; up is clear of it.
@@ -3082,13 +3122,18 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
           (jam_entry_point_ - x_lcs.head(3)).head<2>();
       max_retreat_distance = retreat_direction.norm();
       // The unload leg retraces the way the EE came in.  If the bent finger
-      // carried the gantry across a wall, that way runs back through it, and
-      // projecting the leg out of the wall would stop the finger unbending.
-      // RepositionWithRetreat's retreat is its first retreat_knots knots plus
-      // the knot where the repositioning leg starts.
-      if (retreat_direction.norm() >= 1e-9 && jam_params.retreat_knots > 0) {
+      // carried the gantry into or across a wall, that way runs back through
+      // it, and projecting the leg out of the wall would stop the finger
+      // unbending.  Only then is the leg exempt from the path check.  A leg the
+      // scene blocks short of the entry point holds the latch until
+      // unload_timeout_seconds.  RepositionWithRetreat's retreat is its first
+      // retreat_knots knots plus the knot where the repositioning leg starts.
+      if (retreat_direction.norm() >= 1e-9 && jam_params.retreat_knots > 0 &&
+          CheckFixedGeometryPaths() && InsideKnotClearance(x_lcs.head(3))) {
         num_exempt_knots = std::min(jam_params.retreat_knots, N_ - 1) + 1;
       }
+    } else if (escape_is_blocked) {
+      retreat_direction = Vector3d::UnitZ();
     }
     knots = RepositionWithRetreat(
         n_q_, n_x_, N_, x_lcs, best_sample_location, dt_, is_doing_c3_,
@@ -4104,6 +4149,7 @@ void SamplingC3Controller::UpdateJamWatchdog(
   // why the arm and release conditions are asymmetric and why nothing here is
   // reset by a mode switch.
   const bool was_tripped = jam_latch_->tripped();
+  const bool was_unloaded = jam_latch_->unloaded();
   const bool rising_edge = jam_latch_->Update(
       now, jam_ee_object_force_,
       gap_is_valid ? std::optional<double>(jam_ee_object_gap_) : std::nullopt,
@@ -4127,6 +4173,20 @@ void SamplingC3Controller::UpdateJamWatchdog(
   if (rising_edge && jam_tripped_by_ramp_load_) {
     jam_entry_point_ = jam_ramp_load_estimator_->entry_point_W();
     update_unload_distance();
+  }
+  // The load tier's entry point rides on the object estimate, so beside a wall
+  // it can land inside the fixed scene, where the fingertip cannot be and no
+  // plan may go.  Unload towards the nearest point a plan may reach instead.
+  if (rising_edge && CheckFixedGeometryPaths() &&
+      jam_entry_point_.allFinite()) {
+    jam_entry_point_ = ReachableEEPosition(jam_entry_point_);
+    update_unload_distance();
+  }
+  if (jam_tripped_ && !was_unloaded && jam_latch_->unload_timed_out()) {
+    std::cout << "Jam unload timed out " << jam_unload_distance_
+              << " m short of the entry point; leaving along the escape "
+                 "direction."
+              << std::endl;
   }
   if (!jam_tripped_) jam_retreat_pushing_ = false;
 
@@ -4357,6 +4417,16 @@ Vector3d SamplingC3Controller::ReachableEEPosition(
       ee_radius_ + sampling_c3_options_.FixedGeometryKnotMargin(),
       sampling_c3_options_, &p);
   return p;
+}
+
+bool SamplingC3Controller::InsideKnotClearance(
+    const Vector3d& ee_position) const {
+  const auto& query_object =
+      plant_.get_geometry_query_input_port()
+          .template Eval<drake::geometry::QueryObject<double>>(*context_);
+  return DistanceToFixedGeometries(query_object, fixed_obstacle_geometries_,
+                                   ee_position) <
+         ee_radius_ + sampling_c3_options_.FixedGeometryKnotMargin();
 }
 
 void SamplingC3Controller::NoteFixedGeometryPathHold(

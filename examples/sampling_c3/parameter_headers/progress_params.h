@@ -121,6 +121,12 @@ struct JamGuardParams {
   /// loaded tip across the object and lets it snap free.  Omit to turn
   /// unloading off.
   std::optional<double> unload_release;
+  /// Seconds after a trip at which the unload distance stops holding the
+  /// latch.  The unload leg is path-checked against the fixed scene unless the
+  /// gantry starts inside it, so an entry point across a wall is out of reach
+  /// and would hold the latch for good.  Requires unload_release.  Omit to
+  /// turn it off.
+  std::optional<double> unload_timeout_seconds;
   /// The load tier: arm once the estimated finger load reaches this [m] --
   /// how far the reported EE has run past the tangent plane where it last
   /// touched the object from outside, carried along with the object (see
@@ -172,6 +178,7 @@ struct JamGuardParams {
     a->Visit(DRAKE_NVP(deep_gap_trip));
     a->Visit(DRAKE_NVP(deep_trip_hold_seconds));
     a->Visit(DRAKE_NVP(unload_release));
+    a->Visit(DRAKE_NVP(unload_timeout_seconds));
     a->Visit(DRAKE_NVP(load_trip));
     a->Visit(DRAKE_NVP(load_trip_hold_seconds));
     a->Visit(DRAKE_NVP(load_clear_gap));

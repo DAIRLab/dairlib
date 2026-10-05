@@ -285,7 +285,10 @@ def score_log(path):
   arm = arm_of(folder)
   arm['name'] = record.get('arm')  # run_sim_batch.py --arm
   ramp = contacts[:, 2].sum(), contacts[:, 3].sum()
-  arm['ramp'] = 'hydro' if ramp[1] > ramp[0] else 'point'
+  # Read from the contacts: a run lost before the ramp (10_02_26/000032) has
+  # none to read.
+  arm['ramp'] = ('none' if not any(ramp) else
+                 'hydro' if ramp[1] > ramp[0] else 'point')
 
   t, goal = rows[:, 0], rows[:, 3].astype(int)
   end = t[-1]

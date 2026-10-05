@@ -36,6 +36,13 @@ workspace_margins: 0.002
 # ramp and ground.
 check_fixed_geometry_paths: true
 fixed_geometry_knot_margin: 0.004
+# Keep the plan from descending once its start presses into an up-facing face
+# of the estimated object, until it is ee_press_latch_release_gap clear.  The z
+# axis is stiff, so C3's knots commanded into the cone's top squeeze the braced
+# cone (issue #13).
+ee_press_latch: true
+ee_press_latch_min_normal_z: 0.8
+ee_press_latch_release_gap: 0.005
 
 # Bounds on the planned EE force, per axis, in Newtons.  For the printer, these
 # bound planned contact force only, since u can't be accepted by the printer

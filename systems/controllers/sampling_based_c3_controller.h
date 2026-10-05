@@ -603,6 +603,15 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
                                  const char* plan_name,
                                  double t_context) const;
 
+  /// When sampling_c3_options_.ee_press_latch is on, runs
+  /// HoldEEPlanAbovePressedObject() on the executed plan's EE knots against
+  /// object_geometry_ids_, re-clears the plan's path off the fixed scene if it
+  /// raised any knot (with @p num_exempt_knots as for ClearEEPlanPath()), and
+  /// prints when the latch engages and releases.
+  void ApplyEEPressLatch(const char* plan_name, double t_context,
+                         int num_exempt_knots,
+                         Eigen::MatrixXd* ee_positions) const;
+
   /// Collapse sampling_c3_options_.ee_velocity_{horizontal,vertical}_limits,
   /// each a [min, max] pair, into the scalar speeds the retiming works with.
   /// Returns false (with a one-time warning) if either limit is missing or
@@ -750,6 +759,14 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable double fixed_geometry_hold_since_ =
       std::numeric_limits<double>::quiet_NaN();
   mutable int fixed_geometry_hold_loops_ = 0;
+
+  // The press latch (see ApplyEEPressLatch), and the current latched stretch:
+  // when it began, how many loops it raised the plan, and by how much at most.
+  mutable EEPressLatchState ee_press_latch_state_;
+  mutable double ee_press_latch_since_ =
+      std::numeric_limits<double>::quiet_NaN();
+  mutable int ee_press_latch_loops_raised_ = 0;
+  mutable double ee_press_latch_max_lift_ = 0.0;
 
   // A private scene holding ONLY the per-goal keep-out geometry.  Null when no
   // goal step declares a keep-out model.

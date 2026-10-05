@@ -868,5 +868,53 @@ void HoldEEPlanFrom(int from_knot, const Eigen::Vector3d& point,
   }
 }
 
+EEPressLatchStep HoldEEPlanAbovePressedObject(
+    const drake::geometry::QueryObject<double>& query_object,
+    const drake::geometry::GeometrySet& object_geometries, double ee_radius,
+    double min_normal_z, double release_gap, EEPressLatchState* state,
+    Eigen::MatrixXd* ee_positions) {
+  DRAKE_DEMAND(ee_positions->rows() == 3 && ee_positions->cols() > 0);
+  // Deeper than this, the query is unreliable rather than reporting a press;
+  // see NearestFixedGeometry().
+  constexpr double kMaxPlausiblePenetration = 0.05;  // meters
+  EEPressLatchStep step;
+  const Eigen::Vector3d start = ee_positions->col(0);
+  double distance = std::numeric_limits<double>::infinity();
+  Eigen::Vector3d gradient = Eigen::Vector3d::Zero();
+  for (const auto& result : query_object.ComputeSignedDistanceGeometryToPoint(
+           start, object_geometries)) {
+    if (result.distance < distance) {
+      distance = result.distance;
+      gradient = result.grad_W;
+    }
+  }
+  const double gap = distance - ee_radius;
+  if (std::isfinite(distance) && gap > -kMaxPlausiblePenetration &&
+      gradient.norm() > 1e-9) {
+    step.gap = gap;
+    if (state->engaged && gap >= release_gap) {
+      state->engaged = false;
+      step.released = true;
+    } else if (!state->engaged && gap < 0.0 &&
+               gradient.normalized().z() >= min_normal_z) {
+      state->engaged = true;
+      state->floor_z = start.z();
+      step.engaged = true;
+    }
+  }
+  if (!state->engaged) return step;
+
+  state->floor_z = std::max(state->floor_z, start.z());
+  for (int col = 0; col < ee_positions->cols(); ++col) {
+    const double lift = state->floor_z - (*ee_positions)(2, col);
+    if (lift > 0.0) {
+      (*ee_positions)(2, col) = state->floor_z;
+      ++step.knots_raised;
+      step.max_lift = std::max(step.max_lift, lift);
+    }
+  }
+  return step;
+}
+
 }  // namespace systems
 }  // namespace dairlib

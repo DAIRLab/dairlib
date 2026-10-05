@@ -189,6 +189,16 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
   /// through fixed geometry stops short of it; a repositioning plan is
   /// rerouted over it.  Off (knot-wise projection at publish only) if unset.
   std::optional<bool> check_fixed_geometry_paths;
+  /// Keep every executed EE plan from descending while it presses down on the
+  /// object (see HoldEEPlanAbovePressedObject in reposition.h).    Off if
+  /// unset.
+  std::optional<bool> ee_press_latch;
+  /// The latch engages only where the object's outward normal at the plan's
+  /// start has at least this z component.  Defaults to 0.5.
+  std::optional<double> ee_press_latch_min_normal_z;
+  /// EE-surface clearance [m] off the object at which the latch releases.
+  /// Defaults to 0.005.
+  std::optional<double> ee_press_latch_release_gap;
   std::vector<double> ee_velocity_horizontal_limits;  ///< Limits for
                                                       ///< horizontal (xy) EE
                                                       ///< velocity.
@@ -299,6 +309,9 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     a->Visit(DRAKE_NVP(workspace_margins));
     a->Visit(DRAKE_NVP(fixed_geometry_knot_margin));
     a->Visit(DRAKE_NVP(check_fixed_geometry_paths));
+    a->Visit(DRAKE_NVP(ee_press_latch));
+    a->Visit(DRAKE_NVP(ee_press_latch_min_normal_z));
+    a->Visit(DRAKE_NVP(ee_press_latch_release_gap));
     a->Visit(DRAKE_NVP(ee_velocity_horizontal_limits));
     a->Visit(DRAKE_NVP(ee_velocity_vertical_limits));
 
@@ -438,6 +451,14 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     return check_fixed_geometry_paths.value_or(false)
                ? fixed_geometry_knot_margin.value_or(workspace_margins)
                : workspace_margins;
+  }
+
+  bool EEPressLatchEnabled() const { return ee_press_latch.value_or(false); }
+  double EEPressLatchMinNormalZ() const {
+    return ee_press_latch_min_normal_z.value_or(0.8);
+  }
+  double EEPressLatchReleaseGap() const {
+    return ee_press_latch_release_gap.value_or(0.005);
   }
 
   /// Whether any goal-sequence step overrides q_vector_position.

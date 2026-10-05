@@ -513,6 +513,8 @@ SamplingC3Controller::SamplingC3Controller(
   DRAKE_DEMAND(sampling_c3_options_.fixed_geometry_knot_margin.value_or(
                    sampling_c3_options_.workspace_margins) >=
                sampling_c3_options_.workspace_margins);
+  DRAKE_DEMAND(std::abs(sampling_c3_options_.EEPressLatchMinNormalZ()) <= 1.0);
+  DRAKE_DEMAND(sampling_c3_options_.EEPressLatchReleaseGap() >= 0.0);
 
   // Build the private keep-out scene, then seed the per-goal-step settings for
   // goal step 0.  RefreshPerGoalSettings is called again from ComputePlan
@@ -766,11 +768,13 @@ SamplingC3Controller::SamplingC3Controller(
     }
   }
 
-  // The jam watchdog's interpenetration guard queries against the object
-  // geometries, which the mesh block above only collects for the sampling
-  // strategies that need a mesh.  Collect them here for any other strategy, or
-  // that guard would sit silently disabled while looking configured.
-  if (jam_latch_ != nullptr && object_geometry_ids_.empty()) {
+  // The jam watchdog's interpenetration guard and the press latch query
+  // against the object geometries, which the mesh block above only collects
+  // for the sampling strategies that need a mesh.  Collect them here for any
+  // other strategy, or either would sit silently disabled while looking
+  // configured.
+  if ((jam_latch_ != nullptr || sampling_c3_options_.EEPressLatchEnabled()) &&
+      object_geometry_ids_.empty()) {
     for (const std::string& base_name : controller_params_.base_names) {
       object_geometry_ids_.push_back(plant_.GetCollisionGeometriesForBody(
           plant_.GetBodyByName(base_name))[0]);
@@ -3010,6 +3014,14 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
     }
   }
 
+  // Stop a press into the object's top from deepening, before the next x0 is
+  // predicted from this plan.
+  if (is_doing_c3_) {
+    MatrixXd ee_knots = knots.topRows(3);
+    ApplyEEPressLatch("C3", t_context, 0, &ee_knots);
+    knots.topRows(3) = ee_knots;
+  }
+
   // Stretch the plan's time grid so no segment asks the printer to exceed its
   // EE speed limits (C3 does not reliably enforce the tight vertical bound).
   RetimeEEPlanToVelocityLimits(knots.topRows(3), &timestamps);
@@ -3249,6 +3261,14 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
     if (!is_doing_c3_) {
       NoteFixedGeometryPathHold(check, "repositioning", t_context);
     }
+  }
+
+  // As for C3 plans.  The latch carries over from C3, so a repositioning plan
+  // that starts pressed into the object rises before it goes anywhere lower.
+  if (!is_doing_c3_) {
+    MatrixXd ee_knots = knots.topRows(3);
+    ApplyEEPressLatch("repositioning", t_context, num_exempt_knots, &ee_knots);
+    knots.topRows(3) = ee_knots;
   }
 
   // Set up the trajectory.
@@ -4524,6 +4544,52 @@ void SamplingC3Controller::NoteFixedGeometryPathHold(
               << t_context - fixed_geometry_hold_since_ << " s ("
               << fixed_geometry_hold_loops_ << " loops)" << std::endl;
     fixed_geometry_hold_since_ = std::numeric_limits<double>::quiet_NaN();
+  }
+}
+
+void SamplingC3Controller::ApplyEEPressLatch(
+    const char* plan_name, double t_context, int num_exempt_knots,
+    Eigen::MatrixXd* ee_positions) const {
+  if (!sampling_c3_options_.EEPressLatchEnabled()) return;
+  const auto& query_object =
+      plant_.get_geometry_query_input_port()
+          .template Eval<drake::geometry::QueryObject<double>>(*context_);
+  const double start_z = (*ee_positions)(2, 0);
+  const EEPressLatchStep step = HoldEEPlanAbovePressedObject(
+      query_object, drake::geometry::GeometrySet(object_geometry_ids_),
+      ee_radius_, sampling_c3_options_.EEPressLatchMinNormalZ(),
+      sampling_c3_options_.EEPressLatchReleaseGap(), &ee_press_latch_state_,
+      ee_positions);
+  if (step.engaged) {
+    ee_press_latch_since_ = t_context;
+    ee_press_latch_loops_raised_ = 0;
+    ee_press_latch_max_lift_ = 0.0;
+    std::cout << "[press latch] t=" << t_context << " " << plan_name
+              << " plan engaged: start " << -1e3 * step.gap
+              << " mm into the object at z " << 1e3 * start_z << " mm"
+              << std::endl;
+  }
+  if (step.knots_raised > 0) {
+    ++ee_press_latch_loops_raised_;
+    ee_press_latch_max_lift_ =
+        std::max(ee_press_latch_max_lift_, step.max_lift);
+    // Raising a knot can bring it toward a downward-facing fixed surface.
+    if (CheckFixedGeometryPaths()) {
+      const FixedGeometryPathCheck check =
+          ClearEEPlanPath(num_exempt_knots, ee_positions);
+      if (check.first_blocked_knot >= 0) {
+        HoldEEPlanFrom(check.first_blocked_knot, check.last_clear_point,
+                       ee_positions);
+      }
+    }
+  }
+  if (step.released) {
+    std::cout << "[press latch] t=" << t_context << " " << plan_name
+              << " plan released after " << t_context - ee_press_latch_since_
+              << " s: " << ee_press_latch_loops_raised_
+              << " loops raised, max lift " << 1e3 * ee_press_latch_max_lift_
+              << " mm, floor z " << 1e3 * ee_press_latch_state_.floor_z << " mm"
+              << std::endl;
   }
 }
 

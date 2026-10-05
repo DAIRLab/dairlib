@@ -149,12 +149,12 @@ std::pair<bool, double> ComputeRepositionClearance(
 /// This is the check for the short hops Reposition() takes straight to the
 /// target, whose ends sit too close to the object for
 /// ComputeRepositionClearance's wider clearance ever to call them clear.
-bool StraightHopIsClear(const drake::geometry::QueryObject<double>& query_object,
-                        drake::geometry::GeometryId ee_geometry_id,
-                        const Eigen::Vector3d& start,
-                        const Eigen::Vector3d& target, double ee_radius,
-                        const SamplingC3RepositionParams& reposition_params,
-                        const SamplingC3Options& sampling_c3_options);
+bool StraightHopIsClear(
+    const drake::geometry::QueryObject<double>& query_object,
+    drake::geometry::GeometryId ee_geometry_id, const Eigen::Vector3d& start,
+    const Eigen::Vector3d& target, double ee_radius,
+    const SamplingC3RepositionParams& reposition_params,
+    const SamplingC3Options& sampling_c3_options);
 
 /// Clamps @p p to sampling_c3_options.workspace_limits, held
 /// sampling_c3_options.workspace_margins inside each bound.
@@ -178,9 +178,8 @@ double DistanceToFixedGeometries(
 /// plan's last knot lands.  Throws like ClearEEPlanOfFixedGeometries().
 void ProjectEEPositionOffFixedGeometries(
     const drake::geometry::QueryObject<double>& query_object,
-    const drake::geometry::GeometrySet& fixed_geometries,
-    double knot_clearance, const SamplingC3Options& sampling_c3_options,
-    Eigen::Vector3d* p);
+    const drake::geometry::GeometrySet& fixed_geometries, double knot_clearance,
+    const SamplingC3Options& sampling_c3_options, Eigen::Vector3d* p);
 
 /// Whether one retreat @p step [m] from @p start along @p direction is mostly
 /// undone by the knot projection (see ProjectEEPositionOffFixedGeometries):
@@ -189,10 +188,9 @@ void ProjectEEPositionOffFixedGeometries(
 /// direction.
 bool RetreatIsBlockedByFixedGeometries(
     const drake::geometry::QueryObject<double>& query_object,
-    const drake::geometry::GeometrySet& fixed_geometries,
-    double knot_clearance, const SamplingC3Options& sampling_c3_options,
-    const Eigen::Vector3d& start, const Eigen::Vector3d& direction,
-    double step);
+    const drake::geometry::GeometrySet& fixed_geometries, double knot_clearance,
+    const SamplingC3Options& sampling_c3_options, const Eigen::Vector3d& start,
+    const Eigen::Vector3d& direction, double step);
 
 /// What ClearEEPlanOfFixedGeometries() found along the plan's path.
 struct FixedGeometryPathCheck {
@@ -233,14 +231,55 @@ struct FixedGeometryPathCheck {
 /// unreliable query (a bad collision mesh) produces in this scene.
 FixedGeometryPathCheck ClearEEPlanOfFixedGeometries(
     const drake::geometry::QueryObject<double>& query_object,
-    const drake::geometry::GeometrySet& fixed_geometries,
-    double knot_clearance, double path_clearance,
-    const SamplingC3Options& sampling_c3_options, int num_exempt_knots,
-    Eigen::MatrixXd* ee_positions);
+    const drake::geometry::GeometrySet& fixed_geometries, double knot_clearance,
+    double path_clearance, const SamplingC3Options& sampling_c3_options,
+    int num_exempt_knots, Eigen::MatrixXd* ee_positions);
 
 /// Holds an EE position plan (3 x N) at @p point from knot @p from_knot on.
 void HoldEEPlanFrom(int from_knot, const Eigen::Vector3d& point,
                     Eigen::MatrixXd* ee_positions);
+
+/// What HoldEEPlanAbovePressedObject() carries from one control loop to the
+/// next.
+struct EEPressLatchState {
+  bool engaged{false};
+  /// The highest knot-0 height [m] since the latch engaged.
+  double floor_z{-std::numeric_limits<double>::infinity()};
+};
+
+/// What one HoldEEPlanAbovePressedObject() call did.
+struct EEPressLatchStep {
+  bool engaged{false};   ///< The latch engaged on this call.
+  bool released{false};  ///< The latch released on this call.
+  /// Knot 0's EE-surface gap to the object [m]; NaN when the query was not
+  /// usable.
+  double gap{std::numeric_limits<double>::quiet_NaN()};
+  int knots_raised{0};
+  double max_lift{0.0};  ///< [m]
+};
+
+/// Keeps an EE position plan (3 x N) from descending while it presses down on
+/// the object.  This is especially useful for the 3D printer demos:  the
+/// printer's z axis is stiff and the finger gives only sideways.  This
+/// mechanism stops it from deepening.
+///
+/// Engages when knot 0 (the plan's start) is inside @p object_geometries and
+/// the nearest geometry's outward normal there has a z component of at least @p
+/// min_normal_z.  While engaged, every knot below the highest knot-0 height
+/// since engaging is raised to it, and xy is left alone, so a push into the
+/// object's side is unaffected.  Releases once knot 0 is at least
+/// @p release_gap clear of the object.  A query that reports nothing, or a
+/// penetration deeper than 5 cm (an unreliable query), changes neither
+/// engagement nor release.
+///
+/// Raising knots can move them toward a downward-facing fixed surface, so a
+/// caller that keeps plans off the fixed scene should check the plan again
+/// when this raised any knot.
+EEPressLatchStep HoldEEPlanAbovePressedObject(
+    const drake::geometry::QueryObject<double>& query_object,
+    const drake::geometry::GeometrySet& object_geometries, double ee_radius,
+    double min_normal_z, double release_gap, EEPressLatchState* state,
+    Eigen::MatrixXd* ee_positions);
 
 }  // namespace systems
 }  // namespace dairlib

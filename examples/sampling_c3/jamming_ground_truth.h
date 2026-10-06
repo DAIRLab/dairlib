@@ -16,6 +16,10 @@
 #include <vector>
 
 #include <Eigen/Dense>
+#include <optional>
+
+#include "examples/sampling_c3/sampling_c3_utils.h"
+#include "systems/primitives/transport_lag.h"
 
 #include "drake/geometry/scene_graph.h"
 #include "drake/multibody/plant/multibody_plant.h"
@@ -81,6 +85,42 @@ struct GroundTruthLabel {
 /// two orders of magnitude below the ~10 cm a working push moves it.
 constexpr double kJammedProgressThreshold = 1e-3;
 
+/// The parts of the compliant sim the jam label leaves out, so the same plant
+/// can stand in for it when judging what a plan really does:  the finger's
+/// spring mount, the printer driver's command latency, and a command stream
+/// sampled off the plan the way the printer receives it.  The defaults are the
+/// label's own rollout.
+struct GroundTruthSimOptions {
+  double sim_dt = 0.001;
+  /// How long to hold the plan's last knot after it runs out, as a fraction
+  /// of the plan's own duration.
+  double settle_fraction = 1.0;
+  /// The finger's spring mount; nullopt keeps the rigid weld.
+  std::optional<FingerCompliance> finger;
+  /// Dead time and first-order lag [s] between a command and the printer
+  /// acting on it (RobotSimParams' actuator_delay, command_time_constant).
+  /// The delay is rounded to whole sim steps.
+  double command_delay = 0.0;
+  double command_time_constant = 0.0;
+  /// Period [s] at which the plan's first-order hold is sampled into the
+  /// command, as the printer's ~30 Hz input does.  0 drives straight at the
+  /// next knot for a whole knot instead, which is the label's scheme.
+  double command_period = 0.0;
+};
+
+/// One rollout, knot by knot.
+struct GroundTruthTrace {
+  /// The object's state at each knot time k * knot_dt, through the settle
+  /// window:  its 7 positions (qw, qx, qy, qz, x, y, z) then its 6 velocities
+  /// (angular, then translational, in world), the LCS's own ordering.
+  std::vector<Eigen::VectorXd> object_states;
+  /// Peak total contact force anywhere in the scene, sampled at the knots.
+  double max_contact_force = 0.0;
+  /// Peak horizontal offset of the fingertip from its unbent position, sampled
+  /// at the knots.  Zero for a rigid finger.
+  double max_finger_deflection = 0.0;
+};
+
 /// Replays candidate plans through the demo's real sim.  Builds its plant once
 /// and reuses it, so labelling a sample costs one reset and two short rollouts.
 class JammingGroundTruthSim {
@@ -92,6 +132,17 @@ class JammingGroundTruthSim {
   ///        duration, so the object's response finishes inside the window.
   JammingGroundTruthSim(const std::vector<std::string>& object_models,
                         double sim_dt, double settle_fraction = 1.0);
+  JammingGroundTruthSim(const std::vector<std::string>& object_models,
+                        const GroundTruthSimOptions& options);
+
+  /// Simulates @p ee_plan, at knot spacing @p knot_dt, from the object at rest
+  /// at the given pose and the printer parked at the plan's first knot, and
+  /// reports the object's state at every knot.  Builds its own context, so it
+  /// may be called from many threads at once.
+  GroundTruthTrace Trace(const Eigen::Vector4d& object_quaternion,
+                         const Eigen::Vector3d& object_position,
+                         const std::vector<Eigen::Vector3d>& ee_plan,
+                         double knot_dt) const;
 
   /// Simulates @p ee_plan from the frozen scene and reports what the object
   /// did.  @p knot_dt is the plan's knot spacing.  @p plan_is_real says whether
@@ -126,12 +177,20 @@ class JammingGroundTruthSim {
                Eigen::Matrix<double, 7, 1>* final_pose = nullptr,
                Eigen::Matrix<double, 7, 3>* plan_poses = nullptr);
 
+  /// The printer's commanded joint state [q; v] for the plan at time @p t.
+  Eigen::VectorXd CommandAt(const std::vector<Eigen::Vector3d>& ee_plan,
+                            double knot_dt, double t) const;
+
   std::unique_ptr<drake::systems::Diagram<double>> diagram_;
   drake::multibody::MultibodyPlant<double>* plant_ = nullptr;
   drake::multibody::ModelInstanceIndex printer_index_;
   drake::multibody::BodyIndex object_body_index_;
   Eigen::Vector3d ee_to_joint_offset_ = Eigen::Vector3d::Zero();
   double settle_fraction_ = 1.0;
+  GroundTruthSimOptions options_;
+  /// Null when there is no command latency; the printer's desired state is
+  /// then the diagram's input directly.
+  const TransportLag* command_lag_ = nullptr;
 };
 
 }  // namespace systems

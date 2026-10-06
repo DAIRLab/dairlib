@@ -60,6 +60,7 @@
 #include <vector>
 
 #include <Eigen/Dense>
+#include <omp.h>
 #include <dairlib/lcmt_c3_state.hpp>
 #include <dairlib/lcmt_object_state.hpp>
 #include <dairlib/lcmt_radio_out.hpp>
@@ -68,6 +69,8 @@
 #include <gflags/gflags.h>
 #include <lcm/lcm-cpp.hpp>
 
+#include "examples/sampling_c3/jamming_ground_truth.h"
+#include "examples/sampling_c3/parameter_headers/robot_sim_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
 #include "examples/sampling_c3/sampling_c3_utils.h"
 #include "systems/controllers/sampling_based_c3_controller.h"
@@ -125,6 +128,10 @@ DEFINE_string(plan_variants, "shipped",
               "'+'-joined, or env/all), "
               "num_contacts_index, admm_iter, rho_scale, w_G, w_U, "
               "w_G_position, w_U_position, end_on_qp_step, contact_model, "
+              "fix_inactive=<groups> (inactive_contact_groups_sequence at "
+              "every goal), fix_min_gap (m), phi_floor, cost_phi_floor, "
+              "cost_object=sim, Kp_rollout and Kd_rollout ('/'-separated "
+              "axes), lcs_dt_resolution, "
               "planning_dt_pose, "
               "planning_dt_position, mu_<group>, and <group>_<weight> (a "
               "scale on that group's rows of the planning g_lambda, g_eta, "
@@ -132,6 +139,22 @@ DEFINE_string(plan_variants, "shipped",
               "only).  Groups:  ee_ground, finger, ground, ramp.");
 DEFINE_string(plan_census_csv, "/tmp/plan_census.csv",
               "Plan census output path.");
+DEFINE_string(truth_census_times, "",
+              "Comma-separated fixture times.  When set, run only the truth "
+              "census:  at each fixture and per --plan_variants entry, "
+              "ComputePlan is called --truth_census_repeats times on the "
+              "frozen logged state (predicted x0 off), and every candidate's "
+              "tracked EE plan is replayed through the compliant sim's "
+              "physics from the clean object pose, so each candidate's cost "
+              "can be ranked against what its push really does.  Rows go to "
+              "--truth_census_csv.");
+DEFINE_int32(truth_census_repeats, 10,
+             "ComputePlan calls per truth census fixture and variant.");
+DEFINE_string(truth_census_csv, "/tmp/truth_census.csv",
+              "Truth census output path.");
+DEFINE_double(truth_settle_fraction, 1.0,
+              "Truth census:  how long the replay holds the plan's last knot, "
+              "as a fraction of the plan's duration.");
 DEFINE_string(goal_params, "",
               "Plan census:  a goal_params yaml to use instead of the log "
               "folder's, so an old fixture can be re-solved against a new goal "
@@ -748,6 +771,36 @@ SamplingC3ControllerParams ApplyVariant(const SamplingC3ControllerParams& params
       o.planning_dt_pose = std::stod(value);
     } else if (key == "planning_dt_position") {
       o.planning_dt_position = std::stod(value);
+    } else if (key == "fix_inactive") {
+      // One entry, so RefreshPerGoalSettings' clamp applies it at every goal.
+      o.inactive_contact_groups_sequence =
+          std::vector<std::vector<int>>{ParseGroups(value)};
+    } else if (key == "fix_min_gap") {
+      o.inactive_contact_min_gap = std::stod(value);
+    } else if (key == "phi_floor") {
+      o.planning_lcs_penetration_floor = value == "true" || value == "1";
+    } else if (key == "cost_phi_floor") {
+      o.cost_lcs_penetration_floor = value == "true" || value == "1";
+    } else if (key == "cost_object") {
+      // The cost LCS's object with the sim cone's mass and inertia
+      // (urdf/cone/cone.sdf), planning keeping the controller's.
+      if (value != "sim") {
+        throw std::runtime_error("cost_object=" + value + " is not known");
+      }
+      o.cost_object_mass = 0.0345;
+      o.cost_object_rotational_inertia =
+          std::vector<double>{5.3763e-06, 5.3763e-06, 5.3763e-06};
+    } else if (key == "Kp_rollout" || key == "Kd_rollout") {
+      // '/'-separated per-axis gains of the cost rollout's EE PD.
+      std::vector<double> gains;
+      std::stringstream axes(value);
+      for (std::string axis; std::getline(axes, axis, '/');) {
+        gains.push_back(std::stod(axis));
+      }
+      (key == "Kp_rollout" ? o.Kp_for_ee_pd_rollout : o.Kd_for_ee_pd_rollout) =
+          gains;
+    } else if (key == "lcs_dt_resolution") {
+      o.lcs_dt_resolution = std::stoi(value);
     } else if (key.rfind("mu_", 0) == 0) {
       o.mu_per_pair_type.at(GroupIndex(key.substr(3))) = std::stod(value);
     } else if (key.rfind("u_ratio_", 0) == 0) {
@@ -1198,6 +1251,362 @@ void RunPlanCensus(Plants& plants, const SamplingC3ControllerParams& params,
   std::cout << "\nwrote " << FLAGS_plan_census_csv << std::endl;
 }
 
+// The object position nearest the state's that penetrates neither the plate
+// nor the ramp:  repeatedly translates the object out of its deepest
+// object-ground or object-ramp contact along that contact's normal.  The
+// orientation is left alone.  This is what a cost rollout seeded from a noisy
+// estimate would do first, so the rollout does not spend its horizon popping
+// an estimate that sank into the step back out.
+Vector3d ProjectOutOfPenetration(Plants& plants, const VectorXd& x,
+                                 const std::string& object_name) {
+  constexpr int kObjectGround = 2, kObjectRamp = 3;
+  constexpr double kTolerance = 1e-4;
+  constexpr int kMaxIterations = 20;
+  const MultibodyPlant<double>& plant = *plants.plant_lcs;
+  const int n_q = plant.num_positions();
+  VectorXd q = x.head(n_q);
+  const auto& inspector =
+      plant.get_geometry_query_input_port()
+          .Eval<drake::geometry::QueryObject<double>>(*plants.plant_lcs_context)
+          .inspector();
+  const auto object_body_index = plant.GetBodyByName(object_name).index();
+  for (int iteration = 0; iteration < kMaxIterations; ++iteration) {
+    plant.SetPositions(plants.plant_lcs_context, q);
+    const auto& query_object =
+        plant.get_geometry_query_input_port()
+            .Eval<drake::geometry::QueryObject<double>>(
+                *plants.plant_lcs_context);
+    double deepest = -kTolerance;
+    Vector3d push = Vector3d::Zero();
+    for (int group : {kObjectGround, kObjectRamp}) {
+      for (const auto& pair : plants.contact_pairs.at(group)) {
+        const auto result = query_object.ComputeSignedDistancePairClosestPoints(
+            pair.first(), pair.second());
+        if (!(result.distance < deepest) ||
+            result.nhat_BA_W.array().isNaN().any()) {
+          continue;
+        }
+        // nhat_BA_W points from B into A; push the object out of the other.
+        const bool object_is_a =
+            plant.GetBodyFromFrameId(inspector.GetFrameId(result.id_A))
+                ->index() == object_body_index;
+        deepest = result.distance;
+        push = (object_is_a ? 1.0 : -1.0) * -result.distance *
+               result.nhat_BA_W;
+      }
+    }
+    if (push.isZero()) break;
+    q.segment(7, 3) += push;
+  }
+  return q.segment(7, 3);
+}
+
+// The log folder's own copy of the sim parameters, if it has one, else the
+// demo's:  the truth census replays plans through the sim that made the log.
+RobotSimParams LoadSimParams(const std::string& log_path,
+                             const SamplingC3ControllerParams& params) {
+  const std::filesystem::path folder =
+      std::filesystem::path(log_path).parent_path();
+  for (const auto& entry : std::filesystem::directory_iterator(folder)) {
+    const std::string name = entry.path().filename().string();
+    if (name.rfind("sim_params_", 0) == 0 &&
+        entry.path().extension() == ".yaml") {
+      return drake::yaml::LoadYamlFile<RobotSimParams>(entry.path().string());
+    }
+  }
+  return drake::yaml::LoadYamlFile<RobotSimParams>(params.sim_params_file);
+}
+
+// The truth census:  does a candidate's cost rank it the way the real sim
+// would?  Every candidate the shipped sampler draws at a frozen fixture gets
+// C3-solved as usual, and the EE plan its cost rollout tracked is then replayed
+// through Drake models of increasing fidelity, all scored with the
+// controller's own object-only cost against the fixture's target:
+//   T    the compliant sim's physics:  sim cone, spring finger, the driver's
+//        latency, a 30 Hz command, from the clean pose with a settle hold;
+//   T0   the same without the latency;
+//   V4   a rigid-finger, latency-free rollout over the plan window alone, from
+//        the estimated pose -- what a sim-based cost could compute online --
+//        at 1 ms (V4) and 4 ms (V4f);
+//   V5   V4 with the settle hold; V5c the same from the clean pose, V5k with
+//        the spring finger.
+// T is the truth the others are ranked against.  Each config also replays a
+// do-nothing plan (the end effector held where it is) once per fixture.
+void RunTruthCensus(Plants& plants, const SamplingC3ControllerParams& params,
+                    const std::vector<LoggedLoop>& loops) {
+  const MultibodyPlant<double>& plant = *plants.plant_lcs;
+  const int n_q = plant.num_positions();
+  const int n_x = n_q + plant.num_velocities();
+  const GeometryId cone_hull = plant.GetCollisionGeometriesForBody(
+      plant.GetBodyByName(params.base_names.at(0)))[0];
+  const Vector3d axis_body = params.goal_params.tracked_orientation_axis.at(0);
+  const SamplingC3Options& options = params.sampling_c3_options;
+  if (options.planning_dt_pose != options.planning_dt_position) {
+    throw std::runtime_error(
+        "The truth census assumes one planning dt for both modes.");
+  }
+  const double knot_dt = options.planning_dt_pose;
+
+  const RobotSimParams sim_params = LoadSimParams(FLAGS_log, params);
+  std::optional<FingerCompliance> finger;
+  if (sim_params.compliant_finger.value_or(false)) {
+    finger = FingerCompliance{
+        .stiffness = sim_params.finger_stiffness.value(),
+        .damping = sim_params.finger_damping.value()};
+  }
+  // Where a config's rollouts start the object:  the true pose, the estimate,
+  // or the estimate pushed out of the ramp and plate (ProjectOutOfPenetration).
+  enum class Start { kClean, kEstimated, kProjected };
+  struct Config {
+    std::string name;
+    Start start;
+    std::unique_ptr<systems::JammingGroundTruthSim> sim;
+  };
+  auto make = [&](double dt, double settle, bool compliant, bool lagged,
+                  double command_period) {
+    systems::GroundTruthSimOptions o;
+    o.sim_dt = dt;
+    o.settle_fraction = settle;
+    if (compliant) o.finger = finger;
+    if (lagged) {
+      o.command_delay = sim_params.actuator_delay;
+      o.command_time_constant = sim_params.command_time_constant.value_or(0);
+    }
+    o.command_period = command_period;
+    return std::make_unique<systems::JammingGroundTruthSim>(
+        sim_params.object_models, o);
+  };
+  const double settle = FLAGS_truth_settle_fraction;
+  const double command_period = 1.0 / sim_params.robot_publish_rate;
+  std::vector<Config> configs;
+  configs.push_back({"T", Start::kClean,
+                     make(sim_params.dt, settle, true, true, command_period)});
+  configs.push_back({"T0", Start::kClean, make(sim_params.dt, settle, true,
+                                               false, command_period)});
+  configs.push_back(
+      {"V4", Start::kEstimated, make(0.001, 0.0, false, false, 0.0)});
+  configs.push_back(
+      {"V4f", Start::kEstimated, make(0.004, 0.0, false, false, 0.0)});
+  configs.push_back(
+      {"V5", Start::kEstimated, make(0.001, settle, false, false, 0.0)});
+  // V5 with one of its two gaps to T0 closed:  the clean pose (V5c), or the
+  // spring finger (V5k).
+  configs.push_back(
+      {"V5c", Start::kClean, make(0.001, settle, false, false, 0.0)});
+  configs.push_back(
+      {"V5k", Start::kEstimated, make(0.001, settle, true, false, 0.0)});
+  // From the estimate pushed out of penetration:  the 1 ms reference (V5p),
+  // and two configs cheap enough to run every loop (V4fp, V5fp).
+  configs.push_back(
+      {"V5p", Start::kProjected, make(0.001, settle, false, false, 0.0)});
+  configs.push_back(
+      {"V4fp", Start::kProjected, make(0.004, 0.0, false, false, 0.0)});
+  configs.push_back(
+      {"V5fp", Start::kProjected, make(0.004, 0.25, false, false, 0.0)});
+
+  std::vector<double> times;
+  std::stringstream stream(FLAGS_truth_census_times);
+  for (std::string item; std::getline(stream, item, ',');) {
+    times.push_back(std::stod(item));
+  }
+  const std::vector<Variant> variants = ParseVariants(FLAGS_plan_variants);
+
+  std::ofstream csv(FLAGS_truth_census_csv);
+  csv << "t,goal,variant,repeat,idx,is_c3,ee_x,ee_y,ee_z,body_x,body_y,"
+         "body_z,dz_mm,hull_mm,cost_logged,cost_v0,plan_prog_mm,"
+         "plan_prog_deg,roll_prog_mm,roll_prog_deg";
+  for (const Config& config : configs) {
+    csv << "," << config.name << "_cost," << config.name << "_cost_dn,"
+        << config.name << "_prog_mm," << config.name << "_prog_deg,"
+        << config.name << "_defl_mm," << config.name << "_force," << config.name
+        << "_ms";
+  }
+  csv << "\n";
+
+  for (double t : times) {
+    const LoggedLoop& fixture = loops[NearestLoop(loops, t)];
+    if (fixture.clean_object_pose.size() != 7) {
+      throw std::runtime_error("The truth census needs the clean pose.");
+    }
+    const auto [x_target, x_final_target] = TargetsFor(fixture);
+    const Vector3d goal_xy(x_final_target(7), x_final_target(8), 0);
+    const Eigen::Quaterniond goal_quat(x_final_target(3), x_final_target(4),
+                                       x_final_target(5), x_final_target(6));
+    // Progress toward the goal between two object poses (qw..qz, x, y, z):
+    // the drop in xy distance [mm] and in tracked-axis misalignment [deg].
+    auto progress = [&](const Eigen::Ref<const VectorXd>& from,
+                        const Eigen::Ref<const VectorXd>& to) {
+      auto xy = [&](const Eigen::Ref<const VectorXd>& pose) {
+        return Eigen::Vector2d(pose(4) - goal_xy(0), pose(5) - goal_xy(1))
+            .norm();
+      };
+      auto mis = [&](const Eigen::Ref<const VectorXd>& pose) {
+        return ComputeAxisMisalignmentAngle(
+            Eigen::Quaterniond(pose(0), pose(1), pose(2), pose(3)).normalized(),
+            goal_quat, axis_body);
+      };
+      return std::pair<double, double>(1e3 * (xy(from) - xy(to)),
+                                       180.0 / M_PI * (mis(from) - mis(to)));
+    };
+
+    for (const Variant& variant : variants) {
+      SamplingC3ControllerParams p = ApplyVariant(params, variant);
+      p.sampling_c3_options.use_predicted_x0_c3 = false;
+      p.sampling_c3_options.use_predicted_x0_repos = false;
+      VectorXd x = fixture.x_actual;
+      for (const auto& [key, value] : variant.overrides) {
+        if (key == "object_pose" && value == "clean") {
+          x.segment(3, 7) = fixture.clean_object_pose;
+        }
+      }
+      Stepper stepper(plants, p);
+      stepper.WarmUpToGoal(loops, fixture.goal);
+
+      plant.SetPositions(plants.plant_lcs_context, x.head(n_q));
+      const auto& query_object =
+          plant.get_geometry_query_input_port()
+              .Eval<drake::geometry::QueryObject<double>>(
+                  *plants.plant_lcs_context);
+      const Eigen::Quaterniond object_quat(x(3), x(4), x(5), x(6));
+      const Vector3d object_position = x.segment(7, 3);
+
+      struct Candidate {
+        int repeat, idx;
+        bool is_c3;
+        Vector3d location;
+        double cost_logged, cost_v0, hull;
+        std::pair<double, double> plan_prog, roll_prog;
+        std::vector<Vector3d> ee_plan;
+      };
+      std::vector<Candidate> candidates;
+      for (int r = 0; r < FLAGS_truth_census_repeats; ++r) {
+        stepper.Step(fixture, x);
+        const SamplingC3Controller& c = stepper.controller();
+        const auto& locations = c.sample_locations_for_testing();
+        const auto& costs = c.sample_costs_for_testing();
+        const auto& rollouts = c.sample_cost_rollouts_for_testing();
+        const auto& tracked = c.sample_tracked_plans_for_testing();
+        const size_t n = std::min({locations.size(), rollouts.size(),
+                                   tracked.size(), costs.size()});
+        for (size_t i = 0; i < n; ++i) {
+          Candidate cand;
+          cand.repeat = r;
+          cand.idx = i;
+          cand.is_c3 = c.is_doing_c3_for_testing();
+          cand.location = locations[i];
+          cand.cost_logged = costs[i];
+          cand.cost_v0 = c.ObjectOnlyTrajectoryCostForTesting(rollouts[i],
+                                                              x_target);
+          const auto results =
+              query_object.ComputeSignedDistanceGeometryToPoint(
+                  locations[i], drake::geometry::GeometrySet(cone_hull));
+          cand.hull = results.empty() ? NAN : results[0].distance;
+          cand.plan_prog = progress(tracked[i].front().segment(3, 7),
+                                    tracked[i].back().segment(3, 7));
+          cand.roll_prog = progress(rollouts[i].front().segment(3, 7),
+                                    rollouts[i].back().segment(3, 7));
+          for (const VectorXd& knot : tracked[i]) {
+            cand.ee_plan.push_back(knot.head(3));
+          }
+          candidates.push_back(cand);
+        }
+      }
+
+      // Every candidate plus the do-nothing plan (last), through every config.
+      const int n_cand = candidates.size();
+      std::vector<std::vector<Vector3d>> plans;
+      for (const Candidate& cand : candidates) plans.push_back(cand.ee_plan);
+      plans.push_back(std::vector<Vector3d>(plans.front().size(),
+                                            x.head(3)));
+      const int n_plans = plans.size();
+      const int n_configs = configs.size();
+      std::vector<systems::GroundTruthTrace> traces(n_plans * n_configs);
+      std::vector<double> trace_ms(n_plans * n_configs);
+      const Eigen::Vector4d clean_q = fixture.clean_object_pose.head(4);
+      const Vector3d clean_p = fixture.clean_object_pose.tail(3);
+      const Eigen::Vector4d est_q = x.segment(3, 4);
+      const Vector3d est_p = x.segment(7, 3);
+      const Vector3d projected_p =
+          ProjectOutOfPenetration(plants, x, params.base_names.at(0));
+      auto start_pose = [&](Start start) {
+        switch (start) {
+          case Start::kClean:
+            return std::pair<Eigen::Vector4d, Vector3d>(clean_q, clean_p);
+          case Start::kEstimated:
+            return std::pair<Eigen::Vector4d, Vector3d>(est_q, est_p);
+          case Start::kProjected:
+            break;
+        }
+        return std::pair<Eigen::Vector4d, Vector3d>(est_q, projected_p);
+      };
+      omp_set_max_active_levels(1);
+#pragma omp parallel for schedule(dynamic)
+      for (int job = 0; job < n_plans * n_configs; ++job) {
+        const Config& config = configs[job % n_configs];
+        const auto start = std::chrono::steady_clock::now();
+        const auto [start_q, start_p] = start_pose(config.start);
+        traces[job] = config.sim->Trace(start_q, start_p,
+                                        plans[job / n_configs], knot_dt);
+        trace_ms[job] = std::chrono::duration<double, std::milli>(
+                            std::chrono::steady_clock::now() - start)
+                            .count();
+      }
+
+      // A trace as LCS states, for the controller's own cost.  The EE rows
+      // carry no weight in the object-only cost.
+      const SamplingC3Controller& c = stepper.controller();
+      auto as_lcs = [&](const systems::GroundTruthTrace& trace) {
+        std::vector<VectorXd> XX;
+        for (const VectorXd& object_state : trace.object_states) {
+          VectorXd state = VectorXd::Zero(n_x);
+          state.segment(3, 7) = object_state.head(7);
+          state.segment(n_q + 3, 6) = object_state.tail(6);
+          XX.push_back(state);
+        }
+        return XX;
+      };
+      std::vector<double> cost_dn(n_configs);
+      for (int k = 0; k < n_configs; ++k) {
+        cost_dn[k] = c.ObjectOnlyTrajectoryCostForTesting(
+            as_lcs(traces[(n_plans - 1) * n_configs + k]), x_target);
+      }
+
+      for (int j = 0; j < n_cand; ++j) {
+        const Candidate& cand = candidates[j];
+        const Vector3d body =
+            object_quat.normalized().inverse() * (cand.location - object_position);
+        csv << fixture.t << "," << fixture.goal << "," << variant.name << ","
+            << cand.repeat << "," << cand.idx << "," << cand.is_c3 << ","
+            << cand.location.x() << "," << cand.location.y() << ","
+            << cand.location.z() << "," << body.x() << "," << body.y() << ","
+            << body.z() << "," << 1e3 * (cand.location.z() - object_position.z())
+            << "," << 1e3 * cand.hull << "," << cand.cost_logged << ","
+            << cand.cost_v0 << "," << cand.plan_prog.first << ","
+            << cand.plan_prog.second << "," << cand.roll_prog.first << ","
+            << cand.roll_prog.second;
+        for (int k = 0; k < n_configs; ++k) {
+          const systems::GroundTruthTrace& trace = traces[j * n_configs + k];
+          const auto prog = progress(trace.object_states.front().head(7),
+                                     trace.object_states.back().head(7));
+          csv << "," << c.ObjectOnlyTrajectoryCostForTesting(as_lcs(trace),
+                                                             x_target)
+              << "," << cost_dn[k] << "," << prog.first << "," << prog.second
+              << "," << 1e3 * trace.max_finger_deflection << ","
+              << trace.max_contact_force << "," << trace_ms[j * n_configs + k];
+        }
+        csv << "\n";
+      }
+      csv.flush();
+      std::cout << "truth census t=" << fixture.t << " goal " << fixture.goal
+                << " variant " << variant.name << ": " << n_cand
+                << " candidates; estimate projected out of penetration by "
+                << 1e3 * (projected_p - est_p).transpose() << " mm"
+                << std::endl;
+    }
+  }
+  std::cout << "wrote " << FLAGS_truth_census_csv << std::endl;
+}
+
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   auto params = drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
@@ -1206,7 +1615,9 @@ int DoMain(int argc, char* argv[]) {
   if (FLAGS_ignore_twist) {
     params.sampling_c3_options.cost_ignores_tracked_axis_twist = true;
   }
-  if (!FLAGS_plan_census_times.empty()) UseLogGoalParams(FLAGS_log, &params);
+  if (!FLAGS_plan_census_times.empty() || !FLAGS_truth_census_times.empty()) {
+    UseLogGoalParams(FLAGS_log, &params);
+  }
   Plants plants(params);
   const int n_x =
       plants.plant_lcs->num_positions() + plants.plant_lcs->num_velocities();
@@ -1215,6 +1626,10 @@ int DoMain(int argc, char* argv[]) {
   const std::vector<LoggedLoop> loops = ReadLog(FLAGS_log, n_x);
   if (!FLAGS_plan_census_times.empty()) {
     RunPlanCensus(plants, params, loops);
+    return 0;
+  }
+  if (!FLAGS_truth_census_times.empty()) {
+    RunTruthCensus(plants, params, loops);
     return 0;
   }
   if (!FLAGS_census_times.empty()) {

@@ -6,6 +6,7 @@
 
 #include "examples/sampling_c3/jamming_ground_truth.h"
 
+#include <algorithm>
 #include <cmath>
 #include <string>
 #include <vector>
@@ -132,6 +133,73 @@ TEST(JammingGroundTruthTest, ANoOpPlanIsNotLabelledJammed) {
   const GroundTruthLabel unknown = sim.Label(
       kConeQuaternion, kConePosition, plan, kKnotDt, /*plan_is_real=*/-1);
   EXPECT_TRUE(std::isnan(unknown.jammed));
+}
+
+// With the default options Trace is the label's own rollout, read out knot by
+// knot:  its last plan knot is the label's end-of-plan pose.
+TEST(JammingGroundTruthTest, TraceMatchesTheLabelsRollout) {
+  JammingGroundTruthSim sim(kObjectModels, kSimDt);
+  const vector<Vector3d> plan =
+      MakePlan(Vector3d(0.285, 0.07, 0.025), Vector3d(0.215, 0.07, 0.025));
+  const GroundTruthLabel label = sim.Label(kConeQuaternion, kConePosition, plan,
+                                           kKnotDt, /*plan_is_real=*/1);
+  const GroundTruthTrace trace =
+      sim.Trace(kConeQuaternion, kConePosition, plan, kKnotDt);
+
+  // The plan's knots, then a settle window as long again.
+  ASSERT_EQ(trace.object_states.size(), 2 * kNumKnots - 1);
+  const Eigen::VectorXd& end_of_plan = trace.object_states.at(kNumKnots - 1);
+  // The trace reports the plant's raw quaternion, the label one renormalized
+  // through a rotation matrix.
+  const auto same_pose = [](const Eigen::VectorXd& state,
+                            const Eigen::Matrix<double, 7, 1>& pose) {
+    return state.head(4).normalized().isApprox(pose.head(4), 1e-9) &&
+           state.segment<3>(4).isApprox(pose.tail(3), 1e-9);
+  };
+  EXPECT_TRUE(same_pose(end_of_plan, label.sim_object_plan_poses.col(2)));
+  EXPECT_TRUE(same_pose(trace.object_states.back(), label.sim_object_final_pose));
+  EXPECT_NEAR(trace.max_finger_deflection, 0.0, 1e-12);  // the weld
+}
+
+// The driver's dead time holds the push back:  until it has elapsed the
+// printer has not moved, so neither has the cone.
+TEST(JammingGroundTruthTest, CommandLatencyDelaysThePush) {
+  GroundTruthSimOptions options;
+  options.command_delay = 0.34;
+  options.command_time_constant = 0.175;
+  options.command_period = 1.0 / 30;
+  JammingGroundTruthSim lagged(kObjectModels, options);
+  JammingGroundTruthSim prompt(kObjectModels, kSimDt);
+  const vector<Vector3d> plan =
+      MakePlan(Vector3d(0.285, 0.07, 0.025), Vector3d(0.215, 0.07, 0.025));
+  const GroundTruthTrace late =
+      lagged.Trace(kConeQuaternion, kConePosition, plan, kKnotDt);
+  const GroundTruthTrace early =
+      prompt.Trace(kConeQuaternion, kConePosition, plan, kKnotDt);
+
+  const auto travel = [](const GroundTruthTrace& trace, int knot) {
+    return (trace.object_states.at(knot).segment<3>(4) -
+            trace.object_states.front().segment<3>(4))
+        .norm();
+  };
+  // Knot 4 is 0.3 s in, still inside the dead time.
+  EXPECT_LT(travel(late, 4), 0.2 * travel(early, 4));
+  // By the end of the settle window the push has arrived.
+  EXPECT_GT(travel(late, late.object_states.size() - 1),
+            0.5 * travel(early, early.object_states.size() - 1));
+}
+
+// A spring-mounted finger bends against what it pushes; the weld cannot.
+TEST(JammingGroundTruthTest, ACompliantFingerBendsOnAPush) {
+  GroundTruthSimOptions options;
+  options.finger = FingerCompliance{.stiffness = 1000.0, .damping = 1.2};
+  JammingGroundTruthSim sim(kObjectModels, options);
+  // Driven well through the cone and into the ramp beyond it.
+  const vector<Vector3d> plan =
+      MakePlan(Vector3d(0.285, 0.07, 0.025), Vector3d(0.15, 0.07, 0.025));
+  const GroundTruthTrace trace =
+      sim.Trace(kConeQuaternion, kConePosition, plan, kKnotDt);
+  EXPECT_GT(trace.max_finger_deflection, 0.001);
 }
 
 TEST(JammingGroundTruthTest, RowCarriesTheColumnsInHeaderOrder) {

@@ -465,9 +465,17 @@ cc_binary(
         "//examples/sampling_c3/three_d_printer:printer_shared_params_yamls",
         "//examples/sampling_c3/three_d_printer/cone:parameters",
     ],
+    copts = [
+        "-fopenmp",
+    ],
+    linkopts = [
+        "-lgomp",
+    ],
     deps = [
         "//common:quaternion_axis_alignment",
+        "//examples/sampling_c3:jamming_ground_truth",
         "//examples/sampling_c3:sampling_c3_utils",
+        "//examples/sampling_c3/parameter_headers:robot_sim_params",
         "//examples/sampling_c3/parameter_headers:sampling_c3_controller_params",
         "//lcmtypes:lcmt_robot",
         "//systems/controllers:sampling_c3_controller",

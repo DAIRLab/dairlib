@@ -54,20 +54,44 @@ double TotalContactForce(const ContactResults<double>& results) {
 
 JammingGroundTruthSim::JammingGroundTruthSim(
     const vector<string>& object_models, double sim_dt, double settle_fraction)
-    : settle_fraction_(settle_fraction) {
+    : JammingGroundTruthSim(
+          object_models,
+          GroundTruthSimOptions{.sim_dt = sim_dt,
+                                .settle_fraction = settle_fraction}) {}
+
+JammingGroundTruthSim::JammingGroundTruthSim(
+    const vector<string>& object_models, const GroundTruthSimOptions& options)
+    : settle_fraction_(options.settle_fraction), options_(options) {
+  const double sim_dt = options.sim_dt;
   DRAKE_THROW_UNLESS(sim_dt >
                      0.0);  // The actuator PD gains need a discrete plant.
-  DRAKE_THROW_UNLESS(settle_fraction >= 0.0);
+  DRAKE_THROW_UNLESS(options.settle_fraction >= 0.0);
+  DRAKE_THROW_UNLESS(options.command_period >= 0.0);
   DRAKE_THROW_UNLESS(object_models.size() == 1);
 
   DiagramBuilder<double> builder;
   auto [plant, scene_graph] = AddMultibodyPlantSceneGraph(&builder, sim_dt);
-  printer_index_ =
-      Add3DPrinterToPlant(&plant, &scene_graph, /*include_ee=*/true);
+  printer_index_ = Add3DPrinterToPlant(&plant, &scene_graph,
+                                       /*include_ee=*/true, options.finger);
   const vector<ModelInstanceIndex> object_indices =
       AddObjectsToPlant(&plant, &scene_graph, object_models);
   plant.Finalize();
   plant_ = &plant;
+
+  // The printer's desired state [q; v] is the diagram's one input, through the
+  // driver's latency when there is any.
+  const auto& desired_state_port =
+      plant.get_desired_state_input_port(printer_index_);
+  if (options.command_delay > 0.0 || options.command_time_constant > 0.0) {
+    const double delay = std::round(options.command_delay / sim_dt) * sim_dt;
+    command_lag_ =
+        builder.AddSystem<TransportLag>(desired_state_port.size(), sim_dt,
+                                        delay, options.command_time_constant);
+    builder.Connect(command_lag_->get_output_port(), desired_state_port);
+    builder.ExportInput(command_lag_->get_input_port(), "printer_command");
+  } else {
+    builder.ExportInput(desired_state_port, "printer_command");
+  }
 
   const vector<BodyIndex> object_bodies =
       plant.GetBodyIndices(object_indices.at(0));
@@ -142,8 +166,15 @@ void JammingGroundTruthSim::Rollout(const Vector4d& object_quaternion,
                         VectorXd::Zero(plant_->num_velocities()));
 
   const auto& contact_port = plant_->get_contact_results_output_port();
-  const auto& desired_state_port =
-      plant_->get_desired_state_input_port(printer_index_);
+  const auto& command_port = diagram_->get_input_port(0);
+  if (command_lag_ != nullptr) {
+    VectorXd parked = VectorXd::Zero(command_lag_->size());
+    parked.head(3) = start_joints;
+    command_lag_->SetInitialValue(
+        &diagram_->GetMutableSubsystemContext(*command_lag_,
+                                              &simulator.get_mutable_context()),
+        parked);
+  }
 
   // The plan's last knot, held through the settle window, so the object's
   // response to the push finishes inside the measurement rather than being
@@ -201,7 +232,7 @@ void JammingGroundTruthSim::Rollout(const Vector4d& object_quaternion,
     if (step < num_knots - 1) {
       desired_state.tail(3) = (ee_plan[knot] - ee_plan[knot - 1]) / knot_dt;
     }
-    desired_state_port.FixValue(&plant_context, desired_state);
+    command_port.FixValue(&simulator.get_mutable_context(), desired_state);
 
     simulator.AdvanceTo((step + 1) * knot_dt);
 
@@ -240,6 +271,125 @@ void JammingGroundTruthSim::Rollout(const Vector4d& object_quaternion,
   if (final_pose != nullptr) {
     *final_pose = read_pose();
   }
+}
+
+VectorXd JammingGroundTruthSim::CommandAt(const vector<Vector3d>& ee_plan,
+                                          double knot_dt, double t) const {
+  const int num_knots = static_cast<int>(ee_plan.size());
+  const int k = static_cast<int>(std::floor(t / knot_dt + 1e-9));
+  VectorXd command = VectorXd::Zero(6);
+  if (options_.command_period <= 0.0) {
+    // Drive at the next knot for the whole knot, with the plan's speed fed
+    // forward, then hold the last one.
+    command.head(3) = ee_plan[std::min(k + 1, num_knots - 1)];
+    if (k < num_knots - 1) {
+      command.tail(3) = (ee_plan[k + 1] - ee_plan[k]) / knot_dt;
+    }
+  } else if (k >= num_knots - 1) {
+    command.head(3) = ee_plan.back();
+  } else {
+    // The plan's first-order hold and its slope, as the printer's input
+    // samples it.
+    const double alpha = t / knot_dt - k;
+    command.head(3) = ee_plan[k] + alpha * (ee_plan[k + 1] - ee_plan[k]);
+    command.tail(3) = (ee_plan[k + 1] - ee_plan[k]) / knot_dt;
+  }
+  command.head(3) -= ee_to_joint_offset_;
+  return command;
+}
+
+GroundTruthTrace JammingGroundTruthSim::Trace(const Vector4d& object_quaternion,
+                                              const Vector3d& object_position,
+                                              const vector<Vector3d>& ee_plan,
+                                              double knot_dt) const {
+  DRAKE_THROW_UNLESS(!ee_plan.empty());
+  DRAKE_THROW_UNLESS(knot_dt > 0.0);
+
+  Simulator<double> simulator(*diagram_, diagram_->CreateDefaultContext());
+  Context<double>& root_context = simulator.get_mutable_context();
+  Context<double>& plant_context =
+      diagram_->GetMutableSubsystemContext(*plant_, &root_context);
+
+  // At rest:  the printer parked at the plan's first knot, the object where
+  // the caller put it.
+  const Vector3d start_joints = ee_plan.front() - ee_to_joint_offset_;
+  for (int i = 0; i < 3; ++i) {
+    plant_->GetJointByName<PrismaticJoint>(kJointNames[i])
+        .set_translation(&plant_context, start_joints(i));
+  }
+  const Eigen::Quaterniond orientation(
+      object_quaternion(0), object_quaternion(1), object_quaternion(2),
+      object_quaternion(3));
+  const auto& object_body = plant_->get_body(object_body_index_);
+  plant_->SetFreeBodyPose(
+      &plant_context, object_body,
+      drake::math::RigidTransformd(
+          drake::math::RotationMatrixd(orientation.normalized()),
+          object_position));
+  plant_->SetVelocities(&plant_context,
+                        VectorXd::Zero(plant_->num_velocities()));
+  if (command_lag_ != nullptr) {
+    VectorXd parked = VectorXd::Zero(command_lag_->size());
+    parked.head(3) = start_joints;
+    command_lag_->SetInitialValue(
+        &diagram_->GetMutableSubsystemContext(*command_lag_, &root_context),
+        parked);
+  }
+
+  const auto& contact_port = plant_->get_contact_results_output_port();
+  const auto& command_port = diagram_->get_input_port(0);
+  const ModelInstanceIndex object_index = object_body.model_instance();
+  const auto& tip_body = plant_->GetBodyByName(kEEBodyName);
+
+  GroundTruthTrace trace;
+  const auto record = [&]() {
+    VectorXd state(13);
+    state << plant_->GetPositions(plant_context, object_index),
+        plant_->GetVelocities(plant_context, object_index);
+    trace.object_states.push_back(state);
+    trace.max_contact_force =
+        std::max(trace.max_contact_force,
+                 TotalContactForce(
+                     contact_port.Eval<ContactResults<double>>(plant_context)));
+    Vector3d carriage;
+    for (int i = 0; i < 3; ++i) {
+      carriage(i) = plant_->GetJointByName<PrismaticJoint>(kJointNames[i])
+                        .get_translation(plant_context);
+    }
+    const Vector3d bend =
+        plant_->EvalBodyPoseInWorld(plant_context, tip_body).translation() -
+        (carriage + ee_to_joint_offset_);
+    trace.max_finger_deflection =
+        std::max(trace.max_finger_deflection, bend.head<2>().norm());
+  };
+
+  const int num_knots = static_cast<int>(ee_plan.size());
+  const int num_settle_knots = static_cast<int>(
+      std::round(settle_fraction_ * static_cast<double>(num_knots - 1)));
+  const int total_knots = num_knots + num_settle_knots;
+  const double command_period =
+      options_.command_period > 0.0 ? options_.command_period : knot_dt;
+
+  command_port.FixValue(&root_context, CommandAt(ee_plan, knot_dt, 0.0));
+  simulator.Initialize();
+  record();
+  int next_knot = 1;
+  double next_command = command_period;
+  constexpr double kTimeTolerance = 1e-9;
+  while (next_knot < total_knots) {
+    const double knot_time = next_knot * knot_dt;
+    const double t = std::min(knot_time, next_command);
+    simulator.AdvanceTo(t);
+    if (t >= knot_time - kTimeTolerance) {
+      record();
+      ++next_knot;
+    }
+    if (t >= next_command - kTimeTolerance) {
+      command_port.FixValue(&root_context, CommandAt(ee_plan, knot_dt, t));
+      next_command += command_period;
+    }
+  }
+  return trace;
 }
 
 GroundTruthLabel JammingGroundTruthSim::Label(const Vector4d& object_quaternion,
@@ -286,25 +436,41 @@ GroundTruthLabel JammingGroundTruthSim::Label(const Vector4d& object_quaternion,
 }
 
 vector<string> JammingGroundTruthSim::ColumnNames() {
-  return {"sim_object_travel",         "sim_object_rotation",
-          "sim_object_travel_passive", "sim_object_progress",
-          "sim_ee_tracking_error",     "plan_ee_displacement",
-          "sim_max_contact_force",     "jammed",
-          "sim_final_qw",              "sim_final_qx",
-          "sim_final_qy",              "sim_final_qz",
-          "sim_final_x",               "sim_final_y",
+  return {"sim_object_travel",
+          "sim_object_rotation",
+          "sim_object_travel_passive",
+          "sim_object_progress",
+          "sim_ee_tracking_error",
+          "plan_ee_displacement",
+          "sim_max_contact_force",
+          "jammed",
+          "sim_final_qw",
+          "sim_final_qx",
+          "sim_final_qy",
+          "sim_final_qz",
+          "sim_final_x",
+          "sim_final_y",
           "sim_final_z",
-          "sim_p25_qw",                "sim_p25_qx",
-          "sim_p25_qy",                "sim_p25_qz",
-          "sim_p25_x",                 "sim_p25_y",
+          "sim_p25_qw",
+          "sim_p25_qx",
+          "sim_p25_qy",
+          "sim_p25_qz",
+          "sim_p25_x",
+          "sim_p25_y",
           "sim_p25_z",
-          "sim_p50_qw",                "sim_p50_qx",
-          "sim_p50_qy",                "sim_p50_qz",
-          "sim_p50_x",                 "sim_p50_y",
+          "sim_p50_qw",
+          "sim_p50_qx",
+          "sim_p50_qy",
+          "sim_p50_qz",
+          "sim_p50_x",
+          "sim_p50_y",
           "sim_p50_z",
-          "sim_endplan_qw",            "sim_endplan_qx",
-          "sim_endplan_qy",            "sim_endplan_qz",
-          "sim_endplan_x",             "sim_endplan_y",
+          "sim_endplan_qw",
+          "sim_endplan_qx",
+          "sim_endplan_qy",
+          "sim_endplan_qz",
+          "sim_endplan_x",
+          "sim_endplan_y",
           "sim_endplan_z"};
 }
 
@@ -313,9 +479,9 @@ VectorXd JammingGroundTruthSim::AsRow(const GroundTruthLabel& label) {
   row << label.sim_object_travel, label.sim_object_rotation,
       label.sim_object_travel_passive, label.sim_object_progress,
       label.sim_ee_tracking_error, label.plan_ee_displacement,
-      label.sim_max_contact_force, label.jammed,
-      label.sim_object_final_pose, label.sim_object_plan_poses.col(0),
-      label.sim_object_plan_poses.col(1), label.sim_object_plan_poses.col(2);
+      label.sim_max_contact_force, label.jammed, label.sim_object_final_pose,
+      label.sim_object_plan_poses.col(0), label.sim_object_plan_poses.col(1),
+      label.sim_object_plan_poses.col(2);
   DRAKE_THROW_UNLESS(row.size() == static_cast<int>(ColumnNames().size()));
   return row;
 }

@@ -309,6 +309,7 @@ cc_library(
     hdrs = ["jamming_ground_truth.h"],
     deps = [
         ":sampling_c3_utils",
+        "//systems/primitives:transport_lag",
         "@drake//:drake_shared_library",
     ],
 )

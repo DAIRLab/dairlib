@@ -7,6 +7,7 @@
 #include <iostream>
 #include <limits>
 #include <numeric>
+#include <set>
 #include <thread>
 #include <unordered_set>
 #include <utility>
@@ -788,7 +789,7 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
     C3CostComputationType cost_type, const LCS& lcs_for_cost,
     const C3::CostMatrices& cost_mats, const std::shared_ptr<C3>& c3_object,
     const bool& force_tracking_disabled, int num_objects,
-    const bool& print_cost_breakdown) const {
+    const bool& print_cost_breakdown, vector<VectorXd>* tracked_plan) const {
   // Extract needed information from the C3 object.
   const LCS lcs_for_plan = c3_object->GetLCS();
   vector<VectorXd> x_desired = c3_object->GetDesiredState();
@@ -827,6 +828,7 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
   // Initialize the cost-driving trajectories to match the C3 plan.
   vector<VectorXd> XX = x_plan;
   vector<VectorXd> UU = u_plan;
+  if (tracked_plan != nullptr) *tracked_plan = x_plan;
 
   // Declare the matrices to use for cost computation.
   vector<MatrixXd> Q_cost = cost_mats.Q;
@@ -903,6 +905,7 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
     vector<VectorXd> UU_retimed = UU;
     RetimeAndResampleC3PlanForCost(lcs_for_plan.dt(), &x_plan_retimed,
                                    &UU_retimed);
+    if (tracked_plan != nullptr) *tracked_plan = x_plan_retimed;
 
     auto [XX_sim, UU_sim] = TrajectoryEvaluator::SimulatePDControlWithLCS(
         x_plan_retimed, UU_retimed, Kp_for_cost_, Kd_for_cost_, lcs_for_plan,
@@ -931,34 +934,7 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
 
   // Score each knot against the goal re-twisted to that knot, so roll about a
   // tracked axis is free.  See cost_ignores_tracked_axis_twist.
-  if (sampling_c3_options_.cost_ignores_tracked_axis_twist.value_or(false)) {
-    for (int obj_idx = 0; obj_idx < num_objects; obj_idx++) {
-      if (!goal_params_.HasTrackedAxis(obj_idx)) continue;
-      const int q_index = 3 + 7 * obj_idx;
-      // Local to this sample:  the antipodal hysteresis only has to be
-      // consistent along one rollout.
-      Eigen::Vector3d hysteresis_axis_state = Eigen::Vector3d::Zero();
-      for (int i = 0; i < N_ + 1; i++) {
-        const Quaterniond knot_quat(XX[i](q_index), XX[i](q_index + 1),
-                                    XX[i](q_index + 2), XX[i](q_index + 3));
-        const Quaterniond goal_quat(
-            x_desired[i](q_index), x_desired[i](q_index + 1),
-            x_desired[i](q_index + 2), x_desired[i](q_index + 3));
-        const Quaterniond knot_goal = ComputeAxisAlignedGoalQuaternion(
-            knot_quat, goal_quat,
-            goal_params_.tracked_orientation_axis.at(obj_idx),
-            goal_params_.angle_hysteresis, &hysteresis_axis_state);
-        Eigen::Vector4d knot_goal_wxyz(knot_goal.w(), knot_goal.x(),
-                                       knot_goal.y(), knot_goal.z());
-        // Same hemisphere as the knot, so the quaternion difference measures
-        // the rotation rather than the double cover.
-        if (knot_goal_wxyz.dot(XX[i].segment(q_index, 4)) < 0) {
-          knot_goal_wxyz *= -1;
-        }
-        x_desired[i].segment(q_index, 4) = knot_goal_wxyz;
-      }
-    }
-  }
+  RetwistGoalsToKnots(XX, num_objects, &x_desired);
 
   // Compute the cost.
   double cost = TrajectoryEvaluator::ComputeQuadraticTrajectoryCost(
@@ -1068,6 +1044,61 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
 
   std::pair<double, vector<VectorXd>> ret(cost, XX);
   return ret;
+}
+
+void SamplingC3Controller::RetwistGoalsToKnots(
+    const vector<VectorXd>& XX, int num_objects,
+    vector<VectorXd>* x_desired) const {
+  if (!sampling_c3_options_.cost_ignores_tracked_axis_twist.value_or(false)) {
+    return;
+  }
+  for (int obj_idx = 0; obj_idx < num_objects; obj_idx++) {
+    if (!goal_params_.HasTrackedAxis(obj_idx)) continue;
+    const int q_index = 3 + 7 * obj_idx;
+    // Local to this sample:  the antipodal hysteresis only has to be consistent
+    // along one rollout.
+    Eigen::Vector3d hysteresis_axis_state = Eigen::Vector3d::Zero();
+    for (int i = 0; i < static_cast<int>(XX.size()); i++) {
+      const Quaterniond knot_quat(XX[i](q_index), XX[i](q_index + 1),
+                                  XX[i](q_index + 2), XX[i](q_index + 3));
+      const Quaterniond goal_quat(
+          (*x_desired)[i](q_index), (*x_desired)[i](q_index + 1),
+          (*x_desired)[i](q_index + 2), (*x_desired)[i](q_index + 3));
+      const Quaterniond knot_goal = ComputeAxisAlignedGoalQuaternion(
+          knot_quat, goal_quat,
+          goal_params_.tracked_orientation_axis.at(obj_idx),
+          goal_params_.angle_hysteresis, &hysteresis_axis_state);
+      Eigen::Vector4d knot_goal_wxyz(knot_goal.w(), knot_goal.x(),
+                                     knot_goal.y(), knot_goal.z());
+      // Same hemisphere as the knot, so the quaternion difference measures the
+      // rotation rather than the double cover.
+      if (knot_goal_wxyz.dot(XX[i].segment(q_index, 4)) < 0) {
+        knot_goal_wxyz *= -1;
+      }
+      (*x_desired)[i].segment(q_index, 4) = knot_goal_wxyz;
+    }
+  }
+}
+
+double SamplingC3Controller::ObjectOnlyTrajectoryCostForTesting(
+    const vector<VectorXd>& XX, const VectorXd& x_desired) const {
+  const int num_objects = controller_params_.num_objects;
+  const int ee_vel_index = 3 + 7 * num_objects;
+  vector<MatrixXd> Q_cost;
+  for (int i = 0; i < static_cast<int>(XX.size()); i++) {
+    MatrixXd Q_i = Q_.at(std::min<int>(i, Q_.size() - 1));
+    Q_i.block(0, 0, 3, 3) *= 0.0;
+    Q_i.block(ee_vel_index, ee_vel_index, 3, 3) *= 0.0;
+    Q_cost.push_back(Q_i);
+  }
+  vector<VectorXd> x_desired_knots(XX.size(), x_desired);
+  RetwistGoalsToKnots(XX, num_objects, &x_desired_knots);
+  double cost = 0.0;
+  for (int i = 0; i < static_cast<int>(XX.size()); i++) {
+    const VectorXd error = XX[i] - x_desired_knots[i];
+    cost += error.transpose() * Q_cost[i] * error;
+  }
+  return cost;
 }
 
 drake::systems::EventStatus SamplingC3Controller::ComputePlan(
@@ -1444,6 +1475,8 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   double repos_target_raw_cost = std::numeric_limits<double>::infinity();
   all_sample_dynamically_feasible_plans_ = vector<vector<VectorXd>>(
       num_total_samples, vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_)));
+  all_sample_tracked_plans_ = vector<vector<VectorXd>>(
+      num_total_samples, vector<VectorXd>(N_ + 1, VectorXd::Zero(n_x_)));
   // NaN-filled, and left that way when no labeller is configured, so a
   // consumer can tell "not labelled" from "labelled not jammed".
   all_sample_jam_labels_ = vector<double>(num_total_samples, kUnlabelled);
@@ -1482,7 +1515,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
     std::pair<double, vector<VectorXd>> cost_trajectory_pair = CalcCost(
         cost_type, lcs_candidates_for_cost.at(i), c3_costmat, test_c3_object,
         force_tracking_disabled, controller_params_.num_objects,
-        print_cost_breakdown || verbose_);
+        print_cost_breakdown || verbose_, &all_sample_tracked_plans_.at(i));
 
     double c3_cost = cost_trajectory_pair.first;
     all_sample_dynamically_feasible_plans_.at(i) = cost_trajectory_pair.second;
@@ -2877,6 +2910,14 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
     LCSFactory lcs_factory_sample(plant_, *context_, plant_ad_, *context_ad_,
                                   resolved_contact_pairs, lcs_factory_options);
     LCS lcs_object_sample = lcs_factory_sample.GenerateLCS();
+    ApplyLCSContactFixes(
+        resolved_contact_pairs, sampling_c3_options_.resolve_contacts_to,
+        sampling_c3_options_.num_friction_directions_per_contact.value(),
+        active_inactive_contact_groups_,
+        sampling_c3_options_.inactive_contact_min_gap.value_or(
+            -std::numeric_limits<double>::infinity()),
+        sampling_c3_options_.planning_lcs_penetration_floor.value_or(false),
+        &lcs_object_sample);
     lcs_candidates.push_back(lcs_object_sample);
 
     // Capture the EE<->object contact block for the jam watchdog off the
@@ -2909,11 +2950,49 @@ SamplingC3Controller::CreateLCSObjectsForSamples(
         .mu_per_contact = sampling_c3_options_.mu_for_cost,
         .planar_normal_direction =
             sampling_c3_options_.planar_normal_direction};
+    // The cost LCS may price a lighter object than C3 plans with:  swap its
+    // inertia into the plant contexts for this one build.
+    std::optional<std::pair<drake::multibody::SpatialInertia<double>,
+                            drake::multibody::SpatialInertia<AutoDiffXd>>>
+        planning_inertia;
+    if (sampling_c3_options_.cost_object_mass.has_value()) {
+      DRAKE_DEMAND(controller_params_.num_objects == 1);
+      const auto& body =
+          plant_.GetBodyByName(controller_params_.base_names.at(0));
+      const auto& body_ad =
+          plant_ad_.GetBodyByName(controller_params_.base_names.at(0));
+      planning_inertia.emplace(
+          body.CalcSpatialInertiaInBodyFrame(*context_),
+          body_ad.CalcSpatialInertiaInBodyFrame(*context_ad_));
+      const std::vector<double>& I =
+          sampling_c3_options_.cost_object_rotational_inertia.value();
+      const auto cost_inertia =
+          drake::multibody::SpatialInertia<double>::MakeFromCentralInertia(
+              sampling_c3_options_.cost_object_mass.value(),
+              planning_inertia->first.get_com(),
+              drake::multibody::RotationalInertia<double>(I[0], I[1], I[2]));
+      body.SetSpatialInertiaInBodyFrame(context_, cost_inertia);
+      body_ad.SetSpatialInertiaInBodyFrame(context_ad_,
+                                           cost_inertia.cast<AutoDiffXd>());
+    }
     LCS lcs_object_sample_for_cost_simulation =
         LCSFactory(plant_, *context_, plant_ad_, *context_ad_,
                    resolved_contact_pairs_for_cost_simulation,
                    lcs_factory_options_for_cost)
             .GenerateLCS();
+    if (planning_inertia.has_value()) {
+      const std::string& name = controller_params_.base_names.at(0);
+      plant_.GetBodyByName(name).SetSpatialInertiaInBodyFrame(
+          context_, planning_inertia->first);
+      plant_ad_.GetBodyByName(name).SetSpatialInertiaInBodyFrame(
+          context_ad_, planning_inertia->second);
+    }
+    ApplyLCSContactFixes(
+        resolved_contact_pairs_for_cost_simulation,
+        sampling_c3_options_.resolve_contacts_to_for_cost,
+        sampling_c3_options_.num_friction_directions_per_contact_for_cost, {},
+        0.0, sampling_c3_options_.cost_lcs_penetration_floor.value_or(false),
+        &lcs_object_sample_for_cost_simulation);
     lcs_candidates_for_cost.push_back(lcs_object_sample_for_cost_simulation);
   }
 
@@ -3966,6 +4045,54 @@ bool SamplingC3Controller::IsFinalTargetTerminalGoal(
   return true;
 }
 
+void SamplingC3Controller::ApplyLCSContactFixes(
+    const vector<SortedPair<GeometryId>>& resolved_contact_pairs,
+    const vector<int>& budget, const vector<int>& friction_dirs,
+    const vector<int>& inactive_groups, double min_gap, bool floor_penetration,
+    LCS* lcs) const {
+  if (inactive_groups.empty() && !floor_penetration) return;
+  DRAKE_DEMAND(resolved_contact_pairs.size() == friction_dirs.size());
+
+  const auto& query_object =
+      plant_.get_geometry_query_input_port()
+          .template Eval<drake::geometry::QueryObject<double>>(*context_);
+
+  // Contacts resolve in group order, budget[g] at a time; under Anitescu each
+  // owns 2 * friction_dirs[j] consecutive lambda rows, whose c entries all
+  // carry its phi / dt.
+  std::set<int> inactive_rows;
+  vector<VectorXd> c = lcs->c();
+  int contact = 0;
+  int first_row = 0;
+  for (int group = 0; group < static_cast<int>(budget.size()); group++) {
+    const bool group_inactive =
+        std::find(inactive_groups.begin(), inactive_groups.end(), group) !=
+        inactive_groups.end();
+    for (int k = 0; k < budget[group]; k++, contact++) {
+      const auto& pair = resolved_contact_pairs.at(contact);
+      const double phi = query_object
+                             .ComputeSignedDistancePairClosestPoints(
+                                 pair.first(), pair.second())
+                             .distance;
+      const int num_rows = 2 * friction_dirs.at(contact);
+      if (group_inactive && phi > min_gap) {
+        for (int row = first_row; row < first_row + num_rows; row++) {
+          inactive_rows.insert(row);
+        }
+      } else if (floor_penetration && phi < 0) {
+        for (auto& c_k : c) {
+          c_k.segment(first_row, num_rows).array() -= phi / lcs->dt();
+        }
+      }
+      first_row += num_rows;
+    }
+  }
+  if (floor_penetration) lcs->set_c(c);
+  if (!inactive_rows.empty()) {
+    *lcs = LCSFactory::FixSomeModesKeepingSize(*lcs, {}, inactive_rows);
+  }
+}
+
 void SamplingC3Controller::RefreshPerGoalSettings(int goal_step) const {
   // Before the first goal change is detected, detected_goal_changes_ is -1;
   // treat that as step 0, matching the clamps below.
@@ -3991,6 +4118,15 @@ void SamplingC3Controller::RefreshPerGoalSettings(int goal_step) const {
     }
   }
 
+  active_inactive_contact_groups_.clear();
+  const auto& inactive_sequence =
+      sampling_c3_options_.inactive_contact_groups_sequence;
+  if (inactive_sequence.has_value() && !inactive_sequence->empty()) {
+    int i = std::clamp(goal_step, 0,
+                       static_cast<int>(inactive_sequence->size()) - 1);
+    active_inactive_contact_groups_ = inactive_sequence->at(i);
+  }
+
   std::cout << "RefreshPerGoalSettings: goal step " << goal_step
             << " -> cost_switching_threshold_distance = "
             << active_cost_switching_threshold_distance_
@@ -3999,7 +4135,8 @@ void SamplingC3Controller::RefreshPerGoalSettings(int goal_step) const {
             << ", per-goal q_vector_position: "
             << (sampling_c3_options_.has_per_goal_position_cost() ? "yes"
                                                                   : "no")
-            << std::endl;
+            << ", inactive contact groups: "
+            << active_inactive_contact_groups_.size() << std::endl;
 }
 
 // Reset the metrics used to track progress in C3 mode.

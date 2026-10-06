@@ -54,6 +54,38 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
   /// is in force.
   std::optional<double> contact_dedup_witness_radius;
   std::vector<int> resolve_as_planar_contacts_list;
+  /// Optional per-goal-step list of contact groups (indices into each
+  /// resolve_contacts_to_lists entry) whose modes are fixed inactive in the
+  /// planning LCS:  their lambdas are held at zero and do not act on the
+  /// dynamics (c3's LCSFactory::FixSomeModesKeepingSize), so C3 cannot plan
+  /// with forces from contacts the task no longer uses.  The cost LCS is left
+  /// alone.  When set, its length must equal the number of goal-sequence
+  /// steps; an empty entry fixes nothing for that goal.  Anitescu only.  Unset
+  /// => no modes are fixed.
+  std::optional<std::vector<std::vector<int>>>
+      inactive_contact_groups_sequence;
+  /// Optional signed distance [m] a contact in an inactive group must exceed
+  /// at the linearization state before its modes are fixed, so a contact the
+  /// object still rests on keeps its forces.  Unset => every contact in the
+  /// group is fixed.
+  std::optional<double> inactive_contact_min_gap;
+  /// Optional.  When true, the planning LCS sees no penetration:  each
+  /// contact's signed distance in the Anitescu phi/dt term is floored at zero,
+  /// so a pose estimate that sinks the object into a surface does not make C3
+  /// plan the push-out velocity as free motion.  Anitescu only.  Absent =
+  /// false.
+  std::optional<bool> planning_lcs_penetration_floor;
+  /// The same floor for the cost LCS, whose rollout prices every sample.
+  /// Absent = false.
+  std::optional<bool> cost_lcs_penetration_floor;
+  /// Optional object mass [kg] and central rotational inertia (body-frame
+  /// diagonal, [kg m^2]) for the cost LCS only.  Planning keeps the object
+  /// model's own, so C3 still plans with the (deliberately heavy) planning
+  /// object while each sample's cost rollout moves an object as light as the
+  /// real one.  Single-object demos; the center of mass is the model's.  Unset
+  /// => the cost LCS uses the object model as is.
+  std::optional<double> cost_object_mass;
+  std::optional<std::vector<double>> cost_object_rotational_inertia;
   std::vector<int> resolve_contacts_to;
   std::vector<int> resolve_contacts_to_for_cost;
   /// Resolved from the list above by num_contacts_index(_for_cost).  Empty
@@ -233,6 +265,12 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     a->Visit(DRAKE_NVP(max_contacts_per_object_geometry_lists));
     a->Visit(DRAKE_NVP(contact_dedup_witness_radius));
     a->Visit(DRAKE_NVP(resolve_as_planar_contacts_list));
+    a->Visit(DRAKE_NVP(inactive_contact_groups_sequence));
+    a->Visit(DRAKE_NVP(inactive_contact_min_gap));
+    a->Visit(DRAKE_NVP(planning_lcs_penetration_floor));
+    a->Visit(DRAKE_NVP(cost_lcs_penetration_floor));
+    a->Visit(DRAKE_NVP(cost_object_mass));
+    a->Visit(DRAKE_NVP(cost_object_rotational_inertia));
     a->Visit(DRAKE_NVP(num_contacts_index));
     a->Visit(DRAKE_NVP(num_contacts_index_for_cost));
 
@@ -419,6 +457,38 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     SetCommonOptions(&c3_options_position, &lcs_factory_options_position);
     SetPositionTrackingOptions(&c3_options_position,
                                &lcs_factory_options_position);
+
+    if (inactive_contact_groups_sequence.has_value()) {
+      for (const auto& groups : inactive_contact_groups_sequence.value()) {
+        for (int group : groups) {
+          if (group < 0 ||
+              group >= static_cast<int>(resolve_contacts_to.size())) {
+            throw std::runtime_error(
+                "inactive_contact_groups_sequence names contact group " +
+                std::to_string(group) + ", but there are only " +
+                std::to_string(resolve_contacts_to.size()) + ".");
+          }
+        }
+      }
+    }
+    if (cost_object_mass.has_value() !=
+        cost_object_rotational_inertia.has_value()) {
+      throw std::runtime_error(
+          "cost_object_mass and cost_object_rotational_inertia go together.");
+    }
+    if (cost_object_rotational_inertia.has_value() &&
+        cost_object_rotational_inertia->size() != 3) {
+      throw std::runtime_error(
+          "cost_object_rotational_inertia is the 3-entry diagonal.");
+    }
+    if ((inactive_contact_groups_sequence.has_value() ||
+         planning_lcs_penetration_floor.value_or(false) ||
+         cost_lcs_penetration_floor.value_or(false)) &&
+        contact_model != "anitescu") {
+      throw std::runtime_error(
+          "inactive_contact_groups_sequence and the *_lcs_penetration_floor "
+          "keys need the anitescu contact model.");
+    }
 
     // One position-tracking option set per goal-sequence step, for the goals
     // that override q_vector_position.  Left empty when no override is

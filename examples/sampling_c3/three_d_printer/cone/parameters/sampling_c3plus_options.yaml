@@ -112,6 +112,16 @@ contact_dedup_witness_radius: 0.005
 #   1 → treat as planar contact (reduce to 2 friction directions per contact)
 resolve_as_planar_contacts_list: [0, 0, 0, 0]
 
+# Roadmap B, track A:  from the mid-slope goal on, fix the planning LCS's
+# object-ground modes inactive for any contact more than 3 mm away, so C3 can no
+# longer push the cone with forces from a plate it is not resting on.  Groups
+# index resolve_contacts_to_lists' entries (2 = object-ground).  In runs started
+# at the mid-slope goal this seated the cone 5/8 times against 0/8 without
+# (10_06_26/000016-31), mostly by ending the jams and violent pushes that slid,
+# flipped or turned the cone on the upper slope.
+inactive_contact_groups_sequence: [[], [], [], [2], [2]]
+inactive_contact_min_gap: 0.003
+
 # Index into this list to choose number of contacts for C3 solve and cost.
 num_contacts_index: 2
 num_contacts_index_for_cost: 6

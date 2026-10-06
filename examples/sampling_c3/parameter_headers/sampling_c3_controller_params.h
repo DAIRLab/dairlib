@@ -152,5 +152,9 @@ struct SamplingC3ControllerParams {
       check("q_vector_position_sequence",
             sampling_c3_options.q_vector_position_sequence->size());
     }
+    if (sampling_c3_options.inactive_contact_groups_sequence.has_value()) {
+      check("inactive_contact_groups_sequence",
+            sampling_c3_options.inactive_contact_groups_sequence->size());
+    }
   }
 };

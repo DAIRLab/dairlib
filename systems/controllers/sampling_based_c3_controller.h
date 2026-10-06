@@ -399,6 +399,20 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   const std::vector<Eigen::MatrixXd>& state_cost_weights_for_testing() const {
     return Q_;
   }
+  /// The plan each candidate's cost rollout tracked (see CalcCost), one LCS
+  /// state per knot, so an offline tool can replay the same push elsewhere.
+  const std::vector<std::vector<Eigen::VectorXd>>&
+  sample_tracked_plans_for_testing() const {
+    return all_sample_tracked_plans_;
+  }
+  /// What the object-only cost types would charge for @p XX, a trajectory of
+  /// LCS states at the planning knots (N + 1 of them, or more:  knots past N
+  /// reuse the last knot's weights), against @p x_desired, with the weights of
+  /// the last ComputePlan.  Scored as CalcCost scores a rollout:  EE and input
+  /// terms zeroed, goals re-twisted per knot.  For offline tools.
+  double ObjectOnlyTrajectoryCostForTesting(
+      const std::vector<Eigen::VectorXd>& XX,
+      const Eigen::VectorXd& x_desired) const;
   bool is_doing_c3_for_testing() const { return is_doing_c3_; }
   /// The current-location plan's final-QP forces.  With end_on_qp_step false
   /// these, not the projected forces the solution ports publish, are what the
@@ -408,12 +422,23 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   }
 
  private:
+  /// @p tracked_plan, if given, receives the LCS-state plan the cost's
+  /// impedance rollout was asked to track:  the C3 plan, retimed for
+  /// kSimImpedanceRetimedObjectCostOnly.
   std::pair<double, std::vector<Eigen::VectorXd>> CalcCost(
       C3CostComputationType cost_type, const c3::LCS& lcs_for_cost,
       const c3::C3::CostMatrices& cost_mats,
       const std::shared_ptr<c3::C3>& c3_object,
       const bool& force_tracking_disabled, int num_objects,
-      const bool& print_cost_breakdown) const;
+      const bool& print_cost_breakdown,
+      std::vector<Eigen::VectorXd>* tracked_plan = nullptr) const;
+
+  /// Re-twists each knot's goal orientation onto that knot, so roll about a
+  /// tracked axis is free (cost_ignores_tracked_axis_twist).  A no-op when
+  /// that option is off.  Shared by CalcCost and the offline scorer below.
+  void RetwistGoalsToKnots(const std::vector<Eigen::VectorXd>& XX,
+                           int num_objects,
+                           std::vector<Eigen::VectorXd>* x_desired) const;
   /// Function for computing one control loop
   drake::systems::EventStatus ComputePlan(
       const drake::systems::Context<double>& context,
@@ -548,6 +573,20 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const std::shared_ptr<c3::C3>& curr_location_plan) const;
 
   void ResetSampleBuffers() const;
+
+  /// Contact fixes on an Anitescu LCS, in place:  fixes the modes of the
+  /// contacts in @p inactive_groups at zero (only those farther than
+  /// @p min_gap; see inactive_contact_groups_sequence), and with
+  /// @p floor_penetration floors each other contact's signed distance at zero
+  /// in the phi/dt term.  @p resolved_contact_pairs are the pairs @p lcs was
+  /// built from, resolved to @p budget per group with @p friction_dirs per
+  /// contact, and plant_'s context_ must hold the state it was linearized at.
+  void ApplyLCSContactFixes(
+      const std::vector<drake::SortedPair<drake::geometry::GeometryId>>&
+          resolved_contact_pairs,
+      const std::vector<int>& budget, const std::vector<int>& friction_dirs,
+      const std::vector<int>& inactive_groups, double min_gap,
+      bool floor_penetration, c3::LCS* lcs) const;
 
   /// Refresh the per-goal-step "active" settings (cost switching threshold and
   /// keep-out geometry) for the given 0-based goal-sequence step.  The step is
@@ -917,6 +956,7 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable std::vector<Eigen::Vector3d> all_sample_locations_;
   mutable std::vector<std::vector<Eigen::VectorXd>>
       all_sample_dynamically_feasible_plans_;
+  mutable std::vector<std::vector<Eigen::VectorXd>> all_sample_tracked_plans_;
   mutable Eigen::Vector3d prev_repositioning_target_ = Eigen::Vector3d::Zero();
   mutable std::vector<double> all_sample_costs_;
 
@@ -988,6 +1028,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // The goal step the settings above were selected for, and which
   // SamplingC3Options::GetC3Options() indexes for a per-goal q_vector_position.
   mutable int active_goal_step_ = 0;
+  /// The contact groups whose planning-LCS modes are fixed inactive for the
+  /// active goal (inactive_contact_groups_sequence); empty fixes nothing.
+  mutable std::vector<int> active_inactive_contact_groups_;
 
   // To detect if the final goal has been updated.
   mutable Eigen::VectorXd x_final_target_;

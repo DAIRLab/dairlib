@@ -168,6 +168,10 @@ jam_guard:
   # The anchor re-anchors once the reported EE is out of the object on its
   # own side, or load_clear_gap clear of it on any side.  Omit all three keys to
   # turn the tier off.
+  # Don't lower load_clear_gap to cut false trips.  At 0.002 a pass-through
+  # leaving the cone's far side at +2.4 mm re-anchored with the finger bent
+  # 31 mm, and the release flipped the cone (issue #14, 10_07_26/000007).
+  # Far-side exits and false loads both read +1 to +5 mm.
   load_trip: 0.020
   load_trip_hold_seconds: 0.0
   load_clear_gap: 0.005

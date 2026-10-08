@@ -25,6 +25,18 @@ FINGER_DEFLECTION_SIMULATION and OBJECT_STATE_SIMULATION_CLEAN:
 Hardware logs only get the list of load-tier trip times, to check against the
 known launch events.
 
+Variants: --load_trip, --hold and --clear_gap set the rebuilt tier's keys;
+--max_arm_gap lets it arm only while the reported EE's gap reads below that.
+--rebuild scores the rebuilt tier on logs that logged a live one too, and lists
+each live load-tier trip as kept (the variant arms between 0.15 s before it and
+the end of the 0.35 s overshoot after it) or DROPPED, with the true bend over
+that span (under 8 mm counts as no load).  The rebuild's analytic cone is a few
+mm larger than the controller's mesh, so compare a variant with --rebuild at
+the default keys rather than with the live trips, and don't trust it to tell
+gaps a few mm apart: offline, --clear_gap 0.002 kept every release, but in
+closed loop it missed a pass-through that left the far side at +2.4 mm by the
+mesh (issue #14, 10_07_26/000007).
+
 The rebuild samples the reported EE and the object estimate --loop_offset
 before each SAMPLING_C3_DEBUG message, which is roughly when the controller
 read them; at 0.09 s it matched the logged reported-EE gap to 0.5 mm (median)
@@ -68,6 +80,9 @@ EE_RADIUS = 0.010
 PRINTER_Z_TO_EE_CENTRE = 0.110864
 # FingerLoadEstimator::kMinHorizontalNormal.
 MIN_HORIZONTAL_NORMAL = 0.3
+# --rebuild keeps a live trip if the variant arms within this long after it:
+# the overshoot the printer's command latency carries on regardless [s].
+KEPT_WINDOW = 0.35
 
 
 def find_log(path):
@@ -208,6 +223,7 @@ def axis_z(quat_wxyz):
 
 
 def rebuild_load(loops, ee, obj, clear_gap, loop_offset):
+  """The rebuilt load per loop, and the reported EE's gap it was read at."""
   t = loops[:, 0] - loop_offset
   latched = loops[:, 1] > 0
   ee_at = np.stack([np.interp(t, ee[:, 0], ee[:, i]) for i in (1, 2, 3)], 1)
@@ -215,13 +231,15 @@ def rebuild_load(loops, ee, obj, clear_gap, loop_offset):
                    len(obj) - 1)
   estimator = FingerLoadEstimator(clear_gap)
   load = np.full(len(t), np.nan)
+  gap = np.full(len(t), np.nan)
   for i in range(len(t)):
     o = obj[latest[i]]
     rot, pos = rotation(o[1:5]), o[5:8]
     distance, normal_o = cone_query(rot.T @ (ee_at[i] - pos))
-    load[i] = estimator.update(ee_at[i], distance - EE_RADIUS, rot @ normal_o,
-                               rot, pos, latched[i])
-  return load
+    gap[i] = distance - EE_RADIUS
+    load[i] = estimator.update(ee_at[i], gap[i], rot @ normal_o, rot, pos,
+                               latched[i])
+  return load, gap
 
 
 def first_crossings(t, armed, hold):
@@ -287,24 +305,36 @@ def tips(clean):
   return out
 
 
-def score(path, load_trip, hold, clear_gap, loop_offset, peak_min):
+def score(path, load_trip, hold, clear_gap, loop_offset, peak_min,
+          max_arm_gap=np.inf, rebuild=False):
   loops, ee, obj, clean, defl = read_log(path)
   t = loops[:, 0]
   latched = loops[:, 1] > 0
-  rebuilt = rebuild_load(loops, ee, obj, clear_gap, loop_offset)
+  rebuilt, gap = rebuild_load(loops, ee, obj, clear_gap, loop_offset)
+  armed = (rebuilt >= load_trip) & (gap < max_arm_gap)
   logged = loops[:, 3]
   has_logged = np.isfinite(logged).any()
+  logged_trips = (
+      [i for i in np.flatnonzero(latched[1:] & ~latched[:-1]) + 1
+       if loops[i, 2] > 0] if has_logged else [])
 
   # A live tier's own trips are the rising edges it set; otherwise, what the
   # rebuilt estimate would have set on loops the logged guard left unlatched.
-  if has_logged:
-    rising = np.flatnonzero(latched[1:] & ~latched[:-1]) + 1
-    fired = [i for i in rising if loops[i, 2] > 0]
+  # --rebuild scores the rebuilt estimate everywhere and says which of a live
+  # tier's trips it still makes: those it arms for from just before the trip
+  # to the end of the overshoot that follows it.  Past the trip the logged
+  # latch freezes the anchor, as the variant's own trip would.
+  if has_logged and not rebuild:
+    fired = logged_trips
     source = 'logged'
   else:
-    fired = first_crossings(t, (rebuilt >= load_trip) & ~latched, hold)
+    fired = first_crossings(t, armed & ~latched, hold)
     source = 'rebuilt'
   result = dict(source=source, fired=fired, t=t)
+  if rebuild and logged_trips:
+    result['kept'] = {
+        i: bool(armed[(t >= t[i] - 0.15) & (t <= t[i] + KEPT_WINDOW)].any())
+        for i in logged_trips}
   if has_logged:
     both = np.isfinite(logged) & np.isfinite(rebuilt)
     result['agreement_mm'] = 1e3 * np.abs(logged[both] - rebuilt[both])
@@ -328,6 +358,12 @@ def score(path, load_trip, hold, clear_gap, loop_offset, peak_min):
       continue
     window = (bend_t >= t[i] - 0.3) & (bend_t <= t[i] + 1.0)
     (no_load if bend[window].max() < 0.008 else loaded).append(i)
+  if 'kept' in result:
+    # Ended before the unload leg lands, which can bend a free finger.
+    result['logged_trips'] = [
+        (i, result['kept'][i],
+         bend[(bend_t >= t[i] - 0.3) & (bend_t <= t[i] + KEPT_WINDOW)].max())
+        for i in logged_trips]
   tip_rows = []
   for tip in tips(clean):
     before = [i for i in fired if tip - 3.0 <= t[i] <= tip]
@@ -350,13 +386,22 @@ def score(path, load_trip, hold, clear_gap, loop_offset, peak_min):
                    'the reported EE and object pose [s].')
 @click.option('--peak_mm', default=15.0, show_default=True,
               help='Smallest finger bend counted as a release [mm].')
-def main(logs, load_trip, hold, clear_gap, loop_offset, peak_mm):
+@click.option('--max_arm_gap', default=np.inf, show_default=True,
+              help='The rebuilt tier arms only while the reported EE\'s gap '
+                   'to the cone is below this [m].')
+@click.option('--rebuild', is_flag=True,
+              help='Score the rebuilt tier on logs that logged a live one too, '
+                   'and say which live trips it keeps.')
+def main(logs, load_trip, hold, clear_gap, loop_offset, peak_mm, max_arm_gap,
+         rebuild):
   totals = dict(releases=0, missed=0, caught=0, no_load=0, loaded=0, tips=0,
                 tips_fired=0)
+  live = dict(no_load=[0, 0], loaded=[0, 0])  # [kept, dropped]
   bends, leads = [], []
   for folder in logs:
     path = find_log(folder)
-    r = score(path, load_trip, hold, clear_gap, loop_offset, peak_mm / 1e3)
+    r = score(path, load_trip, hold, clear_gap, loop_offset, peak_mm / 1e3,
+              max_arm_gap, rebuild)
     name = op.basename(path)
     t = r['t']
     print(f'== {name}  ({r["source"]} load tier, {len(r["fired"])} trips)')
@@ -364,6 +409,11 @@ def main(logs, load_trip, hold, clear_gap, loop_offset, peak_mm):
       a = r['agreement_mm']
       print(f'   rebuilt vs logged load: |diff| p50 {np.median(a):.1f} mm, '
             f'p90 {np.percentile(a, 90):.1f} mm')
+    for i, kept, peak in r.get('logged_trips', []):
+      kind = 'no_load' if peak < 0.008 else 'loaded'
+      live[kind][0 if kept else 1] += 1
+      print(f'   live trip {t[i]:7.2f} s  bend {1e3 * peak:4.1f} mm  '
+            f'{"kept" if kept else "DROPPED"}')
     if 'events' not in r:
       print('   load-tier trips at ' +
             ', '.join(f'{t[i]:.1f}' for i in r['fired']) + ' s')
@@ -399,6 +449,11 @@ def main(logs, load_trip, hold, clear_gap, loop_offset, peak_mm):
           f' s); {totals["no_load"]} no-load trips, {totals["loaded"]} other '
           f'loaded trips; fired before {totals["tips_fired"]} of '
           f'{totals["tips"]} tips.')
+  if sum(map(sum, live.values())):
+    print(f'LIVE TRIPS (bend under 8 mm from 0.3 s before to {KEPT_WINDOW} s '
+          f'after = no load): no-load {live["no_load"][0]} kept, '
+          f'{live["no_load"][1]} dropped; loaded {live["loaded"][0]} kept, '
+          f'{live["loaded"][1]} dropped.')
 
 
 if __name__ == '__main__':

@@ -65,6 +65,7 @@ cc_library(
         "//systems/framework:vector",
         "//examples/sampling_c3:ee_plan_retiming",
         "//examples/sampling_c3:fast_jamming_label",
+        "//examples/sampling_c3:jamming_ground_truth",
         "//examples/sampling_c3:generate_samples",
         "//examples/sampling_c3:jamming_metrics",
         "//examples/sampling_c3:reposition",

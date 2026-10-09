@@ -29,6 +29,7 @@
 #include "dairlib/lcmt_saved_traj.hpp"
 #include "dairlib/lcmt_timestamped_saved_traj.hpp"
 #include "examples/sampling_c3/fast_jamming_label.h"
+#include "examples/sampling_c3/jamming_ground_truth.h"
 #include "examples/sampling_c3/jamming_metrics.h"
 #include "examples/sampling_c3/parameter_headers/progress_params.h"
 #include "examples/sampling_c3/parameter_headers/reposition_params.h"
@@ -164,6 +165,14 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
           std::vector<drake::SortedPair<drake::geometry::GeometryId>>>&
           contact_geoms,
       SamplingC3ControllerParams controller_params, bool verbose = false);
+
+  /// Builds the Drake sim a kSimDrakeObjectOnly cost replays sample plans
+  /// through:  the demo's own plant, from its sim_params.yaml @p object_models,
+  /// stepped at progress_params' sim_cost_dt, or @p sim_dt when that is unset.
+  /// The controller never reads sim_params.yaml itself, so the demo's main
+  /// hands these over; until it does, selecting that cost type throws.
+  void EnableGroundTruthCostSim(const std::vector<std::string>& object_models,
+                                double sim_dt);
 
   // Input ports
   const drake::systems::InputPort<double>& get_input_port_target() const {
@@ -595,6 +604,11 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   /// back to the scalar cost_switching_threshold_distance / an empty keep-out
   /// set when the corresponding sequence is unset.
   void RefreshPerGoalSettings(int goal_step) const;
+
+  /// The cost type samples are scored with right now:  the active goal's
+  /// cost_type_sequence entry when there is one, else cost_type once the pose
+  /// cost is latched and cost_type_position before.
+  C3CostComputationType ActiveCostType() const;
 
   /// For a kFixedGoalSequence, whether the goal generator's published final
   /// target `x_lcs_final_des` is the last step of the sequence.
@@ -1031,6 +1045,12 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   /// The contact groups whose planning-LCS modes are fixed inactive for the
   /// active goal (inactive_contact_groups_sequence); empty fixes nothing.
   mutable std::vector<int> active_inactive_contact_groups_;
+  /// The active goal's cost_type_sequence entry; unset when there is none.
+  mutable std::optional<C3CostComputationType> active_cost_type_override_;
+
+  // Built by EnableGroundTruthCostSim, and null until then.  Trace() keeps no
+  // state, so one instance serves every thread of the per-sample loop.
+  std::unique_ptr<const JammingGroundTruthSim> ground_truth_cost_sim_;
 
   // To detect if the final goal has been updated.
   mutable Eigen::VectorXd x_final_target_;

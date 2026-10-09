@@ -131,8 +131,8 @@ DEFINE_string(plan_variants, "shipped",
               "fix_inactive=<groups> (inactive_contact_groups_sequence at "
               "every goal), fix_min_gap (m), phi_floor, cost_phi_floor, "
               "cost_object=sim, Kp_rollout and Kd_rollout ('/'-separated "
-              "axes), lcs_dt_resolution, "
-              "planning_dt_pose, "
+              "axes), lcs_dt_resolution, cost_type (every goal and phase), "
+              "sim_cost_dt, planning_dt_pose, "
               "planning_dt_position, mu_<group>, and <group>_<weight> (a "
               "scale on that group's rows of the planning g_lambda, g_eta, "
               "u_lambda or u_eta lists, pose and position alike; Anitescu "
@@ -155,6 +155,33 @@ DEFINE_string(truth_census_csv, "/tmp/truth_census.csv",
 DEFINE_double(truth_settle_fraction, 1.0,
               "Truth census:  how long the replay holds the plan's last knot, "
               "as a fraction of the plan's duration.");
+DEFINE_bool(truth_census_replay, true,
+            "Truth census:  replay the candidates through the sim configs.  "
+            "Off writes only the controller's own costs per candidate, e.g. "
+            "to compare the mode-switch gate ratio under two cost types.");
+DEFINE_bool(truth_census_start_in_c3, false,
+            "Truth census:  step each fixture once forced into C3 (radio "
+            "channel 12) before the repeats, so they draw C3-mode samples and "
+            "face the C3 -> repos gate, whatever mode the warm-up left.");
+DEFINE_bool(log_options, false,
+            "Plan, truth and shadow censuses:  also take the sampling C3 "
+            "options, sampling params and reposition params from the log "
+            "folder's copies, e.g. for a run whose goal sequence was cut, so "
+            "its per-goal sequences index the right goals.");
+DEFINE_string(shadow_windows, "",
+              "Comma-separated t0:t1 log-time windows.  When set, run only the "
+              "shadow census:  per window and --plan_variants entry, a fresh "
+              "controller steps through every logged loop of the window's goal "
+              "from t0 - --shadow_preroll to t1 in order (predicted x0 off), "
+              "so its sample buffer and mode-switch gates evolve as they "
+              "would live, on the logged states.  A loop that leaves C3 is "
+              "recorded with its reason, and the next loop is forced back into "
+              "C3 (radio channel 12).  Rows go to --shadow_csv.");
+DEFINE_double(shadow_preroll, 3.0,
+              "Shadow census:  seconds stepped before each window, so the "
+              "sample buffer fills before the window's loops count.");
+DEFINE_string(shadow_csv, "/tmp/shadow_census.csv",
+              "Shadow census output path.");
 DEFINE_string(goal_params, "",
               "Plan census:  a goal_params yaml to use instead of the log "
               "folder's, so an old fixture can be re-solved against a new goal "
@@ -369,7 +396,15 @@ class Stepper {
       : controller_(*plants.plant_lcs, plants.plant_lcs_context,
                     *plants.plant_lcs_ad, plants.plant_lcs_context_ad.get(),
                     plants.contact_pairs, params),
-        context_(controller_.CreateDefaultContext()) {}
+        context_(controller_.CreateDefaultContext()) {
+    // A Drake-sim cost needs the demo's sim, as the demo's main would build.
+    if (params.progress_params.UsesSimDrakeCost()) {
+      const RobotSimParams sim_params =
+          drake::yaml::LoadYamlFile<RobotSimParams>(params.sim_params_file);
+      controller_.EnableGroundTruthCostSim(sim_params.object_models,
+                                           sim_params.dt);
+    }
+  }
 
   // Returns the index-0 (current location) cost.
   double Step(const LoggedLoop& loop, const VectorXd& x_actual) {
@@ -412,6 +447,13 @@ class Stepper {
     port.Calc(*context_, value.get());
     return value
         ->get_value<std::vector<c3::multibody::LCSContactDescription>>();
+  }
+  // The last Step's SAMPLING_C3_DEBUG message.
+  dairlib::lcmt_sampling_c3_debug Debug() const {
+    const auto& port = controller_.get_output_port_debug();
+    auto value = port.Allocate();
+    port.Calc(*context_, value.get());
+    return value->get_value<dairlib::lcmt_sampling_c3_debug>();
   }
 
   // Brings a fresh controller to the fixture's goal step:  the controller
@@ -799,6 +841,21 @@ SamplingC3ControllerParams ApplyVariant(const SamplingC3ControllerParams& params
       }
       (key == "Kp_rollout" ? o.Kp_for_ee_pd_rollout : o.Kd_for_ee_pd_rollout) =
           gains;
+    } else if (key == "cost_type") {
+      // Every goal and phase, replacing any per-goal sequence.
+      p.progress_params.cost_type = p.progress_params.cost_type_position =
+          static_cast<C3CostComputationType>(std::stoi(value));
+      p.progress_params.cost_type_sequence.reset();
+    } else if (key == "sim_cost_dt") {
+      p.progress_params.sim_cost_dt = std::stod(value);
+    } else if (key == "hyst_c3_to_repos_frac") {
+      p.progress_params.hyst_c3_to_repos_frac = std::stod(value);
+    } else if (key == "hyst_c3_to_repos_frac_position") {
+      p.progress_params.hyst_c3_to_repos_frac_position = std::stod(value);
+    } else if (key == "c3_to_repos_confirm_frac") {
+      p.progress_params.c3_to_repos_confirm_frac = std::stod(value);
+    } else if (key == "c3_to_repos_confirm_frac_position") {
+      p.progress_params.c3_to_repos_confirm_frac_position = std::stod(value);
     } else if (key == "lcs_dt_resolution") {
       o.lcs_dt_resolution = std::stoi(value);
     } else if (key.rfind("mu_", 0) == 0) {
@@ -898,6 +955,19 @@ void UseLogGoalParams(const std::string& log_path,
           drake::yaml::LoadYamlFile<SamplingC3ProgressParams>(
               entry.path().string());
       std::cout << "progress params from " << name << std::endl;
+    } else if (FLAGS_log_options && name.rfind("sampling_c3_params_", 0) == 0) {
+      params->sampling_c3_options =
+          drake::yaml::LoadYamlFile<SamplingC3Options>(entry.path().string());
+      std::cout << "sampling C3 options from " << name << std::endl;
+    } else if (FLAGS_log_options && name.rfind("sampling_params_", 0) == 0) {
+      params->sampling_params =
+          drake::yaml::LoadYamlFile<SamplingParams>(entry.path().string());
+      std::cout << "sampling params from " << name << std::endl;
+    } else if (FLAGS_log_options && name.rfind("repos_params_", 0) == 0) {
+      params->reposition_params =
+          drake::yaml::LoadYamlFile<SamplingC3RepositionParams>(
+              entry.path().string());
+      std::cout << "reposition params from " << name << std::endl;
     }
   }
   if (!FLAGS_goal_params.empty()) {
@@ -1327,7 +1397,8 @@ RobotSimParams LoadSimParams(const std::string& log_path,
 //   T0   the same without the latency;
 //   V4   a rigid-finger, latency-free rollout over the plan window alone, from
 //        the estimated pose -- what a sim-based cost could compute online --
-//        at 1 ms (V4) and 4 ms (V4f);
+//        at 1 ms (V4) and 4 ms (V4f); V4k and V4fk the same with the spring
+//        finger;
 //   V5   V4 with the settle hold; V5c the same from the clean pose, V5k with
 //        the spring finger.
 // T is the truth the others are ranked against.  Each config also replays a
@@ -1387,6 +1458,12 @@ void RunTruthCensus(Plants& plants, const SamplingC3ControllerParams& params,
       {"V4", Start::kEstimated, make(0.001, 0.0, false, false, 0.0)});
   configs.push_back(
       {"V4f", Start::kEstimated, make(0.004, 0.0, false, false, 0.0)});
+  // V4 and V4f with the spring finger, so a drag that pins the tip on the
+  // object reads as a bend instead of a push.
+  configs.push_back(
+      {"V4k", Start::kEstimated, make(0.001, 0.0, true, false, 0.0)});
+  configs.push_back(
+      {"V4fk", Start::kEstimated, make(0.004, 0.0, true, false, 0.0)});
   configs.push_back(
       {"V5", Start::kEstimated, make(0.001, settle, false, false, 0.0)});
   // V5 with one of its two gaps to T0 closed:  the clean pose (V5c), or the
@@ -1403,6 +1480,7 @@ void RunTruthCensus(Plants& plants, const SamplingC3ControllerParams& params,
       {"V4fp", Start::kProjected, make(0.004, 0.0, false, false, 0.0)});
   configs.push_back(
       {"V5fp", Start::kProjected, make(0.004, 0.25, false, false, 0.0)});
+  if (!FLAGS_truth_census_replay) configs.clear();
 
   std::vector<double> times;
   std::stringstream stream(FLAGS_truth_census_times);
@@ -1461,6 +1539,11 @@ void RunTruthCensus(Plants& plants, const SamplingC3ControllerParams& params,
       }
       Stepper stepper(plants, p);
       stepper.WarmUpToGoal(loops, fixture.goal);
+      if (FLAGS_truth_census_start_in_c3) {
+        LoggedLoop forced = fixture;
+        forced.radio.channel[12] = 1;
+        stepper.Step(forced, x);
+      }
 
       plant.SetPositions(plants.plant_lcs_context, x.head(n_q));
       const auto& query_object =
@@ -1607,6 +1690,88 @@ void RunTruthCensus(Plants& plants, const SamplingC3ControllerParams& params,
   std::cout << "wrote " << FLAGS_truth_census_csv << std::endl;
 }
 
+// Shadow census:  the C3 -> repos switches a variant's cost and gates would
+// have made at a window's logged states.  Open loop:  the shadow's plans are
+// never executed, so it only answers "would it have left C3 here", which is
+// what a mode-switch gate setting changes.  Rows are every stepped loop:  the
+// mode before and after, the switch reason and gate decision, and the costs
+// the gate compares (index 0, the fresh samples, and everything including the
+// best buffer entry, which rides along at its stale cost).
+void RunShadowCensus(Plants& plants, const SamplingC3ControllerParams& params,
+                     const std::vector<LoggedLoop>& loops) {
+  std::vector<std::pair<double, double>> windows;
+  std::stringstream stream(FLAGS_shadow_windows);
+  for (std::string item; std::getline(stream, item, ',');) {
+    const size_t colon = item.find(':');
+    if (colon == std::string::npos) {
+      throw std::runtime_error("A shadow window is t0:t1, not " + item);
+    }
+    windows.emplace_back(std::stod(item.substr(0, colon)),
+                         std::stod(item.substr(colon + 1)));
+  }
+  const std::vector<Variant> variants = ParseVariants(FLAGS_plan_variants);
+
+  std::ofstream csv(FLAGS_shadow_csv);
+  csv << "window,variant,t,in_window,forced,c3_before,c3_after,reason,"
+         "decision,pose_mode,n_costs,cost0,min_fresh,min_all,logged_c3\n";
+  for (size_t w = 0; w < windows.size(); ++w) {
+    const auto [t0, t1] = windows[w];
+    const int goal = loops[NearestLoop(loops, t0)].goal;
+    for (const Variant& variant : variants) {
+      SamplingC3ControllerParams p = ApplyVariant(params, variant);
+      p.sampling_c3_options.use_predicted_x0_c3 = false;
+      p.sampling_c3_options.use_predicted_x0_repos = false;
+      const int n_fresh = 1 + p.sampling_params.num_additional_samples_c3;
+      Stepper stepper(plants, p);
+      stepper.WarmUpToGoal(loops, goal);
+      int c3_loops = 0;
+      std::map<int, int> exits;
+      for (const LoggedLoop& loop : loops) {
+        if (loop.goal != goal || loop.t < t0 - FLAGS_shadow_preroll ||
+            loop.t > t1) {
+          continue;
+        }
+        const bool c3_before = stepper.controller().is_doing_c3_for_testing();
+        LoggedLoop fed = loop;
+        if (!c3_before) fed.radio.channel[12] = 1;
+        stepper.Step(fed);
+        const bool c3_after = stepper.controller().is_doing_c3_for_testing();
+        const dairlib::lcmt_sampling_c3_debug debug = stepper.Debug();
+        const std::vector<double>& costs =
+            stepper.controller().sample_costs_for_testing();
+        const int n = costs.size();
+        const auto min_over = [&](int lo, int hi) {
+          double m = std::numeric_limits<double>::quiet_NaN();
+          for (int i = lo; i < std::min(hi, n); ++i) {
+            if (!(m <= costs[i])) m = costs[i];
+          }
+          return m;
+        };
+        const bool in_window = loop.t >= t0;
+        if (in_window && c3_before) {
+          ++c3_loops;
+          if (!c3_after) ++exits[debug.mode_switch_reason];
+        }
+        csv << w << "," << variant.name << "," << loop.t << "," << in_window
+            << "," << !c3_before << "," << c3_before << "," << c3_after << ","
+            << debug.mode_switch_reason << "," << debug.mode_switch_decision
+            << "," << debug.in_pose_tracking_mode << "," << n << ","
+            << (n > 0 ? costs[0] : NAN) << "," << min_over(1, n_fresh) << ","
+            << min_over(1, n) << "," << loop.is_c3 << "\n";
+      }
+      csv.flush();
+      std::cout << "shadow window " << t0 << "-" << t1 << " goal " << goal
+                << " variant " << variant.name << ": " << c3_loops
+                << " C3 loops, exits by reason:";
+      for (const auto& [reason, count] : exits) {
+        std::cout << " " << reason << "x" << count;
+      }
+      std::cout << std::endl;
+    }
+  }
+  std::cout << "wrote " << FLAGS_shadow_csv << std::endl;
+}
+
 int DoMain(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   auto params = drake::yaml::LoadYamlFile<SamplingC3ControllerParams>(
@@ -1615,7 +1780,8 @@ int DoMain(int argc, char* argv[]) {
   if (FLAGS_ignore_twist) {
     params.sampling_c3_options.cost_ignores_tracked_axis_twist = true;
   }
-  if (!FLAGS_plan_census_times.empty() || !FLAGS_truth_census_times.empty()) {
+  if (!FLAGS_plan_census_times.empty() || !FLAGS_truth_census_times.empty() ||
+      !FLAGS_shadow_windows.empty()) {
     UseLogGoalParams(FLAGS_log, &params);
   }
   Plants plants(params);
@@ -1630,6 +1796,10 @@ int DoMain(int argc, char* argv[]) {
   }
   if (!FLAGS_truth_census_times.empty()) {
     RunTruthCensus(plants, params, loops);
+    return 0;
+  }
+  if (!FLAGS_shadow_windows.empty()) {
+    RunShadowCensus(plants, params, loops);
     return 0;
   }
   if (!FLAGS_census_times.empty()) {

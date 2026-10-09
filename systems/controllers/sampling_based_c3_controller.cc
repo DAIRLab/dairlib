@@ -784,6 +784,25 @@ SamplingC3Controller::SamplingC3Controller(
   }
 }
 
+void SamplingC3Controller::EnableGroundTruthCostSim(
+    const vector<std::string>& object_models, double sim_dt) {
+  if (controller_params_.num_objects != 1 || object_models.size() != 1) {
+    throw std::runtime_error(
+        "SamplingC3Controller::EnableGroundTruthCostSim: the ground truth sim "
+        "simulates exactly one free object.");
+  }
+  // A rigid finger, no command latency, no settle window, and each plan knot
+  // driven in turn:  the jam label's own rollout, at the cost's step.  The
+  // 2026-10-05 truth census scored this configuration as V4f.
+  GroundTruthSimOptions options;
+  options.sim_dt = progress_params_.sim_cost_dt.value_or(sim_dt);
+  options.settle_fraction = 0.0;
+  ground_truth_cost_sim_ =
+      std::make_unique<const JammingGroundTruthSim>(object_models, options);
+  std::cout << "Drake sample cost enabled:  sim dt " << options.sim_dt << " s"
+            << std::endl;
+}
+
 // This function relies on the previously computed z_fin from Solve.
 std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
     C3CostComputationType cost_type, const LCS& lcs_for_cost,
@@ -913,6 +932,39 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
     XX = XX_sim;
     UU = UU_sim;
 
+  } else if (cost_type == C3CostComputationType::kSimDrakeObjectOnly) {
+    // The same retimed plan, but executed by the demo's own Drake sim instead
+    // of the LCS, so the object moves the way the real contact model moves it:
+    // tips, pivots and slides the LCS cannot represent.
+    if (ground_truth_cost_sim_ == nullptr) {
+      throw std::runtime_error(
+          "SamplingC3Controller::CalcCost: cost type kSimDrakeObjectOnly needs "
+          "EnableGroundTruthCostSim, which only the 3D printer demos call.");
+    }
+    vector<VectorXd> x_plan_retimed = x_plan;
+    vector<VectorXd> UU_retimed = UU;
+    RetimeAndResampleC3PlanForCost(lcs_for_plan.dt(), &x_plan_retimed,
+                                   &UU_retimed);
+    if (tracked_plan != nullptr) *tracked_plan = x_plan_retimed;
+
+    vector<Vector3d> ee_plan;
+    ee_plan.reserve(x_plan_retimed.size());
+    for (const VectorXd& x : x_plan_retimed) {
+      ee_plan.push_back(x.head(3));
+    }
+    // The object starts where the plan's raw first knot has it, at rest.
+    const GroundTruthTrace trace = ground_truth_cost_sim_->Trace(
+        x_plan.front().segment(3, 4), x_plan.front().segment(7, 3), ee_plan,
+        lcs_for_plan.dt());
+    DRAKE_THROW_UNLESS(static_cast<int>(trace.object_states.size()) >= N_ + 1);
+    // The EE rows stay the plan it was asked to track; they carry no weight.
+    XX = x_plan_retimed;
+    for (int i = 0; i < N_ + 1; i++) {
+      XX[i].segment(3, 7) = trace.object_states[i].head(7);
+      XX[i].segment(ee_vel_index + 3, 6) = trace.object_states[i].tail(6);
+    }
+    UU = UU_retimed;
+
   } else {
     throw std::runtime_error(
         "SamplingC3Controller::CalcCost: unrecognized C3CostComputationType " +
@@ -920,7 +972,8 @@ std::pair<double, vector<VectorXd>> SamplingC3Controller::CalcCost(
   }
 
   if (cost_type == C3CostComputationType::kSimImpedanceObjectCostOnly ||
-      cost_type == C3CostComputationType::kSimImpedanceRetimedObjectCostOnly) {
+      cost_type == C3CostComputationType::kSimImpedanceRetimedObjectCostOnly ||
+      cost_type == C3CostComputationType::kSimDrakeObjectOnly) {
     // Set R and the robot portion of the Q matrix to zero so that only the
     // object state errors contribute to cost.
     for (int i = 0; i < N_ + 1; i++) {
@@ -1486,10 +1539,7 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
   std::atomic<int> num_samples_no_op{0};
   vector<std::shared_ptr<C3>> c3_objects(num_total_samples, nullptr);
   bool force_tracking_disabled = radio_out->channel[11];
-  C3CostComputationType cost_type = progress_params_.cost_type;
-  if (!crossed_cost_switching_threshold_) {
-    cost_type = progress_params_.cost_type_position;
-  }
+  const C3CostComputationType cost_type = ActiveCostType();
 
   // Parallelize over computing C3 costs for each sample.
   auto c3_start = std::chrono::high_resolution_clock::now();
@@ -2733,9 +2783,7 @@ SamplingC3Controller::EvaluateJammingMetricsForSamples(
   simulate_config.regularized = true;
   simulate_config.min_exp = -8;
 
-  const C3CostComputationType cost_type =
-      crossed_cost_switching_threshold_ ? progress_params_.cost_type
-                                        : progress_params_.cost_type_position;
+  const C3CostComputationType cost_type = ActiveCostType();
 
   vector<SampleJammingResult> results(num_samples);
   vector<VectorXd> x_desired(N_ + 1, x_lcs_des);
@@ -4127,6 +4175,15 @@ void SamplingC3Controller::RefreshPerGoalSettings(int goal_step) const {
     active_inactive_contact_groups_ = inactive_sequence->at(i);
   }
 
+  active_cost_type_override_.reset();
+  const auto& cost_type_sequence = progress_params_.cost_type_sequence;
+  if (cost_type_sequence.has_value() && !cost_type_sequence->empty()) {
+    int i = std::clamp(goal_step, 0,
+                       static_cast<int>(cost_type_sequence->size()) - 1);
+    active_cost_type_override_ =
+        static_cast<C3CostComputationType>(cost_type_sequence->at(i));
+  }
+
   std::cout << "RefreshPerGoalSettings: goal step " << goal_step
             << " -> cost_switching_threshold_distance = "
             << active_cost_switching_threshold_distance_
@@ -4136,7 +4193,19 @@ void SamplingC3Controller::RefreshPerGoalSettings(int goal_step) const {
             << (sampling_c3_options_.has_per_goal_position_cost() ? "yes"
                                                                   : "no")
             << ", inactive contact groups: "
-            << active_inactive_contact_groups_.size() << std::endl;
+            << active_inactive_contact_groups_.size() << ", cost type: "
+            << (active_cost_type_override_.has_value()
+                    ? std::to_string(*active_cost_type_override_)
+                    : "default")
+            << std::endl;
+}
+
+C3CostComputationType SamplingC3Controller::ActiveCostType() const {
+  if (active_cost_type_override_.has_value()) {
+    return *active_cost_type_override_;
+  }
+  return crossed_cost_switching_threshold_ ? progress_params_.cost_type
+                                           : progress_params_.cost_type_position;
 }
 
 // Reset the metrics used to track progress in C3 mode.

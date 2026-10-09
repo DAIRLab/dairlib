@@ -45,6 +45,20 @@ enum ProgressMetric { kC3Cost, kConfigCost, kPosOrRotCost, kConfigCostDrop };
                                     times, so every sample's cost covers the
                                     same amount of time and a plan that has to
                                     be slowed down simply gets less far.
+  7. kSimDrakeObjectOnly:           The same as
+                                    kSimImpedanceRetimedObjectCostOnly except
+                                    the retimed EE plan is replayed through the
+                                    demo's own Drake sim (JammingGroundTruthSim)
+                                    instead of the LCS, from the object's
+                                    estimated pose at rest, with a rigid finger
+                                    and no command latency.  The object then
+                                    moves the way the real contact model moves
+                                    it, so the cost sees tips, pivots and
+                                    slides the LCS cannot.  Much slower than
+                                    the LCS-based types; only the 3D printer
+                                    demos, which call
+                                    SamplingC3Controller::EnableGroundTruthCostSim,
+                                    can select it.
 */
 enum C3CostComputationType {
   kSimLCS,
@@ -54,6 +68,7 @@ enum C3CostComputationType {
   kSimImpedanceReplaceC3EEPlan,
   kSimImpedanceObjectCostOnly,
   kSimImpedanceRetimedObjectCostOnly,
+  kSimDrakeObjectOnly,
 };
 
 /* Live jam watchdog thresholds:  gap < trip while the object is not moving, or
@@ -247,6 +262,16 @@ struct SamplingC3ProgressParams {
   // cost_switching_threshold_distance above.
   std::optional<std::vector<double>> cost_switching_threshold_distance_sequence;
   double travel_cost_per_meter;
+  // Optional per-goal-step override of both cost_type and cost_type_position,
+  // as C3CostComputationType values, indexed like
+  // cost_switching_threshold_distance_sequence.  Unset => every goal uses
+  // cost_type / cost_type_position.
+  std::optional<std::vector<int>> cost_type_sequence;
+  // The Drake sim's discrete step [s] for kSimDrakeObjectOnly rollouts.  Unset
+  // means the demo's sim_params.yaml dt.  4 ms costs about a quarter of 1 ms
+  // and ranked the 2026-10-05 census candidates as well (V4f in
+  // sample_cost_repeatability --truth_census_times).
+  std::optional<double> sim_cost_dt;
   double hyst_c3_to_repos;
   double hyst_c3_to_repos_position;
   double finished_reposition_cost;
@@ -297,6 +322,8 @@ struct SamplingC3ProgressParams {
     a->Visit(DRAKE_NVP(cost_switching_threshold_distance));
     a->Visit(DRAKE_NVP(cost_switching_threshold_distance_sequence));
     a->Visit(DRAKE_NVP(travel_cost_per_meter));
+    a->Visit(DRAKE_NVP(cost_type_sequence));
+    a->Visit(DRAKE_NVP(sim_cost_dt));
     a->Visit(DRAKE_NVP(hyst_c3_to_repos));
     a->Visit(DRAKE_NVP(hyst_c3_to_repos_position));
     a->Visit(DRAKE_NVP(finished_reposition_cost));
@@ -327,5 +354,28 @@ struct SamplingC3ProgressParams {
           "Set both cost_switching_unlatch_margin and "
           "cost_switching_unlatch_seconds, or neither.");
     }
+    for (int type : cost_type_sequence.value_or(std::vector<int>{})) {
+      if (type < kSimLCS || type > kSimDrakeObjectOnly) {
+        throw std::runtime_error("cost_type_sequence entry " +
+                                 std::to_string(type) +
+                                 " is not a C3CostComputationType.");
+      }
+    }
+    if (sim_cost_dt.has_value() && *sim_cost_dt <= 0) {
+      throw std::runtime_error("sim_cost_dt must be positive.");
+    }
+  }
+
+  /// Whether any goal can select kSimDrakeObjectOnly, which needs the
+  /// controller's ground truth sim.
+  bool UsesSimDrakeCost() const {
+    if (cost_type == kSimDrakeObjectOnly ||
+        cost_type_position == kSimDrakeObjectOnly) {
+      return true;
+    }
+    for (int type : cost_type_sequence.value_or(std::vector<int>{})) {
+      if (type == kSimDrakeObjectOnly) return true;
+    }
+    return false;
   }
 };

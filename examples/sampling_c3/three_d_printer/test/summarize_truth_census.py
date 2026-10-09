@@ -16,6 +16,8 @@ whether each cost model ranks the candidates the way the truth does:
   low@3   share of the model's three cheapest candidates that sit low behind
           the object's base (body x < -4 mm, within 12 mm of its centre
           height), the push start that works at the goal-3 step edges.
+  bent@10 share of fixtures where the model's pick bends the finger 10 mm or
+          more in T, i.e. picks a push that jams.
 
 and, model-free, whether any candidate works (true progress >= --works_mm or
 --works_deg toward the goal) and how far the best one gets.  Fixtures are then
@@ -35,10 +37,12 @@ import click
 import numpy as np
 from scipy.stats import spearmanr
 
-MODELS = ['cost_v0', 'V4_cost', 'V4f_cost', 'V5_cost', 'V5c_cost',
+MODELS = ['cost_v0', 'V4_cost', 'V4f_cost', 'V4k_cost', 'V4fk_cost',
+          'V5_cost', 'V5c_cost',
           'V5k_cost', 'V5p_cost', 'V4fp_cost', 'V5fp_cost', 'T0_cost']
 NAMES = {'cost_v0': "variant's LCS cost", 'V4_cost': 'V4 drake 1ms',
-         'V4f_cost': 'V4f drake 4ms', 'V5_cost': 'V5 drake+settle',
+         'V4f_cost': 'V4f drake 4ms', 'V4k_cost': 'V4k +spring finger',
+         'V4fk_cost': 'V4fk 4ms +spring', 'V5_cost': 'V5 drake+settle',
          'V5c_cost': 'V5c +clean pose', 'V5k_cost': 'V5k +spring finger',
          'V5p_cost': 'V5p +projected', 'V4fp_cost': 'V4fp 4ms projected',
          'V5fp_cost': 'V5fp 4ms+.25 proj',
@@ -68,7 +72,8 @@ def fixture_stats(rows, model, works_mm, works_deg):
       regret=(truth[pick] - best) / gain if gain > 1e-9 else np.nan,
       ties=counts.max() / len(cost),
       low3=np.mean([is_low(rows[i]) for i in top3]),
-      pick_prog=float(rows[pick]['T_prog_mm']))
+      pick_prog=float(rows[pick]['T_prog_mm']),
+      pick_bend=float(rows[pick]['T_defl_mm']))
 
 
 @click.command()
@@ -139,7 +144,7 @@ def main(paths, productive, works_mm, works_deg, per_fixture):
           f'other {np.nanmean(stats["other_works"]):.2f}')
     print(f'   {"model":18s} {"rho p50":>8s} {"regret p50":>11s} '
           f'{"regret<=.3":>11s} {"ties":>6s} {"low@3":>6s} '
-          f'{"pick prog":>10s}')
+          f'{"pick prog":>10s} {"bent@10":>8s}')
     for model in MODELS:
       if (model, 'rho') not in stats:
         continue
@@ -149,7 +154,8 @@ def main(paths, productive, works_mm, works_deg, per_fixture):
             f'{np.nanmedian(reg):11.2f} {np.nanmean(reg <= 0.3):11.2f} '
             f'{np.mean(stats[(model, "ties")]):6.2f} '
             f'{np.mean(stats[(model, "low3")]):6.2f} '
-            f'{np.median(stats[(model, "pick_prog")]):+9.1f}mm')
+            f'{np.median(stats[(model, "pick_prog")]):+9.1f}mm '
+            f'{np.mean(np.array(stats[(model, "pick_bend")]) >= 10):8.2f}')
 
 
 if __name__ == '__main__':

@@ -2,6 +2,7 @@
 
 #include <limits>
 #include <utility>
+#include <vector>
 
 #include <Eigen/Core>
 
@@ -238,6 +239,34 @@ FixedGeometryPathCheck ClearEEPlanOfFixedGeometries(
 /// Holds an EE position plan (3 x N) at @p point from knot @p from_knot on.
 void HoldEEPlanFrom(int from_knot, const Eigen::Vector3d& point,
                     Eigen::MatrixXd* ee_positions);
+
+/// Roadmap C's lead clip:  keeps the gantry from running further ahead of a
+/// caught fingertip than the finger bends safely.  @p predicted_bends holds the
+/// finger's predicted bend (fingertip minus its unbent position, world) at each
+/// knot of @p ee_positions when the plan is driven as given, e.g. from a
+/// spring-finger replay through the demo's own sim (JammingGroundTruthSim).  At
+/// the first knot whose horizontal bend exceeds @p max_bend, moves that knot
+/// horizontally toward the tip until the bend would be @p max_bend, and holds
+/// the plan there from that knot on (HoldEEPlanFrom).  The finger is stiff
+/// vertically, so a bend's z part is ignored.  Returns that knot, or -1 if no
+/// knot exceeds @p max_bend; knots past the end of @p predicted_bends are not
+/// checked.
+int ClipEEPlanToFingerBend(const std::vector<Eigen::Vector3d>& predicted_bends,
+                           double max_bend, Eigen::MatrixXd* ee_positions);
+
+/// The finger bend a plan's start already implies:  the horizontal offset that
+/// takes an EE sphere of @p ee_radius, its unbent center at @p ee_center, just
+/// clear of @p object_geometries, along the nearest surface's horizontal
+/// outward normal.  Zero when the sphere is clear, when that normal is within
+/// about 17 degrees of vertical (horizontal part under 0.3, which a sideways
+/// bend can't clear; the press latch's case), or when the query reports a
+/// penetration deeper than 5 cm (unreliable).  Capped at @p max_bend.  The lead
+/// clip starts its replay from this bend:  in a wedge the gantry runs on into
+/// the cone while the caught tip stays outside it.
+Eigen::Vector2d FingerBendClearingObject(
+    const drake::geometry::QueryObject<double>& query_object,
+    const drake::geometry::GeometrySet& object_geometries,
+    const Eigen::Vector3d& ee_center, double ee_radius, double max_bend);
 
 /// What HoldEEPlanAbovePressedObject() carries from one control loop to the
 /// next.

@@ -64,11 +64,13 @@
 #include <dairlib/lcmt_c3_state.hpp>
 #include <dairlib/lcmt_object_state.hpp>
 #include <dairlib/lcmt_radio_out.hpp>
+#include <dairlib/lcmt_robot_output.hpp>
 #include <dairlib/lcmt_sampling_c3_debug.hpp>
 #include <dairlib/lcmt_timestamped_saved_traj.hpp>
 #include <gflags/gflags.h>
 #include <lcm/lcm-cpp.hpp>
 
+#include "examples/sampling_c3/generate_samples.h"
 #include "examples/sampling_c3/jamming_ground_truth.h"
 #include "examples/sampling_c3/parameter_headers/robot_sim_params.h"
 #include "examples/sampling_c3/parameter_headers/sampling_c3_controller_params.h"
@@ -163,6 +165,35 @@ DEFINE_bool(truth_census_start_in_c3, false,
             "Truth census:  step each fixture once forced into C3 (radio "
             "channel 12) before the repeats, so they draw C3-mode samples and "
             "face the C3 -> repos gate, whatever mode the warm-up left.");
+DEFINE_bool(truth_census_executed_only, false,
+            "Truth census:  keep only each repeat's current-location candidate "
+            "(index 0), the plan C3 mode would execute, instead of every "
+            "sample.");
+DEFINE_string(truth_lead_clip_mm, "",
+              "Truth census:  comma-separated bend budgets [mm].  Per kept "
+              "candidate and budget, also replays its EE plan clipped where "
+              "the --truth_lead_clip_reference replay first bends the finger "
+              "past the budget:  that knot moves toward the fingertip until "
+              "the bend is the budget, and the plan holds it from there on.  "
+              "Rows carry the budget in clip_mm (0 = unclipped) and the first "
+              "clipped knot in clip_knot (-1 = none).");
+DEFINE_string(truth_census_configs, "",
+              "Truth census:  comma-separated replay configs to run (T, T0, "
+              "V4, V4f, V4k, V4fk, V5, V5c, V5k, V5p, V4fp, V5fp); empty runs "
+              "them all.");
+DEFINE_bool(truth_start_bent, false,
+            "Truth census:  start the clean-pose replays (T, T0, V5c) with the "
+            "finger bent as FINGER_DEFLECTION_SIMULATION logged it at the "
+            "fixture, instead of unbent, so a wedge built up over earlier "
+            "loops carries into the replay.");
+DEFINE_bool(truth_lead_clip_start_bent, false,
+            "Truth census:  start the lead clip's reference replay with the "
+            "bend the plan's start implies against the estimated object "
+            "(FingerBendClearingObject), as the controller's clip does.");
+DEFINE_string(truth_lead_clip_reference, "V4fk",
+              "Truth census:  the replay config whose fingertip bend the lead "
+              "clip reads.  It should have the spring finger and no latency, "
+              "so its carriage follows the plan's knots.");
 DEFINE_bool(log_options, false,
             "Plan, truth and shadow censuses:  also take the sampling C3 "
             "options, sampling params and reposition params from the log "
@@ -224,6 +255,9 @@ struct LoggedLoop {
   // The simulator's error-free object pose (quaternion wxyz, position) at the
   // loop, when the log has OBJECT_STATE_SIMULATION_CLEAN; empty otherwise.
   VectorXd clean_object_pose;
+  // The compliant sim's finger bend (x, y) at the loop, from
+  // FINGER_DEFLECTION_SIMULATION; zero when the log has none.
+  Eigen::Vector2d true_bend = Eigen::Vector2d::Zero();
 };
 
 // The sample_costs block of a SAMPLE_COSTS message.  Found by name:  the
@@ -257,6 +291,7 @@ std::vector<LoggedLoop> ReadLog(const std::string& path, int n_x) {
   std::map<int64_t, int> have;  // bitmask of the five channels below
   dairlib::lcmt_radio_out latest_radio{};
   VectorXd latest_clean_pose;
+  Eigen::Vector2d latest_bend = Eigen::Vector2d::Zero();
   const lcm::LogEvent* event;
   while ((event = log.readNextEvent()) != nullptr) {
     const std::string& ch = event->channel;
@@ -269,6 +304,14 @@ std::vector<LoggedLoop> ReadLog(const std::string& path, int n_x) {
       if (msg.decode(event->data, 0, event->datalen) < 0) continue;
       if (msg.num_positions < 7) continue;
       latest_clean_pose = Eigen::Map<const VectorXd>(msg.position.data(), 7);
+      continue;
+    }
+    if (ch == "FINGER_DEFLECTION_SIMULATION") {
+      dairlib::lcmt_robot_output msg;
+      if (msg.decode(event->data, 0, event->datalen) < 0) continue;
+      if (msg.num_positions >= 2) {
+        latest_bend = Eigen::Vector2d(msg.position[0], msg.position[1]);
+      }
       continue;
     }
     VectorXd x;
@@ -302,6 +345,7 @@ std::vector<LoggedLoop> ReadLog(const std::string& path, int n_x) {
       loop.is_c3 = msg.is_c3_mode;
       loop.radio = latest_radio;
       loop.clean_object_pose = latest_clean_pose;
+      loop.true_bend = latest_bend;
       have[msg.utime] |= 16;
     }
   }
@@ -1481,6 +1525,20 @@ void RunTruthCensus(Plants& plants, const SamplingC3ControllerParams& params,
   configs.push_back(
       {"V5fp", Start::kProjected, make(0.004, 0.25, false, false, 0.0)});
   if (!FLAGS_truth_census_replay) configs.clear();
+  if (!FLAGS_truth_census_configs.empty()) {
+    std::vector<std::string> keep;
+    std::stringstream names(FLAGS_truth_census_configs);
+    for (std::string name; std::getline(names, name, ',');) {
+      keep.push_back(name);
+    }
+    std::erase_if(configs, [&](const Config& config) {
+      return std::find(keep.begin(), keep.end(), config.name) == keep.end();
+    });
+    if (configs.size() != keep.size()) {
+      throw std::runtime_error(
+          "--truth_census_configs names an unknown config");
+    }
+  }
 
   std::vector<double> times;
   std::stringstream stream(FLAGS_truth_census_times);
@@ -1490,6 +1548,23 @@ void RunTruthCensus(Plants& plants, const SamplingC3ControllerParams& params,
   const std::vector<Variant> variants = ParseVariants(FLAGS_plan_variants);
 
   std::ofstream csv(FLAGS_truth_census_csv);
+  std::vector<double> clip_budgets;
+  {
+    std::stringstream budgets(FLAGS_truth_lead_clip_mm);
+    for (std::string item; std::getline(budgets, item, ',');) {
+      clip_budgets.push_back(1e-3 * std::stod(item));
+    }
+  }
+  int clip_reference = -1;
+  for (int k = 0; k < static_cast<int>(configs.size()); ++k) {
+    if (configs[k].name == FLAGS_truth_lead_clip_reference) clip_reference = k;
+  }
+  if (!clip_budgets.empty() && clip_reference < 0) {
+    throw std::runtime_error("--truth_lead_clip_reference " +
+                             FLAGS_truth_lead_clip_reference +
+                             " is not a replay config");
+  }
+
   csv << "t,goal,variant,repeat,idx,is_c3,ee_x,ee_y,ee_z,body_x,body_y,"
          "body_z,dz_mm,hull_mm,cost_logged,cost_v0,plan_prog_mm,"
          "plan_prog_deg,roll_prog_mm,roll_prog_deg";
@@ -1499,7 +1574,7 @@ void RunTruthCensus(Plants& plants, const SamplingC3ControllerParams& params,
         << config.name << "_defl_mm," << config.name << "_force," << config.name
         << "_ms";
   }
-  csv << "\n";
+  csv << ",clip_mm,clip_knot,clip_start_bend_mm,true_bend_mm\n";
 
   for (double t : times) {
     const LoggedLoop& fixture = loops[NearestLoop(loops, t)];
@@ -1569,8 +1644,11 @@ void RunTruthCensus(Plants& plants, const SamplingC3ControllerParams& params,
         const auto& costs = c.sample_costs_for_testing();
         const auto& rollouts = c.sample_cost_rollouts_for_testing();
         const auto& tracked = c.sample_tracked_plans_for_testing();
-        const size_t n = std::min({locations.size(), rollouts.size(),
-                                   tracked.size(), costs.size()});
+        const size_t n_all = std::min({locations.size(), rollouts.size(),
+                                       tracked.size(), costs.size()});
+        const size_t n = FLAGS_truth_census_executed_only
+                             ? std::min<size_t>(1, n_all)
+                             : n_all;
         for (size_t i = 0; i < n; ++i) {
           Candidate cand;
           cand.repeat = r;
@@ -1622,6 +1700,12 @@ void RunTruthCensus(Plants& plants, const SamplingC3ControllerParams& params,
         }
         return std::pair<Eigen::Vector4d, Vector3d>(est_q, projected_p);
       };
+      // The clean-pose replays may start from the logged bend.
+      auto start_bend = [&](Start start) {
+        return start == Start::kClean && FLAGS_truth_start_bent
+                   ? fixture.true_bend
+                   : Eigen::Vector2d::Zero();
+      };
       omp_set_max_active_levels(1);
 #pragma omp parallel for schedule(dynamic)
       for (int job = 0; job < n_plans * n_configs; ++job) {
@@ -1629,7 +1713,8 @@ void RunTruthCensus(Plants& plants, const SamplingC3ControllerParams& params,
         const auto start = std::chrono::steady_clock::now();
         const auto [start_q, start_p] = start_pose(config.start);
         traces[job] = config.sim->Trace(start_q, start_p,
-                                        plans[job / n_configs], knot_dt);
+                                        plans[job / n_configs], knot_dt,
+                                        start_bend(config.start));
         trace_ms[job] = std::chrono::duration<double, std::milli>(
                             std::chrono::steady_clock::now() - start)
                             .count();
@@ -1654,8 +1739,60 @@ void RunTruthCensus(Plants& plants, const SamplingC3ControllerParams& params,
             as_lcs(traces[(n_plans - 1) * n_configs + k]), x_target);
       }
 
-      for (int j = 0; j < n_cand; ++j) {
-        const Candidate& cand = candidates[j];
+      // Lead clips:  each candidate's plan, clipped where the reference
+      // replay's fingertip first bends past the budget, as the controller's
+      // ee_lead_clip_max_bend does (ClipEEPlanToFingerBend).
+      struct Clipped {
+        int cand;
+        double budget;
+        int knot;
+        std::vector<Vector3d> plan;
+      };
+      std::vector<Clipped> clipped;
+      std::vector<double> clip_start_bend(n_cand, 0.0);
+      const double ee_radius = systems::GetEERadiusFromPlant(
+          plant, *plants.plant_lcs_context, plants.contact_pairs);
+      for (int j = 0; j < n_cand && !clip_budgets.empty(); ++j) {
+        std::vector<Vector3d> bends =
+            traces[j * n_configs + clip_reference].finger_bends;
+        if (FLAGS_truth_lead_clip_start_bent) {
+          const Config& reference = configs[clip_reference];
+          const auto [ref_q, ref_p] = start_pose(reference.start);
+          const Eigen::Vector2d bend0 = systems::FingerBendClearingObject(
+              query_object, drake::geometry::GeometrySet(cone_hull),
+              candidates[j].ee_plan.front(), ee_radius, 0.04);
+          clip_start_bend[j] = bend0.norm();
+          bends = reference.sim
+                      ->Trace(ref_q, ref_p, candidates[j].ee_plan, knot_dt,
+                              bend0)
+                      .finger_bends;
+        }
+        for (double budget : clip_budgets) {
+          Clipped clip{j, budget, -1, candidates[j].ee_plan};
+          Eigen::MatrixXd ee(3, clip.plan.size());
+          for (int k = 0; k < ee.cols(); ++k) ee.col(k) = clip.plan[k];
+          clip.knot = systems::ClipEEPlanToFingerBend(bends, budget, &ee);
+          for (int k = 0; k < ee.cols(); ++k) clip.plan[k] = ee.col(k);
+          clipped.push_back(clip);
+        }
+      }
+      const int n_clipped = clipped.size();
+      std::vector<systems::GroundTruthTrace> clipped_traces(n_clipped *
+                                                            n_configs);
+#pragma omp parallel for schedule(dynamic)
+      for (int job = 0; job < n_clipped * n_configs; ++job) {
+        const Config& config = configs[job % n_configs];
+        const auto [start_q, start_p] = start_pose(config.start);
+        clipped_traces[job] =
+            config.sim->Trace(start_q, start_p, clipped[job / n_configs].plan,
+                              knot_dt, start_bend(config.start));
+      }
+
+      // One row per replayed plan:  the candidate's columns, then each
+      // config's, then the clip.
+      auto write_row = [&](const Candidate& cand,
+                           const systems::GroundTruthTrace* plan_traces,
+                           const double* plan_ms, double budget, int knot) {
         const Vector3d body =
             object_quat.normalized().inverse() * (cand.location - object_position);
         csv << fixture.t << "," << fixture.goal << "," << variant.name << ","
@@ -1668,16 +1805,27 @@ void RunTruthCensus(Plants& plants, const SamplingC3ControllerParams& params,
             << cand.plan_prog.second << "," << cand.roll_prog.first << ","
             << cand.roll_prog.second;
         for (int k = 0; k < n_configs; ++k) {
-          const systems::GroundTruthTrace& trace = traces[j * n_configs + k];
+          const systems::GroundTruthTrace& trace = plan_traces[k];
           const auto prog = progress(trace.object_states.front().head(7),
                                      trace.object_states.back().head(7));
           csv << "," << c.ObjectOnlyTrajectoryCostForTesting(as_lcs(trace),
                                                              x_target)
               << "," << cost_dn[k] << "," << prog.first << "," << prog.second
               << "," << 1e3 * trace.max_finger_deflection << ","
-              << trace.max_contact_force << "," << trace_ms[j * n_configs + k];
+              << trace.max_contact_force << ","
+              << (plan_ms != nullptr ? plan_ms[k] : NAN);
         }
-        csv << "\n";
+        csv << "," << 1e3 * budget << "," << knot << ","
+            << 1e3 * clip_start_bend[&cand - candidates.data()] << ","
+            << 1e3 * fixture.true_bend.norm() << "\n";
+      };
+      for (int j = 0; j < n_cand; ++j) {
+        write_row(candidates[j], &traces[j * n_configs],
+                  &trace_ms[j * n_configs], 0.0, -1);
+      }
+      for (int i = 0; i < n_clipped; ++i) {
+        write_row(candidates[clipped[i].cand], &clipped_traces[i * n_configs],
+                  nullptr, clipped[i].budget, clipped[i].knot);
       }
       csv.flush();
       std::cout << "truth census t=" << fixture.t << " goal " << fixture.goal

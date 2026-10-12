@@ -119,6 +119,9 @@ struct GroundTruthTrace {
   /// Peak horizontal offset of the fingertip from its unbent position, sampled
   /// at the knots.  Zero for a rigid finger.
   double max_finger_deflection = 0.0;
+  /// The fingertip's offset from its unbent position at each knot, through the
+  /// settle window (world frame; zero for a rigid finger).
+  std::vector<Eigen::Vector3d> finger_bends;
 };
 
 /// Replays candidate plans through the demo's real sim.  Builds its plant once
@@ -138,11 +141,15 @@ class JammingGroundTruthSim {
   /// Simulates @p ee_plan, at knot spacing @p knot_dt, from the object at rest
   /// at the given pose and the printer parked at the plan's first knot, and
   /// reports the object's state at every knot.  Builds its own context, so it
-  /// may be called from many threads at once.
-  GroundTruthTrace Trace(const Eigen::Vector4d& object_quaternion,
-                         const Eigen::Vector3d& object_position,
-                         const std::vector<Eigen::Vector3d>& ee_plan,
-                         double knot_dt) const;
+  /// may be called from many threads at once.  With the spring finger, the
+  /// fingertip can start bent by @p initial_finger_bend (horizontal, world),
+  /// at rest; a rigid finger ignores it.
+  GroundTruthTrace Trace(
+      const Eigen::Vector4d& object_quaternion,
+      const Eigen::Vector3d& object_position,
+      const std::vector<Eigen::Vector3d>& ee_plan, double knot_dt,
+      const Eigen::Vector2d& initial_finger_bend =
+          Eigen::Vector2d::Zero()) const;
 
   /// Simulates @p ee_plan from the frozen scene and reports what the object
   /// did.  @p knot_dt is the plan's knot spacing.  @p plan_is_real says whether

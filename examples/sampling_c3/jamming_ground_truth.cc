@@ -298,10 +298,10 @@ VectorXd JammingGroundTruthSim::CommandAt(const vector<Vector3d>& ee_plan,
   return command;
 }
 
-GroundTruthTrace JammingGroundTruthSim::Trace(const Vector4d& object_quaternion,
-                                              const Vector3d& object_position,
-                                              const vector<Vector3d>& ee_plan,
-                                              double knot_dt) const {
+GroundTruthTrace JammingGroundTruthSim::Trace(
+    const Vector4d& object_quaternion, const Vector3d& object_position,
+    const vector<Vector3d>& ee_plan, double knot_dt,
+    const Eigen::Vector2d& initial_finger_bend) const {
   DRAKE_THROW_UNLESS(!ee_plan.empty());
   DRAKE_THROW_UNLESS(knot_dt > 0.0);
 
@@ -328,6 +328,13 @@ GroundTruthTrace JammingGroundTruthSim::Trace(const Vector4d& object_quaternion,
           object_position));
   plant_->SetVelocities(&plant_context,
                         VectorXd::Zero(plant_->num_velocities()));
+  // The spring mount's two world-aligned joints, x then y (AddPlant).
+  if (options_.finger.has_value()) {
+    plant_->GetJointByName<PrismaticJoint>("finger_deflection_x_joint")
+        .set_translation(&plant_context, initial_finger_bend.x());
+    plant_->GetJointByName<PrismaticJoint>("finger_deflection_y_joint")
+        .set_translation(&plant_context, initial_finger_bend.y());
+  }
   if (command_lag_ != nullptr) {
     VectorXd parked = VectorXd::Zero(command_lag_->size());
     parked.head(3) = start_joints;
@@ -361,6 +368,7 @@ GroundTruthTrace JammingGroundTruthSim::Trace(const Vector4d& object_quaternion,
         (carriage + ee_to_joint_offset_);
     trace.max_finger_deflection =
         std::max(trace.max_finger_deflection, bend.head<2>().norm());
+    trace.finger_bends.push_back(bend);
   };
 
   const int num_knots = static_cast<int>(ee_plan.size());

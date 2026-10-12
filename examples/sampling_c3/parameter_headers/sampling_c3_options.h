@@ -231,6 +231,15 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
   /// EE-surface clearance [m] off the object at which the latch releases.
   /// Defaults to 0.005.
   std::optional<double> ee_press_latch_release_gap;
+  /// Roadmap C's lead clip:  replay every executed C3 plan through the demo's
+  /// sim with the finger's spring mount, from the estimated object, and hold
+  /// the plan where the predicted finger bend first exceeds this [m] (see
+  /// ClipEEPlanToFingerBend in reposition.h).  Off if unset or 0.  Needs
+  /// SamplingC3Controller::EnableFingerBendClip, which the 3D printer
+  /// controller calls.
+  std::optional<double> ee_lead_clip_max_bend;
+  /// The lead clip's replay step [s].  Defaults to 0.004.
+  std::optional<double> ee_lead_clip_sim_dt;
   std::vector<double> ee_velocity_horizontal_limits;  ///< Limits for
                                                       ///< horizontal (xy) EE
                                                       ///< velocity.
@@ -350,6 +359,8 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
     a->Visit(DRAKE_NVP(ee_press_latch));
     a->Visit(DRAKE_NVP(ee_press_latch_min_normal_z));
     a->Visit(DRAKE_NVP(ee_press_latch_release_gap));
+    a->Visit(DRAKE_NVP(ee_lead_clip_max_bend));
+    a->Visit(DRAKE_NVP(ee_lead_clip_sim_dt));
     a->Visit(DRAKE_NVP(ee_velocity_horizontal_limits));
     a->Visit(DRAKE_NVP(ee_velocity_vertical_limits));
 
@@ -530,6 +541,13 @@ struct SamplingC3Options : C3Options, LCSFactoryOptions {
   double EEPressLatchReleaseGap() const {
     return ee_press_latch_release_gap.value_or(0.005);
   }
+  bool EELeadClipEnabled() const {
+    return ee_lead_clip_max_bend.value_or(0.0) > 0.0;
+  }
+  double EELeadClipMaxBend() const {
+    return ee_lead_clip_max_bend.value_or(0.0);
+  }
+  double EELeadClipSimDt() const { return ee_lead_clip_sim_dt.value_or(0.004); }
 
   /// Whether any goal-sequence step overrides q_vector_position.
   bool has_per_goal_position_cost() const {

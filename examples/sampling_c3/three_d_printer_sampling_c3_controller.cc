@@ -275,6 +275,20 @@ int DoMain(int argc, char* argv[]) {
     controller->EnableGroundTruthCostSim(sim_params.object_models,
                                          sim_params.dt);
   }
+  // So does the lead clip's replay, with the finger's spring mount.
+  if (controller_params.sampling_c3_options.EELeadClipEnabled()) {
+    const RobotSimParams sim_params = drake::yaml::LoadYamlFile<RobotSimParams>(
+        controller_params.sim_params_file);
+    if (!sim_params.compliant_finger.value_or(false)) {
+      throw std::runtime_error(
+          "ee_lead_clip_max_bend needs sim_params' compliant_finger, "
+          "finger_stiffness and finger_damping.");
+    }
+    controller->EnableFingerBendClip(
+        sim_params.object_models,
+        FingerCompliance{.stiffness = sim_params.finger_stiffness.value(),
+                         .damping = sim_params.finger_damping.value()});
+  }
 
   // Systems for publishing the current and best planned trajectories.
   auto actor_trajectory_sender_curr_plan = builder.AddSystem(

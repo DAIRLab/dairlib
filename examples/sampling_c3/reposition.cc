@@ -868,6 +868,52 @@ void HoldEEPlanFrom(int from_knot, const Eigen::Vector3d& point,
   }
 }
 
+int ClipEEPlanToFingerBend(const std::vector<Eigen::Vector3d>& predicted_bends,
+                           double max_bend, Eigen::MatrixXd* ee_positions) {
+  DRAKE_DEMAND(ee_positions->rows() == 3);
+  DRAKE_DEMAND(max_bend >= 0.0);
+  const int n = std::min<int>(ee_positions->cols(), predicted_bends.size());
+  for (int k = 0; k < n; ++k) {
+    const Eigen::Vector2d bend = predicted_bends[k].head<2>();
+    const double size = bend.norm();
+    if (size <= max_bend) continue;
+    // bend points from the gantry back to the caught tip, so moving the knot
+    // along it shortens the lead.
+    Eigen::Vector3d knot = ee_positions->col(k);
+    knot.head<2>() += (size - max_bend) / size * bend;
+    HoldEEPlanFrom(k, knot, ee_positions);
+    return k;
+  }
+  return -1;
+}
+
+Eigen::Vector2d FingerBendClearingObject(
+    const drake::geometry::QueryObject<double>& query_object,
+    const drake::geometry::GeometrySet& object_geometries,
+    const Eigen::Vector3d& ee_center, double ee_radius, double max_bend) {
+  constexpr double kMaxPlausiblePenetration = 0.05;  // meters
+  constexpr double kMinHorizontalNormal = 0.3;
+  double distance = std::numeric_limits<double>::infinity();
+  Eigen::Vector3d gradient = Eigen::Vector3d::Zero();
+  for (const auto& result : query_object.ComputeSignedDistanceGeometryToPoint(
+           ee_center, object_geometries)) {
+    if (result.distance < distance) {
+      distance = result.distance;
+      gradient = result.grad_W;
+    }
+  }
+  const double gap = distance - ee_radius;
+  if (!std::isfinite(distance) || gap >= 0.0 ||
+      gap < -kMaxPlausiblePenetration || gradient.norm() < 1e-9) {
+    return Eigen::Vector2d::Zero();
+  }
+  const Eigen::Vector2d horizontal = gradient.normalized().head<2>();
+  if (horizontal.norm() < kMinHorizontalNormal) return Eigen::Vector2d::Zero();
+  // Moving the tip t along the horizontal normal clears t * |horizontal|.
+  const double travel = std::min(-gap / horizontal.norm(), max_bend);
+  return travel * horizontal.normalized();
+}
+
 EEPressLatchStep HoldEEPlanAbovePressedObject(
     const drake::geometry::QueryObject<double>& query_object,
     const drake::geometry::GeometrySet& object_geometries, double ee_radius,

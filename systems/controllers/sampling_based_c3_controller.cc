@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cmath>
 #include <ctime>
 #include <iostream>
@@ -769,12 +770,13 @@ SamplingC3Controller::SamplingC3Controller(
     }
   }
 
-  // The jam watchdog's interpenetration guard and the press latch query
-  // against the object geometries, which the mesh block above only collects
-  // for the sampling strategies that need a mesh.  Collect them here for any
-  // other strategy, or either would sit silently disabled while looking
+  // The jam watchdog's interpenetration guard, the press latch and the lead
+  // clip query against the object geometries, which the mesh block above only
+  // collects for the sampling strategies that need a mesh.  Collect them here
+  // for any other strategy, or each would sit silently disabled while looking
   // configured.
-  if ((jam_latch_ != nullptr || sampling_c3_options_.EEPressLatchEnabled()) &&
+  if ((jam_latch_ != nullptr || sampling_c3_options_.EEPressLatchEnabled() ||
+       sampling_c3_options_.EELeadClipEnabled()) &&
       object_geometry_ids_.empty()) {
     for (const std::string& base_name : controller_params_.base_names) {
       object_geometry_ids_.push_back(plant_.GetCollisionGeometriesForBody(
@@ -801,6 +803,28 @@ void SamplingC3Controller::EnableGroundTruthCostSim(
       std::make_unique<const JammingGroundTruthSim>(object_models, options);
   std::cout << "Drake sample cost enabled:  sim dt " << options.sim_dt << " s"
             << std::endl;
+}
+
+void SamplingC3Controller::EnableFingerBendClip(
+    const vector<std::string>& object_models, const FingerCompliance& finger) {
+  if (controller_params_.num_objects != 1 || object_models.size() != 1) {
+    throw std::runtime_error(
+        "SamplingC3Controller::EnableFingerBendClip: the ground truth sim "
+        "simulates exactly one free object.");
+  }
+  // The spring finger, no command latency, no settle window, and each plan
+  // knot driven in turn:  the configuration the 2026-10-09 truth census scored
+  // as V4fk and clipped against.
+  GroundTruthSimOptions options;
+  options.sim_dt = sampling_c3_options_.EELeadClipSimDt();
+  options.settle_fraction = 0.0;
+  options.finger = finger;
+  finger_bend_clip_sim_ =
+      std::make_unique<const JammingGroundTruthSim>(object_models, options);
+  std::cout << "Lead clip enabled:  max predicted finger bend "
+            << 1e3 * sampling_c3_options_.EELeadClipMaxBend()
+            << " mm, finger " << finger.stiffness << " N/m, replay dt "
+            << options.sim_dt << " s" << std::endl;
 }
 
 // This function relies on the previously computed z_fin from Solve.
@@ -3149,6 +3173,12 @@ void SamplingC3Controller::UpdateC3ExecutionTrajectory(
     knots.topRows(3) = ee_knots;
   }
 
+  // Keep the gantry from running further ahead of a caught fingertip than the
+  // finger bends safely, again before the next x0 is predicted.
+  if (is_doing_c3_) {
+    ApplyEELeadClip(x_lcs, t_context, &knots);
+  }
+
   // Stretch the plan's time grid so no segment asks the printer to exceed its
   // EE speed limits (C3 does not reliably enforce the tight vertical bound).
   RetimeEEPlanToVelocityLimits(knots.topRows(3), &timestamps);
@@ -4751,6 +4781,92 @@ void SamplingC3Controller::NoteFixedGeometryPathHold(
               << fixed_geometry_hold_loops_ << " loops)" << std::endl;
     fixed_geometry_hold_since_ = std::numeric_limits<double>::quiet_NaN();
   }
+}
+
+void SamplingC3Controller::ApplyEELeadClip(const VectorXd& x_lcs,
+                                           double t_context,
+                                           MatrixXd* knots) const {
+  if (!sampling_c3_options_.EELeadClipEnabled()) return;
+  if (finger_bend_clip_sim_ == nullptr) {
+    throw std::runtime_error(
+        "SamplingC3Controller: ee_lead_clip_max_bend needs "
+        "EnableFingerBendClip, which only the 3D printer demos call.");
+  }
+  const double max_bend = sampling_c3_options_.EELeadClipMaxBend();
+  const int n_knots = knots->cols();
+  // The largest starting bend the replay takes from geometry; deeper reads
+  // are pose error more often than a bend.
+  constexpr double kMaxStartBend = 0.04;
+
+  // The path as the printer will cover it, on the plan's own knot grid.
+  vector<VectorXd> x_plan(n_knots);
+  for (int i = 0; i < n_knots; i++) x_plan[i] = knots->col(i);
+  vector<VectorXd> u_plan(n_knots - 1, VectorXd::Zero(n_u_));
+  double v_xy_max, v_z_max;
+  if (GetEEVelocityLimits(&v_xy_max, &v_z_max)) {
+    RetimeAndResampleEEPlan(dt_, v_xy_max, v_z_max, n_q_, &x_plan, &u_plan);
+  }
+  vector<Vector3d> ee_plan;
+  MatrixXd ee_knots(3, n_knots);
+  for (int i = 0; i < n_knots; i++) {
+    ee_plan.push_back(x_plan[i].head(3));
+    ee_knots.col(i) = x_plan[i].head(3);
+  }
+
+  // Where the plan starts, the gantry may already be inside the estimated
+  // object with the tip caught outside it:  start the replay from that bend,
+  // or a wedge that has built up over several plans reads as unbent.
+  const auto& query_object =
+      plant_.get_geometry_query_input_port()
+          .template Eval<drake::geometry::QueryObject<double>>(*context_);
+  const Eigen::Vector2d start_bend = FingerBendClearingObject(
+      query_object, drake::geometry::GeometrySet(object_geometry_ids_),
+      ee_plan.front(), ee_radius_, kMaxStartBend);
+
+  const auto start = std::chrono::steady_clock::now();
+  const GroundTruthTrace trace = finger_bend_clip_sim_->Trace(
+      x_lcs.segment(3, 4), x_lcs.segment(7, 3), ee_plan, dt_, start_bend);
+  const double replay_ms = std::chrono::duration<double, std::milli>(
+                               std::chrono::steady_clock::now() - start)
+                               .count();
+  const int knot =
+      ClipEEPlanToFingerBend(trace.finger_bends, max_bend, &ee_knots);
+
+  if (knot < 0) {
+    if (ee_lead_clip_loops_ > 0) {
+      std::cout << "[lead clip] t=" << t_context << " released after "
+                << t_context - ee_lead_clip_since_ << " s: "
+                << ee_lead_clip_loops_ << " plans clipped, max predicted bend "
+                << 1e3 * ee_lead_clip_max_bend_seen_ << " mm, max pull-back "
+                << 1e3 * ee_lead_clip_max_cut_ << " mm, replay "
+                << ee_lead_clip_replay_ms_ / ee_lead_clip_loops_
+                << " ms per plan" << std::endl;
+      ee_lead_clip_loops_ = 0;
+    }
+    return;
+  }
+
+  const double bend = trace.finger_bends[knot].head<2>().norm();
+  const double cut = (ee_knots.col(knot) - ee_plan[knot]).norm();
+  if (ee_lead_clip_loops_ == 0) {
+    ee_lead_clip_since_ = t_context;
+    ee_lead_clip_max_bend_seen_ = 0.0;
+    ee_lead_clip_max_cut_ = 0.0;
+    ee_lead_clip_replay_ms_ = 0.0;
+    std::cout << "[lead clip] t=" << t_context << " clipped at knot " << knot
+              << ": predicted bend " << 1e3 * bend << " mm from "
+              << 1e3 * start_bend.norm() << " mm at the start, gantry pulled "
+              << "back " << 1e3 * cut << " mm" << std::endl;
+  }
+  ++ee_lead_clip_loops_;
+  ee_lead_clip_max_bend_seen_ = std::max(ee_lead_clip_max_bend_seen_, bend);
+  ee_lead_clip_max_cut_ = std::max(ee_lead_clip_max_cut_, cut);
+  ee_lead_clip_replay_ms_ += replay_ms;
+
+  // The resampled path, clipped and held, with the EE still from the hold on.
+  for (int i = 0; i < n_knots; i++) knots->col(i) = x_plan[i];
+  knots->topRows(3) = ee_knots;
+  knots->block(n_q_, knot, 3, n_knots - knot).setZero();
 }
 
 void SamplingC3Controller::ApplyEEPressLatch(

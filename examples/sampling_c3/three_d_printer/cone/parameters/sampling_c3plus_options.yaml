@@ -44,6 +44,21 @@ ee_press_latch: true
 ee_press_latch_min_normal_z: 0.8
 ee_press_latch_release_gap: 0.005
 
+# Roadmap C's lead clip:  every executed C3 plan is replayed through the demo's
+# own sim with the finger's spring mount (sim_params' finger_stiffness), from
+# the estimated cone, and held where the predicted finger bend first exceeds
+# this [m].  The printer's latency lets the gantry run 25-35 mm past a caught
+# fingertip before a jam trip acts, which pins the upright cone at the toe and
+# then releases it.  In the 2026-10-09 truth census (343 logged states) 15 mm
+# halved the true bends >= 20 mm at the toe and at goals 3-4 and kept 90-98% of
+# the progress of the pushes that worked; 10 mm cost 20-27% of it.  0 is off.
+# Off:  in closed loop (10_09_26/000001-08) 15 mm seated 1/8 against Track A's
+# 3/16, doubled finger releases and added ~20 ms per loop.  At the toe the
+# replay can't see the bend:  it needs the true cone pose and the finger's
+# current bend, and neither the estimate nor the EE's penetration gives them.
+ee_lead_clip_max_bend: 0.0
+ee_lead_clip_sim_dt: 0.004
+
 # Bounds on the planned EE force, per axis, in Newtons.  For the printer, these
 # bound planned contact force only, since u can't be accepted by the printer
 # hardware (so it is dropped by three_d_printer_osc_controller).  They bind only

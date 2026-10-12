@@ -174,6 +174,15 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   void EnableGroundTruthCostSim(const std::vector<std::string>& object_models,
                                 double sim_dt);
 
+  /// Builds the Drake sim the lead clip (sampling_c3_options'
+  /// ee_lead_clip_max_bend) replays each executed C3 plan through:  the demo's
+  /// own plant from its sim_params.yaml @p object_models, with the finger on
+  /// the @p finger spring mount, no command latency and no settle window,
+  /// stepped at ee_lead_clip_sim_dt.  Until the demo's main calls it, enabling
+  /// the clip throws at the first C3 plan.
+  void EnableFingerBendClip(const std::vector<std::string>& object_models,
+                            const FingerCompliance& finger);
+
   // Input ports
   const drake::systems::InputPort<double>& get_input_port_target() const {
     return this->get_input_port(target_input_port_);
@@ -665,6 +674,18 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
                          int num_exempt_knots,
                          Eigen::MatrixXd* ee_positions) const;
 
+  /// When sampling_c3_options_.ee_lead_clip_max_bend is set, replays the
+  /// executed C3 plan (@p knots, n_x by N, on the dt_ grid) through
+  /// finger_bend_clip_sim_ from @p x_lcs's object, as the printer will cover it
+  /// (retimed to the EE speed limits and resampled onto the grid), starting
+  /// the fingertip bent by FingerBendClearingObject at the plan's start, and
+  /// where the predicted finger bend first exceeds the budget replaces the
+  /// plan's EE rows with that resampled path, clipped and held there
+  /// (ClipEEPlanToFingerBend), its EE velocity zero from the held knot on.
+  /// Prints when a clipped stretch begins and ends.
+  void ApplyEELeadClip(const Eigen::VectorXd& x_lcs, double t_context,
+                       Eigen::MatrixXd* knots) const;
+
   /// Collapse sampling_c3_options_.ee_velocity_{horizontal,vertical}_limits,
   /// each a [min, max] pair, into the scalar speeds the retiming works with.
   /// Returns false (with a one-time warning) if either limit is missing or
@@ -820,6 +841,15 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       std::numeric_limits<double>::quiet_NaN();
   mutable int ee_press_latch_loops_raised_ = 0;
   mutable double ee_press_latch_max_lift_ = 0.0;
+
+  // The lead clip's current stretch of consecutive clipped C3 plans:  when it
+  // began, how many plans it clipped, the largest predicted bend and the
+  // largest pull-back, and the replay time spent.
+  mutable double ee_lead_clip_since_ = std::numeric_limits<double>::quiet_NaN();
+  mutable int ee_lead_clip_loops_ = 0;
+  mutable double ee_lead_clip_max_bend_seen_ = 0.0;
+  mutable double ee_lead_clip_max_cut_ = 0.0;
+  mutable double ee_lead_clip_replay_ms_ = 0.0;
 
   // A private scene holding ONLY the per-goal keep-out geometry.  Null when no
   // goal step declares a keep-out model.
@@ -1051,6 +1081,8 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   // Built by EnableGroundTruthCostSim, and null until then.  Trace() keeps no
   // state, so one instance serves every thread of the per-sample loop.
   std::unique_ptr<const JammingGroundTruthSim> ground_truth_cost_sim_;
+  // Built by EnableFingerBendClip, and null until then.
+  std::unique_ptr<const JammingGroundTruthSim> finger_bend_clip_sim_;
 
   // To detect if the final goal has been updated.
   mutable Eigen::VectorXd x_final_target_;

@@ -36,7 +36,12 @@ by 1.5 s after it.  Reported: the gantry's height above the apex at the start,
 the push direction (degrees from -x, toward +y positive), the peak bend, the
 largest bend before the cone first tilted 18 deg from upright, how far the base
 slid before that, the C3 share, and the outcome against the goal-2 target,
-comparing 0.2 s before with 1.5 s after:
+comparing 0.2 s before with 1.5 s after.  Also, at the push's peak finger force:
+the force's angle below horizontal (the stiff z axis plus friction on the cone's
+27 deg side make it point well below), its size, and the contact's height and
+normal z; and what ended the push (the first C3 -> repositioning switch in it, or
+'c3' if C3 kept control, or 'repos' if repositioning held it from the start),
+with the cone's tilt and the true bend at that switch.  Outcomes:
   upright cone (axis z >= 0.9 before)
     tip+    tipped (axis z < 0.6 after) with the axis within 60 deg of goal 2's
     tip-    tipped any other way: sideways, backward, onto the plate
@@ -51,7 +56,9 @@ comparing 0.2 s before with 1.5 s after:
 Per arm (or per --group key): toe goal met, mid-slope reached, seated; losses
 in goal 2 per goal-2 minute; the Kaplan-Meier median time to the toe goal
 (losses and caps censored); upright-push outcome shares and tip+ / bad (tip- +
-shove) rates per goal-2 minute with 90% run-bootstrap intervals; passive share;
+shove) rates per goal-2 minute with 90% run-bootstrap intervals; upright pushes
+by what ended them, and the jam-ended ones the cone was already tilting through;
+force angle and contact height for tip+ against the rest; passive share;
 loop period; and, between the first two groups, Fisher's exact p on toe met and
 toe lost.
 
@@ -94,6 +101,10 @@ TIP_AXIS_Z = 0.6
 UPRIGHT_AXIS_Z = 0.9
 TIP_GOOD_DEG = 60.0
 SHOVE = 0.005
+# Pushes ended by a jam trip with the cone already tilted this far.
+MID_TILT_DEG = 10.0
+# mode_switch_reason values (lcmt_sampling_c3_debug) for a C3 -> repos switch.
+SWITCH_NAMES = {3: 'cost', 4: 'unproductive', 6: 'jam', 7: 'goal'}
 BETTER_DEG = 10.0
 PASSIVE_MM = 10.0
 WORKSPACE_XY = (0.0, 0.35)
@@ -126,6 +137,7 @@ def arm_of(folder):
       budget=options.get('num_contacts_index_for_cost'),
       unload='repos_unload_load' in guard,
       cone=op.splitext(op.basename(models[0]))[0],
+      lead_clip=options.get('ee_lead_clip_max_bend') or 0.0,
       bed_hydro=bool(sim.get('hydroelastic_bed', False)))
 
 
@@ -152,7 +164,8 @@ def read_log(log):
     if ch == 'SAMPLING_C3_DEBUG':
       msg = decode_debug(event.data)
       rows.append((t, msg.utime / 1e6, msg.is_c3_mode,
-                   msg.detected_goal_changes, msg.jam_tripped, plan_disp))
+                   msg.detected_goal_changes, msg.jam_tripped, plan_disp,
+                   msg.mode_switch_reason))
     elif ch == 'C3_ACTUAL':
       actual.append(t)
     elif ch == 'C3_EXECUTION_TRAJECTORY_ACTOR':
@@ -177,12 +190,23 @@ def read_log(log):
       msg = drake.lcmt_contact_results_for_viz.decode(event.data)
       ee_cone = 0.0
       ramp_point = ramp_hydro = plate = False
+      # Finger force on the cone, and the largest finger contact's height and
+      # outward cone normal z.  A point pair's force acts on body2 and its
+      # normal points from body2 into body1; a hydroelastic force acts on body1.
+      finger = np.zeros(3)
+      biggest, contact_z, normal_z = 0.0, np.nan, np.nan
       for c in msg.point_pair_contact_info:
         names = (c.body1_name, c.body2_name)
         if not has(names, 'cone'):
           continue
         if has(names, 'end_effector'):
           ee_cone += np.linalg.norm(c.contact_force)
+          cone_is_2 = 'cone' in c.body2_name
+          finger += np.array(c.contact_force) * (1 if cone_is_2 else -1)
+          if np.linalg.norm(c.contact_force) > biggest:
+            biggest = np.linalg.norm(c.contact_force)
+            contact_z = c.contact_point[2]
+            normal_z = c.normal[2] * (1 if cone_is_2 else -1)
         ramp_point |= has(names, 'ramp_link')
         plate |= has(names, 'build_plate')
       for c in msg.hydroelastic_contacts:
@@ -191,9 +215,11 @@ def read_log(log):
           continue
         if has(names, 'end_effector'):
           ee_cone += np.linalg.norm(c.force_C_W)
+          finger += np.array(c.force_C_W) * (-1 if 'cone' in c.body2_name else 1)
         ramp_hydro |= has(names, 'ramp_link')
         plate |= has(names, 'build_plate')
-      contacts.append((t, ee_cone, ramp_point, ramp_hydro, plate))
+      contacts.append((t, ee_cone, ramp_point, ramp_hydro, plate, *finger,
+                       contact_z, normal_z))
   if not rows or not clean or not defl or not contacts:
     raise click.ClickException(
         f'{log}: needs SAMPLING_C3_DEBUG and the compliant sim\'s ground truth')
@@ -335,12 +361,34 @@ def score_log(path):
         bend18 = slide18 = np.nan
       in_push = (t >= ts) & (t <= te)
       c3_share = rows[in_push, 2].mean() if in_push.any() else np.nan
+      # The finger force at its peak in the push.
+      cw = contacts[(contacts[:, 0] >= ts) & (contacts[:, 0] <= te)]
+      force = np.linalg.norm(cw[:, 5:8], axis=1)
+      k = int(np.argmax(force))
+      angle = np.degrees(np.arctan2(-cw[k, 7], np.hypot(cw[k, 5], cw[k, 6])))
+      # What ended it: the first C3 -> repositioning switch from its start to
+      # 0.2 s after it.
+      w = (t >= ts) & (t <= te + 0.2)
+      switch = np.flatnonzero(w & (rows[:, 6] > 0) & (rows[:, 2] == 0))
+      tilt_end = bend_end = np.nan
+      if len(switch):
+        ts_switch = t[switch[0]]
+        ended = SWITCH_NAMES.get(int(rows[switch[0], 6]),
+                                 str(int(rows[switch[0], 6])))
+        tilt_end = angle_deg(axis(interp_rows(clean, ts_switch)[1:5]),
+                             np.array([0, 0, 1.0]))
+        bend_end = 1e3 * interp_rows(defl, ts_switch)[1]
+      else:
+        ended = 'c3' if rows[w, 2].all() else 'repos'
       pushes.append(dict(
           start=ts, dur=te - ts, upright=ax0[2] >= UPRIGHT_AXIS_Z,
           above_apex=1e3 * (ee0[3] - apex_z), direction=direction,
           peak=1e3 * peak, bend18=1e3 * bend18, slide18=1e3 * slide18,
-          c3=c3_share, outcome=classify(before, after, goal_pos[TOE_GOAL],
-                                        goal_axes[TOE_GOAL])))
+          c3=c3_share, angle=angle, force=force[k],
+          contact_z=1e3 * cw[k, 8], normal_z=cw[k, 9], ended=ended,
+          tilt_end=tilt_end, bend_end=bend_end,
+          outcome=classify(before, after, goal_pos[TOE_GOAL],
+                           goal_axes[TOE_GOAL])))
 
   # The loss.
   loss = None
@@ -463,6 +511,35 @@ def summarize(runs, label):
         f'[{lo:.2f}, {hi:.2f}]; bad (tip- + shove) per min '
         f'{bad / max(minutes, 1e-9):.2f} [{blo:.2f}, {bhi:.2f}]; bad share '
         f'{bad / max(n_up, 1):.2f} [{slo:.2f}, {shi:.2f}]')
+  up = [p for r in runs for p in r['pushes'] if p['upright']]
+  if up:
+    ends = {}
+    for p in up:
+      ends.setdefault(p['ended'], []).append(p['outcome'])
+    print('   upright pushes by what ended them: ' + '; '.join(
+        f'{e} {len(o)} (tip+ {o.count("tip+")})' for e, o in sorted(
+            ends.items(), key=lambda kv: -len(kv[1]))))
+    jam = [p for p in up if p['ended'] == 'jam']
+    mid = [p for p in jam if p['tilt_end'] >= MID_TILT_DEG]
+    if jam:
+      print(f'   jam-ended: {len(jam)} of {len(up)} upright pushes; '
+            f'{len(mid)} already tilting >= {MID_TILT_DEG:.0f} deg at the '
+            f'trip (tip+ {sum(p["outcome"] == "tip+" for p in mid)}); true '
+            f'bend at the trip p50 {np.nanmedian([p["bend_end"] for p in jam]):.1f}'
+            f' mm, tilt p50 {np.nanmedian([p["tilt_end"] for p in jam]):.0f} deg')
+    loaded = [p for p in up if p['force'] >= 2.0]
+    tips = [p for p in loaded if p['outcome'] == 'tip+']
+    rest = [p for p in loaded if p['outcome'] != 'tip+']
+    def med(ps, key):
+      return np.nanmedian([p[key] for p in ps]) if ps else np.nan
+    print(f'   finger force at peak, pushes over 2 N: angle below horizontal '
+          f'p50 {med(loaded, "angle"):.0f} deg [p10 '
+          f'{np.nanpercentile([p["angle"] for p in loaded], 10) if loaded else np.nan:.0f}, '
+          f'p90 {np.nanpercentile([p["angle"] for p in loaded], 90) if loaded else np.nan:.0f}]; '
+          f'tip+ against the rest: contact z {med(tips, "contact_z"):.0f} '
+          f'against {med(rest, "contact_z"):.0f} mm, normal z '
+          f'{med(tips, "normal_z"):.2f} against {med(rest, "normal_z"):.2f}, '
+          f'force {med(tips, "force"):.0f} against {med(rest, "force"):.0f} N')
   passive = [r['passive'] for r in runs if np.isfinite(r['passive'])]
   print(f'   goal-2 passive C3 plans, median over runs '
         f'{np.median(passive) if passive else np.nan:.2f}; loop p50 / p90 '
@@ -475,6 +552,7 @@ def print_run(r, show_pushes):
   arm = r['arm']
   goals = ' '.join(f'{g}@{tt:.0f}' for g, tt in sorted(r['goal_times'].items()))
   print(f'{r["date"]}/{r["name"]}  wG {arm["w_G"]} budget {arm["budget"]} '
+        f'lead clip {1e3 * arm["lead_clip"]:g} mm '
         f'unload {"on" if arm["unload"] else "off"} ramp {arm["ramp"]} '
         f'cone {arm["cone"]}  | goals {goals} | {r["reason"]} at '
         f'{r["end"]:.0f} s | loop {r["period"][0]:.0f}/{r["period"][1]:.0f} '
@@ -499,14 +577,21 @@ def print_run(r, show_pushes):
             f'{"upright" if p["upright"] else "tilted "} above apex '
             f'{p["above_apex"]:+5.0f} mm dir {p["direction"]:+5.0f} deg peak '
             f'{p["peak"]:4.1f} mm bend<18deg {p["bend18"]:5.1f} slide<18deg '
-            f'{p["slide18"]:5.1f} mm C3 {p["c3"]:.2f}  {p["outcome"]}')
+            f'{p["slide18"]:5.1f} mm C3 {p["c3"]:.2f} | force {p["force"]:5.1f}'
+            f' N at {p["angle"]:3.0f} deg down, contact z '
+            f'{p["contact_z"]:3.0f} mm, normal z {p["normal_z"]:+.2f} | ended '
+            f'{p["ended"]}' + (f' (tilt {p["tilt_end"]:.0f} deg, bend '
+                               f'{p["bend_end"]:.1f} mm)'
+                               if np.isfinite(p['tilt_end']) else '') +
+            f'  {p["outcome"]}')
 
 
 @click.command()
 @click.argument('logs', nargs=-1, required=True)
 @click.option('--jobs', default=6, show_default=True)
 @click.option('--pushes', is_flag=True, help='List every goal-2 push.')
-@click.option('--group', default='w_G,budget,unload,ramp,cone,bed_hydro',
+@click.option('--group',
+              default='w_G,budget,unload,ramp,cone,bed_hydro,lead_clip',
               show_default=True,
               help='Arm keys that define a group, comma separated.')
 def main(logs, jobs, pushes, group):

@@ -112,6 +112,43 @@ ObjectStateLayout MakeObjectStateLayout(int object_index) {
   return ObjectStateLayout{base, base + 4};
 }
 
+bool JamLatch::LoadArms(std::optional<double> measured_ee_object_gap,
+                        std::optional<double> finger_load) const {
+  if (!finger_load.has_value() || *finger_load < thresholds_.load_trip) {
+    return false;
+  }
+  if (std::isinf(thresholds_.load_trip_max_gap)) {
+    return true;
+  }
+  return measured_ee_object_gap.has_value() &&
+         *measured_ee_object_gap <= thresholds_.load_trip_max_gap;
+}
+
+bool JamLatch::WouldTrip(double now,
+                         std::optional<double> measured_ee_object_gap,
+                         std::optional<double> finger_load,
+                         std::optional<double> ramp_load) const {
+  if (tripped_) {
+    return false;
+  }
+  // Each tier's dwell as Update would run it:  a tier armed now has been
+  // arming since its recorded start, or from now if it was not arming before.
+  const auto held = [now](bool arming, double since, double hold_seconds) {
+    return arming && now - (std::isnan(since) ? now : since) >= hold_seconds;
+  };
+  const bool deep_held =
+      held(measured_ee_object_gap.has_value() &&
+               *measured_ee_object_gap < thresholds_.deep_gap_trip,
+           deep_arming_since_, thresholds_.deep_trip_hold_seconds);
+  const bool load_held =
+      held(LoadArms(measured_ee_object_gap, finger_load), load_arming_since_,
+           thresholds_.load_trip_hold_seconds);
+  const bool ramp_load_held =
+      held(ramp_load.has_value() && *ramp_load >= thresholds_.ramp_load_trip,
+           ramp_load_arming_since_, thresholds_.load_trip_hold_seconds);
+  return deep_held || load_held || ramp_load_held;
+}
+
 bool JamLatch::Update(double now, double ee_object_force,
                       std::optional<double> ee_object_gap,
                       std::optional<double> object_travel,
@@ -173,9 +210,8 @@ bool JamLatch::Update(double now, double ee_object_force,
                                              thresholds_.deep_trip_hold_seconds;
 
   // The load tier, likewise with its own dwell and no travel condition; see
-  // load_trip.
-  load_arming_ =
-      finger_load.has_value() && *finger_load >= thresholds_.load_trip;
+  // load_trip and load_trip_max_gap.
+  load_arming_ = LoadArms(measured_ee_object_gap, finger_load);
   if (load_arming_) {
     if (std::isnan(load_arming_since_)) load_arming_since_ = now;
   } else {

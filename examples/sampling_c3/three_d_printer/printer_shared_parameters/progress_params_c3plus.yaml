@@ -175,6 +175,17 @@ jam_guard:
   load_trip: 0.020
   load_trip_hold_seconds: 0.0
   load_clear_gap: 0.005
+  # Arm the load tier only at a measured gap (reported EE to the estimated
+  # cone) of at most load_trip_max_gap [m].  A load read from outside the
+  # estimate means the gantry went over or around the cone, and the unload
+  # leg back to the entry point crosses it:  in the 10_12_26 sims 16 of 17
+  # such trips had no contact, and 12 of their legs hit the cone.  Over 16
+  # paired runs each (10_12_26/000001-08 and 33-40 against 17-24 and 41-48)
+  # it cut no-contact trips 36 -> 20 and the harmful legs after them 5 -> 1;
+  # it blocked a loop before a release twice, both productive toe tips.  A
+  # trade:  a far-side pass-through exit reads the same +1 to +5 mm
+  # (10_07_26/000007 flipped the cone at +2.4 mm).  Omit to arm at any gap.
+  load_trip_max_gap: 0.0
   # Push guard (needs the load tier):  while latched, if the object estimate
   # moves this far [m] over the travel window along with an EE that is heading
   # back to the entry point (or already unloaded), the retreat is shoving the
@@ -196,3 +207,9 @@ jam_guard:
   # turn it off.
   repos_unload_load: 0.004
   repos_unload_window_seconds: 1.0
+  # Fast trip reaction:  act on a deep, load or ramp-load trip before the
+  # loop's C3 solves, publishing the unload plan about a solve time (median
+  # 96 ms) sooner.  The gantry overshoots along the push for ~0.47 s after the
+  # trip's state, and the finger slips free in that window (issue #14).  Omit
+  # or false to act after the solves.
+  fast_trip_reaction: false

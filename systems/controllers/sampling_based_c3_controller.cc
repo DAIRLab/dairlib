@@ -646,6 +646,8 @@ SamplingC3Controller::SamplingC3Controller(
             std::numeric_limits<double>::infinity()),
         .load_trip_hold_seconds =
             jam_params.load_trip_hold_seconds.value_or(0.0),
+        .load_trip_max_gap = jam_params.load_trip_max_gap.value_or(
+            std::numeric_limits<double>::infinity()),
         .unload_release = jam_params.unload_release.value_or(
             std::numeric_limits<double>::infinity()),
         .unload_timeout_seconds = jam_params.unload_timeout_seconds.value_or(
@@ -689,7 +691,12 @@ SamplingC3Controller::SamplingC3Controller(
                 << " m of reported-EE run past the entry plane, held "
                 << *jam_params.load_trip_hold_seconds
                 << " s; re-anchors once clear by " << *jam_params.load_clear_gap
-                << " m." << std::endl;
+                << " m";
+      if (jam_params.load_trip_max_gap.has_value()) {
+        std::cout << "; arms only at a measured gap of at most "
+                  << *jam_params.load_trip_max_gap << " m";
+      }
+      std::cout << "." << std::endl;
     }
   }
 
@@ -1420,6 +1427,30 @@ drake::systems::EventStatus SamplingC3Controller::ComputePlan(
        (goal_params_.goal_mode == GoalMode::kFixedGoalSequence &&
         consecutive_all_reached_loops_ >= kParkAfterAllReachedLoops &&
         IsFinalTargetTerminalGoal(x_lcs_final_des.value())));
+
+  // The jam watchdog's measured-EE terms need nothing this loop solves, so
+  // they are read before the solves.  When they alone set the latch, the
+  // unload plan can go out now rather than a solve time later:  after a trip
+  // the gantry carries on along the push until the printer acts on the
+  // retreat, and the finger slips free in that window (issue #14).  Same
+  // conditions as the jam switch below, which this pre-empts.
+  UpdateMeasuredJamSignals(context.get_time(), x_lcs_curr);
+  if (progress_params_.jam_guard.has_value() &&
+      progress_params_.jam_guard->fast_trip_reaction.value_or(false) &&
+      !achieved_fixed_goal_ && !at_terminal_fixed_goal &&
+      !radio_out->channel[12] &&
+      (!is_doing_c3_ || sampling_params_.num_additional_samples_c3 > 0) &&
+      !all_sample_locations_.empty() &&
+      MeasuredJamTripIsDue(context.get_time())) {
+    const std::chrono::duration<double> elapsed =
+        std::chrono::high_resolution_clock::now() - start;
+    ReactToMeasuredJamTrip(
+        context.get_time(),
+        context.get_discrete_state(plan_start_time_index_)[0], x_lcs_curr,
+        elapsed.count());
+    return drake::systems::EventStatus::Succeeded();
+  }
+
   if (achieved_fixed_goal_ || at_terminal_fixed_goal) {
     achieved_fixed_goal_ = true;
     int num_samples = is_doing_c3_
@@ -3429,9 +3460,10 @@ void SamplingC3Controller::UpdateRepositioningExecutionTrajectory(
   }
 
   // Set up the trajectory.
+  const double plan_lead = plan_lead_override_.value_or(filtered_solve_time_);
   VectorXd timestamps = VectorXd::Zero(N_);
   for (int i = 0; i < N_; i++) {
-    timestamps[i] = t_context + filtered_solve_time_ + (i)*dt_;
+    timestamps[i] = t_context + plan_lead + (i)*dt_;
   }
 
   // Stretch the plan's time grid so no segment exceeds the printer's EE speed
@@ -4266,69 +4298,40 @@ ContactForceBasis SamplingC3Controller::MakeEEObjectContactForceBasis(
                                num_ee_object_lambda_entries);
 }
 
-void SamplingC3Controller::UpdateJamWatchdog(
-    double now, const VectorXd& x_lcs_curr,
-    const std::shared_ptr<C3>& curr_location_plan) const {
+namespace {
+
+// Signed distance from @p point to the nearest of @p geometries, and that
+// geometry's gradient there; infinite distance when nothing answers.
+std::pair<double, Vector3d> NearestSignedDistance(
+    const drake::geometry::QueryObject<double>& query_object,
+    const Vector3d& point, const drake::geometry::GeometrySet& geometries) {
+  std::pair<double, Vector3d> nearest{std::numeric_limits<double>::infinity(),
+                                      Vector3d::Zero()};
+  for (const auto& result :
+       query_object.ComputeSignedDistanceGeometryToPoint(point, geometries)) {
+    if (result.distance < nearest.first) {
+      nearest = {result.distance, result.grad_W};
+    }
+  }
+  return nearest;
+}
+
+}  // namespace
+
+void SamplingC3Controller::UpdateMeasuredJamSignals(
+    double now, const VectorXd& x_lcs_curr) const {
   if (jam_latch_ == nullptr) {
     return;
   }
-
-  // Guard 1: the magnitude of C3's own knot-0 EE<->object contact force.  This
-  // is force_basis * lambda over the EE-object block of the solution already in
-  // hand -- the same quantity C3_FORCES_CURR publishes -- so nothing is solved
-  // here.  It is what C3 *intended* to apply, not a measurement; there is no
-  // force sensing on this rig.
-  const vector<VectorXd> z_sol = curr_location_plan->GetFullSolution();
-  DRAKE_DEMAND(!z_sol.empty());
-  const VectorXd lambda_knot_0 = z_sol.at(0).segment(n_x_, n_lambda_);
-  jam_ee_object_force_ =
-      ContactForceMagnitude(lambda_knot_0, curr_ee_object_force_basis_);
-
-  // Guard 2: the apparent interpenetration.  Same query
-  // ProjectPlanAwayFromFixedGeometries runs, pointed at the object geometries
-  // instead of the fixed scene.  result.distance is measured from the EE
-  // *centre*, so subtracting ee_radius_ gives the gap from the EE sphere's
-  // surface to the object's surface.  Its gradient is only a validity check
-  // here, not a retreat direction: past the object's axis it points out of the
-  // far side, and a shallow trip that retreated along it drove the finger over
-  // the top of the cone (2026-09-29 compliant-sim logs).
-  //
-  // The context is already synced to x_lcs_curr -- CreateLCSObjectsForSamples
-  // restores it before returning -- so the object pose the query sees is the
-  // one this loop is planning against.
+  // Everything here reads the printer's reported EE and the object estimate
+  // alone, so it runs before this loop's C3 solves; see
+  // JamGuardParams::fast_trip_reaction.  The plant's positions are synced to
+  // x_lcs_curr first so the object geometry sits where this loop's estimate
+  // puts it -- GenerateSampleStates does the same before its first query.
+  plant_.SetPositions(context_, x_lcs_curr.head(n_q_));
   const auto& query_object =
       plant_.get_geometry_query_input_port()
           .template Eval<drake::geometry::QueryObject<double>>(*context_);
-  // Signed distance from a point to the nearest object geometry, and that
-  // geometry's gradient there; infinite distance when nothing answers.
-  const auto query_objects = [&](const Vector3d& point) {
-    const auto& results = query_object.ComputeSignedDistanceGeometryToPoint(
-        point, drake::geometry::GeometrySet(object_geometry_ids_));
-    std::pair<double, Vector3d> nearest{std::numeric_limits<double>::infinity(),
-                                        Vector3d::Zero()};
-    for (const auto& result : results) {
-      if (result.distance < nearest.first) {
-        nearest = {result.distance, result.grad_W};
-      }
-    }
-    return nearest;
-  };
-  const auto [min_distance, gradient] = query_objects(x_lcs_curr.head(3));
-
-  // A reading this deep is not a real penetration: it means the
-  // signed-distance query is unreliable (a non-watertight or non-manifold
-  // collision mesh -- the same failure ProjectPlanAwayFromFixedGeometries
-  // refuses to correct for).  Unlike that projection, which throws, a watchdog
-  // must not turn a bad query into a phantom jam, so the penetration term is
-  // simply skipped for this loop and the force term decides alone.
-  constexpr double kMaxPlausiblePenetration = 0.05;  // meters
-  const double gap = min_distance - ee_radius_;
-  const bool gap_is_valid = std::isfinite(min_distance) &&
-                            gap > -kMaxPlausiblePenetration &&
-                            gradient.norm() > 1e-9;
-  jam_ee_object_gap_ =
-      gap_is_valid ? gap : std::numeric_limits<double>::quiet_NaN();
-
   // Guard 2b, the deep tier: the same query from the EE position the printer
   // reported this loop, before ResolvePredictedEEState moved it along the
   // plan.  The printer reports stepper position, not the fingertip, so a
@@ -4341,7 +4344,8 @@ void SamplingC3Controller::UpdateJamWatchdog(
   // kMaxPlausiblePenetration is exactly what a bending finger produces.
   const Vector3d measured_ee = x_from_last_control_loop_.head(3);
   const auto [measured_distance, measured_gradient] =
-      query_objects(measured_ee);
+      NearestSignedDistance(query_object, measured_ee,
+                            drake::geometry::GeometrySet(object_geometry_ids_));
   const bool measured_gap_is_valid = std::isfinite(measured_distance);
   jam_ee_object_gap_measured_ = measured_gap_is_valid
                                     ? measured_distance - ee_radius_
@@ -4393,14 +4397,8 @@ void SamplingC3Controller::UpdateJamWatchdog(
   // ClearEEPlanOfFixedGeometries), so this is a backstop for a scene that is
   // not where the controller thinks, and for the unload leg, which is exempt.
   if (jam_ramp_load_estimator_ != nullptr) {
-    std::pair<double, Vector3d> nearest{std::numeric_limits<double>::infinity(),
-                                        Vector3d::Zero()};
-    for (const auto& result : query_object.ComputeSignedDistanceGeometryToPoint(
-             measured_ee, jam_ramp_geometries_)) {
-      if (result.distance < nearest.first) {
-        nearest = {result.distance, result.grad_W};
-      }
-    }
+    const auto nearest =
+        NearestSignedDistance(query_object, measured_ee, jam_ramp_geometries_);
     const std::optional<double> load = jam_ramp_load_estimator_->Update(
         measured_ee,
         std::isfinite(nearest.first)
@@ -4410,13 +4408,9 @@ void SamplingC3Controller::UpdateJamWatchdog(
         jam_latch_->tripped());
     jam_ramp_load_ = load.value_or(std::numeric_limits<double>::quiet_NaN());
   }
-  const auto update_unload_distance = [&]() {
-    jam_unload_distance_ =
-        jam_entry_point_.allFinite()
-            ? (jam_entry_point_ - measured_ee).head<2>().norm()
-            : std::numeric_limits<double>::quiet_NaN();
-  };
-  update_unload_distance();
+  jam_unload_distance_ = jam_entry_point_.allFinite()
+                             ? (jam_entry_point_ - measured_ee).head<2>().norm()
+                             : std::numeric_limits<double>::quiet_NaN();
 
   // Guard 3: is the object actually going anywhere?  A jam is contact with no
   // object progress, and the gap cannot tell those apart on its own -- the
@@ -4472,6 +4466,134 @@ void SamplingC3Controller::UpdateJamWatchdog(
               << jam_unload_distance_ << " m); lifting clear instead."
               << std::endl;
   }
+}
+
+void SamplingC3Controller::ReactToMeasuredJamTrip(
+    double now, double t_context, const VectorXd& x_lcs_curr,
+    double elapsed_seconds) const {
+  // The latch, as UpdateJamWatchdog sets it on any loop, minus the C3 terms.
+  UpdateJamWatchdog(now, x_lcs_curr, nullptr);
+  DRAKE_DEMAND(jam_tripped_);
+
+  // As the jam switch in ComputePlan.  The repositioning target is whatever
+  // last loop's samples chose (best_sample_index_ still indexes them); the
+  // unload leg in front of it is what this loop is for, and the next loop
+  // re-scores the target.
+  mode_switch_reason_ = ModeSwitchReason::kNoSwitch;
+  repos_target_decision_ = ReposTargetDecision::kKeptNoNominee;
+  mode_switch_decision_ = ModeSwitchDecision::kNoGatedDecision;
+  const bool was_doing_c3 = is_doing_c3_;
+  if (is_doing_c3_) {
+    is_doing_c3_ = false;
+    mode_switch_reason_ = ModeSwitchReason::kToReposJamDetected;
+    std::cout << "C3 -> Repos:  jam detected (fast trip reaction; EE<->object "
+                 "force "
+              << jam_ee_object_force_ << " N last loop)" << std::endl;
+    finished_reposition_flag_ = false;
+    ResetProgressMetrics();
+    pursued_target_source_ = PursuedTargetSource::kNewSample;
+  }
+  pending_repos_nominee_.reset();
+  pending_repos_to_c3_ = false;
+  // The rising edge's record, as in ComputePlan; the stored cost and jam label
+  // are last loop's for the current location.
+  AddToUnsuccessfulBuffer(x_lcs_curr, SampleIndex::kCurrentLocation, now);
+
+  plan_lead_override_ = elapsed_seconds;
+  UpdateRepositioningExecutionTrajectory(x_lcs_curr, t_context,
+                                         was_doing_c3 && !is_doing_c3_);
+  plan_lead_override_.reset();
+  std::cout << "[fast trip] t=" << now << " unload plan built "
+            << 1e3 * elapsed_seconds << " ms into the loop, solves skipped"
+            << std::endl;
+}
+
+bool SamplingC3Controller::MeasuredJamTripIsDue(double now) const {
+  if (jam_latch_ == nullptr) {
+    return false;
+  }
+  return jam_latch_->WouldTrip(
+      now,
+      std::isfinite(jam_ee_object_gap_measured_)
+          ? std::optional<double>(jam_ee_object_gap_measured_)
+          : std::nullopt,
+      std::isfinite(jam_finger_load_) ? std::optional<double>(jam_finger_load_)
+                                      : std::nullopt,
+      std::isfinite(jam_ramp_load_) ? std::optional<double>(jam_ramp_load_)
+                                    : std::nullopt);
+}
+
+void SamplingC3Controller::UpdateJamWatchdog(
+    double now, const VectorXd& x_lcs_curr,
+    const std::shared_ptr<C3>& curr_location_plan) const {
+  if (jam_latch_ == nullptr) {
+    return;
+  }
+  // The measured-EE terms -- the deep tier's gap, the load tiers, the unload
+  // distance, the travel window and the push guard -- were already updated
+  // this loop by UpdateMeasuredJamSignals.
+
+  // Without a plan (the fast trip reaction's loop, which skips the solves)
+  // neither C3 term has a reading:  the force keeps last loop's value for the
+  // log, and with no gap it can neither arm nor hold anything.
+  bool gap_is_valid = false;
+  if (curr_location_plan == nullptr) {
+    jam_ee_object_gap_ = std::numeric_limits<double>::quiet_NaN();
+  } else {
+    // Guard 1: the magnitude of C3's own knot-0 EE<->object contact force.
+    // This is force_basis * lambda over the EE-object block of the solution
+    // already in hand -- the same quantity C3_FORCES_CURR publishes -- so
+    // nothing is solved here.  It is what C3 *intended* to apply, not a
+    // measurement; there is no force sensing on this rig.
+    const vector<VectorXd> z_sol = curr_location_plan->GetFullSolution();
+    DRAKE_DEMAND(!z_sol.empty());
+    const VectorXd lambda_knot_0 = z_sol.at(0).segment(n_x_, n_lambda_);
+    jam_ee_object_force_ =
+        ContactForceMagnitude(lambda_knot_0, curr_ee_object_force_basis_);
+
+    // Guard 2: the apparent interpenetration.  Same query
+    // ProjectPlanAwayFromFixedGeometries runs, pointed at the object geometries
+    // instead of the fixed scene.  result.distance is measured from the EE
+    // *centre*, so subtracting ee_radius_ gives the gap from the EE sphere's
+    // surface to the object's surface.  Its gradient is only a validity check
+    // here, not a retreat direction: past the object's axis it points out of
+    // the far side, and a shallow trip that retreated along it drove the finger
+    // over the top of the cone (2026-09-29 compliant-sim logs).
+    //
+    // The context is already synced to x_lcs_curr -- CreateLCSObjectsForSamples
+    // restores it before returning -- so the object pose the query sees is the
+    // one this loop is planning against.
+    const auto& query_object =
+        plant_.get_geometry_query_input_port()
+            .template Eval<drake::geometry::QueryObject<double>>(*context_);
+    const auto [min_distance, gradient] = NearestSignedDistance(
+        query_object, x_lcs_curr.head(3),
+        drake::geometry::GeometrySet(object_geometry_ids_));
+
+    // A reading this deep is not a real penetration: it means the
+    // signed-distance query is unreliable (a non-watertight or non-manifold
+    // collision mesh -- the same failure ProjectPlanAwayFromFixedGeometries
+    // refuses to correct for).  Unlike that projection, which throws, a
+    // watchdog must not turn a bad query into a phantom jam, so the penetration
+    // term is simply skipped for this loop and the force term decides alone.
+    constexpr double kMaxPlausiblePenetration = 0.05;  // meters
+    const double gap = min_distance - ee_radius_;
+    gap_is_valid = std::isfinite(min_distance) &&
+                   gap > -kMaxPlausiblePenetration && gradient.norm() > 1e-9;
+    jam_ee_object_gap_ =
+        gap_is_valid ? gap : std::numeric_limits<double>::quiet_NaN();
+  }
+
+  const JamGuardParams& jam_params = progress_params_.jam_guard.value();
+  const Vector3d measured_ee = x_from_last_control_loop_.head(3);
+  const bool measured_gap_is_valid = std::isfinite(jam_ee_object_gap_measured_);
+  const bool travel_is_valid = std::isfinite(jam_object_travel_);
+  const auto update_unload_distance = [&]() {
+    jam_unload_distance_ =
+        jam_entry_point_.allFinite()
+            ? (jam_entry_point_ - measured_ee).head<2>().norm()
+            : std::numeric_limits<double>::quiet_NaN();
+  };
 
   // The dwell counter and its hysteresis live in JamLatch; see its comment for
   // why the arm and release conditions are asymmetric and why nothing here is

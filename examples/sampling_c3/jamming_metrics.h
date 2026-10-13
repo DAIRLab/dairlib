@@ -258,6 +258,15 @@ struct JamLatchThresholds {
   double load_trip = std::numeric_limits<double>::infinity();
   /// Seconds the load condition must hold continuously before the latch sets.
   double load_trip_hold_seconds = 0.0;
+  /// The load tier arms only while the measured gap (the reported EE's gap to
+  /// the object estimate) is at or below this [m].  A load read with the
+  /// reported EE already outside the estimate means it went over or around
+  /// the object, and the unload leg back to the entry point then crosses it:
+  /// in the 10_12_26 sims 16 of 17 such trips had no contact.  It is a trade,
+  /// because a far-side pass-through exit reads the same +1 to +5 mm (issue
+  /// #14, 10_07_26/000007).  Infinity turns the gate off, and the load tier
+  /// then arms with no measured gap too.
+  double load_trip_max_gap = std::numeric_limits<double>::infinity();
   /// The latch cannot release while the estimated finger deflection is at or
   /// above this [m] -- the horizontal distance from the reported EE back to
   /// where its gap last read non-negative.  Without it a retreat that slides
@@ -324,6 +333,16 @@ class JamLatch {
               std::optional<double> finger_load = std::nullopt,
               std::optional<double> ramp_load = std::nullopt);
 
+  /// Whether Update(now, ...) would set the latch on the measured terms alone
+  /// -- the deep, load and ramp-load tiers, with their dwells -- given these
+  /// readings, without changing anything.  False while already tripped.  An
+  /// Update given the same three readings and no predicted gap then returns
+  /// the rising edge.  Lets a caller act on a trip before computing the C3
+  /// terms; see JamGuardParams::fast_trip_reaction.
+  bool WouldTrip(double now, std::optional<double> measured_ee_object_gap,
+                 std::optional<double> finger_load,
+                 std::optional<double> ramp_load) const;
+
   bool tripped() const { return tripped_; }
   /// Seconds the arming condition has held continuously, 0 when not arming.
   double trip_seconds() const { return trip_seconds_; }
@@ -354,6 +373,11 @@ class JamLatch {
   bool unload_timed_out() const { return unload_timed_out_; }
 
  private:
+  // The load tier's arming condition, dwell aside:  the load at or above
+  // load_trip, with the measured gap at or below load_trip_max_gap.
+  bool LoadArms(std::optional<double> measured_ee_object_gap,
+                std::optional<double> finger_load) const;
+
   JamLatchThresholds thresholds_;
   // NaN until the first update; the first armed (or released) loop has no
   // elapsed time yet, so a dwell of 0 still needs two loops to be meaningful.

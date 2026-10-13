@@ -569,6 +569,30 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
       const std::vector<c3::multibody::LCSContactDescription>&
           contact_descriptions) const;
 
+  /// Updates the jam watchdog's terms that read only the printer's reported EE
+  /// and the object estimate -- the deep tier's gap, the load and ramp-load
+  /// estimators, the unload distance, the object travel window and the push
+  /// guard -- so they are ready before this loop's C3 solves.  Runs exactly
+  /// once per loop, before UpdateJamWatchdog; a no-op when the watchdog is
+  /// off.
+  void UpdateMeasuredJamSignals(double now,
+                                const Eigen::VectorXd& x_lcs_curr) const;
+
+  /// Whether this loop's measured terms alone set the jam latch on
+  /// UpdateJamWatchdog; see JamLatch::WouldTrip.
+  bool MeasuredJamTripIsDue(double now) const;
+
+  /// The rest of a loop on which MeasuredJamTripIsDue, with
+  /// JamGuardParams::fast_trip_reaction on:  sets the latch, switches to
+  /// repositioning as a jam does, records the jam in the unsuccessful buffer
+  /// and builds the unload plan -- all without this loop's C3 solves, so the
+  /// plan goes out a solve time sooner.  The plan is stamped
+  /// @p elapsed_seconds after @p t_context, the time this loop has actually
+  /// taken, rather than filtered_solve_time_.
+  void ReactToMeasuredJamTrip(double now, double t_context,
+                              const Eigen::VectorXd& x_lcs_curr,
+                              double elapsed_seconds) const;
+
   /// Evaluates the two jam guards against the current state and updates
   /// jam_ee_object_force_ / jam_ee_object_gap_ / jam_escape_direction_ and the
   /// dwell counter and latch behind them:
@@ -580,9 +604,12 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   ///      second from the printer's reported EE for the deep tier; and
   ///   3. how far the object estimate has travelled over the last
   ///      object_travel_window_seconds, from a short history this keeps.
-  /// Also tracks jam_entry_point_ / jam_unload_distance_, the estimated
-  /// deflection of a compliant finger that the retreat unloads first, and,
-  /// with the load tier on, jam_finger_load_, which can set the latch itself.
+  /// The measured-EE terms -- the reported EE's gap, jam_entry_point_ /
+  /// jam_unload_distance_ (the estimated deflection of a compliant finger that
+  /// the retreat unloads first), jam_finger_load_ and the travel window -- come
+  /// from UpdateMeasuredJamSignals, which must have run this loop.  A null
+  /// @p curr_location_plan (ReactToMeasuredJamTrip's loop) leaves the force at
+  /// last loop's value and the predicted gap unread, so neither can arm.
   /// The arming, dwell and release rules themselves live in JamLatch; a no-op
   /// when progress_params_.jam_guard is unset, in which case jam_latch_ is
   /// null and no demo pays for any of this.
@@ -965,6 +992,9 @@ class SamplingC3Controller : public drake::systems::LeafSystem<double> {
   mutable std::queue<double> object_config_cost_history_;
 
   mutable double filtered_solve_time_ = 0;
+  // When set, how far past t_context the repositioning plan's first knot is
+  // stamped instead of filtered_solve_time_; see ReactToMeasuredJamTrip.
+  mutable std::optional<double> plan_lead_override_;
 
   // Predictions for the end effector location.
   mutable Eigen::VectorXd x_pred_curr_plan_;

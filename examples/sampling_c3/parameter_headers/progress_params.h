@@ -158,6 +158,10 @@ struct JamGuardParams {
   /// At or above this gap [m] the finger is taken to be free whichever side of
   /// the object the reported EE is on, and the load estimate re-anchors.
   std::optional<double> load_clear_gap;
+  /// The load tier arms only while the reported EE's gap to the object
+  /// estimate is at or below this [m]; see JamLatchThresholds in
+  /// jamming_metrics.h.  Requires the load tier.  Omit to arm at any gap.
+  std::optional<double> load_trip_max_gap;
   /// While latched, if the object estimate moves at least this far [m] over
   /// the travel window along with a retreating EE (see RetreatIsPushing in
   /// jamming_metrics.h), the retreat is shoving the object, not unloading a
@@ -187,6 +191,14 @@ struct JamGuardParams {
   /// Seconds after the switch to repositioning in which repos_unload_load
   /// applies; a load later in the stretch is left to the latch.
   std::optional<double> repos_unload_window_seconds;
+  /// Fast trip reaction:  when the measured-EE tiers (deep, load, ramp-load)
+  /// set the latch, act on it before the loop's C3 solves -- switch to
+  /// repositioning and publish the unload plan straight away, skipping the
+  /// solves for that one loop.  The gantry keeps going along the push until
+  /// the printer acts on the retreat, and the finger slips free in that window
+  /// (issue #14); this takes the solve time out of it.  Omit or false for the
+  /// old behaviour, which acts on every trip after the solves.
+  std::optional<bool> fast_trip_reaction;
 
   template <typename Archive>
   void Serialize(Archive* a) {
@@ -208,11 +220,13 @@ struct JamGuardParams {
     a->Visit(DRAKE_NVP(load_trip));
     a->Visit(DRAKE_NVP(load_trip_hold_seconds));
     a->Visit(DRAKE_NVP(load_clear_gap));
+    a->Visit(DRAKE_NVP(load_trip_max_gap));
     a->Visit(DRAKE_NVP(retreat_push_travel));
     a->Visit(DRAKE_NVP(ramp_load_trip));
     a->Visit(DRAKE_NVP(ramp_load_bodies));
     a->Visit(DRAKE_NVP(repos_unload_load));
     a->Visit(DRAKE_NVP(repos_unload_window_seconds));
+    a->Visit(DRAKE_NVP(fast_trip_reaction));
     if (deep_gap_trip.has_value() != deep_trip_hold_seconds.has_value()) {
       throw std::runtime_error(
           "jam_guard: set both deep_gap_trip and deep_trip_hold_seconds, or "
@@ -223,6 +237,10 @@ struct JamGuardParams {
       throw std::runtime_error(
           "jam_guard: set all of load_trip, load_trip_hold_seconds and "
           "load_clear_gap, or none.");
+    }
+    if (load_trip_max_gap.has_value() && !load_trip.has_value()) {
+      throw std::runtime_error(
+          "jam_guard: load_trip_max_gap needs the load tier (load_trip).");
     }
     if (ramp_load_trip.has_value() != ramp_load_bodies.has_value()) {
       throw std::runtime_error(

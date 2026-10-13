@@ -10,6 +10,7 @@
 
 #include <cmath>
 #include <limits>
+#include <random>
 
 #include <gtest/gtest.h>
 #include <optional>
@@ -600,6 +601,34 @@ TEST(JamLatchTest, ALightLoadOrAMissingOneCannotArmTheLoadTier) {
   EXPECT_FALSE(latch.load_arming());
 }
 
+// The gap gate (load_trip_max_gap):  a load read with the reported EE outside
+// the object estimate -- it went over or around the object -- does not arm the
+// tier, and with the gate on neither does a load with no measured gap.  The
+// same load at the surface arms it, with the full dwell.
+TEST(JamLatchTest, TheGapGateKeepsTheLoadTierFromArmingOutsideTheEstimate) {
+  JamLatchThresholds thresholds = MakeThresholdsWithLoadTier();
+  thresholds.load_trip_max_gap = 0.0;
+  JamLatch latch(thresholds);
+  double now = 0.0;
+  EXPECT_FALSE(StepLoad(&latch, &now, 20, 0.002, kDragging, kLoaded));
+  EXPECT_FALSE(latch.load_arming());
+  EXPECT_FALSE(StepLoad(&latch, &now, 20, std::nullopt, kDragging, kLoaded));
+  EXPECT_FALSE(latch.load_arming());
+  EXPECT_FALSE(StepLoad(&latch, &now, 2, 0.0, kDragging, kLoaded));
+  EXPECT_TRUE(latch.load_arming());
+  EXPECT_TRUE(StepLoad(&latch, &now, 1, 0.0, kDragging, kLoaded));
+  EXPECT_TRUE(latch.tripped_by_load());
+}
+
+// Off, the gate leaves the tier arming at any gap, and with no gap at all.
+TEST(JamLatchTest, AnUnsetGapGateArmsAtAnyGap) {
+  JamLatch latch(MakeThresholdsWithLoadTier());
+  double now = 0.0;
+  EXPECT_FALSE(StepLoad(&latch, &now, 2, kClear, kDragging, kLoaded));
+  EXPECT_TRUE(StepLoad(&latch, &now, 1, std::nullopt, kDragging, kLoaded));
+  EXPECT_TRUE(latch.tripped_by_load());
+}
+
 // The load never holds the latch: its anchor is frozen in the object's frame,
 // so once the object tips after the trip -- or the retreat leaves past the
 // anchor's plane -- it can read over load_trip indefinitely.  Held on it, the
@@ -828,6 +857,123 @@ TEST(JamLatchTest, AnUnsetRampLoadThresholdIsANoOp) {
   JamLatch latch(thresholds);
   double now = 0.0;
   EXPECT_FALSE(StepRampLoad(&latch, &now, 20, 0.0, 1.0));
+}
+
+// ---------------------------------------------------------------------------
+// WouldTrip:  the fast trip reaction acts on it before the C3 terms exist, so
+// it has to agree with the Update that follows.
+
+// The deep, load and ramp-load tiers together, each with a dwell.
+JamLatchThresholds MakeThresholdsWithMeasuredTiers() {
+  JamLatchThresholds thresholds = MakeThresholdsWithRampLoadTier();
+  thresholds.deep_gap_trip = -0.020;
+  thresholds.deep_trip_hold_seconds = 0.15;
+  thresholds.unload_timeout_seconds = 1.0;
+  return thresholds;
+}
+
+// Every loop of a long run of measured readings that arm, dwell, trip, unload
+// and release in every order:  WouldTrip, asked first, matches the rising edge
+// of an Update given the same readings and no predicted gap -- the fast trip
+// reaction's loop.
+void ExpectWouldTripMatchesTheRisingEdge(
+    const JamLatchThresholds& thresholds) {
+  JamLatch latch(thresholds);
+  std::mt19937 generator(7);
+  std::uniform_real_distribution<double> unit(0.0, 1.0);
+  // Mostly quiet readings, with runs of arming long enough to clear a dwell.
+  const auto reading = [&](double quiet, double armed, double p_armed,
+                           double p_missing) -> std::optional<double> {
+    const double u = unit(generator);
+    if (u < p_missing) return std::nullopt;
+    return u < p_missing + p_armed ? armed : quiet;
+  };
+  double now = 0.0;
+  int edges = 0;
+  for (int i = 0; i < 5000; i++) {
+    const std::optional<double> measured_gap =
+        reading(kClear, kDeep, 0.15, 0.05);
+    const std::optional<double> load = reading(0.005, kLoaded, 0.2, 0.05);
+    const std::optional<double> ramp_load = reading(0.0, 0.012, 0.1, 0.05);
+    const std::optional<double> unload = reading(0.002, 0.010, 0.5, 0.0);
+    const bool would = latch.WouldTrip(now, measured_gap, load, ramp_load);
+    const bool edge = latch.Update(now, 0.0, std::nullopt, kStalled,
+                                   measured_gap, unload, load, ramp_load);
+    EXPECT_EQ(would, edge) << "loop " << i;
+    edges += edge;
+    // Uneven loop spacing, as the solve paces the real loop.
+    now += 0.04 + 0.12 * unit(generator);
+  }
+  // The sequence exercised every case, not just the quiet one.
+  EXPECT_GT(edges, 20);
+}
+
+TEST(JamLatchTest, WouldTripMatchesTheRisingEdgeOfTheUpdateAfterIt) {
+  ExpectWouldTripMatchesTheRisingEdge(MakeThresholdsWithMeasuredTiers());
+}
+
+// The same with the load tier's gap gate on:  the clear readings block it.
+TEST(JamLatchTest, WouldTripMatchesTheRisingEdgeWithTheGapGate) {
+  JamLatchThresholds thresholds = MakeThresholdsWithMeasuredTiers();
+  thresholds.load_trip_max_gap = 0.0;
+  ExpectWouldTripMatchesTheRisingEdge(thresholds);
+}
+
+// Asking does not advance any dwell:  the load tier still needs its 0.15 s.
+TEST(JamLatchTest, WouldTripChangesNothing) {
+  JamLatch latch(MakeThresholdsWithMeasuredTiers());
+  for (int i = 0; i < 10; i++) {
+    EXPECT_FALSE(latch.WouldTrip(0.0, kClear, kLoaded, 0.0));
+  }
+  EXPECT_FALSE(latch.Update(0.0, 0.0, std::nullopt, kStalled, kClear,
+                            std::nullopt, kLoaded, 0.0));
+  EXPECT_FALSE(latch.WouldTrip(0.1, kClear, kLoaded, 0.0));
+  EXPECT_FALSE(latch.Update(0.1, 0.0, std::nullopt, kStalled, kClear,
+                            std::nullopt, kLoaded, 0.0));
+  EXPECT_FALSE(latch.tripped());
+  EXPECT_TRUE(latch.WouldTrip(0.15, kClear, kLoaded, 0.0));
+  EXPECT_TRUE(latch.WouldTrip(0.15, kClear, kLoaded, 0.0));
+  EXPECT_TRUE(latch.Update(0.15, 0.0, std::nullopt, kStalled, kClear,
+                           std::nullopt, kLoaded, 0.0));
+}
+
+// Each measured tier's dwell runs from its own first armed loop, and a quiet
+// loop restarts it.
+TEST(JamLatchTest, WouldTripHonoursEachTiersDwell) {
+  JamLatch latch(MakeThresholdsWithMeasuredTiers());
+  ASSERT_FALSE(
+      latch.Update(0.0, 0.0, std::nullopt, kStalled, kDeep, 0.0, 0.0, 0.0));
+  EXPECT_FALSE(latch.WouldTrip(0.1, kDeep, 0.0, 0.0));
+  EXPECT_TRUE(latch.WouldTrip(0.15, kDeep, 0.0, 0.0));
+  // A quiet loop restarts the deep dwell.
+  ASSERT_FALSE(
+      latch.Update(0.1, 0.0, std::nullopt, kStalled, kClear, 0.0, 0.0, 0.0));
+  EXPECT_FALSE(latch.WouldTrip(0.2, kDeep, 0.0, 0.0));
+  // The ramp-load tier shares the load tier's dwell.
+  ASSERT_FALSE(
+      latch.Update(0.2, 0.0, std::nullopt, kStalled, kClear, 0.0, 0.0, 0.012));
+  EXPECT_FALSE(latch.WouldTrip(0.3, kClear, 0.0, 0.012));
+  EXPECT_TRUE(latch.WouldTrip(0.36, kClear, 0.0, 0.012));
+}
+
+// A latch already set has no rising edge to report, however loaded.
+TEST(JamLatchTest, WouldTripIsFalseWhileTripped) {
+  JamLatch latch(MakeThresholdsWithMeasuredTiers());
+  double now = 0.0;
+  ASSERT_TRUE(StepLoad(&latch, &now, 3, kContact, kDragging, kLoaded));
+  EXPECT_FALSE(latch.WouldTrip(now, kDeep, kLoaded, 0.012));
+}
+
+// The C3 terms are not WouldTrip's to predict:  a force or predicted gap that
+// would trip the shallow tier does not make it true.
+TEST(JamLatchTest, WouldTripIgnoresTheShallowTiers) {
+  JamLatch latch(MakeThresholdsWithMeasuredTiers());
+  double now = 0.0;
+  for (int i = 0; i < 2; i++) {
+    latch.Update(now, 20.0, -0.012, kStalled, kClear, 0.0, 0.0, 0.0);
+    now += kLoop;
+  }
+  EXPECT_FALSE(latch.WouldTrip(now, kClear, 0.0, 0.0));
 }
 
 TEST(RetreatIsPushingTest, AnObjectCarriedAlongTheRetreatIsBeingPushed) {
@@ -1291,6 +1437,12 @@ TEST(JamGuardParamsTest, TheConeYamlShipsTheDetectorTheReportScored) {
   EXPECT_EQ(*jam_guard.repos_unload_window_seconds, 1.0);
   EXPECT_LT(*jam_guard.repos_unload_load, *jam_guard.load_trip);
   EXPECT_GT(jam_guard.retreat_knots, 0);
+  // The fast trip reaction is written out, on or off, so a batch can patch it
+  // per arm.
+  EXPECT_TRUE(jam_guard.fast_trip_reaction.has_value());
+  // The load tier arms only with the reported EE at or inside the estimate.
+  ASSERT_TRUE(jam_guard.load_trip_max_gap.has_value());
+  EXPECT_EQ(*jam_guard.load_trip_max_gap, 0.0);
 
   // The invariants the controller DRAKE_DEMANDs, checked here so a bad yaml
   // fails the test rather than the demo.

@@ -14,6 +14,18 @@ logger, when:
             --tipped_seconds: its axis (body +x) is more than 60 deg from
             upright, it touches build_plate, and it never touches ramp_link.
             The upright cone knocked over before it reaches the ramp counts.
+  standing: tipped's mirror:  the cone has stood on the ramp, off the plate,
+            for --standing_seconds:  its axis within 60 deg of upright, it
+            touches ramp_link, and it does not touch build_plate.  No goal puts
+            it so -- the upright goals are on the plate -- and it got there
+            flung off the plate (10_13_26/000008 @ 82 s stood 100 s at x 165 mm
+            under the toe goal) or pushed back up off its side on the ramp.
+            The ratchet below misses it under the toe goal:  that goal starts
+            from the upright pose, so standing turns nothing away from it, and
+            the cone stands nearer the toe in xy.  Replayed over 200 logs
+            (10_02_26-10_13_26) it never fired in a run that went on to
+            succeed;  it ends 13 runs earlier than they ended (capped, tipped,
+            flipped, out) and fires about when regressed did in 8 more.
   flipped:  the cone has lain on the ramp tip-down-ramp, apex pointing
             down-slope:  lying on its side (axis x > 0.5) for
             --flipped_lying_seconds, or steeply apex down and down-slope (axis
@@ -68,8 +80,10 @@ per run, into --summary.
 
 --arm interleaves parameter variants run by run (A, B, A, B, ...), so drift in
 the machine's load or anything else over a batch lands on every arm alike.  An
-arm is a name, optionally followed by top-level yaml keys to override:
+arm is a name, optionally followed by yaml keys to override -- top-level keys,
+or section.key for one a level down:
   --arm wg20 --arm 'wg018=sampling_c3plus_options.yaml:w_G=0.18,w_G_position=0.18'
+  --arm 'fast=progress_params_c3plus.yaml:jam_guard.fast_trip_reaction=true'
 Files are looked up in the demo's parameters folder, then in
 printer_shared_parameters; several files go after ';'.  Each override is
 written into the yaml in place before the logger starts, so the copy the
@@ -77,6 +91,15 @@ logger saves into the log folder records the arm, and every patched file is
 restored after each run.  The batch refuses to start if a file to be patched
 differs from git HEAD.  run_record.yaml also gets the arm and the load
 average at the start and end of the run.
+
+--noise_seed_base N seeds sim_params.yaml's object_state_error_params.seed
+per run, so each run draws its own pose-error sequence:  run k of every arm
+uses seed N + k, which pairs the arms run for run.  With a fixed seed the
+injected error is a function of sim time alone, and every run of a batch sees
+the same excursions at the same moments (seed 0 through 10-09: a 14-18 deg
+tilt at 44-49 s, a 22 mm y excursion near 287 s).  The seed is written into
+the yaml like an arm's overrides, restored after each run, and recorded in
+run_record.yaml as noise_seed.
 
 Build everything first (bazel build ...): the debug message's layout changes
 between versions, and a partial build mixes binaries.
@@ -180,10 +203,11 @@ def orientation_error(quat_a, quat_b, axis_body):
 class Monitor:
   """Tracks the cone from the sim's ground truth; see the module docstring."""
 
-  def __init__(self, demo, tipped_seconds, flipped_seconds,
+  def __init__(self, demo, tipped_seconds, standing_seconds, flipped_seconds,
                flipped_lying_seconds, success_seconds, regressed_seconds,
                regressed_mm, regressed_deg):
     self.tipped_seconds = tipped_seconds
+    self.standing_seconds = standing_seconds
     self.flipped_seconds = flipped_seconds
     self.flipped_lying_seconds = flipped_lying_seconds
     self.success_seconds = success_seconds
@@ -200,6 +224,7 @@ class Monitor:
     self.goal_start = None
     self.on_plate = self.on_ramp = False
     self.tipped_since = self.flipped_since = self.regressed_since = None
+    self.standing_since = None
     self.success_since = self.out_since = None
     self.lc = lcm.LCM()
     self.lc.subscribe('OBJECT_STATE_SIMULATION_CLEAN', self._pose)
@@ -258,6 +283,12 @@ class Monitor:
     if (self.tipped_since is not None and
         now - self.tipped_since >= self.tipped_seconds):
       return 'tipped'
+
+    standing = axis[2] >= 0.5 and self.on_ramp and not self.on_plate
+    self.standing_since = (self.standing_since or now) if standing else None
+    if (self.standing_since is not None and
+        now - self.standing_since >= self.standing_seconds):
+      return 'standing'
 
     # Contact with the ramp only starts the window: a lying cone loses it now
     # and then; leaving the pose is what resets it.
@@ -363,17 +394,50 @@ def parse_arm(demo, spec):
 
 
 def patched(text, keys, path):
-  """Overrides top-level keys in a yaml's text, keeping comments."""
+  """Overrides keys in a yaml's text, keeping comments:  top-level keys, or
+  'section.key' for a key one level inside a top-level mapping."""
   for key, value in keys.items():
-    pattern = re.compile(rf'^({re.escape(key)}:[ \t]*)([^#\n]*?)([ \t]*#.*)?$',
-                         re.MULTILINE)
-    if len(pattern.findall(text)) != 1:
-      raise click.ClickException(f'{path}: top-level key {key} not found '
-                                 'exactly once')
-    text = pattern.sub(lambda m: m.group(1) + value + (m.group(3) or ''),
-                       text)
-    if yaml.safe_load(text).get(key) != yaml.safe_load(value):
+    section, _, sub = key.rpartition('.')
+    if section:
+      # The section's block:  from its line to the next top-level line.
+      block = re.search(rf'^{re.escape(section)}:[^\n]*\n((?:[ \t#][^\n]*\n'
+                        r'|\n)*)', text, re.MULTILINE)
+      if block is None:
+        raise click.ClickException(f'{path}: top-level key {section} not '
+                                   'found')
+      start, end = block.span(1)
+      indent = r'[ \t]+'
+    else:
+      start, end, indent = 0, len(text), ''
+    pattern = re.compile(
+        rf'^({indent}{re.escape(sub)}:[ \t]*)([^#\n]*?)([ \t]*#.*)?$',
+        re.MULTILINE)
+    if len(pattern.findall(text[start:end])) != 1:
+      raise click.ClickException(f'{path}: key {key} not found exactly once')
+    text = text[:start] + pattern.sub(
+        lambda m: m.group(1) + value + (m.group(3) or ''),
+        text[start:end]) + text[end:]
+    loaded = yaml.safe_load(text)
+    for part in key.split('.'):
+      loaded = (loaded or {}).get(part)
+    if loaded != yaml.safe_load(value):
       raise click.ClickException(f'{path}: {key} did not parse as {value}')
+  return text
+
+
+def seeded(text, seed, path):
+  """Sets object_state_error_params' seed in sim_params.yaml's text."""
+  pattern = re.compile(r'^([ \t]+seed:[ \t]*)([^#\n]*?)([ \t]*#.*)?$',
+                       re.MULTILINE)
+  if len(pattern.findall(text)) != 1:
+    raise click.ClickException(f'{path}: indented key seed not found exactly '
+                               'once')
+  text = pattern.sub(lambda m: m.group(1) + str(seed) + (m.group(3) or ''),
+                     text)
+  if (yaml.safe_load(text).get('object_state_error_params') or {}).get(
+      'seed') != seed:
+    raise click.ClickException(f'{path}: seed is not under '
+                               'object_state_error_params')
   return text
 
 
@@ -381,9 +445,10 @@ def interrupt(*_):
   raise KeyboardInterrupt
 
 
-def run_once(demo, logs_root, cap_seconds, tipped_seconds, flipped_seconds,
-             flipped_lying_seconds, success_seconds, regressed_seconds,
-             regressed_mm, regressed_deg, arm=None):
+def run_once(demo, logs_root, cap_seconds, tipped_seconds, standing_seconds,
+             flipped_seconds, flipped_lying_seconds, success_seconds,
+             regressed_seconds, regressed_mm, regressed_deg, arm=None,
+             noise_seed=None):
   today, before = log_dirs(logs_root)
   load_start = os.getloadavg()
   t0 = time.monotonic()
@@ -400,7 +465,7 @@ def run_once(demo, logs_root, cap_seconds, tipped_seconds, flipped_seconds,
   time.sleep(1.0)
 
   procs = {}
-  monitor = Monitor(demo, tipped_seconds, flipped_seconds,
+  monitor = Monitor(demo, tipped_seconds, standing_seconds, flipped_seconds,
                     flipped_lying_seconds, success_seconds, regressed_seconds,
                     regressed_mm, regressed_deg)
   reason = None
@@ -442,6 +507,8 @@ def run_once(demo, logs_root, cap_seconds, tipped_seconds, flipped_seconds,
     record['arm'] = name
     record['arm_overrides'] = {op.basename(path): keys
                                for path, keys in patches.items()}
+  if noise_seed is not None:
+    record['noise_seed'] = noise_seed
   with open(op.join(log_dir, 'run_record.yaml'), 'w') as f:
     yaml.safe_dump(record, f)
   return log_dir, record
@@ -452,6 +519,7 @@ def run_once(demo, logs_root, cap_seconds, tipped_seconds, flipped_seconds,
 @click.option('--runs', default=6, help='Runs in the batch.')
 @click.option('--cap_seconds', default=480.0)
 @click.option('--tipped_seconds', default=5.0)
+@click.option('--standing_seconds', default=5.0)
 @click.option('--flipped_seconds', default=30.0)
 @click.option('--flipped_lying_seconds', default=5.0)
 @click.option('--success_seconds', default=5.0)
@@ -464,9 +532,13 @@ def run_once(demo, logs_root, cap_seconds, tipped_seconds, flipped_seconds,
 @click.option('--arm', 'arm_specs', multiple=True,
               help='A parameter variant; runs cycle through the arms in order.'
                    '  See the module docstring.')
-def main(demo, runs, cap_seconds, tipped_seconds, flipped_seconds,
-         flipped_lying_seconds, success_seconds, regressed_seconds,
-         regressed_mm, regressed_deg, logs_root, summary, arm_specs):
+@click.option('--noise_seed_base', type=int, default=None,
+              help='Seed the injected pose error per run: run k of every arm '
+                   'uses this plus k.  See the module docstring.')
+def main(demo, runs, cap_seconds, tipped_seconds, standing_seconds,
+         flipped_seconds, flipped_lying_seconds, success_seconds,
+         regressed_seconds, regressed_mm, regressed_deg, logs_root, summary,
+         arm_specs, noise_seed_base):
   running = already_running()
   if running:
     raise click.ClickException('already running:\n' + '\n'.join(running))
@@ -479,6 +551,14 @@ def main(demo, runs, cap_seconds, tipped_seconds, flipped_seconds,
         raise click.ClickException(f'{path} differs from HEAD; commit or '
                                    'revert it before patching it per arm')
       originals[path] = open(path).read()
+  sim_params = parameter_file(demo, 'sim_params.yaml')
+  if noise_seed_base is not None:
+    if subprocess.run(['git', 'diff', '--quiet', 'HEAD', '--', sim_params],
+                      cwd=DAIRLIB_DIR).returncode != 0:
+      raise click.ClickException(f'{sim_params} differs from HEAD; commit or '
+                                 'revert it before seeding it per run')
+    originals.setdefault(sim_params, open(sim_params).read())
+    seeded(originals[sim_params], noise_seed_base, sim_params)
   for _, patches in arms:  # Fail on a bad override before the first run.
     for path, keys in patches.items():
       patched(originals[path], keys, path)
@@ -493,20 +573,30 @@ def main(demo, runs, cap_seconds, tipped_seconds, flipped_seconds,
   try:
     for i in range(runs):
       arm = arms[i % len(arms)] if arms else None
+      texts = {}
       if arm is not None:
         for path, keys in arm[1].items():
-          with open(path, 'w') as f:
-            f.write(patched(originals[path], keys, path))
+          texts[path] = patched(originals[path], keys, path)
+      noise_seed = None
+      if noise_seed_base is not None:
+        noise_seed = noise_seed_base + i // max(len(arms), 1)
+        texts[sim_params] = seeded(texts.get(sim_params, originals[sim_params]),
+                                   noise_seed, sim_params)
+      for path, text in texts.items():
+        with open(path, 'w') as f:
+          f.write(text)
       try:
         log_dir, record = run_once(demo, logs_root, cap_seconds,
-                                   tipped_seconds, flipped_seconds,
-                                   flipped_lying_seconds, success_seconds,
-                                   regressed_seconds, regressed_mm,
-                                   regressed_deg, arm)
+                                   tipped_seconds, standing_seconds,
+                                   flipped_seconds, flipped_lying_seconds,
+                                   success_seconds, regressed_seconds,
+                                   regressed_mm, regressed_deg, arm,
+                                   noise_seed)
       finally:
         restore()
       line = (f'{log_dir}  {record["reason"]}  at {record["stopped_at"]} s'
-              + (f'  arm {arm[0]}' if arm else ''))
+              + (f'  arm {arm[0]}' if arm else '')
+              + (f'  seed {noise_seed}' if noise_seed is not None else ''))
       print(f'run {i + 1}/{runs}: {line}', flush=True)
       if summary:
         with open(summary, 'a') as f:

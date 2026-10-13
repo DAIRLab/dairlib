@@ -27,12 +27,31 @@ furthest along its approach over the 0.3 s before the trip.  One row per trip:
            back (turn-back to 0.5 s after the release)
   HARM     dcone >= 10 mm or axis change >= 0.3, with the phase(s) where the
            same bar was crossed
+The timing columns use the gantry (PRINTER_STATE_SIMULATION, 30 Hz) rather
+than C3_ACTUAL's once-a-loop EE:
+  delay    from the arrival of the printer state the tripping loop planned
+           from to the loop's published trip [ms]: the controller's share of
+           the overshoot.  The rest is the printer's command dead time.
+  turn     from the published trip to the gantry's turn-back [ms]: its
+           first peak in distance from where it was at the trip that it then
+           falls 2 mm back from;
+           '-' if it never turns back (a leg that runs on forward, or a lift)
+  s-t      the slip (deflection < 2 mm, as for slip) minus the gantry's
+           turn-back [ms]; negative slipped while the gantry still overshot
+  leg      HIT when the leg-back contact (F_back >= 3 N) began after the
+           gantry's turn-back -- the unload leg ran a free tip into the cone,
+           issue #14 -- and THRU when the finger was still in contact at the
+           turn-back, e.g. a toe push whose cone falls back as the finger
+           unloads (#17), which F_back alone counts the same way
 
 The totals at the end count:
   no-contact trips   d_trip < 2 mm and F_out < 3 N
   loaded slips       the finger unloaded before the turn-back
   leg-back contact   F_back >= 3 N
   harmful legs back  leg-back contact and the back phase crossed the HARM bar
+  #14 hits           HIT legs, and how many of them were harmful
+  contact through    THRU legs, and how many of them were harmful
+and the medians of delay, turn and the overshoot.
 
 On roadmap B's 24 goal-3-start runs (2026-10-06, see Usage) there were 89
 trips: 33 no-contact, 38 with leg-back contact, 19 harmful legs back (7 of them
@@ -67,6 +86,7 @@ LOADED = 0.002          # deflection that counts as a loaded finger [m]
 CONTACT_N = 3.0         # finger-cone force that counts as contact [N]
 HARM_XY = 10.0          # cone displacement that counts as harm [mm]
 HARM_AXIS = 0.3         # cone axis change that counts as harm [-]
+TURN_DROP = 0.002       # gantry fall-back from its peak that marks a turn [m]
 
 
 def tip_cone_force(data):
@@ -80,8 +100,11 @@ def tip_cone_force(data):
 
 
 def read_log(path):
+  """The series score_trips reads.  gantry is PRINTER_STATE_SIMULATION's
+  (log time, controller clock, x, y, z); clock is SAMPLING_C3_DEBUG's (log
+  time, controller clock), row for row with debug."""
   t0 = None
-  debug, ee, defl, force, cone = [], [], [], [], []
+  debug, ee, defl, force, cone, gantry, clock = [], [], [], [], [], [], []
   for event in EventLog(find_log(path), 'r'):
     t0 = event.timestamp if t0 is None else t0
     t = (event.timestamp - t0) / 1e6
@@ -90,6 +113,12 @@ def read_log(path):
       d = decode_debug(event.data)
       debug.append((t, d.jam_tripped, d.jam_tripped_by_load, d.jam_deep_armed,
                     d.jam_unload_distance, d.detected_goal_changes))
+      clock.append((t, d.utime / 1e6))
+    elif ch == 'PRINTER_STATE_SIMULATION':
+      m = dairlib.lcmt_robot_output.decode(event.data)
+      q = dict(zip(m.position_names, m.position))  # ordered z, y, x
+      gantry.append((t, m.utime / 1e6, q['x_axis_joint'], q['y_axis_joint'],
+                     q['z_axis_joint']))
     elif ch == 'C3_ACTUAL':
       ee.append((t, *dairlib.lcmt_c3_state.decode(event.data).state[:3]))
     elif ch == 'FINGER_DEFLECTION_SIMULATION':
@@ -100,7 +129,7 @@ def read_log(path):
     elif ch == 'OBJECT_STATE_SIMULATION_CLEAN':
       q = np.array(dairlib.lcmt_object_state.decode(event.data).position[:7])
       cone.append((t, *q[4:7], *axis_world(q[:4] / np.linalg.norm(q[:4]))))
-  return [np.array(a) for a in (debug, ee, defl, force, cone)]
+  return [np.array(a) for a in (debug, ee, defl, force, cone, gantry, clock)]
 
 
 def at(series, t):
@@ -123,8 +152,47 @@ def score_log(path):
   return score_trips(path, *read_log(path))
 
 
-def score_trips(path, debug, ee, defl, force, cone):
-  """One row per trip, from series in read_log's layout."""
+def gantry_timing(t_on, t_off, ctrl_t, d_trip, defl, force, gantry,
+                  fallback_turn):
+  """The delay, turn, s-t and leg columns' raw values for one trip; see the
+  module docstring.  Times in seconds; None where undefined.  The turn-back
+  is the gantry's first peak in distance from where it was at the trip that it
+  then falls TURN_DROP back from; a gantry that never turns back (an unload leg that runs on
+  forward, or a lift) has no turn, and the leg is then judged from
+  fallback_turn, score_trips' C3_ACTUAL turn-back."""
+  # The state the tripping loop planned from: same controller clock.
+  k = int(np.argmin(np.abs(gantry[:, 1] - ctrl_t)))
+  t_state = gantry[k, 0]
+  xy = gantry[:, 2:4]
+  span = (gantry[:, 0] >= t_on) & (gantry[:, 0] <= t_off)
+  if not span.any():
+    return dict(delay=t_on - t_state, turn=None, slip_turn=None, leg=None)
+  # How far the gantry has carried on from where it was at the trip's state,
+  # in any direction:  an overshoot can curve, and a fixed heading then reads
+  # part of it as the way back.
+  along = np.linalg.norm(xy[span] - xy[k], axis=1)
+  peak = np.maximum.accumulate(along)
+  dropped = np.flatnonzero(peak - along >= TURN_DROP)
+  turned = len(dropped) > 0
+  t_turn = (gantry[span][np.argmax(along[:dropped[0]]), 0] if turned
+            else fallback_turn)
+  slip_turn = None
+  if turned and d_trip > LOADED:
+    out_defl = window(defl, t_on, t_turn + 0.05)
+    unloaded = np.flatnonzero(out_defl[:, 1] < LOADED)
+    if len(unloaded):
+      slip_turn = out_defl[unloaded[0], 0] - t_turn
+  leg = None
+  if window(force, t_turn, t_off + 0.3)[:, 1].max(initial=0) >= CONTACT_N:
+    at_turn = window(force, t_turn - 0.05, t_turn + 0.05)[:, 1].max(initial=0)
+    leg = 'THRU' if at_turn >= CONTACT_N else 'HIT'
+  return dict(delay=t_on - t_state, turn=t_turn - t_on if turned else None,
+              slip_turn=slip_turn, leg=leg)
+
+
+def score_trips(path, debug, ee, defl, force, cone, gantry=None, clock=None):
+  """One row per trip, from series in read_log's layout.  Without gantry and
+  clock the timing columns are left out."""
   tripped = debug[:, 1] > 0.5
   rows = []
   for i in np.flatnonzero(tripped[1:] & ~tripped[:-1]) + 1:
@@ -149,7 +217,11 @@ def score_trips(path, debug, ee, defl, force, cone):
             if len(unloaded) and d_trip > LOADED else None)
     c_on, c_turn = at(cone, t_on), at(cone, t_turn)
     c_end = at(cone, t_off + 0.5)
-    rows.append(dict(
+    timing = (gantry_timing(t_on, t_off, clock[i, 1], d_trip, defl, force,
+                            gantry, t_turn)
+              if gantry is not None and clock is not None and len(gantry)
+              else dict(delay=None, turn=None, slip_turn=None, leg=None))
+    rows.append(dict(**timing,
         log=op.basename(op.normpath(path)), goal=int(debug[i, 5]), t=t_on,
         dur=t_off - t_on, t_turn=t_turn, tier=tier, d_trip=1e3 * d_trip,
         over=1e3 * along.max(), slip=slip, unl=1e3 * latched[:, 4].max(),
@@ -160,8 +232,16 @@ def score_trips(path, debug, ee, defl, force, cone):
   return rows
 
 
+def ms(value, width=4):
+  return f'{1e3 * value:{width}.0f}' if value is not None else ' ' * (width - 1) + '-'
+
+
 def format_row(r, first_goal):
   slip = f'{r["slip"]:4.2f}' if r['slip'] is not None else '   -'
+  timing = ''
+  if r.get('delay') is not None:
+    timing = (f' delay {ms(r["delay"])} turn {ms(r["turn"])} '
+              f's-t {ms(r["slip_turn"])} leg {r["leg"] or "-":4s}')
   phase = '+'.join(name for name in ('out', 'back') if is_harm(*r[name]))
   harm = f'  HARM {phase}' if is_harm(*r['total']) else ''
   return (f'{r["log"]} g{r["goal"] + first_goal} {r["t"]:7.2f} '
@@ -170,7 +250,7 @@ def format_row(r, first_goal):
           f'slip {slip} unl {r["unl"]:5.1f} F_out {r["F_out"]:5.1f} '
           f'F_back {r["F_back"]:5.1f} dcone {r["total"][0]:5.1f} '
           f'{r["total"][1]:4.2f} out {r["out"][0]:5.1f} {r["out"][1]:4.2f} '
-          f'back {r["back"][0]:5.1f} {r["back"][1]:4.2f}{harm}')
+          f'back {r["back"][0]:5.1f} {r["back"][1]:4.2f}{timing}{harm}')
 
 
 @click.command()
@@ -201,6 +281,23 @@ def main(logs, first_goal, jobs):
   print(f'  harmful legs back:  {len(harmful)} '
         f'({sum(r in no_contact for r in harmful)} after a no-contact trip): '
         + ', '.join(f'{r["log"]}@{r["t"]:.1f}' for r in harmful))
+  timed = [r for r in rows if r.get('delay') is not None]
+  if not timed:
+    return
+  for name, label in (('HIT', '#14 hits'), ('THRU', 'contact through')):
+    legs = [r for r in timed if r['leg'] == name]
+    bad = [r for r in legs if is_harm(*r['back'])]
+    print(f'  {label + ":":19s} {len(legs)}, {len(bad)} harmful: '
+          + ', '.join(f'{r["log"]}@{r["t"]:.1f}' for r in bad))
+  slipped = [r for r in timed if r['slip_turn'] is not None
+             and r['slip_turn'] <= 0.05]
+  print(f'  slips by the turn:  {len(slipped)} of '
+        f'{sum(r["d_trip"] >= 1e3 * LOADED for r in timed)} loaded trips')
+  for key, label in (('delay', 'delay'), ('turn', 'turn')):
+    values = [1e3 * r[key] for r in timed if r[key] is not None]
+    if values:
+      print(f'  {label + " [ms]:":19s} p50 {np.median(values):.0f}, '
+            f'p90 {np.percentile(values, 90):.0f} ({len(values)} trips)')
 
 
 if __name__ == '__main__':

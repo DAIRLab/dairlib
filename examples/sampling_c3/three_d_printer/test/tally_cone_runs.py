@@ -15,11 +15,11 @@ run_record.yaml when there is one):
              the ramp's contact model as CONTACT_RESULTS shows it (point pairs
              or hydroelastic surfaces between the cone and ramp_link).
   goals      when each goal became the target (detected_goal_changes).
-  loss       for a run stopped tipped / flipped / out: the goal and the time
-             the cone entered, for good, the pose the monitor stops on (its
-             rules, replayed on the log's own clock: run_record.yaml's stop time
-             counts from the logger's start, a few seconds earlier), who was in
-             control over the 3 s before
+  loss       for a run stopped tipped / standing / flipped / out: the goal
+             and the time the cone entered, for good, the pose the monitor
+             stops on (its rules, replayed on the log's own clock:
+             run_record.yaml's stop time counts from the logger's start, a few
+             seconds earlier), who was in control over the 3 s before
              (C3 share, latched share), the last push on the cone that ended
              within 5 s before, and whether unload-before-lift fired in the 10 s
              before ([repos unload] in sc3_stdout.txt).
@@ -108,7 +108,7 @@ SWITCH_NAMES = {3: 'cost', 4: 'unproductive', 6: 'jam', 7: 'goal'}
 BETTER_DEG = 10.0
 PASSIVE_MM = 10.0
 WORKSPACE_XY = (0.0, 0.35)
-LOST = ('tipped', 'flipped', 'out', 'exited')
+LOST = ('tipped', 'standing', 'flipped', 'out', 'exited')
 TOE_GOAL = 2
 BAD = ('tip-', 'shove')
 
@@ -272,6 +272,9 @@ def loss_onset(reason, clean, contacts, end):
   if reason == 'tipped':
     cond = ((axes[:, 2] < 0.5) & (contacts[:, 4] > 0) & (contacts[:, 2] == 0) &
             (contacts[:, 3] == 0))
+  elif reason == 'standing':
+    cond = ((axes[:, 2] >= 0.5) & (contacts[:, 4] == 0) &
+            ((contacts[:, 2] > 0) | (contacts[:, 3] > 0)))
   elif reason == 'flipped':
     cond = (axes[:, 0] > 0.3) & (axes[:, 2] < -0.7)
   else:
